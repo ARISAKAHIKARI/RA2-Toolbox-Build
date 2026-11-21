@@ -117,7 +117,7 @@ inline Decision decision(int id,const State&s){
  case 787:case 818:case 802:return require(s,{Need::Advanced});
  case 812:case 9180:return require(s,{Need::C4});
  case 895:return require(s,{Need::Dodge});
- case 817:return require(s,{Need::Construction});
+ case 817:case 9796:return require(s,{Need::Construction});
  // Implementation selection stays available while off: choosing the event
  // route must not first activate the saved legacy instruction patches.
  case 9096:return {};
@@ -135,7 +135,7 @@ inline constexpr int BasicControls[]={
  9492,860,420,9097,9472,9304,9305,9306,9307,9308,9309,9313,9314,9324,9040,9041,9181,881,9183,9193,9187,9056,
  9061,9164,9165,9065,831,850,851,852,9100,9101,9166,9167,9168,796,797,
  781,782,783,784,9070,9071,9072,9073,9074,9075,303,310,787,818,802,812,
- 9180,895,817,9096,9251,9252,423,814,710,711,712,713,714,751,715,716,717,718,312,445,446,447,448,466,810,811,108,208
+ 9180,895,817,9796,9096,9251,9252,423,814,710,711,712,713,714,751,715,716,717,718,312,445,446,447,448,466,810,811,108,208
 };
 inline constexpr auto Controls=[](){
  std::array<int,sizeof(BasicControls)/sizeof(BasicControls[0])+featuretypes::Count-1> ids{};

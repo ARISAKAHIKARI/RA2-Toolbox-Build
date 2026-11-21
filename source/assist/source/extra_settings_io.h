@@ -136,6 +136,7 @@ static void loadAdditionalSettings(){
  int pathMode=std::clamp(value(L"Aircraft",L"WaypointMode",extra.nativeAirWaypoints?2:extra.airWaypoints?1:0),0,4);extra.airWaypoints=pathMode==1;extra.nativeAirWaypoints=pathMode>=2;extra.nativeAirNetwork=pathMode>=3?uint32_t(pathMode-2):0;extra.airPathKey=uint32_t(value(L"Aircraft",L"WaypointHoldKey",0));
  extra.productionReminderMask=uint32_t(value(L"Production",L"ReminderLines",0))&63;
  extra.constructionQueue=value(L"Production",L"ReserveNext",0)!=0;
+ extra.constructionShowNativeUnits=value(L"Production",L"ReserveShowAvailableUnits",0)!=0;
  extra.idleAircraft=value(L"Display",L"IdleAircraftIndicator",0)!=0;
  extra.parasiteMarker=value(L"Display",L"ParasiteMarker",0)!=0;extra.crateBuffMarkers=value(L"Display",L"CrateBuffMarkers",0)!=0;
  extra.passengerBubbles=value(L"Display",L"PassengerBubbles",0)!=0;extra.dangerPassengers=value(L"Display",L"DangerPassengers",0)!=0;extra.passengerOwn=value(L"Display",L"PassengerOwn",0)!=0;extra.passengerAlways=value(L"Display",L"PassengerAlways",0)!=0;extra.magnetronDrop=value(L"Magnetron",L"AutoDrop",0)!=0;
@@ -154,6 +155,8 @@ static void loadAdditionalSettings(){
  extra.loadMode=std::clamp(value(L"AutoLoad",L"Logic",0),0,1);extra.loadRadius=std::clamp(value(L"AutoLoad",L"RangeCells",30),1,512);
  extra.enter=value(L"Cooperative",L"AdvancedEnter",0)!=0;extra.air=value(L"Cooperative",L"AircraftSpread",0)!=0;
  extra.aircraftAllocationPolicy=std::clamp(value(L"Cooperative",L"AircraftAllocationPolicy",0),0,2);
+  extra.aircraftDamageRadiusCells=std::clamp(value(L"Cooperative",L"AirDamageRadiusCells",cooperative::DefaultDamageRadiusCells),cooperative::MinDamageRadiusCells,cooperative::MaxDamageRadiusCells);
+  extra.aircraftDamageCoveragePercent=std::clamp(value(L"Cooperative",L"AirDamagePercent",cooperative::DefaultDamagePercent),cooperative::MinDamagePercent,cooperative::MaxDamagePercent);
  extra.enterKey=value(L"Cooperative",L"EnterHoldKey",18)&65535;extra.airKey1=value(L"Cooperative",L"AirHoldKey1",17)&65535;extra.airKey2=value(L"Cooperative",L"AirHoldKey2",0)&65535;
 
  extra.diskKey=value(L"SpecialClick",L"DiskHoldKey",17)&65535;extra.sellKey=value(L"SpecialClick",L"SellHoldKey",17)&65535;
@@ -256,13 +259,13 @@ static bool saveAdditionalSettings(){
  write(L"Experimental",L"ScrollRefreshHz",extra.scrollRefreshHz);
 #endif
  write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);write(L"Experimental",L"InfantryEntryMode",extra.c4Mode);
- write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Aircraft",L"WaypointMode",airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));write(L"Aircraft",L"WaypointHoldKey",extra.airPathKey);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Production",L"ReminderLines",extra.productionReminderMask);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"EnemySpecialEnabled",extra.enemySpecialOnly);write(L"Display",L"EnemySpecialOnly",extra.enemySpecialOnly);write(L"Display",L"EnemySpecialMode",extra.enemySpecialMode);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
+ write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Aircraft",L"WaypointMode",airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));write(L"Aircraft",L"WaypointHoldKey",extra.airPathKey);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Production",L"ReserveShowAvailableUnits",extra.constructionShowNativeUnits);write(L"Production",L"ReminderLines",extra.productionReminderMask);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"EnemySpecialEnabled",extra.enemySpecialOnly);write(L"Display",L"EnemySpecialOnly",extra.enemySpecialOnly);write(L"Display",L"EnemySpecialMode",extra.enemySpecialMode);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
  write(L"Display",L"ParasiteMarker",extra.parasiteMarker);write(L"Display",L"CrateBuffMarkers",extra.crateBuffMarkers);
  write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);write(L"Mouse",L"OverrideNative",extra.overrideNative);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
  write(L"AutoLoad",L"Logic",extra.loadMode);write(L"AutoLoad",L"RangeCells",extra.loadRadius);
- write(L"Cooperative",L"AircraftAllocationPolicy",extra.aircraftAllocationPolicy);write(L"Cooperative",L"AdvancedEnter",extra.enter);write(L"Cooperative",L"AircraftSpread",extra.air);write(L"Cooperative",L"EnterHoldKey",extra.enterKey);write(L"Cooperative",L"AirHoldKey1",extra.airKey1);write(L"Cooperative",L"AirHoldKey2",extra.airKey2);
+ write(L"Cooperative",L"AircraftAllocationPolicy",extra.aircraftAllocationPolicy);write(L"Cooperative",L"AirDamageRadiusCells",extra.aircraftDamageRadiusCells);write(L"Cooperative",L"AirDamagePercent",extra.aircraftDamageCoveragePercent);write(L"Cooperative",L"AdvancedEnter",extra.enter);write(L"Cooperative",L"AircraftSpread",extra.air);write(L"Cooperative",L"EnterHoldKey",extra.enterKey);write(L"Cooperative",L"AirHoldKey1",extra.airKey1);write(L"Cooperative",L"AirHoldKey2",extra.airKey2);
  write(L"SpecialClick",L"DiskHoldKey",extra.diskKey);write(L"SpecialClick",L"SellHoldKey",extra.sellKey);
  write(L"SpecialClick",L"DiskPrimary",extra.disk);write(L"SpecialClick",L"SellDrained",extra.sellDrained);write(L"SpecialClick",L"SellVehicles",extra.sellVehicles);write(L"SpecialClick",L"SellEnemyBuildings",playertest::SellAvailable&&extra.sellEnemy);
  write(L"Experimental",L"PlayerCommandOptionsVersion",1);write(L"Experimental",L"EnemyBuildingSellOptInVersion",1);write(L"Experimental",L"ControlAll",playertest::Available&&extra.controlAll);write(L"Experimental",L"SwitchPlayerEnabled",0);
@@ -280,7 +283,10 @@ static void readTargetQuota(){ControlUpdate guard;auto id=quotaID();if(id.empty(
 static bool extraNumber(int control,int minimum,int maximum,int&out){BOOL ok;int n=GetDlgItemInt(ui,700+control,&ok,FALSE);if(!ok||n<minimum||n>maximum)return false;out=n;return true;}
 static bool readAdditionalControls(){
  AdditionalSettings next=extra;next.aircraftAllocationPolicy=std::clamp(int(SendMessageW(extraControls[AircraftPolicy],CB_GETCURSEL,0,0)),0,2);next.loadMode=SendMessageW(extraControls[LoadLogic],CB_GETCURSEL,0,0)==1?1:0;
- if(!extraNumber(LoadRadius,1,512,next.loadRadius)||!extraNumber(DefaultFirst,0,512,next.defaults.first)||!extraNumber(DefaultSecond,0,512,next.defaults.second)||!extraNumber(DefaultMaximum,0,512,next.defaults.maximum)){notify(L"请输入有效的范围（1–512）和受击数（0–512）。");return false;}
+ BOOL validRadius=FALSE,validPercent=FALSE;const int chosenRadius=GetDlgItemInt(ui,9794,&validRadius,FALSE),chosenPercent=GetDlgItemInt(ui,9795,&validPercent,FALSE);
+  if(!validRadius||!validPercent||chosenRadius<cooperative::MinDamageRadiusCells||chosenRadius>cooperative::MaxDamageRadiusCells||chosenPercent<cooperative::MinDamagePercent||chosenPercent>cooperative::MaxDamagePercent){notify(L"范围战车分配请输入 1–64 格和 1–500% 预计伤害。");return false;}
+  next.aircraftDamageRadiusCells=chosenRadius;next.aircraftDamageCoveragePercent=chosenPercent;
+  if(!extraNumber(LoadRadius,1,512,next.loadRadius)||!extraNumber(DefaultFirst,0,512,next.defaults.first)||!extraNumber(DefaultSecond,0,512,next.defaults.second)||!extraNumber(DefaultMaximum,0,512,next.defaults.maximum)){notify(L"请输入有效的范围（1–512）和受击数（0–512）。");return false;}
  auto binding=[](int preset,int custom){return presetKey(int(SendMessageW(extraControls[preset],CB_GETCURSEL,0,0)),uint32_t(SendMessageW(extraControls[custom],HKM_GETHOTKEY,0,0)));};
  next.enterKey=binding(EnterPreset,EnterCustom);next.airKey1=binding(AirPreset1,AirCustom1);next.airKey2=binding(AirPreset2,AirCustom2);
  if(!extra.allHotkeys&&keygesture::physical(next.airKey1)&&keygesture::normalize(next.airKey1,keygesture::Mode::Hold)==keygesture::normalize(next.airKey2,keygesture::Mode::Hold)){notify(L"飞机攻击的两个按键需要不同。");return false;}
@@ -324,7 +330,7 @@ static void syncAdditional(){
  shared->nativeCombatQueries=extra.nativeCombatQueries;
  shared->controlCommandOwner=extra.commandOwnerRequested();
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
- shared->missileReserve=extra.missileDefense&&extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageFilter&&extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlRequest();shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=compute::Fixed;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=featureavailability::InfantryForcedEntry&&extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;
+ shared->missileReserve=extra.missileDefense&&extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageFilter&&extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlRequest();shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=compute::Fixed;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=featureavailability::InfantryForcedEntry&&extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;shared->aircraftDamageRadiusCells=uint32_t(extra.aircraftDamageRadiusCells);shared->aircraftDamageCoveragePercent=uint32_t(extra.aircraftDamageCoveragePercent);
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;
@@ -373,14 +379,16 @@ static void serviceCooperative(){
  const long batch=shared->computeFrameSeq;if(batch&1)return;
  static auto captured=std::make_unique<cooperative::FrameInput>();MemoryBarrier();
  if(!cooperative::copyFrame(*captured,shared->cooperativeInputFrame))return;MemoryBarrier();
- if(batch!=shared->computeFrameSeq||captured->request.serial!=request.serial||captured->match!=uint32_t(snap.match)||captured->frame!=shared->computeFrame){wakeGame();return;}
- const DWORD acquired=captured->tick;const int frameBefore=captured->frame;
+ if(batch!=shared->computeFrameSeq||captured->request.serial!=request.serial||captured->match!=uint32_t(snap.match)||captured->match!=shared->computeFrameMatch||captured->frame>shared->computeFrame){wakeGame();return;}
+ const DWORD acquired=captured->tick;const int frameBefore=captured->frame;const bool candidate=frameBefore<shared->computeFrame;
  if(!freshness::valid(captured->match,snap.match,acquired,frameBefore,now,shared->computeFrame,freshness::Cooperative)){wakeGame();return;}
  auto input=cooperative::unpack(*captured);cooperative::restrictSources(input,request);
  if(retry)cooperative::reserveAccepted(input,acceptedCooperative);
  auto assignments=cooperative::allocate(input);
  if(!freshness::valid(request.match,shared->computeFrameMatch,acquired,frameBefore,GetTickCount(),shared->computeFrame,freshness::Cooperative)||
     !freshness::intentAlive(request.tick,GetTickCount())||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeSeq!=seq){wakeGame();return;}
+ // An older sample can propose a target, but cannot prove there are none now.
+ if(candidate&&assignments.empty()){wakeGame();return;}
  shared->cooperativeFrameWanted=0;
  cooperativeDelivered=request.serial;retryCooperative=false;
  if(assignments.empty()){notify(cooperative::damageMode(request.mode)?L"预计伤害已足额，或没有有效的可分配目标。":L"屏幕内没有可分配的同类空位或有效敌方目标。");return;}

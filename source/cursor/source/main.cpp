@@ -1753,7 +1753,7 @@ static void pollPrepare(){
 
 static bool cursorCloseAllowed(){
  if(mode==L"sha"&&live()&&(exists(gameDir+L"\\mouse.sha.cursor-preview-state")||manuallyBlankSHA()))
-  return cursorDialog(L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明 SHA",MB_YESNO|MB_ICONWARNING)==IDYES;
+  return cursorDialog(L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明光标文件",MB_YESNO|MB_ICONWARNING)==IDYES;
  return true;
 }
 #include "refresh_settings_ui.h"
@@ -1894,39 +1894,39 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  std::wstring title=L"高刷光标 v" RA2_RELEASE_VERSION_W;
  mainw=CreateWindowExW(0,L"RA2CursorControl3",title.c_str(),WS_OVERLAPPEDWINDOW|WS_VSCROLL|WS_HSCROLL|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,490,405,NULL,NULL,inst,NULL);
  {cursorcoordinates::CoordinateScope coordinates;if(!ensureCoordinateWindows(coordinates))log(L"Cursor presentation windows are not ready; retrying on the next active frame");}
- const wchar_t* labels[]={L"连接游戏",L"游戏目录",L"安装 SHA",L"恢复 SHA",L"启动",L"停止"};
- for(int i=0;i<6;i++){HWND bt=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,15+(i%3)*245,15+(i/3)*45,226,34,mainw,(HMENU)(INT_PTR)(i+1),inst,NULL);SendMessageW(bt,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);if(i==2){installBox=bt;EnableWindow(bt,FALSE);modernui::tip(bt,L"透明 SHA 替换已停用。已有透明文件可使用“恢复 SHA”手动恢复。");}if(i==3)restoreBox=bt;}
+ const wchar_t* labels[]={L"连接游戏",L"游戏目录",L"安装透明光标",L"恢复原文件",L"启动",L"停止"};
+ for(int i=0;i<6;i++){HWND bt=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,15+(i%3)*245,15+(i/3)*45,226,34,mainw,(HMENU)(INT_PTR)(i+1),inst,NULL);SendMessageW(bt,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);if(i==2){installBox=bt;EnableWindow(bt,FALSE);ShowWindow(bt,SW_HIDE);}if(i==3){restoreBox=bt;SetWindowPos(bt,NULL,505,15,226,34,SWP_NOZORDER|SWP_NOACTIVATE);}if(i>=4)SetWindowPos(bt,NULL,15+((i-1)%3)*245,15+((i-1)/3)*45,226,34,SWP_NOZORDER|SWP_NOACTIVATE);}
  statusw=CreateWindowW(L"STATIC",L"等待游戏",WS_CHILD|WS_VISIBLE,15,115,735,44,mainw,NULL,inst,NULL);SendMessageW(statusw,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- HWND labelMode=CreateWindowW(L"STATIC",L"原光标",WS_CHILD|WS_VISIBLE,15,172,90,22,mainw,NULL,inst,NULL);SendMessageW(labelMode,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+ HWND labelMode=CreateWindowW(L"STATIC",L"光标模式",WS_CHILD|WS_VISIBLE,15,172,90,22,mainw,NULL,inst,NULL);SendMessageW(labelMode,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  modeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS,105,168,380,110,mainw,NULL,inst,NULL);
- for(const wchar_t* text:{L"保留原光标",L"隐藏原光标",L"透明 SHA",L"高危：无光标诊断"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
+ for(const wchar_t* text:{L"保留原光标",L"隐藏原光标",L"透明光标文件",L"无光标模式（高级）"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
  SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);SendMessageW(modeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- disabledchoices::set(modeBox,0x0b);modernui::tip(modeBox,L"透明 SHA 替换已停用；现有游戏文件不会自动修改。");
+ disabledchoices::set(modeBox,0x0b);modernui::tip(modeBox,L"透明光标替换已停用；不会修改游戏原文件。");
 
 
  HWND note=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,15,212,735,58,mainw,NULL,inst,NULL);SendMessageW(note,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  scalePercent=(int)GetPrivateProfileIntW(L"Cursor",L"ScalePercent",100,ini().c_str());scalePercent=std::max(25,std::min(400,scalePercent));offsetX=(int)GetPrivateProfileIntW(L"Cursor",L"HotspotOffsetX",0,ini().c_str());offsetY=(int)GetPrivateProfileIntW(L"Cursor",L"HotspotOffsetY",0,ini().c_str());offsetX=std::max(-256,std::min(256,offsetX));offsetY=std::max(-256,std::min(256,offsetY));autoScale=GetPrivateProfileIntW(L"Cursor",L"AutoScale",0,ini().c_str())!=0;aspectFit=GetPrivateProfileIntW(L"Cursor",L"AspectFit",0,ini().c_str())!=0;
  if(lanboPreset){offsetX=offsetY=0;}
  auto label=[&](const wchar_t* text,int x,int y,int width){HWND q=CreateWindowW(L"STATIC",text,WS_CHILD|WS_VISIBLE,x,y,width,22,mainw,NULL,inst,NULL);SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);};
- label(L"缩放 %",15,280,65);scaleBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWN|WS_VSCROLL,80,276,90,180,mainw,NULL,inst,NULL);for(auto v:{100,125,150,200})SendMessageW(scaleBox,CB_ADDSTRING,0,(LPARAM)std::to_wstring(v).c_str());SetWindowTextW(scaleBox,std::to_wstring(scalePercent).c_str());
- label(L"热点 X",185,280,65);offsetXBox=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",std::to_wstring(offsetX).c_str(),WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,250,276,65,24,mainw,NULL,inst,NULL);
- label(L"热点 Y",330,280,65);offsetYBox=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",std::to_wstring(offsetY).c_str(),WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,395,276,65,24,mainw,NULL,inst,NULL);
+ label(L"光标缩放",15,280,65);scaleBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWN|WS_VSCROLL,80,276,90,180,mainw,NULL,inst,NULL);for(auto v:{100,125,150,200})SendMessageW(scaleBox,CB_ADDSTRING,0,(LPARAM)std::to_wstring(v).c_str());SetWindowTextW(scaleBox,std::to_wstring(scalePercent).c_str());
+ label(L"水平偏移",185,280,65);offsetXBox=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",std::to_wstring(offsetX).c_str(),WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,250,276,65,24,mainw,NULL,inst,NULL);
+ label(L"垂直偏移",330,280,65);offsetYBox=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",std::to_wstring(offsetY).c_str(),WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,395,276,65,24,mainw,NULL,inst,NULL);
  autoBox=CreateWindowW(L"BUTTON",L"自动缩放",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,315,220,26,mainw,NULL,inst,NULL);fitBox=CreateWindowW(L"BUTTON",L"保持纵横比",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,245,315,255,26,mainw,NULL,inst,NULL);
  SendMessageW(autoBox,BM_SETCHECK,autoScale?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(fitBox,BM_SETCHECK,aspectFit?BST_CHECKED:BST_UNCHECKED,0);
  for(HWND q:{scaleBox,offsetXBox,offsetYBox,autoBox,fitBox})SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  auto setting=[&](const wchar_t* key,int max){return std::max(0,std::min(max,(int)GetPrivateProfileIntW(L"Cursor",key,0,ini().c_str())));};gameWOverride=setting(L"GameWidth",16384);gameHOverride=setting(L"GameHeight",16384);screenWOverride=setting(L"ScreenWidth",16384);screenHOverride=setting(L"ScreenHeight",16384);dpiOverride=setting(L"WindowsScalePercent",500);if(dpiOverride&&dpiOverride<50)dpiOverride=50;dpiMode=setting(L"WindowsScaleMode",2);
  positionMode=setting(L"PositionMode",2);
- label(L"光标位置",15,350,110);positionModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,130,346,595,160,mainw,NULL,inst,NULL);
+ label(L"位置映射",15,350,110);positionModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,130,346,595,160,mainw,NULL,inst,NULL);
  for(const wchar_t* text:{L"自动匹配游戏",L"跟随系统鼠标",L"游戏画布拉伸到全屏"})SendMessageW(positionModeBox,CB_ADDSTRING,0,(LPARAM)text);
  SendMessageW(positionModeBox,CB_SETCURSEL,positionMode,0);SendMessageW(positionModeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- modernui::tip(positionModeBox,L"游戏将左上角的低分辨率画布拉满屏，而光标偏在左上时，可选“游戏画布拉伸到全屏”。位置按游戏宽高映射到当前显示器；图像大小仍由缩放设置控制。自动模式只匹配全屏下游戏画布大小的鼠标限制范围。需要映射时使用外置显示，保留原来的显示方式选择。");
+ modernui::tip(positionModeBox,L"如果游戏画面被拉伸到全屏而光标位置不准，可选择“游戏画布拉伸到全屏”。自动模式会根据游戏和屏幕分辨率匹配光标位置。");
  auto edit=[&](int v,int x,int y,int width){HWND q=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",std::to_wstring(v).c_str(),WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,x,y,width,24,mainw,NULL,inst,NULL);SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);return q;};
- label(L"游戏宽/高",15,390,75);gameWBox=edit(gameWOverride,90,386,70);gameHBox=edit(gameHOverride,170,386,70);label(L"系统宽/高",265,390,80);screenWBox=edit(screenWOverride,350,386,70);screenHBox=edit(screenHOverride,430,386,70);label(L"Windows %",520,390,105);dpiBox=edit(dpiOverride,635,386,90);
- label(L"缩放计算",15,430,345);dpiModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,365,426,360,140,mainw,NULL,inst,NULL);for(const wchar_t* text:{L"物理像素",L"系统缩放",L"抵消缩放"})SendMessageW(dpiModeBox,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(dpiModeBox,CB_SETCURSEL,dpiMode,0);SendMessageW(dpiModeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+ label(L"游戏分辨率（宽 / 高）",15,390,75);gameWBox=edit(gameWOverride,90,386,70);gameHBox=edit(gameHOverride,170,386,70);label(L"屏幕分辨率（宽 / 高）",265,390,80);screenWBox=edit(screenWOverride,350,386,70);screenHBox=edit(screenHOverride,430,386,70);label(L"系统缩放（%）",520,390,105);dpiBox=edit(dpiOverride,635,386,90);
+ label(L"缩放方式",15,430,345);dpiModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,365,426,360,140,mainw,NULL,inst,NULL);for(const wchar_t* text:{L"物理像素",L"系统缩放",L"抵消缩放"})SendMessageW(dpiModeBox,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(dpiModeBox,CB_SETCURSEL,dpiMode,0);SendMessageW(dpiModeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  readout=CreateWindowW(L"STATIC",L"自动识别分辨率与刷新率",WS_CHILD|WS_VISIBLE,15,472,725,60,mainw,NULL,inst,NULL);SendMessageW(readout,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  adaptive=GetPrivateProfileIntW(L"Animation",L"Adaptive",0,ini().c_str())!=0;
  smoothing=GetPrivateProfileIntW(L"Animation",L"Smooth",0,ini().c_str())!=0;smoothMs=std::max(10,std::min(200,(int)GetPrivateProfileIntW(L"Animation",L"BlendMs",60,ini().c_str())));clickEnabled=GetPrivateProfileIntW(L"Click",L"Enabled",0,ini().c_str())!=0;clickMode=std::min(2u,GetPrivateProfileIntW(L"Click",L"Mode",0,ini().c_str()));clickGap=std::max(0,std::min(250,(int)GetPrivateProfileIntW(L"Click",L"IntervalMs",0,ini().c_str())));sidebarWidth=std::max(32,std::min(600,(int)GetPrivateProfileIntW(L"Click",L"SidebarWidth",160,ini().c_str())));sidebarTop=std::max(0,std::min(2000,(int)GetPrivateProfileIntW(L"Click",L"SidebarTop",200,ini().c_str())));
- smoothBox=CreateWindowW(L"BUTTON",L"平滑补帧",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,545,240,26,mainw,NULL,inst,NULL);SendMessageW(smoothBox,BM_SETCHECK,smoothing?BST_CHECKED:BST_UNCHECKED,0);label(L"备用 ms",265,549,80);smoothMsBox=edit(smoothMs,350,545,70);
+ smoothBox=CreateWindowW(L"BUTTON",L"平滑补帧",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,545,240,26,mainw,NULL,inst,NULL);SendMessageW(smoothBox,BM_SETCHECK,smoothing?BST_CHECKED:BST_UNCHECKED,0);label(L"补帧时长（ms）",265,549,80);smoothMsBox=edit(smoothMs,350,545,70);
  adaptiveBox=CreateWindowW(L"BUTTON",L"自适应",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,445,545,270,26,mainw,NULL,inst,NULL);SendMessageW(adaptiveBox,BM_SETCHECK,adaptive?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(adaptiveBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  timingReadout=CreateWindowW(L"STATIC",L"补帧就绪",WS_CHILD|WS_VISIBLE,15,743,515,26,mainw,NULL,inst,NULL);
  previewBox=CreateWindowW(L"BUTTON",L"预览",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,540,743,210,31,mainw,(HMENU)10,inst,NULL);
@@ -1963,8 +1963,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   else if(child!=nativeBox){logical.y+=advancedOffsetY;advancedControls.push_back(child);ShowWindow(child,SW_HIDE);}
   controlOrigins.push_back({child,logical});
  }
- titleLabel=CreateWindowW(L"STATIC",L"光标与渲染",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
- subTitleLabel=CreateWindowW(L"STATIC",L"光标、场景画质与特效 · 各项独立启用",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
+ titleLabel=CreateWindowW(L"STATIC",L"显示设置",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
+ subTitleLabel=CreateWindowW(L"STATIC",L"调整光标样式与画面效果。",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
  primaryAction=CreateWindowW(L"BUTTON",L"暂停",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,20,128,132,34,mainw,(HMENU)101,inst,nullptr);
  advancedAction=CreateWindowW(L"BUTTON",L"高级设置 ▾",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,164,128,176,34,mainw,(HMENU)102,inst,nullptr);
  quickInfo=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,20,250,320,20,mainw,nullptr,inst,nullptr);
@@ -1976,15 +1976,15 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  auto extra=[&](HWND h,uidpi::Rect r){controlOrigins.push_back({h,r});advancedControls.push_back(h);};
  settingsHint=CreateWindowW(L"STATIC",L"",WS_CHILD,180,222,555,22,mainw,NULL,inst,NULL);extra(settingsHint,{180,222,555,22});
  styleBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST,20,254,320,240,mainw,NULL,inst,NULL);extra(styleBox,{20,254,320,240});
- HWND import=CreateWindowW(L"BUTTON",L"导入 SHA",WS_CHILD|BS_PUSHBUTTON,350,254,108,30,mainw,(HMENU)130,inst,NULL);extra(import,{350,254,108,30});
+ HWND import=CreateWindowW(L"BUTTON",L"导入光标资源",WS_CHILD|BS_PUSHBUTTON,350,254,108,30,mainw,(HMENU)130,inst,NULL);extra(import,{350,254,108,30});
  prepareButton=CreateWindowW(L"BUTTON",L"预处理补帧",WS_CHILD|BS_PUSHBUTTON,468,254,128,30,mainw,(HMENU)131,inst,NULL);extra(prepareButton,{468,254,128,30});
- modernui::tip(prepareButton,L"仅在预处理需要时检查并下载缺失的依赖；已有依赖直接复用。准备和计算均在后台进行，可取消，失败后可重试。");
+ modernui::tip(prepareButton,L"准备光标资源；缺少的文件会自动下载。可随时取消或重试。");
  HWND groupEdit=CreateWindowW(L"BUTTON",L"动画分组",WS_CHILD|BS_PUSHBUTTON,606,254,128,30,mainw,(HMENU)132,inst,NULL);extra(groupEdit,{606,254,128,30});
  prepareInfo=CreateWindowW(L"STATIC",L"",WS_CHILD,20,290,710,22,mainw,NULL,inst,NULL);extra(prepareInfo,{20,290,710,22});
  superCenter=GetPrivateProfileIntW(L"Cursor",L"SuperWeaponVisualCenter",0,ini().c_str())!=0;
- superCenterBox=CreateWindowW(L"BUTTON",L"超武热点居中",WS_CHILD|BS_AUTOCHECKBOX,20,1095,510,25,mainw,(HMENU)154,inst,NULL);extra(superCenterBox,{20,1095,510,25});
+ superCenterBox=CreateWindowW(L"BUTTON",L"超级武器光标居中",WS_CHILD|BS_AUTOCHECKBOX,20,1095,510,25,mainw,(HMENU)154,inst,NULL);extra(superCenterBox,{20,1095,510,25});
  SendMessageW(superCenterBox,BM_SETCHECK,superCenter?BST_CHECKED:BST_UNCHECKED,0);
- modernui::tip(superCenterBox,L"超武图案的视觉锚点对齐点击位置；铁幕使用中间圈圆心。启用时不叠加普通光标的手动热点偏移。");
+ modernui::tip(superCenterBox,L"让超级武器光标的中心对准点击位置。");
  detailLabel=CreateWindowW(L"STATIC",L"",WS_CHILD,20,1122,720,42,mainw,NULL,inst,NULL);extra(detailLabel,{20,1122,720,42});
  HWND displayLabel=CreateWindowW(L"STATIC",L"显示方式",WS_CHILD|WS_VISIBLE,20,178,88,22,mainw,nullptr,inst,nullptr);
  controlOrigins.push_back({displayLabel,{20,178,88,22}});
@@ -2005,8 +2005,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  for(const wchar_t* text:{L"仅光标",L"光标＋拖屏（实验性）",L"全部（实验性）",L"强制高刷（实验性 · 联机待验证）"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
  disabledchoices::set(refreshModeBox,1);
  refreshStateLabel=basic(L"STATIC",L"读取设置…",20,294,720,24,0);
- modernui::tip(refreshModeBox,L"当前仅保留光标高刷；拖屏、全部及强制高刷暂不可用。");
- modernui::tip(targetBox,L"自动跟随显示器；也可输入 30–500 FPS，当前用于光标刷新。");
+ modernui::tip(refreshModeBox,L"选择光标刷新策略。");
+ modernui::tip(targetBox,L"选择自动刷新，或设置 30–500 FPS。");
  EnableWindow(refreshModeBox,FALSE);
 #endif
 #ifdef RA2_UNIFIED
@@ -2027,10 +2027,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   if(!_wcsicmp(cls,L"BUTTON")||!_wcsicmp(cls,L"EDIT")||!_wcsicmp(cls,L"COMBOBOX"))
    SetWindowLongPtrW(c.handle,GWL_STYLE,GetWindowLongPtrW(c.handle,GWL_STYLE)|WS_TABSTOP);
  }
- modernui::tip(primaryAction,L"开关高刷显示；快捷键 Ctrl+Alt+F11。隐藏原光标使用原生 HideCursor，并保留单位名称和建造价格提示。设置自动保存。");
- modernui::tip(styleBox,L"选择独立光标包；不会覆盖游戏目录。");
- modernui::tip(prepareButton,L"在本机生成光标动画补帧；可再次点击取消。已完成分段会保留。");
- modernui::tip(import,L"导入兼容红警或尤里布局的 SHA 文件与色盘。");
+ modernui::tip(primaryAction,L"启用或停用高刷新率光标。快捷键：Ctrl+Alt+F11。");
+ modernui::tip(styleBox,L"选择要使用的光标主题，不会覆盖游戏原文件。");
+ modernui::tip(prepareButton,L"生成光标动画；可随时取消，已完成部分会保留。");
+ modernui::tip(import,L"导入兼容红警与尤里的光标资源包。");
  modernui::tip(groupEdit,L"编辑当前光标包的动画分组。");
  modernui::styleChildren(mainw);
  refreshStyleList();
@@ -2041,7 +2041,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  viewport(mainw,0,0);
  try{chooseStyle();}catch(const std::exception& e){log(widen(e.what()));}
  updatePrimaryAction();
- log(L"Shift5 uses host polling; no mouse interception");
+ log(L"Shift+5 用于快速操作；不会拦截鼠标输入。");
  wchar_t dir[32768]={};GetPrivateProfileStringW(L"Target",L"Directory",L"",dir,32768,ini().c_str());if(*dir){try{setDir(dir);loadCache();}catch(const std::exception& e){log(L"Startup asset seeding failed: "+widen(e.what()));}}
  #ifndef RA2_UNIFIED
  // Fit a DPI-scaled initial client area into the monitor's work region.
@@ -2086,7 +2086,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
 #else
  ShowWindow(mainw,SW_SHOW);
 #endif
- updatePrimaryAction();if(wcsstr(cmd,L"restore")){try{restoreFile();cursorDialog(lastStatus.c_str(),L"恢复 SHA",MB_OK);}catch(const std::exception& e){error(e);}DestroyWindow(mainw);return 0;}RegisterHotKey(mainw,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F11);RegisterHotKey(mainw,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F12);RegisterHotKey(mainw,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F10);RegisterHotKey(mainw,4,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F9);QueryPerformanceFrequency(&freq);LARGE_INTEGER next;QueryPerformanceCounter(&next);updateRefresh(true);MSG msg;bool quit=false;
+ updatePrimaryAction();if(wcsstr(cmd,L"restore")){try{restoreFile();cursorDialog(lastStatus.c_str(),L"恢复原文件",MB_OK);}catch(const std::exception& e){error(e);}DestroyWindow(mainw);return 0;}RegisterHotKey(mainw,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F11);RegisterHotKey(mainw,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F12);RegisterHotKey(mainw,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F10);RegisterHotKey(mainw,4,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F9);QueryPerformanceFrequency(&freq);LARGE_INTEGER next;QueryPerformanceCounter(&next);updateRefresh(true);MSG msg;bool quit=false;
  HANDLE frameTimer=CreateWaitableTimerExW(nullptr,nullptr,0x2,TIMER_ALL_ACCESS);
  if(!frameTimer)frameTimer=CreateWaitableTimerW(nullptr,FALSE,nullptr);
  LONGLONG armedDeadline=0;uimessages::Queue messages;timerresolution::Lease timerResolution;

@@ -33,8 +33,6 @@ static bool minerDefenseRefineryIncomplete=false;
 static OreHarvestWorld minerDefenseWorld;
 static planner::ActorLookup minerDefenseActors;
 static planner::EnemyGrid minerDefenseEnemies;
-static ObjectIndex minerDefenseUnitRoster;
-static bool minerDefenseRosterAttempted=false,minerDefenseRosterComplete=false;
 static int minerDefenseFrame=-1,minerDefenseCursor=0;
 static uint32_t minerDefenseInput=0,minerDefenseActiveCursor=0;
 static long minerDefenseConfigRevision=-1;
@@ -80,7 +78,7 @@ static void minerDefenseForget(uint32_t id){
   if(passive){
    // A native input can first be noticed by transition checks, without a
    // revision-changing hook. Reserve its zero-token slot against collisions.
-   if(!manualVersions.ids[slot]){manualVersions.ids[slot]=id;++manualVersions.used;}
+   if(!manualVersions.ids[slot])manualVersions.reserve(id); // zero-token protection must join the occupied-slot index
    auto&hold=minerDefenseManual[slot];hold={};hold.id=id;hold.pointer=p;hold.type=type;hold.typeID=typeID;
    hold.actorKind=k;hold.token=manualVersions.get(id);hold.frame=get<int>(0xA8ED84);
    if(old!=minerDefenseJobs.end()){
@@ -99,7 +97,6 @@ static void minerDefenseReset(){
  minerDefenseLinkedRefinery.clear();minerDefenseRefineryCount=0;minerDefenseRefineryIncomplete=false;
  for(auto&hold:minerDefenseManual)hold={};minerDefenseSelector={};minerDefenseSelectorKnown=false;minerDefenseWasEnabled=false;
  minerDefenseActors.clear();minerDefenseEnemies.clear();if(sh)sh->minerDefenseActive=sh->minerDefenseAttacks=sh->minerDefenseResumes=0;
- minerDefenseRosterAttempted=minerDefenseRosterComplete=false;
 }
 static int minerDefenseState(const MinerDefenseIdentity&j,uint32_t house,OreHarvestState&out){
  if(j.actorKind==2&&j.harvester){
@@ -332,27 +329,14 @@ static bool minerDefenseRestored(const MinerDefenseJob&j,const OreHarvestState&s
 static void minerDefenseBeginRestore(MinerDefenseJob&j,int frame,DWORD now){
  if(j.restoring)return;j.restoring=true;j.retries=0;j.restoreStartedFrame=frame;j.restoreStartedAt=now;
 }
-// A destroyed Unit can already be freed before the next worker sample. Only
-// a complete native roster proves retirement; a missing worldByID entry can
-// also be a failed read. Cache one bounded scan for this worker invocation.
+// Only the complete, exact-frame worker roster can prove that the victim
+// left the world. A missing or stale sample keeps the recovery pending.
 static int minerDefenseVictimRetired(const MinerDefenseJob&j){
- if(!minerDefenseRosterAttempted){
-  minerDefenseRosterAttempted=true;minerDefenseRosterComplete=false;
-  OreHarvestWorld before{},after{};Vec units{},again{};static uint32_t pointers[16384];
-  if(!oreHarvestContext(minerDefenseWorld.house,minerDefenseWorld.frame,before)||!oreHarvestSameWorld(before,minerDefenseWorld)||
-     !read(0x8B4108,&units,sizeof units)||units.count<0||units.count>16384||units.capacity<units.count||
-     (units.count&&(units.items<0x10000||!read(units.items,pointers,size_t(units.count)*4))))return 0;
-  minerDefenseUnitRoster.clear();
-  for(int n=0;n<units.count;++n){uint32_t vt=0,id=0;const uint32_t p=pointers[n];
-   if(!oreHarvestRead(p,vt)||vt!=0x7F5C70u||!oreHarvestRead(p+0x10,id)||!id||minerDefenseUnitRoster.byId(id))return 0;
-   minerDefenseUnitRoster.add(p,id);
-  }
-  if(!read(0x8B4108,&again,sizeof again)||again.vt!=units.vt||again.items!=units.items||again.count!=units.count||again.capacity!=units.capacity||
-     !oreHarvestContext(before.house,before.frame,after)||!oreHarvestSameWorld(before,after))return 0;
-  minerDefenseRosterComplete=true;
- }
- if(!minerDefenseRosterComplete||(j.identity.actorKind==2&&minerDefenseUnitRoster.byId(j.identity.id)!=j.identity.pointer))return 0;
- return minerDefenseUnitRoster.byId(j.target)?-1:1;
+ if(!commandRosterReady()||worldFrame.key.frame!=minerDefenseWorld.frame||
+    worldFrame.key.house!=minerDefenseWorld.house)return 0;
+ const auto&objects=*worldFrameCommandRoster.objects;
+ if(objects.byId(j.identity.id)!=j.identity.pointer)return 0;
+ return objects.byId(j.target)?-1:1;
 }
 // 1 proves captured death or retirement, 0 is uncertain, -1 is still present
 // without death evidence. Cloak, Limbo or off-map status alone is insufficient.
@@ -495,7 +479,6 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
  }
  if(minerDefenseFrame==frame&&minerDefenseInput==inputSerial&&minerDefenseConfigRevision==featureConfigRevision)return false;
  if(!freshness::valid(planningWorld.match,match,planningWorld.tick,planningWorld.frame,now,frame,freshness::Tactical))return false;
- minerDefenseRosterAttempted=false;
  minerDefenseActors.clear();minerDefenseEnemies.clear();
  for(int n=0;n<planningWorld.count;++n){const auto&a=planningWorld.actors[n];minerDefenseActors.add(a);if(minerdefense::threat(a))minerDefenseEnemies.add(n,a);}
  // Do not use previous refinery/radio cache if the current capture failed.

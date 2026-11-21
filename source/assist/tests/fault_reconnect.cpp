@@ -39,7 +39,7 @@ static int missileHoldCount;static bool missileCleanup;
 static unsigned ordinaryCalls,pollCalls,resetCalls,opens,views,unmaps,closes,guardedCalls;
 static unsigned pendingPolls;static bool directOwner,unsafeHandoff,controllerDead,entryAllowed;
 static unsigned entryDepth;
-static uint32_t inputMatch;static int inputFrame;static bool externalInputFrame;
+static uint32_t inputMatch,indexedInputMatch;static int inputFrame,indexedInputFrame;static bool externalInputFrame;
 static bool throwTick,throwFilter,callbackOwnsLease,sampleInput;
 static unsigned filterCalls;
 static unsigned publications;
@@ -115,7 +115,7 @@ static void seed(bool attached=true){
  pendingPolls=0;directOwner=unsafeHandoff=controllerDead=false;entryAllowed=true;
  throwTick=throwFilter=callbackOwnsLease=sampleInput=false;filterCalls=0;
  publications=0;snap={};
- inputMatch=0;inputFrame=-1;externalInputFrame=false;
+ inputMatch=indexedInputMatch=0;inputFrame=indexedInputFrame=-1;externalInputFrame=false;
 }
 static void message(){hostWorkPending=1;dispatchFromTrigger(dispatchrouter::Trigger::Message,5000,nullptr);}
 static bool attachedFault(){
@@ -196,7 +196,7 @@ static bool inputUnwind(){
  return okay&&!filterCalls&&!ordinaryCalls&&!entryDepth&&!hostWorkPending;
 }
 static bool publicationUnwind(){
- seed();storage.computeFrameSeq=8;inputMatch=42;inputFrame=99;externalInputFrame=true;
+ seed();storage.computeFrameSeq=8;inputMatch=indexedInputMatch=42;inputFrame=indexedInputFrame=99;externalInputFrame=true;
  bool heldOdd=false;
  withInputPublication(&storage,42,5000,99,true,[&]{heldOdd=storage.computeFrameSeq==9&&storage.computeFrame==-1;return;});
  const bool normal=heldOdd&&storage.computeFrameSeq==10&&storage.computeFrameSerial==1&&storage.computeFrameMatch==42&&storage.computeFrameTick==5000&&storage.computeFrame==99;
@@ -204,7 +204,7 @@ static bool publicationUnwind(){
  const bool unchanged=storage.computeFrameSeq==12&&storage.computeFrameSerial==1&&storage.computeFrameTick==5000;
  bool forwarded=false;
  try{withInputPublication(&storage,42,5002,100,true,[]{throw 9;});}catch(int value){forwarded=value==9;}
- const bool invalid=forwarded&&storage.computeFrameSeq==14&&storage.computeFrameSerial==1&&!storage.computeFrameMatch&&!storage.computeFrameTick&&storage.computeFrame==-1&&inputMatch==0&&inputFrame==-1&&!externalInputFrame&&storage.request==9&&storage.ack==8;
+ const bool invalid=forwarded&&storage.computeFrameSeq==14&&storage.computeFrameSerial==1&&!storage.computeFrameMatch&&!storage.computeFrameTick&&storage.computeFrame==-1&&inputMatch==0&&inputFrame==-1&&indexedInputMatch==0&&indexedInputFrame==-1&&!externalInputFrame&&storage.request==9&&storage.ack==8;
  withInputPublication(&storage,42,5003,100,true,[]{});
  return normal&&unchanged&&invalid&&storage.computeFrameSeq==16&&storage.computeFrameSerial==2&&storage.computeFrame==100&&storage.computeFrameMatch==42;
 }

@@ -335,8 +335,8 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM a,LPARAM b){
   }return 0;
  }break;
  case WM_ERASEBKGND:return 1;
- case WM_PAINT:{PAINTSTRUCT ps{};auto dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);SetDCBrushColor(dc,RGB(17,22,28));FillRect(dc,&r,reinterpret_cast<HBRUSH>(GetStockObject(DC_BRUSH)));EndPaint(w,&ps);return 0;}
- case WM_CTLCOLORSTATIC:{auto dc=reinterpret_cast<HDC>(a);SetTextColor(dc,RGB(220,230,238));SetBkColor(dc,RGB(17,22,28));SetDCBrushColor(dc,RGB(17,22,28));return reinterpret_cast<LRESULT>(GetStockObject(DC_BRUSH));}
+ case WM_PAINT:{PAINTSTRUCT ps{};auto dc=BeginPaint(w,&ps);RECT r{};GetClientRect(w,&r);SetDCBrushColor(dc,RGB(237,245,250));FillRect(dc,&r,reinterpret_cast<HBRUSH>(GetStockObject(DC_BRUSH)));EndPaint(w,&ps);return 0;}
+ case WM_CTLCOLORSTATIC:{auto dc=reinterpret_cast<HDC>(a);SetTextColor(dc,RGB(36,59,80));SetBkColor(dc,RGB(237,245,250));SetDCBrushColor(dc,RGB(237,245,250));return reinterpret_cast<LRESULT>(GetStockObject(DC_BRUSH));}
  case WM_DESTROY:notificationWindow=nullptr;asyncini::setNotify({});KillTimer(w,CloseTimer);browser.close();PostQuitMessage(0);return 0;
  }
  return DefWindowProcW(w,m,a,b);

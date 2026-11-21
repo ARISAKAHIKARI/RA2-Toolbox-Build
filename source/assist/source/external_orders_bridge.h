@@ -71,35 +71,57 @@ static void observeNativeOreIntent(uint32_t p,uint32_t target,uint32_t cell,uint
  if(mining)manualVersions.resumeOre(id);
  else{manualVersions.expectOreMission(id,target?1:2);manualVersions.observeOre(id,get<int>(p+0xAC),get<int>(p+0xB4));}
 }
-static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
+static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNativeRead=true){
  auto&w=planningCapture;
  struct DropCandidate {uint32_t pointer,victim;int actor;};
  static DropCandidate dropCandidates[planner::MaxActors];int dropCount=0;
  bool queryCombat=false;static bool oreParticipant[planner::MaxActors];
  uint32_t nextMode=0;
- static uint32_t lastMode;
- {SampleReadScope frameRead;if(!frameRead)return false;
+ static uint32_t lastMode;static bool lastNativeEnrichment=false;
+ bool nativeEnrichment=false;
+ // Pure planner conversion may consume a recent sealed background graph.
+ // The native EventClass gateway must still recheck all actor/target IDs.
+ // A strict AntiTheft presence probe is handled independently below.
+ {ObservationReadScope frameRead;if(!frameRead)return false;
+ const auto&source=sampleWorldSource->key;
+ if(planningWorld.match==match&&source.frame<planningWorld.frame)return false;
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
  bool ore=((sh->flags|sh->plannerTracking|sh->runtimeTracking)&AutoOreReturn)!=0;
  bool minerDefense=sh->minerDefenseEnabled||minerDefensePending();
- const bool defenseRequested=(sh->flags&AntiTheft)!=0;bool defense=defenseRequested,drop=sh->magnetronDrop!=0;
+ const bool defenseRequested=(sh->flags&AntiTheft)!=0;
+ const bool strictDefenseSource=allowNativeRead&&worldFrameReady&&!worldFrameBoundaryOnly&&
+      worldFrame.sealed()&&worldFrame.key.match==match&&worldFrame.key.frame==frame;
+ bool defense=false,drop=sh->magnetronDrop!=0;
  worldframe::Key defenseSource{};long defenseRevision=-1;
- if(defenseRequested){bool changed=false;if(!collectAntiTheftPresence(house,defense,changed,defenseRevision))return false;defenseSource=worldFrame.key;
-  // A changed participant filter/source may retain the same enabled mode.
-  // Negative-to-negative observations do not bypass other features' frame gate.
-  if(changed&&(defense||(lastMode&AntiTheft)))planningFrame=-1;
+ bool defenseProven=false;
+ if(defenseRequested&&strictDefenseSource){
+  bool changed=false;
+  defenseProven=collectAntiTheftPresence(house,defense,changed,defenseRevision);
+  if(defenseProven){
+   defenseSource=worldFrame.key;
+   if(changed&&(defense||(lastMode&AntiTheft)))planningFrame=-1;
+  }
  }
+ // Missing strict AntiTheft evidence is UNKNOWN, not proof of absence.
+ // If it is the only feature, retain the previous complete planner result.
+ // When other planners need work, skip only this strict detector.
+ if(defenseRequested&&!defenseProven&&!advanced&&!ore&&!minerDefense&&!drop&&
+    !sh->plannerTracking&&!sh->runtimeTracking)return false;
  if(ore&&!refreshOreConfig())return false;if(minerDefense&&!refreshFeatureTypes())return false;
  static long configSeen=-1;bool configChanged=configSeen!=oreConfigRevision;if(configChanged){planningFrame=-1;configSeen=oreConfigRevision;}
  static long defenseConfigSeen=-1;if(minerDefense&&defenseConfigSeen!=featureConfigRevision){planningFrame=-1;defenseConfigSeen=featureConfigRevision;}
  if(!advanced&&!ore&&!minerDefense&&!defense&&!drop&&!sh->plannerTracking&&!sh->runtimeTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
  uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0)|(minerDefense?1u<<29:0);
- if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;
+ nativeEnrichment=allowNativeRead&&(drop||(advanced&&sh->nativeCombatQueries));
+ if(planningFrame==source.frame&&planningSerial==inputSerial&&lastMode==mode&&lastNativeEnrichment==nativeEnrichment)return false;
  // No metadata mutation precedes this point. Idle and repeated same-frame
  // observations must not copy the entire rollback cache before returning.
  static WeaponCacheEntry cacheBefore[1024]{};memcpy(cacheBefore,weaponCache,sizeof weaponCache);
  if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);nextMode=mode;
- w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
+ w.match=match;
+ // Preserve the real acquisition time and frame of a delayed observation.
+ w.tick=source.tick?source.tick:now;
+ w.frame=source.frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;static bool dockOre=false,dockDefense=false;
  // Dock compatibility is type metadata. Cache it instead of rescanning all
  // combat units just to discover the same refinery types on every frame.
@@ -144,7 +166,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   if(spider)a.flags|=planner::ParasiteThreat;if(minerDefenseOwns(a.id))a.flags|=planner::HarvesterDefending;
   if(advanced||defense||dropSource||spider||spiderSource)rawCombatInfo(p,type,k,a,tracked||turret||dropSource||spiderSource,true);
   // Native height/cliff/air queries run after the pure conversion scope.
-  if(dropSource)dropCandidates[dropCount++]={p,get<uint32_t>(p+0x2AC),w.count-1};
+  if(dropSource&&allowNativeRead)dropCandidates[dropCount++]={p,get<uint32_t>(p+0x2AC),w.count-1};
   if(harvester){a.flags|=planner::Harvester;a.storageLimit=get<int>(type+0x800);read(p+0x33C,a.storage,sizeof a.storage);
    // Defense publishes native docks outside the ore whitelist for recovery.
    // Keep automatic-unload compatibility restricted to its own filter.
@@ -170,9 +192,9 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   }
  }
  for(int i=0;i<nativeCount&&w.intentCount<planner::MaxIntents;++i){const auto&o=nativeOrders[i];w.intents[w.intentCount++]={o.id,o.cell,o.token,o.mode,uint32_t(o.global)};}
- queryCombat=advanced&&sh->nativeCombatQueries;
+ queryCombat=allowNativeRead&&advanced&&sh->nativeCombatQueries;
  if(advanced&&!queryCombat)collectCombatProbes(w,true);
- if(!frameRead.complete()||(defenseRequested&&!antiTheftSourceCurrent(defenseSource,defenseRevision))){
+ if(!frameRead.complete()||(defenseProven&&!antiTheftSourceCurrent(defenseSource,defenseRevision))){
   // An incomplete observation must neither replace a valid input nor poison
   // the existing metadata caches with values returned by failed reads.
   memcpy(weaponCache,cacheBefore,sizeof weaponCache);dockFrame=-100000;dockCount=-1;return false;
@@ -186,7 +208,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  // with live missions. A new input can share this frame with older raw bytes.
  for(int n=0;n<w.count;++n)if(oreParticipant[n]&&manualVersions.orePaused(w.actors[n].id))w.actors[n].flags|=planner::OrePaused;
  if(!planner::copyActiveWorld(planningWorld,w))return false;
- planningFrame=frame;planningSerial=w.inputSerial;lastMode=nextMode;
+ planningFrame=w.frame;planningSerial=w.inputSerial;lastMode=nextMode;lastNativeEnrichment=nativeEnrichment;
  InterlockedIncrement(&sh->worldSeq);sh->world.match=w.match;sh->world.tick=w.tick;sh->world.frame=w.frame;sh->world.count=w.count;sh->world.intentCount=w.intentCount;sh->world.refineryCount=w.refineryCount;sh->world.inputSerial=w.inputSerial;
  memcpy(sh->world.actors,w.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(sh->world.intents,w.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(sh->world.refineries,w.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));
  sh->world.combatCount=w.combatCount;memcpy(sh->world.combat,w.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));
@@ -284,6 +306,9 @@ static outgoing::Batch planBatch;
 // Shared admission for host and Runtime decisions. Neither planner owns a
 // constructor, RNG, mission write, private hook or alternative event channel.
 static int admitPlannerOrder(const planner::Order&o,uint32_t house,uint32_t sourceMatch,uint32_t sourceTick){
+ // Native orders require a strict same-frame worker roster. A candidate or
+ // unavailable index is not evidence that a unit/target/refinery disappeared.
+ if(indexedFrame!=snap.frame||!commandRosterReady())return 0;
  // A fresh in-range target takes precedence over any delayed movement proposal.
  // Reject an obsolete movement proposal immediately so an external planner can
  // receive its receipt and use the next world; do not block its whole batch

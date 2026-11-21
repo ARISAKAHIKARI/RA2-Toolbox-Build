@@ -82,11 +82,25 @@ static void collectCombatProbes(planner::World&w,bool rawOnly=false){
  if(w.count)cursor=(cursor+visited)%w.count;
 }
 static bool advancedTargetInRange(uint32_t id,uint32_t house){
+ struct Candidate {uint32_t pointer,id;};static Candidate candidates[16384];
+ int count=0;SampleReadScope frameRead;if(!frameRead)return false;
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+ for(int n=0;n<all.count&&count<16384;++n){
+  const uint32_t q=item(all,n);if(!q||!nativeEnemy(q,house)||
+     get<uint32_t>(q+0x11C)||get<int>(q+0x220))continue;
+  const int k=kind(q);const uint32_t targetID=get<uint32_t>(q+0x10);
+  if(k<0||!targetID)continue;
+  candidates[count++]={q,targetID};
+ }
+ if(!frameRead.complete())return false;
+ frameRead.finish(); // Native weapon selectors and range queries are game-thread-only.
  uint32_t p=worldByID(id);if(!p||!own(p,house))return false;
  planner::Actor source{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),source,true);
- Vec all=vec(0xA8EC78);
- for(int n=0;n<all.count;++n){uint32_t q=item(all,n);if(!q||!nativeEnemy(q,house)||get<uint32_t>(q+0x11C)||get<int>(q+0x220))continue;
-  int k=kind(q);if(k<0)continue;planner::Actor target{};rawCombatInfo(q,typeOf(q,k),k,target,false);
+ for(int n=0;n<count;++n){
+  const uint32_t q=worldByID(candidates[n].id);
+  if(q!=candidates[n].pointer||!nativeEnemy(q,house)||get<uint32_t>(q+0x11C)||get<int>(q+0x220))continue;
+  const int k=kind(q);if(k<0)continue;
+  planner::Actor target{};rawCombatInfo(q,typeOf(q,k),k,target,false);
   auto probe=probeCombatPair(p,q,source,target,0);if(probe.flags&(planner::InWeaponRange|4))return true;
  }
  return false;

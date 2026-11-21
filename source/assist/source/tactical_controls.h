@@ -3,6 +3,10 @@
 int section=0,rowY=0;
 auto item=[&](const wchar_t* cls,const wchar_t* text,int x,int width,int id,DWORD style=0,int height=26){return pageControl(section,cls,text,x,rowY,width,height,id,style);};
 auto label=[&](const wchar_t* text,int x=20,int width=605){return item(L"STATIC",text,x,width,0);};
+// The legacy Win32 columns have their own headings. Web rows name each editor.
+auto columnHeading=[&](const wchar_t*text,int x,int width){
+ if(auto h=label(text,x,width))SetPropW(h,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));
+};
 auto next=[&](int height=26){rowY+=height+12;};
 auto note=[&](const wchar_t* text,int=26){if(pageControls.empty())return;const int y=pageControls.back().rect.y;for(auto i=pageControls.rbegin();i!=pageControls.rend()&&i->page==section&&i->rect.y==y;++i)i->help=text;};
 auto heading=[&](int page,int id,const wchar_t* title,const wchar_t* hint){section=page;rowY=0;item(L"STATIC",title,20,605,id,0,30);next(30);note(hint,44);};
@@ -21,7 +25,7 @@ auto mouse=[&](int slot){auto h=extraControls[MouseFirst+slot]=combo(729+slot,51
 auto holdPresetControl=[&](int preset,int custom,uint32_t binding){extraControls[preset]=combo(700+preset,240,100,180);choices(extraControls[preset],{L"仅鼠标",L"Alt",L"Ctrl",L"Shift",L"自定义"},holdPreset(binding));extraControls[custom]=key(700+custom,binding,350,148,true);};
 
 heading(0,900,L"键盘快捷操作",L"按一次快捷键执行或切换；选择单位后可直接装车、卸载或启用逃生。 ");
-label(L"操作 / 功能开关",20,306);label(L"快捷键",345,280);next();
+columnHeading(L"操作 / 功能开关",20,306);columnHeading(L"快捷键",345,280);next();
 for(int i:{11,1,2,3,4,5,6,7}){
  button(100+i,labels[i],20,306);keys[i]=key(200+i,hotkeys[i]);next();
 }
@@ -47,7 +51,7 @@ toggle(786,L"快捷键冲突时执行所有匹配功能",extra.allHotkeys);next(
 note(L"同时执行多项功能时，同一单位后收到的命令可能替代前一条命令。",44);
 
 heading(1,901,L"键鼠组合操作",L"按住配置键并点击目标；配置键留空时仅用鼠标。每项鼠标键可独立设置。");
-label(L"功能开关",20,210);label(L"按住键 / 自定义组合",240,258);label(L"鼠标键",510,115);next();
+columnHeading(L"功能开关",20,210);columnHeading(L"按住键 / 自定义组合",240,258);columnHeading(L"鼠标键",510,115);next();
 hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,455);button(9606,L"展开设置",500,125);next();
 activeFoldGroup=9606;
 label(L"按住键 / 鼠标键",20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
@@ -63,8 +67,10 @@ extraControls[AirEnabled]=toggle(705,L"飞机分配攻击",extra.air,20,455);but
 activeFoldGroup=9601;
 label(L"飞机分配攻击 · 1",20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
 label(L"飞机分配攻击 · 2",20,210);holdPresetControl(AirPreset2,AirCustom2,extra.airKey2);mouse(pointerinput::MouseAirSecond);next();
-label(L"飞机分配策略（1 / 2 共用）",20,260);extraControls[AircraftPolicy]=combo(9195);choices(extraControls[AircraftPolicy],{L"按数量配额（原模式 1 / 2）",L"5格战车 · 预计伤害 120%",L"单目标 120% · 派出后取消选中"},extra.aircraftAllocationPolicy);next();
-note(L"5格策略只选点选中心5格圆形内敌方战车（含边界），预计有效伤害足额后改分；没有其他未覆盖的可攻击目标时才追加。单目标策略达到生命值120%即停，仅成功提交的飞机取消选中，未派出飞机保持任务和选中；左/右键须开启“优先执行增强指令”接管原点击，独占中键/侧键可用。单目标不支持Shift排队（按住Shift时不派出）。",76);
+label(L"飞机分配策略（1 / 2 共用）",20,260);extraControls[AircraftPolicy]=combo(9195);choices(extraControls[AircraftPolicy],{L"按数量配额（原模式 1 / 2）",L"范围战车 · 伤害覆盖",L"单目标 120% · 派出后取消选中"},extra.aircraftAllocationPolicy);next();
+number(9794,L"范围战车 · 搜索半径 / 格",extra.aircraftDamageRadiusCells,L"1–64 · 默认 5");
+ number(9795,L"范围战车 · 伤害覆盖 / %",extra.aircraftDamageCoveragePercent,L"1–500 · 默认 120");
+ note(L"范围战车只选点击中心 X 格圆形内敌方战车（含边界）；预计伤害达到目标当前血量的 Y% 后优先改分其他可攻击战车，找不到未覆盖目标才允许追加。单目标策略仍固定为 120%，仅成功提交的飞机取消选中；数量配额模式不受这两个参数影响。左/右键需开启增强指令接管，单目标不支持 Shift 排队。",84);
 label(L"飞机分配攻击数量");next();
 extraControls[DefaultFirst]=number(710,L"攻击模式 1 / 架每目标",extra.defaults.first,L"0–512 · 0 为不优先");
 extraControls[DefaultSecond]=number(711,L"攻击模式 2 / 架每目标",extra.defaults.second,L"0–512 · 0 为不优先");
@@ -113,14 +119,14 @@ toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"�
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");
 label(L"超级武器目标选择",20,455);button(9611,L"展开设置",500,125);next();
 activeFoldGroup=9611;
-label(L"超级武器",20,306);label(L"启用快捷键",345,280);next();
+columnHeading(L"超级武器",20,306);columnHeading(L"启用快捷键",345,280);next();
 for(int i:{9,10}){button(100+i,labels[i],20,306);keys[i]=key(200+i,hotkeys[i]);next();}
 swList=combo(410,20,315,260);swHotkey=key(411,0,345,280);next();
 note(L"启用超级武器后，使用游戏内目标光标选择位置。",26);
 activeFoldGroup=0;
 
 heading(2,902,L"自动功能",L"每项功能可独立设置开关快捷键；新快捷键默认留空。参数修改后自动保存并生效。");
-label(L"功能开关",20,306);label(L"开关快捷键",345,280);next();
+columnHeading(L"功能开关",20,306);columnHeading(L"开关快捷键",345,280);next();
 repairCheck=toggle(100,labels[0],value(L"Modes",L"AutoRepair",0)!=0,20,306);keys[0]=key(200,hotkeys[0]);next();
 repairEdit=number(312,L"自动维修间隔 / 毫秒",repairMs,L"500–30000 · 默认 2000");
 note(L"检查受损建筑并发出维修请求的间隔；数值越小检查越频繁，不改变游戏内维修速度。",44);
@@ -128,7 +134,8 @@ ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(4
 automaticToggle(899,L"磁电全局自动摔落",extra.magnetronDrop);next();
 note(L"检测己方磁电吸起的载具，在建筑、地面单位、树木、矿柱、悬崖或不适合的水陆落点上方自动松开。包含手动强制吸起的己方、盟友与敌方载具；两栖和悬浮按各自通行类型处理，桥面和空中单位不计作障碍。",76);
 automaticToggle(799,L"生产预定",extra.constructionQueue);next();
-note(L"建筑/防御各可预定 32 项，步兵/载具各 128 项；按原生队列可用容量接续提交。",44);
+toggle(9796,L"显示已可生产单位（批量预定）",extra.constructionShowNativeUnits);next();
+note(L"默认仅显示未来可造的步兵/载具和已有预定，隐藏原生生产栏已经能造的单位；勾选后可把已可生产单位加入工具箱 128 项批量队列。已预定项目始终可见。建筑/防御保留原逻辑。",60);
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 toggle(780,L"允许维修通常不可维修的建筑",repairUnrepairable);next();
 oreCheck=toggle(470,L"矿车自动卸矿",oreMode,20,245);key(9504,extra.automaticKeys[autofeatures::OreReturn],280,205);button(9605,L"展开设置",500,125);next();

@@ -36,7 +36,7 @@ static bool controlCommandOwnerReady(uint32_t owner){
 // Shared read-only source resolution. Never infer allegiance from the target.
 static bool controlCommandOwnerSource(uint32_t id,uint8_t tag,uint32_t&object,uint32_t&owner){
  if(!id||tag!=0x34)return false;
- indexWorld(get<int>(0xA8ED84));object=worldByID(id);
+ if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady())return false;object=worldByID(id);
  if(!object||kind(object)<0||!read(object+0x21C,&owner,4)||owner<0x10000)return false;
  return true;
 }

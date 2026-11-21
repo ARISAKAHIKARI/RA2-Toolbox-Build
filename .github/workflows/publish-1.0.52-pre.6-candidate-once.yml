@@ -1,0 +1,180 @@
+name: Publish RA2 Toolbox 1.0.52-pre.6 checked async candidate
+on:
+  push:
+    branches: [release/1.0.52-pre.6-full-candidate-20261120]
+    paths:
+      - .github/workflows/publish-1.0.52-pre.6-candidate-once.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2toolbox-1.0.52-pre.6-release-once
+  cancel-in-progress: false
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify source lineage, pre6 version, async default and core regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 39ed5960d23563fb9f3d528c27017009a859d15b HEAD
+          grep -q '^#define RA2_RELEASE_VERSION "1.0.52.6"$' source/shared/source/release_version.h
+          grep -q '^#define RA2_RELEASE_VERSION_W L"1.0.52-pre.6"$' source/shared/source/release_version.h
+          grep -q 'ASSIST_PROTOCOL = 112' source/tools/verify_windows_outputs.py
+          grep -q 'ASSIST_SHARED_BYTES = 23228768' source/tools/verify_windows_outputs.py
+          grep -q 'ObservationReadScope' source/assist/source/world_frame_runtime.h
+          grep -q 'sampling-health pid=' source/assist/source/main.cpp
+          grep -q 'runtime-async-candidate' source/assist/tests/world_frame_async_windows.py
+          grep -q 'RestartAfterStop' source/assist/tests/world_frame_command_worker_host.cpp
+          grep -q 'return !(length==1&&setting\[0\]==.0.);' source/shared/source/world_frame_command_worker_win.h
+          python3 source/assist/tests/async_command_no_live_roster.py
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/construction_host_test.py
+          python3 source/assist/tests/construction_paint_test.py
+          python3 source/assist/tests/ore_harvest_handoff.py --out /tmp/pre6-ore
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/pre6-unload --current-only
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/async_command_policy.cpp -o /tmp/pre6-policy
+          /tmp/pre6-policy
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/execution_proof.cpp -o /tmp/pre6-proof
+          /tmp/pre6-proof
+  native:
+    needs: portable
+    runs-on: windows-2022
+    timeout-minutes: 70
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Zig 0.13.0 and icon encoder
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV ('ZIG_EXE='+(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)
+          python -m pip install Pillow==11.3.0
+      - name: Build paired x64 Host and x86 Runtime with matching ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/pre6-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/windows-build.log 2>&1 || { tail -120 checks/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root pre6-build --host-arch x64 --webview2
+          python -c "import json; p=json.load(open('pre6-build/BUILD_TARGET.json')); assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',112,False),p"
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do test -s "pre6-build/$n"; done
+      - name: Test native x86/x64 default-on command and publication worker lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/world_frame_command_worker_windows.py --zig "$ZIG" --out checks/command
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out checks/publication
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: ra2toolbox-pre6-paired-windows
+          retention-days: 30
+          path: |
+            pre6-build/*.exe
+            pre6-build/*.dll
+            pre6-build/*.json
+            pre6-build/licenses/**
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra2toolbox-pre6-build-evidence
+          retention-days: 30
+          path: checks/
+  publish:
+    needs: native
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.52-pre.6
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ra2toolbox-pre6-paired-windows
+          path: dist/update
+      - name: Assemble checked Update and optional Full with complete resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = release/1.0.52-pre.6-full-candidate-20261120
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "Refusing to overwrite an existing pre-release tag" >&2
+            exit 1
+          fi
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do test -s "dist/update/$n"; done
+          python3 - <<'PY'
+          import json
+          p=json.load(open('dist/update/BUILD_TARGET.json'))
+          assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',112,False),p
+          PY
+          cat > dist/update/BUILD_VALIDATION.txt <<EOF
+          RA2 Toolbox 1.0.52-pre.6 | source $GITHUB_SHA
+          Paired x64 Host / x86 Runtime and x86 broker | Assist ABI 112
+          Background full-world captures with bounded cross-frame read-only candidates.
+          Exact-frame native command authority remains strict; game-tested=false.
+          To switch to old synchronous mode before launch: RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=0
+          Offline and Win32 x86/x64 candidate, restart and worker tests passed.
+          Actual gameplay, JJ/CnCNet multiplayer success and FPS: NOT TESTED.
+          Back up settings; close game and toolbox; replace all paired EXE and DLL files together.
+          EOF
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.52-pre.6-x64-Update.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.6-x64-Update.zip
+          mkdir -p dist/base dist/full
+          gh release download v1.0.52-pre.2 --repo "$GITHUB_REPOSITORY" --pattern 'RA2Toolbox-1.0.52-pre.2-x64-Full.zip' --dir dist/base
+          unzip -tq dist/base/RA2Toolbox-1.0.52-pre.2-x64-Full.zip
+          unzip -q dist/base/RA2Toolbox-1.0.52-pre.2-x64-Full.zip -d dist/full
+          test "$(find dist/full -type f -name RA2Toolbox.exe | wc -l)" -eq 1
+          root="$(dirname "$(find dist/full -type f -name RA2Toolbox.exe -print -quit)")"
+          test -n "$root"
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do cp "dist/update/$n" "$root/$n"; cmp "dist/update/$n" "$root/$n"; done
+          for n in BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json BUILD_SOURCE_MANIFEST.json BUILD_VALIDATION.txt; do test ! -f "dist/update/$n" || cp "dist/update/$n" "$root/$n"; done
+          if test -d dist/update/licenses; then mkdir -p "$root/licenses"; cp -a dist/update/licenses/. "$root/licenses/"; fi
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.52-pre.6-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.6-x64-Full.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.52-pre.6-x64-Update.zip RA2Toolbox-1.0.52-pre.6-x64-Full.zip > SHA256SUMS.txt)
+      - name: Create verified prerelease (leave Latest untouched)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## RA2 Toolbox v1.0.52-pre.6 · 连续异步完整采样修复候选（实机测试版）
+
+          **源码提交**：\`$GITHUB_SHA\`，基于 PR #64 修复提交 \`39ed5960\`。x64 Host、x86 GameRuntime、x86 Broker 与相关 DLL 同源配套编译，Assist IPC 协议 **v112**。
+
+          - **修复 pre.5 的功能饥饿**：完整后台世界图跨越逻辑帧后允许作为有界只读候选保留，自动装车、Ctrl+D 卸载采集、自动倒矿、维修、战术规划等纯采集流程不再因严格同帧超时而整体停止。
+          - **原生命令仍保持实时安全检查**：跨帧候选不能直接授权 EventClass；提交前继续校验实时 UID、所属 House、人工操控版本与原生合法性。不确定时延期，不使用旧图伪造现时状态。
+          - **性能和生命周期**：后台完整采样合并请求且不排队积压，连续页批量读取最高 128 KiB；必需页面保持 64 KiB 缺页隔离；线程锁争用不在游戏线程重新建 16K 页请求，前局结束后支持安全重启采样工作线程。
+          - **增强日志**：新增周期性 \`sampling-health\` 与 \`sampling-work\` 汇总，分别记录后台样本完成率、读取调用与字节量、帧落后、超时/缺页、Host 主读取会话额外 RPM 等。
+          - **离线检查**：Windows x86/x64 同帧及跨帧工作线程、停止/重启、自动操作功能、整体编译、包体与 SHA256 校验均在发布流水线执行。
+
+          **Full** 包含基础资源、完整工具箱程序与全部对应 DLL；**Update** 用于覆盖已有完整安装。升级前请退出游戏及工具箱、备份 Assist.ini 等配置，切勿只替换 GameRuntime.dll（协议 v112 必须整套配对）。
+
+          **重要限制**：未在实际游戏中验证；尤其请测 Ctrl+D 单按、自动装车、倒矿、维修、预定栏以及大量单位。JJ/CnCNet 联机稳定性、真实 FPS 和 P95/P99 均无实机保证。这是按用户要求提供的可安装候选包，不是稳定 Latest。问题严重时可回退 \`v1.0.52-pre.4\`，或者在启动游戏和工具箱前设置 \`RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=0\` 临时切回同步路径。
+          EOF
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'RA2 Toolbox 1.0.52-pre.6 · 连续异步采样修复候选' --notes-file dist/RELEASE_NOTES.md dist/RA2Toolbox-1.0.52-pre.6-x64-Update.zip dist/RA2Toolbox-1.0.52-pre.6-x64-Full.zip dist/SHA256SUMS.txt
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets | jq -e '.isDraft==false and .isPrerelease==true and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.6-x64-Update.zip")!=null) and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.6-x64-Full.zip")!=null)'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra2toolbox-pre6-release-evidence
+          retention-days: 30
+          path: |
+            dist/RELEASE_NOTES.md
+            dist/SHA256SUMS.txt

@@ -315,7 +315,7 @@ static bool moOrdersMessage(MSG*msg){
  if(resolved.mode==moorders::QuickFormation)return false;
  if(formationView.active)formationCancel();
  moorders::Point point;uint32_t hover=0;if(!moPoint(msg,point,&hover))return false;
- indexWorld(get<int>(0xA8ED84));if(!moCapture()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}
+ if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}if(!moCapture()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}
  // The configured keyboard authorizes this capture, but never substitutes for
  // the game's own PlanningMode binding or mutates its local editor state.
  moPlanningReset();moEpoch=match;moHouse=lastHouse;
@@ -324,12 +324,17 @@ static bool moOrdersMessage(MSG*msg){
  moQueueCount=moQueueAt=moStage=0;moMode=int(resolved.mode);moHover=hover;moStrokeCount=0;moCapturedGestures=moRuntimeGestures;moCapturedOptions=moRuntimeOptions;moGestureButton=moSuppressedButton=edge.button;
  moCurrent=point;moorders::sample(moStroke,moStrokeCount,point);moReleaseWatch.clear();moHolding=true;moBuildPreview();return swallow();
 }
-static void moOrdersTick(uint32_t house,int frame,DWORD now){
+static void moOrdersTick(uint32_t house,int frame,DWORD now,bool indexedWorkReady=true){
  if(moReleaseWatch.expired(moHolding,moGestureButton&&(GetAsyncKeyState(moorders::gestureVK(moGestureButton))&0x8000),now)){resetMoOrders();moReleaseWatch.clear();return;}
- if(!moOrdersPending())return;
+ if(!moOrdersPending()||(!indexedWorkReady&&!moHolding))return;
  if(moPlanningUI.draining){moPlanningReset();return;}
  if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext(moHolding)||!moCapturedPolicy(true)){resetMoOrders();return;}
- if(moHolding){if(!moCapturedHold()){resetMoOrders();return;}if(DWORD(now-moPreviewAt)>=400)moBuildPreview();else if(moOutlineDirty&&DWORD(now-moOutlineAt)>=16){moUpdateOutline();moOrdersPublish();}return;}
+ if(moHolding){
+  if(!moCapturedHold()){resetMoOrders();return;}
+  if(indexedWorkReady&&DWORD(now-moPreviewAt)>=400)moBuildPreview();
+  else if((moOutlineDirty&&DWORD(now-moOutlineAt)>=16)||DWORD(now-moPreview.tick)>=400){moUpdateOutline();moOrdersPublish();}
+  return;
+ }
  if(frame<moStartFrame||frame-moStartFrame>1800||DWORD(now-moStarted)>30000){sh->moOrderStatus=uint32_t(-7);resetMoOrders();return;}
  if(!moReadGestures())return; // Retry an incomplete policy read; never submit from its cache.
  // Standard-object commands each get one final native capability/identity

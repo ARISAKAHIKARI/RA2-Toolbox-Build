@@ -24,6 +24,11 @@ function setup(){
   append(...nodes){for(const node of nodes){if(typeof node!=='object')continue;node.remove();node.parentNode=this;this.children.push(node)}}
   prepend(...nodes){for(const node of [...nodes].reverse()){node.remove();node.parentNode=this;this.children.unshift(node)}}
   replaceChildren(...nodes){for(const child of this.children)child.parentNode=null;this.children=[];this.append(...nodes)}
+  get firstChild(){return this.children[0]||null}
+  get previousSibling(){return this.parentNode?.children[this.parentNode.children.indexOf(this)-1]||null}
+  get nextSibling(){return this.parentNode?.children[this.parentNode.children.indexOf(this)+1]||null}
+  insertBefore(node,reference){node.remove();const index=reference?this.children.indexOf(reference):this.children.length;assert.ok(index>=0);this.children.splice(index,0,node);node.parentNode=this}
+  replaceWith(node){this.parentNode?.insertBefore(node,this);this.remove()}
   remove(){if(this.parentNode){const siblings=this.parentNode.children;siblings.splice(siblings.indexOf(this),1);this.parentNode=null}}
   setAttribute(name,value){this.attributes.set(name,String(value))}
   removeAttribute(name){this.attributes.delete(name)}
@@ -41,11 +46,11 @@ function setup(){
  document.createElement=tag=>new Element(tag);
  document.createElementNS=(_,tag)=>new Element(tag);
  document.createTextNode=text=>{const node=new Element('#text');node.textContent=text;return node};
- const globalListeners=new Map();
+ const globalListeners=new Map(),bridgeListeners=[];
  const context=vm.createContext({console,Date,Map,Set,Object,Number,String,Boolean,RangeError,document,
   requestAnimationFrame(){},setTimeout(){return 1},clearTimeout(){},setInterval(){return 1},
   addEventListener(type,listener){globalListeners.set(type,listener)},
-  chrome:{webview:{postMessage(message){sent.push(message)},addEventListener(){}}}
+  chrome:{webview:{postMessage(message){sent.push(message)},addEventListener(type,listener){if(type==='message')bridgeListeners.push(listener)}}}
  });
  function dispatch(target,type,properties={}){
   const event={type,target,defaultPrevented:false,stopped:false,key:'',keyCode:0,isComposing:false,
@@ -56,7 +61,7 @@ function setup(){
   return event;
  }
  // Expose private production factories only. The listener bodies stay intact.
- vm.runInContext(source.replace(seam,'  global.__consoleDomFixture={makeRow,patchRow};\n'+seam),context,{filename:app});
+ vm.runInContext(source.replace(seam,'  global.__consoleDomFixture={makeRow,patchRow,render};\n'+seam),context,{filename:app});
  const store=context.RA2Console.store;
  store.receive({kind:'state',protocol:1,module:0,generation:1,revision:1,page:'cursor',controls:[
   {id:1,type:'text',label:'模糊关键词',text:'old'},
@@ -66,10 +71,123 @@ function setup(){
  function row(id){const result=context.__consoleDomFixture.makeRow(store.getControl(id));context.__consoleDomFixture.patchRow(result);return result}
  function edit(id,value){const result=row(id),input=result.textInput||result.input;input.focus();input.value=value;dispatch(input,'input');return input}
  const actions=()=>sent.filter(message=>message.kind==='action');
- return {context,document,store,elements,sent,dispatch,row,edit,actions};
+ const render=context.__consoleDomFixture.render;
+ const receive=message=>bridgeListeners.forEach(listener=>listener({data:message}));
+ const find=(className,root=document.getElementById('settings'))=>[
+  ...(root.className===className?[root]:[]),...root.children.flatMap(child=>find(className,child))
+ ];
+ return {context,document,store,elements,sent,dispatch,row,edit,actions,render,receive,find};
 }
 const cases=[];
 const test=(name,run)=>cases.push({name,run});
+
+test('top-level display pages route, restore and show only their controls',()=>{
+ const f=setup(),node=id=>f.document.getElementById(id);
+ const nav=node('navigation').children;
+ assert.deepEqual(nav.map(b=>b.attributes.get('aria-label')),['光标','渲染','监控视图','控制','自动功能','游戏规则','实验功能','调试']);
+ const state=(module,revision,controls)=>({kind:'state',protocol:1,module,generation:1,revision,controls,page:module?'monitor':'cursor'});
+ f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:0,videoSection:1});
+ f.receive(state(1,1,[{id:11,type:'toggle',label:'副相机',group:'副相机'}]));
+ f.render();
+ assert.equal(node('pageTitle').textContent,'监控视图');
+ assert.equal(nav[2].attributes.get('aria-current'),'page');
+ assert.equal(f.find('setting-row').length,1);
+ f.dispatch(nav[0],'click');
+ assert.equal(f.sent.at(-1).module,0);
+ f.receive(state(0,2,[{id:12,type:'toggle',label:'光标补帧',group:'光标设置'},{id:13,type:'toggle',label:'画质选项',group:'渲染'}]));
+ f.render();
+ assert.equal(node('pageTitle').textContent,'光标');
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['光标补帧']);
+ const sent=f.sent.length;
+ f.dispatch(nav[1],'click');f.render();
+ assert.equal(f.sent.length,sent);
+ assert.equal(node('pageTitle').textContent,'渲染');
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['画质选项']);
+ const early=setup();
+ early.dispatch(early.document.getElementById('navigation').children[1],'click');
+ assert.equal(early.sent.at(-1).kind,'navigate');
+ assert.equal(early.sent.at(-1).module,0);
+});
+
+test('automatic features have one level of expansion and no empty fold',()=>{
+ const f=setup(),node=id=>f.document.getElementById(id),select=f.document.getElementById('navigation').children[4];
+ f.dispatch(select,'click');
+ assert.equal(f.sent.at(-1).category,2);
+ const controls=[
+  {id:11,type:'heading',label:'自动功能'},
+  {id:12,type:'toggle',label:'过滤低伤害自动目标',groupHeader:true},
+  {id:13,type:'label',label:'过滤运行中'},
+  {id:14,type:'toggle',label:'自动维修',group:'维修',groupHeader:true},
+  {id:15,type:'number',label:'血量阈值',group:'维修',text:'40'},
+  {id:16,type:'label',label:'维修范围暂不可用',group:'维修',runtimeError:true},
+ ];
+ const state=revision=>({kind:'state',protocol:1,module:2,generation:1,revision,page:'tactical/2',controls});
+ f.receive(state(1));f.render();
+ assert.equal(f.find('group-summary').length,1);
+ assert.equal(f.find('group-summary')[0].tagName,'DIV');
+ assert.equal(f.find('group-summary')[0].hidden,true);
+ const buttons=f.find('feature-config-toggle');
+ assert.equal(buttons.length,2);
+ assert.equal(buttons[0].hidden,true);
+ assert.equal(buttons[1].attributes.get('aria-expanded'),'false');
+ assert.ok(f.find('group-status')[0].textContent.includes('维修范围暂不可用'));
+ f.dispatch(buttons[1],'click');
+ assert.equal(buttons[1].attributes.get('aria-expanded'),'true');
+ assert.ok(f.find('setting-label').some(label=>label.textContent==='血量阈值'));
+ f.dispatch(buttons[1],'click');
+ const search=node('search');search.value='血量阈值';f.dispatch(search,'input');f.render();
+ assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'true');
+ f.dispatch(node('foldAll'),'click');f.receive(state(2));f.render();
+ assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'false');
+ search.value='';f.dispatch(search,'input');f.render();
+ assert.equal(f.find('feature-config-toggle')[1].attributes.get('aria-expanded'),'false');
+});
+
+test('native shared rows and status notes have no redundant configuration title',()=>{
+ const f=setup(),nav=f.document.getElementById('navigation');
+ f.dispatch(nav.children[4],'click');
+ f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/2',controls:[
+  {id:1,type:'toggle',group:'自动功能',label:'磁电全局无限吸',row:80,column:20},
+  {id:2,type:'hotkey',group:'自动功能',label:'磁电全局无限吸',row:80,column:345},
+  {id:3,type:'toggle',group:'防御',label:'防御状态',groupHeader:true},
+  {id:4,type:'label',group:'防御',label:'等待对局'}
+ ]});
+ f.render();
+ assert.ok(f.find('feature-subheading').every(title=>title.hidden));
+ assert.ok(f.find('feature-config-toggle').every(button=>button.hidden));
+ assert.ok(f.find('setting-label').some(label=>label.textContent==='等待对局'));
+});
+test('unbound shortcuts show the capture and special-key picker only',()=>{
+ const f=setup(),row=f.row(3);
+ assert.equal(row.input.textContent,'未绑定');
+ assert.equal(row.mode.hidden,true);assert.equal(row.doubleLabel.hidden,true);assert.equal(row.clear.hidden,true);
+ assert.equal(row.special.disabled,false);
+ f.receive({kind:'state',protocol:1,module:0,generation:1,revision:2,page:'cursor',controls:[
+  {id:3,type:'hotkey',label:'快捷键',selected:0x124b,options:['press','release']}
+ ]});
+ row.control=f.store.getControl(3);f.context.__consoleDomFixture.patchRow(row);
+ assert.equal(row.mode.hidden,false);assert.equal(row.doubleLabel.hidden,false);assert.equal(row.clear.hidden,false);
+ assert.equal(row.input.textContent,'Ctrl + K');
+});
+
+test('feature settings and shortcuts stay attached to their master switch',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ const controls=[
+  {id:11,type:'toggle',label:'自动维修',group:'自动功能',groupHeader:true},
+  {id:12,type:'number',label:'血量阈值',group:'自动功能'},
+  {id:13,type:'hotkey',label:'快捷键',group:'自动功能'},
+  {id:14,type:'toggle',label:'自动装车',group:'自动功能',groupHeader:true},
+  {id:15,type:'number',label:'装载范围',group:'自动功能'}
+ ].map(control=>core.canonical(control));
+ const blocks=core.featureBlocks(controls);
+ assert.equal(blocks.length,2);
+ assert.equal(blocks[0].headers[0].id,11);
+ assert.deepEqual(JSON.parse(JSON.stringify(blocks[0].details.map(c=>c.id))),[12,13]);
+ assert.equal(blocks[1].headers[0].id,14);
+ assert.deepEqual(JSON.parse(JSON.stringify(blocks[1].details.map(c=>c.id))),[15]);
+ const filtered=core.groupControls(controls,'血量阈值').get('自动功能');
+ assert.deepEqual(JSON.parse(JSON.stringify(filtered.map(c=>c.id))),[11,12]);
+});
 
 for(const id of [1,2])for(const key of ['Enter','Escape'])for(const composition of [{isComposing:true},{keyCode:229}]){
  test(`${id===1?'text':'editable choice'} keeps composition ${key} (${Object.keys(composition)[0]})`,()=>{

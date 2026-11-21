@@ -1,11 +1,14 @@
 # 逆向研究索引
 
+| Runtime 单采样架构与功能暂挂切换 | [架构原则与迁移门槛](2026-11-20-runtime-single-pass-sampling-principles.md) | single-owner Runtime snapshot suspend legacy readers no compatibility branch Host VisualCache RecoveryMailbox ShadowGraphWorker |
+
 从 2026-10-21 起记录新研究，不补录旧工作。
 
 持久笔记：`RA2-Reverse-Engineering-Notes.sqlite`。表 `notes` 保存结论、依据和未决问题；`notes_fts` 可按英文关键词检索，中文可用 `LIKE`。后续更新同一文件，避免每版另建副本。
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| PR #71 逐功能采样审计 | [控制、自动化、显示及独立单位监控](2026-11-20-pr71-feature-sampling-audit.md) | unified sampling live reads feature audit Ctrl+D harvester monitor catalogue command admission |
 | 命令全图后台采样实验 | [默认关闭的 CommandCaptureWorker、同帧准入与失败延后](2026-11-17-async-command-capture-pilot.md) | async-command-sampling exact-frame UID House ownership latest-ticket no-native-roster fallback |
 | 显示图零页边界与后台采样 | [纯显示不再触发主线程全图采集](2026-11-17-display-capture-offthread.md) | HostDisplayOnly VisualCache zero-page stamp same-frame command-escalation |
 | 游戏线程 Host-first 计算与按需帧通知 | [计算位置、空转唤醒和剩余采样边界](2026-11-17-mainthread-host-first.md) | host-first native-frame-notices active-work demand CaptureGraph not-migrated |

@@ -28,7 +28,7 @@ using namespace assist;
 using UINT=unsigned;using DWORD=uint32_t;using HWND=uintptr_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;
 constexpr UINT WM_NULL=0,WM_KEYDOWN=0x100,WM_KEYUP=0x101,WM_SYSKEYDOWN=0x104,WM_SYSKEYUP=0x105;
 constexpr UINT WM_MOUSEMOVE=0x200,WM_LBUTTONDOWN=0x201,WM_LBUTTONUP=0x202,WM_RBUTTONDOWN=0x204,WM_RBUTTONUP=0x205,WM_MBUTTONDOWN=0x207,WM_MBUTTONUP=0x208;
-constexpr int VK_MBUTTON=4,VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,VK_ESCAPE=27;
+constexpr int VK_LBUTTON=1,VK_RBUTTON=2,VK_MBUTTON=4,VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,VK_ESCAPE=27;
 static uint16_t LOWORD(LPARAM v){return uint16_t(v);}static uint16_t HIWORD(LPARAM v){return uint16_t(uintptr_t(v)>>16);}
 static LPARAM MAKELPARAM(short x,short y){return uint16_t(x)|(uint32_t(uint16_t(y))<<16);}
 struct MSG{HWND hwnd=1;UINT message=0;WPARAM wParam=0;LPARAM lParam=0;};
@@ -36,6 +36,7 @@ struct POINT{int x=100,y=100;};struct RECT{int left=0,top=0,right=800,bottom=600
 static std::array<bool,256> held{};static POINT cursor;
 static bool GetClientRect(HWND,RECT*r){*r={};return true;}static bool GetCursorPos(POINT*p){*p=cursor;return true;}
 static bool ScreenToClient(HWND,POINT*){return true;}static short GetKeyState(int k){return held[k]?short(0x8000):0;}
+static short GetAsyncKeyState(int k){return GetKeyState(k);}
 static HWND GetForegroundWindow(){return 1;}static DWORD GetCurrentProcessId(){return 42;}
 static void GetWindowThreadProcessId(HWND,DWORD*p){*p=42;}
 static void MemoryBarrier(){}static void InterlockedIncrement(volatile long*p){++*p;}
@@ -53,11 +54,13 @@ static bool own(uint32_t p,uint32_t h){return get<uint32_t>(p+0x21C)==h;}
 static bool live(uint32_t p){return get<int>(p+0x6C)>0;}
 static uint32_t typeOf(uint32_t p,int){return get<uint32_t>(p+0x6C4);}
 static bool objectAirQuery(uint32_t,int*air){*air=0;return true;}
-static int selections=0;static void indexWorld(int){++selections;}
 static uint32_t worldByID(uint32_t id){for(auto p:actors)if(get<uint32_t>(p+0x10)==id)return p;return 0;}
 static struct{std::map<uint32_t,uint32_t> tokens;uint32_t get(uint32_t id){return tokens[id];}}manualVersions;
 static void cancelNative(uint32_t p){++manualVersions.tokens[get<uint32_t>(p+0x10)];}
 static struct{int status=1,commandStatus=1,frame=100,session=0,chat=0;}snap;
+static int&indexedFrame=snap.frame;
+static int rosterChecks=0;
+static bool commandRosterReady(){++rosterChecks;return true;}
 static uint32_t clockValue=1000;static int notifications=0,formationJobCount=0;
 static struct Shared{
  bool stop=false,foreground=true;uint32_t heartbeat=1000;
@@ -99,7 +102,7 @@ static void setup(int button=2){
  put(0xA8E9A0,true);put(0xA83D4C,lastHouse);put(0xA8ED84,snap.frame);put(0xA8B238,snap.session);
  put(0x887324,0x200000u);put(0x8A00A4,800);put(0x8A00A8,600);
  for(int n=0;n<25;++n){uint32_t p=0x10000+n*0x1000;actors.push_back(p);put(p+0x10,uint32_t(100+n));put(p+0x21C,lastHouse);put(p+0x6C4,0x190000u);put(p+0x6C,100);put(p+0x9C,(18+n%5)*256+128);put(p+0xA0,(18+n/5)*256+128);}
- selected=actors;resetFormation();formationEpoch=match;selections=notifications=cellQueries=heightQueries=locationQueries=feedbacks=0;
+ selected=actors;resetFormation();formationEpoch=match;rosterChecks=notifications=cellQueries=heightQueries=locationQueries=feedbacks=0;
 }
 static bool dispatch(UINT message,uint32_t key=0,bool repeat=false,int x=100,int y=100){
  MSG msg;msg.message=message;msg.wParam=key;
@@ -109,11 +112,14 @@ static bool dispatch(UINT message,uint32_t key=0,bool repeat=false,int x=100,int
   uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=held[i];
   runtimeKeys.edge(key,down,repeat,clockValue,keygesture::chord(key,keys));
  }
+ if(message==WM_LBUTTONDOWN||message==WM_LBUTTONUP)held[VK_LBUTTON]=message==WM_LBUTTONDOWN;
+ if(message==WM_RBUTTONDOWN||message==WM_RBUTTONUP)held[VK_RBUTTON]=message==WM_RBUTTONDOWN;
+ if(message==WM_MBUTTONDOWN||message==WM_MBUTTONUP)held[VK_MBUTTON]=message==WM_MBUTTONDOWN;
  bool consumed=formationMessage(&msg);if(consumed)assert(msg.message==WM_NULL);
  assert((sh->formationSeq&1)==0);return consumed;
 }
 static void message(UINT m,uint32_t key=0,bool repeat=false,int x=100,int y=100){assert(dispatch(m,key,repeat,x,y));}
-static void activate(){held[VK_MENU]=true;message(WM_SYSKEYDOWN,VK_MENU);assert(sh->formationPreview.active&&sh->formationPreview.count==25&&selections==1);}
+static void activate(){held[VK_MENU]=true;message(WM_SYSKEYDOWN,VK_MENU);assert(sh->formationPreview.active&&sh->formationPreview.count==25&&rosterChecks==1);}
 using Geometry=std::set<std::pair<int,int>>;
 static Geometry geometry(const formation::Preview&p){Geometry out;for(int n=0;n<p.count;++n){assert(p.slots[n].valid);out.insert({p.slots[n].x,p.slots[n].y});}assert(int(out.size())==p.count);return out;}
 static bool sameSlots(const formation::Preview&a,const formation::Preview&b){return a.count==b.count&&std::memcmp(a.slots,b.slots,sizeof a.slots)==0;}
@@ -133,13 +139,17 @@ int main(){
  // Same captured drag survives a concurrent host policy publication.
  setup();message(WM_MBUTTONDOWN);++sh->moGesturePolicySeq;
  message(WM_MOUSEMOVE,0,false,130,130);assert(formationQuick&&formationView.active&&commands.empty());
- formationTick(lastHouse,snap.frame,clockValue);assert(formationQuick&&formationView.active);
+ const auto revision=formationView.revision;
+ clockValue+=20;shared.heartbeat=clockValue;
+ formationTick(lastHouse,snap.frame,clockValue,false);
+ assert(formationQuick&&formationView.active&&formationView.revision>revision&&commands.empty());
  ++sh->moGesturePolicySeq;message(WM_MOUSEMOVE,0,false,140,140);message(WM_MBUTTONUP,0,false,140,140);assert(formationJobCount==25);
  setup();message(WM_MBUTTONDOWN);auto before=sh->formationPreview;
  assert(before.active&&before.shape==formation::quick::Shape&&before.count==25);
  message(WM_MBUTTONUP);assert(!sh->formationPreview.active&&formationMemory.quick&&formationMemory.count==25);
  auto quota=[](const formation::Slot*slots,int n){std::map<std::pair<int,int>,int> cells;for(int i=0;i<n;++i){assert(slots[i].valid);assert(++cells[std::make_pair(slots[i].x/256,slots[i].y/256)]<=3);}return cells;};
  auto original=quota(before.slots,before.count);assert(original.size()==9);
+ formationTick(lastHouse,snap.frame,clockValue,false);assert(commands.empty()&&formationJobCount==25);
  formationTick(lastHouse,snap.frame,clockValue);assert(commands.size()==25);
  formationFollow.cell=40040;formationFollow.frame=snap.frame;formationFollow.tick=clockValue;
  ++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;shared.heartbeat=clockValue;commands.clear();

@@ -1,9 +1,23 @@
 #pragma once
 #include "world_frame.h"
 #include "world_frame_recovery.h"
+#include "world_frame_page_sort.h"
 #include <limits>
 
 namespace worldframe {
+struct SceneGeometry {
+ std::array<int,6> bounds{};int width=0,height=0;bool readable=false;
+ bool same(const SceneGeometry&other)const{
+  return readable&&other.readable&&bounds==other.bounds&&width==other.width&&height==other.height;
+ }
+};
+template<class Read>SceneGeometry sceneGeometry(Read read){
+ SceneGeometry geometry;
+ geometry.readable=read(0x87F7E8+0xF4,geometry.bounds.data(),sizeof geometry.bounds)&&
+  read(0x87F7E8+0x1240,&geometry.width,sizeof geometry.width)&&
+  read(0x87F7E8+0x1244,&geometry.height,sizeof geometry.height)&&geometry.width>0&&geometry.height>0;
+ return geometry;
+}
 // Capture membership is temporary, but the game-thread allocator is shared
 // with the engine. Reusing flat buckets avoids allocating and freeing one
 // unordered_set node per object on every logic frame. Generations clear only
@@ -39,10 +53,21 @@ public:
 // store its last observed tick to bound the hint's lifetime.
 struct CaptureScratch {
  CaptureSet actors,types,small,houses;
- std::vector<uint32_t>queue,list,docks,warmPages;
- std::array<uint8_t,16*PageSize>pageScratch{};
+ std::vector<uint32_t>queue,list,docks,warmPages,warmSortScratch,technoRoster;
+ Key technoKey{};uint32_t technoItems=0;int technoCount=-1;
+ // A saved roster is only a pointer LIST, never a native command grant.
+ // Match every source identity dimension before reusing its bytes.
+ const uint32_t* capturedTechnoRoster(const Key&key,uint32_t items,int count)const{
+  if(count<0||count>16384||count!=technoCount||items!=technoItems||
+     !technoKey.sameFrame(key)||technoKey.serial!=key.serial||
+     technoKey.tick!=key.tick||technoRoster.size()!=size_t(count))return nullptr;
+  return technoRoster.data();
+ }
+ // Retained worker-owned buffer: enough to read 32 contiguous actor pages
+ // with one OS call. No allocation, sort, or page scan on game callbacks.
+ std::array<uint8_t,32*PageSize>pageScratch{};
  explicit CaptureScratch(PageAllocator allocator={}):actors(allocator),types(allocator),small(allocator),houses(allocator){}
- void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();warmPages.clear();}
+ void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();warmPages.clear();warmSortScratch.clear();technoRoster.clear();technoKey={};technoItems=0;technoCount=-1;}
  bool valid()const{return actors.valid()&&types.valid()&&small.valid()&&houses.valid();}
 };
 // These layouts are inherited from the supported YR readers, not new native
@@ -114,12 +139,14 @@ public:
  CaptureGraph(Snapshot&frame,Read live):frame_(frame),live_(live){
   if(void*p=std::malloc(sizeof(CaptureScratch))){scratch_=::new(p)CaptureScratch;owned_.reset(scratch_);}
  }
- bool vector(uint32_t address,int limit,std::vector<uint32_t>&out){
+ bool vector(uint32_t address,int limit,std::vector<uint32_t>&out,uint32_t*itemsOut=nullptr){
   struct Vector {uint32_t vt,items;int capacity;uint32_t flags;int count,step;}v{};
   out.clear();++frame_.counters.rosterCaptures;
   if(!frame_.capture(live_,address,&v,sizeof v)||v.count<0||v.count>limit||v.capacity<v.count||v.capacity>262144||(v.count&&v.items<0x10000))return false;
-  out.resize(size_t(v.count));if(!v.count)return true;
-  return frame_.capture(live_,v.items,out.data(),out.size()*4);
+  out.resize(size_t(v.count));
+  if(v.count&&!frame_.capture(live_,v.items,out.data(),out.size()*4))return false;
+  if(itemsOut)*itemsOut=v.items; // Publish only after complete, immutable roster.
+  return true;
  }
  bool capture(uint32_t demand,const std::vector<uint32_t>&requests,
               const RequestedSpan*exact=nullptr,size_t exactCount=0){
@@ -163,11 +190,25 @@ public:
   // collector originally owned them. No Selected object list is frozen here.
   for(uint32_t p:{0xA80208u,0xA83CE0u,0xA8B230u,0xA8BC60u,0xA8E348u,0xA8ED84u,0x8871E0u,0x887324u,0x8A00A4u,0x8B4108u,0xAC1198u,0xB0CD48u})block(p,128);
   block(0x87F7E8,0x1500);block(frame_.key.scenario,0x1300);house(frame_.key.house);
+  // Resource consumers share the native sidebar's four cameo strips with
+  // Runtime instead of faulting these pages into an independent Host scan.
+  if(demand_&Resources)block(0x87F7E8+0x1500,0x53A0-0x1500);
   auxiliary(value<uint32_t>(0x887324),0xD0);auxiliary(value<uint32_t>(0x8871E0),0x1000);
   if(!working())return false;auto&list=scratch_->list;
   for(uint32_t table:{0xA8EC78u,0xA8EB40u,0x8B4108u}){
    if(table==0x8B4108&&!(demand_&Ore))continue;
-   if(!vector(table,16384,list))return false;for(uint32_t p:list)enqueue(p);
+   uint32_t capturedItems=0;
+   if(!vector(table,16384,list,table==0xA8EC78u?&capturedItems:nullptr))return false;
+   if(table==0xA8EC78u){
+    // Retain the exact first-stage inventory for the later game-thread
+    // identity index. std::vector::swap moves ownership in O(1): no second
+    // 16K-pointer copy, no extra game read, no stale bytes after reset().
+    scratch_->technoRoster.swap(list);
+    scratch_->technoKey=frame_.key;
+    scratch_->technoItems=capturedItems;
+    scratch_->technoCount=int(scratch_->technoRoster.size());
+    for(uint32_t p:scratch_->technoRoster)enqueue(p);
+   }else for(uint32_t p:list)enqueue(p);
   }
   if(!vector(0xA80228,32,list))return false;for(uint32_t p:list)house(p);
   if(demand_&(Bullets|Visual)){
@@ -207,11 +248,12 @@ public:
   auto&warm=scratch_->warmPages;
   for(uint32_t p:scratch_->queue)if(range(p,0x800))
    for(uint32_t page=p&~4095u;uint64_t(page)<uint64_t(p)+0x800;page+=PageSize)warm.push_back(page);
-  std::sort(warm.begin(),warm.end());warm.erase(std::unique(warm.begin(),warm.end()),warm.end());
-  frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),false);
+  sortUniquePageAddresses(warm,scratch_->warmSortScratch);
+  frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),false,32);
   for(size_t i=0;i<scratch_->queue.size();++i){if(!working())return false;actor(scratch_->queue[i]);}
   if(!working())return false;
-  frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size());
+  // Required Host pages keep tighter 16-page fault isolation.
+  frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size(),true,16);
   return working();
  }
 };

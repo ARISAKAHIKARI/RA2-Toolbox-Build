@@ -4,19 +4,16 @@ clear the visible surface or expose hit regions for a different tab/scroll/queue
 """
 from pathlib import Path
 import os,subprocess,tempfile
-from tactical_frame_sampling import function
 root=Path(__file__).resolve().parents[2]
 host=Path(os.environ.get('CONSTRUCTION_HOST',root/'assist/source/construction_host.h')).read_text()
 position=host[host.index('static void resizePanel()'):host.index('static bool usable();')]
 types=host[host.index('struct PaintRequest {'):host.index('struct PanelPainter {')]
 modern='static std::shared_ptr<const Painted> paintedFrame;' in host
 helpers=host[host.index('static std::shared_ptr<const Painted> paintedFrame;' if modern else 'static LRESULT CALLBACK proc('):host.index('static void service()')]
-scope=function((root/'external_reader/source/process_reader.h').read_text(), 'class WorldFrameScope')+';'
 prefix=r'''
 
 #include "construction_policy.h"
 #include "panel_placement.h"
-#include "fixtures/tactical_frame/sealed_host_reader.h"
 #include <cassert>
 #include <string>
 #include <iostream>
@@ -82,15 +79,17 @@ static unsigned invalidations=0;static void InvalidateRect(HWND,void*,int){++inv
 #include "construction_buffer.h"
 static Window gameObject,panelObject;static HWND game=&gameObject,window=&panelObject;
 static construction::Layout layout;static construction::PanelBuffer panelBuffer,panelSpare;static construction::Layout paintedLayout;static bool paintReady=false;
-static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static HFONT panelFont=&testFont,font=&testFont;
+static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1,choicesTab=0;static HFONT panelFont=&testFont,font=&testFont;
 static construction::Book books[4];struct Choice{int slot,index,tab;uint32_t type;bool future;};static std::vector<Choice> choices;
 namespace assist{struct Type{char id[24]{};uint16_t name[40]{};int kind=7,index=0,naval=0,cost=0;};}
 static struct{int typeCount=8;assist::Type types[8];}snap;
-static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}static void refreshChoices(){}
+static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}
+static unsigned policyClears=0;static void publishReservationPolicy(std::initializer_list<int>){++policyClears;}
 static int lastReservation=-1;static unsigned reservationCalls=0;
 static bool usable(){return true;}static void removeTop(bool){}static void removeItem(int,int,bool){}static void reserve(int index){lastReservation=index;++reservationCalls;}
 
 static uint32_t pid=1,house=0x500000,match=7,now=1000;static bool eligible=true;
+static uint32_t choicesHouse=house,choicesMatch=match,refreshed=1;
 static DWORD GetTickCount(){return now;}static uint32_t commandMatch(){return match;}
 static bool displayReady(){return eligible;}static bool constructionDisplayFresh(){return eligible;}
 static int typeSlot(int index){return index>=0&&index<snap.typeCount?index:-1;}
@@ -103,10 +102,8 @@ static UINT SetDIBitsToDevice(HDC to,int,int,int w,int h,int,int,UINT,UINT,const
 }
 '''
 prefix+=r'''
-struct Reader:fixtureframe::SealedHostReader<Reader>{bool readLive(uint32_t,void*,size_t){assert(false);return false;}}externalReader;
-static void publishFrame(){auto next=std::make_shared<worldframe::Snapshot>();worldframe::Key key{};key.pid=pid;key.match=match;key.frame=int(now);next->reset(key);assert(next->seal());externalReader.available=std::move(next);}
+struct Reader{bool readLive(uint32_t address,void*out,size_t n){assert(address==0xA83D4C&&n==4);std::memcpy(out,&house,n);return true;}}externalReader;
 '''
-prefix+='namespace external {using ProcessReader=::Reader;'+scope+'}\n'
 worker=r'''
 struct FakeWorker{unsigned submitted=0,invalidated=0;std::shared_ptr<const Painted> result;std::shared_ptr<PaintRequest> pending;
  void submit(PaintRequest r){++submitted;pending=std::make_shared<PaintRequest>(std::move(r));}
@@ -129,9 +126,18 @@ int main(){
  // raster, bitmap allocation or layer reordering while the content is stable.
  for(int i=0;i<1000;++i){now+=100;requestPaint();pumpPaint();resizePanel();paint();}
  assert(paintWorker.submitted==submissions&&positions==1&&allocations==1&&visible.pixels==first);
+ const auto tabClick=[&](int tab){
+  const int x=paintedLayout.width()*(2*tab+1)/8,y=paintedLayout.pointY(12);
+  proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(x)|(uint32_t(y)<<16)));
+ };
+ tabClick(2);assert(activeTab==2&&selectedTab==2&&refreshed==0&&policyClears==1&&!panelInputReady());
+ requestPaint();assert(paintWorker.submitted==submissions);
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(paintedLayout.pointY(35))<<16));assert(reservationCalls==0);
+ tabClick(3);assert(activeTab==3&&!panelInputReady()&&policyClears==2);
+ tabClick(0);assert(activeTab==0&&panelInputReady()&&policyClears==3);
  // A changed tab/scroll/queue cannot erase the old frame; input closes until
  // the new complete pixels and geometry have both been promoted.
- activeTab=1;books[1].items={2};layout.content(1,8);requestPaint();assert(!panelInputReady());paint();assert(visible.pixels==first&&positions==1);
+ activeTab=choicesTab=1;books[1].items={2};layout.content(1,8);requestPaint();assert(!panelInputReady());paint();assert(visible.pixels==first&&positions==1);
  complete(0xff654321);pumpPaint();assert(panelInputReady()&&positions==2);paint();assert(visible.pixels!=first);
  fail=9;assert(!panelInputReady());fail=0;assert(panelInputReady());
  auto before=visible.pixels;int beforePositions=positions;scroll=2;requestPaint();paint();assert(visible.pixels==before&&!panelInputReady());
@@ -149,11 +155,12 @@ int main(){
  // Explicit hide/invalidation clears both visual and pending identities.
  resetPaint();assert(!paintReady&&!panelInputReady()&&paintWorker.invalidated&&dcLive==0&&bitmapLive==0);paint();
  requestPaint();complete();++match;pumpPaint();assert(!paintReady);--match;pumpPaint();assert(paintReady);
- ++match;requestPaint();assert(!paintReady&&!panelObject.visible);complete();pumpPaint();assert(paintReady&&panelInputReady());resetPaint();
+ ++match;requestPaint();assert(!paintReady&&!panelObject.visible&&!paintWorker.pending);
+ choicesMatch=match;requestPaint();complete();pumpPaint();assert(paintReady&&panelInputReady());resetPaint();
 
  // A stationary screen point keeps selecting the first choice after every
  // complete queue promotion. Pending pixels never admit the new input map.
- activeTab=selectedTab=scroll=0;POINT fixed{};bool firstQueue=true;
+ activeTab=selectedTab=scroll=choicesTab=0;POINT fixed{};bool firstQueue=true;
  for(int count:{0,1,2,3,4,5,32,128,4,1,0}){
   books[0].items.assign(count,0);layout.content(count,int(choices.size()));requestPaint();
   assert(!panelInputReady());unsigned calls=reservationCalls;
@@ -177,7 +184,6 @@ if not modern:
     suffix=r'''
 int main(){Object visible{1};screen.bitmap=&visible;layout.set(2560,1440,3840,2160);layout.content(0,0);resizePanel();proc(window,WM_PAINT,0,0);}
 '''
-suffix=suffix.replace('requestPaint();','publishFrame();requestPaint();')
 with tempfile.TemporaryDirectory() as tmp:
     cpp=Path(tmp)/'paint.cpp';exe=Path(tmp)/'paint';cpp.write_text(prefix+position+types+worker+helpers+suffix)
     subprocess.run(['g++','-std=c++17','-O1','-g','-fsanitize=address,undefined','-I'+str(root/'assist/source'),'-I'+str(root/'assist/tests'),str(cpp),'-o',str(exe)],check=True)

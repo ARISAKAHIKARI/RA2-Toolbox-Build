@@ -28,11 +28,45 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/world_frame_core_test.py
+          # Reservation catalogue and native-sidebar visibility are Host-only.
+          # Check the real 128-FIFO Host service; keep source CI separate from
+          # x86 Runtime command admission, which must remain unmodified.
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/construction_choice_filter.cpp -o /tmp/ra2-construction-choices
+          /tmp/ra2-construction-choices
+          python3 source/assist/tests/reservation_unit_filter_settings.py
+          python3 source/assist/tests/construction_host_test.py
+          python3 source/assist/tests/construction_paint_test.py
           python3 source/assist/tests/tactical_frame_sampling.py --out /tmp/ra2-automatic-sampling
+          python3 source/assist/tests/captured_techno_roster_wiring.py
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Wno-misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/captured_techno_roster.cpp -o /tmp/ra2-techno-roster
+          /tmp/ra2-techno-roster
       - name: Check settings migration and native UI
         run: |
           set -euo pipefail
           python3 source/assist/tests/fixed_compute_settings.py
+      - name: Verify passive Host display avoids full producer graph and command leases survive escalation
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-misleading-indentation -Wno-class-memaccess -Wno-parentheses -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/display_capture_offthread.cpp -o /tmp/ra2-display-admission
+          /tmp/ra2-display-admission
+          python3 source/assist/tests/display_capture_runtime_wiring.py
+          g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/world_frame_page_sort.cpp -o /tmp/ra2-page-sort
+          /tmp/ra2-page-sort
+      - name: Verify demand lease expiry deadline and bounded maintenance at 16K capacity
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/demand_lease_deadline.cpp -o /tmp/ra2-demand-lease
+          /tmp/ra2-demand-lease
+      - name: Verify indexed same-frame actor claim admission and manual takeover
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Werror -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unit_task_arbiter.cpp -o /tmp/ra2-frame-index
+          /tmp/ra2-frame-index
+      - name: Verify bounded native lease lifecycle and manual priority
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Werror -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/lease_arbiter.cpp -o /tmp/ra2-lease-arbiter
+          /tmp/ra2-lease-arbiter
   defense-state:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -49,6 +83,11 @@ jobs:
       - name: Test ore handoff and repeated missing-page recovery
         run: |
           python3 source/assist/tests/ore_harvest_handoff.py --out /tmp/ra2-ore-state
+      - name: Validate dense manual-version clears, collision pruning and zero-token holds
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Wno-unused-parameter -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/manual_ore.cpp -o /tmp/ra2-manual-ore
+          /tmp/ra2-manual-ore
   missile-state:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -109,6 +148,23 @@ jobs:
           name: RA2Toolbox-MissingPageAudit-Windows-BuildLog
           retention-days: 14
           path: diagnostics/
+  aircraft-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify configurable aircraft allocation and frozen click snapshot
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/aircraft_damage.cpp -o /tmp/ra2-aircraft-allocation
+          /tmp/ra2-aircraft-allocation
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/aircraft_damage_reader.cpp -o /tmp/ra2-aircraft-reader
+          /tmp/ra2-aircraft-reader
+      - name: Exercise production aircraft settings controls and persistence
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/aircraft_damage_settings.py
+
   repair-state:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -131,6 +187,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/unload_roster_runtime.py --out /tmp/ra2-unload-roster --before source/assist/source/native_orders_bridge.h
+      - name: Check exact Ctrl+D roster order and indexed native cargo lookup
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_radix_sort.cpp -o /tmp/ra2-unload-radix
+          /tmp/ra2-unload-radix
       - name: Test production three-passenger native cargo handoff
         run: |
           set -euo pipefail

@@ -2,11 +2,14 @@
 // Test I/O boundary for legacy Runtime fixtures. The read-set, capture graph
 // and scope bodies are production code; only the process bytes are synthetic.
 #include "../../../../shared/source/world_frame_capture.h"
+#include "../../../../shared/source/world_frame_command_policy.h"
 static worldframe::Snapshot worldFrame;
+static worldframe::CaptureScratch worldFrameCaptureScratch;
 static bool worldFrameReady=false,sampleReadComplete=true,fixtureCaptureAttempted=false;
 static unsigned sampleReadDepth=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};
 static std::vector<uint32_t> runtimeWorldDemands;
+static bool runtimeDemandOverflow=false,runtimeDemandBufferPrepared=false;
 // Match production SampleReadScope/requestWorldRange dependencies.
 static uint32_t runtimeDemandRevision=1;
 static worldframe::Key fixtureLastAttempt{};
@@ -19,7 +22,7 @@ static bool read(uint32_t at,void*out,size_t n){
 }
 static void fixtureResetWorld(){
  assert(!sampleReadDepth);worldFrameReady=fixtureCaptureAttempted=false;sampleReadComplete=true;
- runtimeWorldDemands.clear();runtimeDemandLeases.clear();runtimeDemandBits.fill(0);runtimeDemandRevision=1;worldFrameBoundaryOnly=false;
+ runtimeWorldDemands.clear();runtimeDemandLeases.clear();runtimeDemandBits.fill(0);runtimeDemandRevision=1;runtimeDemandOverflow=false;runtimeDemandBufferPrepared=false;worldFrameBoundaryOnly=false;worldFrameCaptureScratch.reset();
  fixtureCaptureCount=fixtureCaptureReads=fixtureCaptureBytes=fixtureSampleReads=fixtureLiveReads=fixtureCaptureCellReads=fixtureSampleCellReads=0;
 }
 static bool fixtureCaptureWorld(uint32_t now){
@@ -28,7 +31,7 @@ static bool fixtureCaptureWorld(uint32_t now){
  if(fixtureCaptureAttempted&&fixtureLastAttempt.sameFrame(key))return worldFrameReady;
  fixtureLastAttempt=key;fixtureCaptureAttempted=true;worldFrameReady=false;
  auto demands=runtimeWorldDemands;for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,now);runtimeDemandLeases.append(now,demands);
- worldFrame.reset(key);worldframe::CaptureGraph<decltype(&readFixtureLive)> capture(worldFrame,&readFixtureLive);
+ worldFrame.reset(key);worldframe::CaptureGraph<decltype(&readFixtureLive)> capture(worldFrame,&readFixtureLive,worldFrameCaptureScratch);
  const unsigned beforeCellReads=cellReads;const bool complete=capture.capture(worldframe::Base|worldframe::Ore|worldframe::Combat,demands);fixtureCaptureCellReads+=cellReads-beforeCellReads;
  ++fixtureCaptureCount;fixtureCaptureReads+=worldFrame.counters.calls;fixtureCaptureBytes+=worldFrame.counters.bytes;
  worldFrameReady=worldFrame.seal()&&complete;if(worldFrameReady){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}return worldFrameReady;

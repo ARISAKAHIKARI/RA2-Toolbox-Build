@@ -53,7 +53,7 @@ class Snapshot(C.Structure):
 class CooperativeSource(C.Structure):
     _fields_=[('id',C.c_uint32),('token',C.c_uint32)]
 class CooperativeRequest(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'serial match tick target type'.split()]+[(x,C.c_int32) for x in 'frame mode count cameraX cameraY viewWidth viewHeight'.split()]+[('sources',CooperativeSource*1024),('centerObject',C.c_uint32)]
+    _fields_=[(x,C.c_uint32) for x in 'serial match tick target type'.split()]+[(x,C.c_int32) for x in 'frame mode count cameraX cameraY viewWidth viewHeight'.split()]+[('sources',CooperativeSource*1024),('centerObject',C.c_uint32),('airRadiusCells',C.c_uint32),('airDamagePercent',C.c_uint32)]
 class CooperativeAssignment(C.Structure):
     _fields_=[(x,C.c_uint32) for x in 'id token target type'.split()]+[('expectedDamage',C.c_double)]
 class PointerSource(C.Structure):

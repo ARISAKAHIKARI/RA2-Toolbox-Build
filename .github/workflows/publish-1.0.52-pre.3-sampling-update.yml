@@ -1,0 +1,180 @@
+name: Build and deliver 1.0.52-pre.3 native sampling Update
+on:
+  push:
+    branches: [release/1.0.52-pre.3-sampling-20261118]
+    paths:
+      - .github/workflows/publish-1.0.52-pre.3-sampling-update.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2-sampling-1.0.52-pre3-native-update
+  cancel-in-progress: false
+jobs:
+  source-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require exact build label and immutable Assist ABI 111
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'RA2_RELEASE_VERSION "1.0.52.3"' source/shared/source/release_version.h
+          grep -q 'RA2_RELEASE_VERSION_W L"1.0.52-pre.3"' source/shared/source/release_version.h
+          grep -q 'Version=111' source/assist/source/protocol.h
+          grep -q 'ASSIST_PROTOCOL = 111' source/tools/verify_windows_outputs.py
+          test -f source/shared/source/world_frame_page_sort.h
+          test -f source/assist/source/world_capture_admission.h
+      - name: Validate full native world source, zero-page escalation, recovery and control authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/display_capture_runtime_wiring.py
+          python3 source/assist/tests/async_command_no_live_roster.py
+          python3 source/assist/tests/unified_gateway_contract.py
+      - name: Validate page sorting and Ctrl+D/aircraft/manual revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/world_frame_page_sort.cpp -o /tmp/ra2-page-sort
+          /tmp/ra2-page-sort
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/display_capture_offthread.cpp -o /tmp/ra2-passive
+          /tmp/ra2-passive
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_radix_sort.cpp -o /tmp/ra2-ctrl-d
+          /tmp/ra2-ctrl-d
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/manual_ore.cpp -o /tmp/ra2-manual
+          /tmp/ra2-manual
+          python3 source/assist/tests/aircraft_damage_settings.py
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/ra2-release-unload --current-only
+          python3 source/assist/tests/auto_repair_runtime.py --out /tmp/ra2-release-repair
+  windows:
+    needs: source-gates
+    runs-on: windows-2022
+    timeout-minutes: 75
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Zig 0.13 and icon encoder
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Compile same-source x64 Host x86 Runtime/Broker and verify ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/dist-compiled"
+          mkdir -p diagnostics
+          bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -150 diagnostics/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root dist-compiled --host-arch x64 --webview2 | tee diagnostics/pe-abi.log
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "dist-compiled/$f"
+          done
+          python -c "import json; p=json.load(open('dist-compiled/BUILD_TARGET.json')); assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',111,False),p"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: RA2Toolbox-1.0.52-pre.3-matched-native-binaries
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            dist-compiled/*.exe
+            dist-compiled/*.dll
+            dist-compiled/*.json
+            dist-compiled/licenses/**
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.52-pre.3-build-verification
+          retention-days: 30
+          path: diagnostics/
+  publish:
+    needs: windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.52-pre.3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.52-pre.3-matched-native-binaries
+          path: dist/update
+      - name: Validate source, package paired Update and calculate SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = release/1.0.52-pre.3-sampling-20261118
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "The tag is already published: refusing to overwrite" >&2
+            exit 1
+          fi
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "dist/update/$f"
+          done
+          python -c "import json; p=json.load(open('dist/update/BUILD_TARGET.json')); assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',111,False),p"
+          cat > dist/update/BUILD_VALIDATION.txt <<EOF
+          RA2 Toolbox 1.0.52-pre.3 · sampling performance Update
+          Exact source commit: $GITHUB_SHA
+          Host x64 / GameRuntime x86 / Broker x86; Assist ABI=111
+          Native paired compiler and PE/ABI checks: PASSED
+          Source regression and 16K passenger / 131K page-sort tests: PASSED
+          Real game and multiplayer: NOT tested; P95/P99 in-game measurements: NOT tested
+          Display-only zero-page capture; native commands retain full exact-frame source
+          Generic async command capture is experimental and off by default.
+          Close game and toolbox; back up Assist.ini; replace all EXE/DLL as a set.
+          EOF
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.52-pre.3-x64-Update.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.3-x64-Update.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.52-pre.3-x64-Update.zip > SHA256SUMS.txt)
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+      - name: Publish isolated prerelease without changing stable/latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## RA2 Toolbox 1.0.52-pre.3 · 采样/主线程优化升级包
+
+          此 Update 基于先前 1.0.52-pre.2 的飞机范围 X 格 / 预计伤害覆盖 Y% 配置，整合维修回执、命令租约/索引、Ctrl+D 载员排序和人工版本表稀疏清理等优化。
+
+          - 纯 Host 显示功能发布真正的零页世界身份；游戏线程不做完整 CaptureGraph、Host 显示页表复制/排序或 128 KiB 索引清零。
+          - 玩家同帧下令时，强制重新取得完整采样并校验世界、帧、House、UID、人工命令版本；零页不能授权任何原生命令。
+          - 大量单位的预热页和完整命令页请求采用可复用缓冲区的线性基数排序，保持与旧算法完全一致的页集合。
+          - Ctrl+D 保留一次按键的候选、缺页等待与重复身份校验；优化大载具候选查找，不丢乘员；自动维修、任务租约和人工版本表维护减负。
+          - 飞机分配可配置 1–64 格与 1–500% 预计覆盖率，默认 5 格 / 120% 不变。
+
+          源码提交：$GITHUB_SHA。Host x64 / GameRuntime x86 / Broker x86 一致编译，Assist ABI 111，必须整套替换，不得只覆盖 DLL。
+
+          **仅 Update 包**：请覆盖在已有完整安装目录上，推荐 1.0.52-pre.2 Full 基线。安装前退出游戏及工具箱、备份 Assist.ini。
+          本版是 Pre-release，不更改稳定版 Latest。源码回归和 Windows PE/ABI 检查后才发布；仍未实机验证 JJ/CnCNet 联机、真实帧耗时和 FPS，通用异步命令采集默认关闭。
+          EOF
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "RA2 Toolbox 1.0.52-pre.3 · 零页采样与性能升级包" \
+            --notes-file dist/RELEASE_NOTES.md \
+            dist/RA2Toolbox-1.0.52-pre.3-x64-Update.zip dist/SHA256SUMS.txt
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,targetCommitish,assets \
+            | jq -e --arg sha "$GITHUB_SHA" '.isDraft==false and .isPrerelease==true and .targetCommitish==$sha and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.3-x64-Update.zip")!=null)'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.52-pre.3-release-checksums
+          retention-days: 30
+          path: |
+            dist/RELEASE_NOTES.md
+            dist/SHA256SUMS.txt

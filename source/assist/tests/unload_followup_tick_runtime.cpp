@@ -15,6 +15,7 @@ using namespace assist;
 static std::unordered_map<uint32_t,uint8_t> memory;
 static uint32_t bad=0,match=1,House=0x770000,Type=0x440000;
 static int checked=0,doneCount=0,observedCount=0,frameNow=100,indexedFrame=100,unloadCursor=0;
+static bool commandRosterReady(){return indexedFrame==frameNow;}
 static int unloadCount=0;
 static unsigned rawCalls=0;
 constexpr uint32_t SmartUnloadOrders=1, EjectAssist=2;
@@ -72,8 +73,8 @@ static unloadcompute::Input unloadExternalInput,unloadLocalInput;
 namespace compute{enum Lane{Unload,Escape};static bool inside(int,Lane){return false;}}
 struct Vec {};
 static Vec vec(uint32_t){return {};}
-static bool nativeMember(Vec,uint32_t p){return worldObjects.contains(p);}
-static void watchEjections(uint32_t,int,Vec){}
+static bool nativeMember(uint32_t p){return worldObjects.contains(p);}
+static void watchEjections(uint32_t,int){}
 static void serviceUnloadCalculation(uint32_t,int,int&){}
 static void publishUnloadCalculation(){}
 static bool collectUnloadSource(unloadcompute::Input&,const UnloadPassenger&,uint32_t,int){return false;}

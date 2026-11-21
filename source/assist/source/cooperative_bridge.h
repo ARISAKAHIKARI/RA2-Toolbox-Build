@@ -9,8 +9,8 @@ static external::GameView<LocalRawRead> clickView(LocalRawRead{});
 // UI click capture keeps its independent live input generation. Tactical
 // conversion consumes only the manager's already sealed world sample.
 struct CooperativeFrameRead {bool operator()(uint32_t a,void*out,size_t n)const{return read(a,out,n);}};
-static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig& quotas,cooperative::Input&out){
- SampleReadScope frameRead;if(!frameRead)return false;
+static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig& quotas,cooperative::Input&out,worldframe::Key*source=nullptr){
+ ObservationReadScope frameRead;if(!frameRead)return false;
  auto input=external::cooperativeInput(CooperativeFrameRead{},r,[&](uint32_t type){
   char id[24]{};if(!read(type+0x24,id,23))return quotas.defaults;
   for(int i=0;i<quotas.count;++i)if(sameid(id,quotas.entries[i].id))return quotas.entries[i].quota;return quotas.defaults;
@@ -19,6 +19,7 @@ static bool collectCooperativeInput(const cooperative::Request&r,const compute::
  for(size_t i=0;i<input.units.size();++i)for(size_t j=0;j<input.targets.size();++j)
   if(!featureTypeAllowed(feature,input.units[i].type)||(r.mode==cooperative::Enter&&!featureTypeAllowed(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
  if(!frameRead.complete())return false;
+ if(source)*source=sampleWorldSource->key;
  out=std::move(input);return true;
 }
 static uint32_t clickSerial,cooperativePlanSeen;static int cooperativeAt;
@@ -102,13 +103,15 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
  if(get<int>(0xA8ECB8+16)>cooperative::MaxSources){
   if(r.count<=cooperative::MaxSources||r.frame!=frame||r.target!=targetID||r.mode!=mode){InterlockedIncrement(&sh->cooperativeSeq);memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.mode=mode;r.frame=frame;r.tick=now;r.count=cooperative::MaxSources+1;MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();}return false;
  }
- bool same=r.serial&&r.match==match&&r.target==targetID&&r.mode==mode&&r.frame==frame&&r.count>=0&&r.count<=cooperative::MaxSources&&DWORD(now-r.tick)<100;
+ bool same=r.serial&&r.match==match&&r.target==targetID&&r.mode==mode&&r.frame==frame&&(mode!=cooperative::AirDamage||(r.airRadiusCells==sh->aircraftDamageRadiusCells&&r.airDamagePercent==sh->aircraftDamageCoveragePercent))&&r.count>=0&&r.count<=cooperative::MaxSources&&DWORD(now-r.tick)<100;
  if(same)for(int i=0;i<r.count;++i)if(r.sources[i].id==id){same=false;break;}
  if(same&&r.count>=cooperative::MaxSources)return false;
  if(!manualVersions.trackable(id))return false;
  if(mode!=cooperative::AirSingle)cancelNative(p);InterlockedIncrement(&sh->cooperativeSeq);
  if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.frame=frame;
   r.centerObject=target;
+  if(mode==cooperative::AirDamage){r.airRadiusCells=sh->aircraftDamageRadiusCells;r.airDamagePercent=sh->aircraftDamageCoveragePercent;}
+  else {r.airRadiusCells=0;r.airDamagePercent=0;}
   if(cooperative::damageMode(mode)){r.cameraX=get<int>(target+0x9C);r.cameraY=get<int>(target+0xA0);}
   else {uint32_t tactical=get<uint32_t>(0x887324);if(tactical>=0x10000){r.cameraX=get<int>(tactical+0xB0);r.cameraY=get<int>(tactical+0xB4);}}
   int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);r.viewWidth=width>0&&width<=32768?width:get<int>(0x8A00A4);r.viewHeight=height>0&&height<=32768?height:get<int>(0x8A00A8);
@@ -118,7 +121,7 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
 static int cooperativeInput(uint32_t p,uint32_t target,uint32_t bindings){
  if(!nativeReady()||!p||!target||!own(p,lastHouse)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C))return 0;
  if(((bindings&pointerinput::Shift)&&!(bindings&(pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)))||get<bool>(0x87F7E8+0x11B3)||get<bool>(0x87F7E8+0x11B1))return 0;
- indexWorld(get<int>(0xA8ED84));if(!worldObjects.contains(p)||!worldObjects.contains(target)||!live(target))return 0;
+ if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady())return 0;if(!worldObjects.contains(p)||!worldObjects.contains(target)||!live(target))return 0;
  if((sh->flags&AdvancedEnter)&&(bindings&pointerinput::Enter)&&featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,target)&&clickView.entryCompatible(p,target,lastHouse))return newCooperative(p,target,cooperative::Enter)?1:0;
 
  if((sh->flags&DiskPrimary)&&kind(p)==2&&kind(target)==3&&(bindings&pointerinput::Control)){
@@ -149,10 +152,27 @@ static void resetCooperativeState(){resetRuntimeCooperative();singleDamageSerial
 static void restoreClickHooks(){}
 static void clickHooksTick(uint32_t flags){sh->clickHookStatus=(flags&SpecialClickFlags)?1:0;}
 static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house){
- int reserved=0;bool facility=clickView.capacity(target).singleVehicle;Vec all=vec(0xA8EC78);for(int i=0;i<all.count;++i){uint32_t p=item(all,i);int k=p?kind(p):-1;
-  if((k!=1&&k!=2)||!own(p,house)||get<uint32_t>(p+0x10)==ignore||clickView.entryDestination(p)!=target)continue;
+ struct Candidate {uint32_t pointer,id;};static Candidate candidates[16384];
+ int count=0;SampleReadScope frameRead;if(!frameRead||!commandRosterReady())return 1024;
+ // Filter the canonical worker-owned Techno membership using the sealed
+ // sample. Only relevant owned infantry/vehicles receive later live checks.
+ for(const auto&member:worldFrameCommandRoster.members){
+  const uint32_t p=member.pointer;
+  const int k=kind(p);
+  if((k!=1&&k!=2)||member.id==ignore||get<uint32_t>(p+0x21C)!=house)continue;
+  if(count>=16384)return 1024;
+  candidates[count++]={p,member.id};
+ }
+ if(!frameRead.complete())return 1024;
+ frameRead.finish();
+ int reserved=0;const bool facility=clickView.capacity(target).singleVehicle;
+ for(int i=0;i<count;++i){
+  const auto&candidate=candidates[i];const uint32_t p=candidate.pointer;
+  if(worldByID(candidate.id)!=p||!own(p,house)||candidate.id==ignore||
+     clickView.entryDestination(p)!=target)continue;
   if(facility&&clickView.radioLinked(target,p))continue;
-  int slots=clickView.entrySlots(p,target);if(!slots)return 1024;reserved+=slots;if(reserved>=1024)return 1024;
+  int slots=clickView.entrySlots(p,target);if(!slots)return 1024;
+  reserved+=slots;if(reserved>=1024)return 1024;
  }
  for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];uint32_t p=worldByID(r.id);if(r.target==get<uint32_t>(target+0x10)&&r.id!=ignore&&p&&clickView.entryDestination(p)!=target&&!(facility&&clickView.radioLinked(target,p)))reserved+=r.slots;}
  return reserved;
@@ -173,8 +193,8 @@ uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&
     if(!bunker&&action==11)mission=9;}
   }else if(valid){valid=airUnit(p)&&nativeEnemy(t,house);if(valid){planner::Actor source{},target{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),source,true);rawCombatInfo(t,o.type,kind(t),target,false);valid=planner::compatibleTarget(source,target,false);
     if(valid&&cooperative::damageMode(mode)){const auto&r=sh->cooperativeRequest;uint32_t center=worldByID(r.target);
-     valid=cooperative::validDamage(o.expectedDamage)&&center&&center==r.centerObject&&typeOf(center,kind(center))==r.type;
-     if(valid&&mode==cooperative::AirDamage)valid=kind(t)==2&&!(target.flags&(planner::Airborne|planner::Manipulated))&&cooperative::distance(r.cameraX,r.cameraY,get<int>(t+0x9C),get<int>(t+0xA0))<=int64_t(cooperative::DamageRadius)*cooperative::DamageRadius;
+     valid=cooperative::validDamage(o.expectedDamage)&&(mode!=cooperative::AirDamage||cooperative::validRange(r.airRadiusCells,r.airDamagePercent))&&center&&center==r.centerObject&&typeOf(center,kind(center))==r.type;
+     if(valid&&mode==cooperative::AirDamage)valid=kind(t)==2&&!(target.flags&(planner::Airborne|planner::Manipulated))&&cooperative::distance(r.cameraX,r.cameraY,get<int>(t+0x9C),get<int>(t+0xA0))<=int64_t(cooperative::radiusCells(r.airRadiusCells)*256)*(cooperative::radiusCells(r.airRadiusCells)*256);
      if(valid&&mode==cooperative::AirSingle){
       if(singleDamageSerial!=r.serial||singleDamageMatch!=r.match){singleDamageSerial=r.serial;singleDamageMatch=r.match;singleDamageCommitted=0;}
       valid=o.target==r.target&&!stickyOwns(p)&&singleDamageCommitted*5<double(get<int>(t+0x6C))*6&&dispatchedAircraftSelectionReady(p);
@@ -238,13 +258,20 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
  }
 }
 // Only the common game-thread capture epoch produces host cooperative input.
-static void captureCooperativeFrame(uint32_t house,int frame,DWORD now){
+static void captureCooperativeFrame(DWORD now,bool observationFrame,bool indexedWorkReady){
  const auto&r=sh->cooperativeRequest;auto&out=sh->cooperativeInputFrame;
  if(!cooperative::valid(r)||r.match!=match||!freshness::intentAlive(r.tick,now)||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
- if((!externalInputFrame&&out.request.serial==r.serial)||(out.request.serial==r.serial&&sh->cooperativeFrameWanted!=r.serial))return;
+ const bool newerStrictSource=indexedWorkReady&&out.frame<snap.frame;
+ if(out.request.serial==r.serial&&
+    (sh->cooperativeFrameWanted!=r.serial||(!observationFrame&&!newerStrictSource)))return;
  static compute::QuotaConfig quotas;long seq=sh->quotaConfigSeq;if(seq&1)return;MemoryBarrier();memcpy(&quotas,&sh->quotaConfig,sizeof quotas);MemoryBarrier();if(seq!=sh->quotaConfigSeq||quotas.count<0||quotas.count>512)return;
- cooperative::Input input;if(!collectCooperativeInput(r,quotas,input))return;
- cooperative::pack(out,input,r,now,frame);
+ cooperative::Input input;worldframe::Key source{};
+ if(!collectCooperativeInput(r,quotas,input,&source)||
+    !freshness::valid(source.match,match,source.tick,source.frame,now,snap.frame,freshness::Cooperative))return;
+ // The Host distinguishes an observation-only plan by its earlier frame.
+ // A candidate stamped with this frame must not look like exact authority.
+ if(!indexedWorkReady&&source.frame==snap.frame)return;
+ cooperative::pack(out,input,r,source.tick,source.frame);
 }
 static void cooperativeTick(uint32_t house,int frame,DWORD now){
  observeCooperativeEffects(house,frame);

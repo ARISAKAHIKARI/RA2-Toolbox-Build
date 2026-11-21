@@ -20,17 +20,54 @@ constexpr uint32_t syntheticSuperWeaponActor(int swIndex){
 }
 struct Claim {uint32_t actor=0,manualVersion=0;Owner owner=Owner::Generic;};
 template<int Capacity=8192> struct FrameArbiter {
+ static_assert(Capacity>0,"positive frame-claim capacity required");
+ static constexpr unsigned slotCapacity(){
+  unsigned n=1;while(n<2u*unsigned(Capacity))n*=2;return n;
+ }
+ static constexpr unsigned Slots=slotCapacity();
  Claim actors[Capacity]{};int count=0,frame=-1;uint32_t match=0;
- void clear(){count=0;frame=-1;match=0;}
- void begin(uint32_t m,int f){if(match!=m||frame!=f){count=0;match=m;frame=f;}}
+ // Claims cannot be removed during a frame. Generation-tagged open addressing
+ // avoids a 32K actor scan on every native event and a hash memset per frame.
+ uint32_t keys[Slots]{},stamps[Slots]{},generation=1;
+ unsigned indices[Slots]{};
+ static unsigned hash(uint32_t id){
+  id^=id>>16;id*=0x7feb352du;id^=id>>15;
+  id*=0x846ca68bu;id^=id>>16;return id&(Slots-1);
+ }
+ void invalidateIndex(){
+  if(++generation==0){for(unsigned i=0;i<Slots;++i)stamps[i]=0;generation=1;}
+ }
+ void clear(){count=0;frame=-1;match=0;invalidateIndex();}
+ void begin(uint32_t m,int f){
+  if(match!=m||frame!=f){count=0;match=m;frame=f;invalidateIndex();}
+ }
+ unsigned slot(uint32_t actor)const{
+  if(!actor)return Slots;
+  unsigned s=hash(actor);
+  for(unsigned i=0;i<Slots;++i,s=(s+1)&(Slots-1))
+   if(stamps[s]!=generation||keys[s]==actor)return s;
+  return Slots; // Fail closed on pathological hash exhaustion.
+ }
+ int find(uint32_t actor)const{
+  const unsigned s=slot(actor);
+  return s<Slots&&stamps[s]==generation&&keys[s]==actor?int(indices[s]):-1;
+ }
  bool canIssue(uint32_t actor,uint32_t revision)const{
-  if(!actor||count>=Capacity)return false;
-  for(int i=0;i<count;++i)if(actors[i].actor==actor)return false;
-  return true;
+  (void)revision;
+  return actor&&count<Capacity&&find(actor)<0;
  }
  bool record(uint32_t actor,uint32_t revision,Owner owner){
-  if(!canIssue(actor,revision))return false;
+  if(!actor||count>=Capacity)return false;
+  const unsigned s=slot(actor);
+  if(s>=Slots||stamps[s]==generation)return false;
+  keys[s]=actor;indices[s]=unsigned(count);stamps[s]=generation;
   actors[count++]={actor,revision,owner};return true;
+ }
+ // A player command has *already* passed vanilla input admission. Update
+ // the same-frame claim even when full; never turn this into a new event.
+ bool replaceExisting(uint32_t actor,uint32_t revision,Owner owner){
+  const int i=find(actor);if(i<0)return false;
+  actors[i]={actor,revision,owner};return true;
  }
 };
 // Game-thread only. Lease prevents competing autonomous planners from stealing
@@ -58,9 +95,20 @@ inline int priority(Owner o){
 }
 template<int Capacity=8192> struct LeaseArbiter {
  Lease leases[Capacity]{};int count=0;
- void clear(){count=0;}
+ // Cleanup is bookkeeping; command admission independently checks live
+ // actor/pointer/manual token and TTL. Never scan all 8K leases in one frame.
+ static constexpr unsigned MaxSweepPerFrame=256;
+ int sweepCursor=0,lastSweepFrame=0;
+ uint32_t lastSweepMatch=0;
+ bool sweepStamped=false;
+ void clear(){count=0;sweepCursor=0;sweepStamped=false;}
  int find(uint32_t actor)const{for(int i=0;i<count;++i)if(leases[i].actor==actor)return i;return -1;}
- void remove(int i){if(i>=0&&i<count)leases[i]=leases[--count];}
+ void remove(int i){
+  if(i>=0&&i<count){
+   leases[i]=leases[--count];
+   if(sweepCursor>=count)sweepCursor=0;
+  }
+ }
  bool current(const Lease& l,uint32_t m,int frame,uint32_t object,uint32_t revision)const{
   return l.match==m&&l.object==object&&l.manualVersion==revision&&
    frame>=l.issuedFrame&&frame-l.issuedFrame<=LeaseDurationFrames;
@@ -90,6 +138,24 @@ template<int Capacity=8192> struct LeaseArbiter {
    // pointer when the actor is no longer valid in this world snapshot.
    auto state=observation(l.actor);
    if(!current(l,match,frame,state.first,state.second))remove(i);else ++i;
+  }
+ }
+ // One bounded pass per unique simulation frame. Timed-out or manually
+ // superseded leases are also rejected directly by canIssue()/record(), so
+ // deferring cleanup cannot authorize a stale order or steal manual control.
+ // 8,192 slots are covered within 32 frames at the default 256-check budget,
+ // shorter than the 45-frame lease lifetime.
+ template<class Observe> void sweepBudgeted(uint32_t match,int frame,Observe observation,
+                                             unsigned budget=MaxSweepPerFrame){
+  if(sweepStamped&&lastSweepMatch==match&&lastSweepFrame==frame)return;
+  sweepStamped=true;lastSweepMatch=match;lastSweepFrame=frame;
+  const unsigned limit=budget<unsigned(count)?budget:unsigned(count);
+  for(unsigned visited=0;count&&visited<limit;++visited){
+   if(sweepCursor>=count)sweepCursor=0;
+   const int i=sweepCursor;
+   const auto state=observation(leases[i].actor);
+   if(!current(leases[i],match,frame,state.first,state.second))remove(i);
+   else if(++sweepCursor>=count)sweepCursor=0;
   }
  }
 };

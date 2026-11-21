@@ -23,11 +23,14 @@ int main(){
  CHECK(!worker.objects->contains(Passenger)); // not in Techno roster
  CHECK(worker.objects->byId(ActorA+5)==ActorA);
  CHECK(worker.objects->byId(ActorB+5)==ActorB);
+ CHECK(worker.members.size()==3&&worker.members[0].pointer==ActorA&&worker.members[0].id==ActorA+5);
+ CHECK(worker.members[1].pointer==ActorB&&worker.members[1].id==ActorB+5);
  CHECK(worker.globalVehicles.size()==3); // exact duplicated Techno roster
  const auto*workerHash=worker.objects.get();
  worldframe::CommandRoster main;
  main.swap(worker);
  CHECK(main.objects.get()==workerHash&&!worker.objects&&main.current(sample.key));
+ CHECK(main.members.size()==3&&main.members[2].pointer==ActorA);
  assist::ObjectIndexView view;
  view.add(0x70000,77);CHECK(view.byId(77)==0x70000);
  view.bind(&main.objects,valid);
@@ -43,6 +46,7 @@ int main(){
  main.swap(changed);
  CHECK(main.objects.get()==secondHash&&changed.objects.get()==workerHash);
  CHECK(!main.global&&main.globalVehicles.empty()&&view.byId(ActorA+5)==ActorA);
+ CHECK(main.members.size()==3&&main.members[1].id==ActorB+5);
  view.unbind();CHECK(view.byId(77)==0x70000&&!view.byId(ActorA+5));
  worldframe::Snapshot missing;missing.reset(key());
  memory.denied.push_back({ActorA+0x10,4});

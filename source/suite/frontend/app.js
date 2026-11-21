@@ -234,11 +234,54 @@
       if(!groups.has(name))groups.set(name,[]);groups.get(name).push(control);
     }
     if(needle)for(const [name,items] of groups) {
-      const matches=settingLines(items).filter(line=>line.some(control=>[control.label,control.text,control.hint,name,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle))).flat();
-      if(matches.length)groups.set(name,matches);else groups.delete(name);
+      const matches=[];
+      for(const block of featureBlocks(items)){
+        const matchingLines=settingLines(block.controls).filter(line=>line.some(control=>
+          [control.label,control.text,control.hint,name,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle)
+        ));
+        if(matchingLines.length){
+          if(block.headers.length)matches.push(...block.headers);
+          matches.push(...matchingLines.flat());
+        }
+      }
+      const unique=[...new Map(matches.map(control=>[control.id,control])).values()];
+      if(unique.length)groups.set(name,unique);else groups.delete(name);
     }
     return groups;
   }
+  const isFeatureHeader=control=>control.groupHeader&&!['label','heading'].includes(control.type);
+  const hasFeatureConfig=block=>Boolean(block.headers.length)&&block.details.some(control=>!['label','heading'].includes(control.type));
+  // Keep compound command rows intact and give each marked feature its own settings.
+  function featureBlocks(controls) {
+    const blocks=[];let current=null,common=[];
+    const flush=()=>{
+      if(current){blocks.push(current);current=null;}
+      if(common.length){
+        blocks.push({key:'common:'+common[0].id,headers:[],details:common,controls:common});
+        common=[];
+      }
+    };
+    for(const line of settingLines(controls)){
+      if(line[0].layoutBreak||line.some(control=>control.groupHeader&&control.type==='label'))flush();
+      const header=line.find(isFeatureHeader);
+      if(header){
+        flush();current={key:'feature:'+header.id,headers:line,details:[],controls:[...line]};
+      }else if(current){current.details.push(...line);current.controls.push(...line);}
+      else common.push(...line);
+    }
+    flush();return blocks;
+  }
+  function layoutGroups(controls,query='',navigationIndex=0){
+    const groups=groupControls(controls,query);
+    if(navigationIndex!==3&&navigationIndex!==4)return groups;
+    const merged=[...groups.values()].flatMap(items=>
+      items.map((control,index)=>({...control,layoutBreak:index===0}))
+    );
+    return merged.length?new Map([[navigationIndex===3?'控制':'自动功能',merged]]):new Map();
+  }
+  const displayPageControls=(controls,index)=>index<2?controls.filter(control=>(control.group==='渲染')===(index===1)):controls;
+  const targetFor=index=>index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:index-2};
+  const restoredIndex=(category,section)=>category===0?(section===1?2:0):category+2;
   // The adapter already exports the original logical row. Keep its related
   // editors together instead of turning every native widget into a full row.
   // Missing/default coordinates must never combine unrelated settings.
@@ -246,7 +289,7 @@
     const lines=[];
     for (const control of controls) {
       const previous=lines.at(-1), positioned=control.row>0 && control.column>0;
-      if (positioned && previous && previous[0].row===control.row && previous[0].column>0) previous.push(control);
+      if (!control.layoutBreak && positioned && previous && previous[0].row===control.row && previous[0].column>0) previous.push(control);
       else lines.push([control]);
     }
     return lines;
@@ -260,77 +303,195 @@
     }
     return {number:'数值',range:'数值',text:'内容'}[control.type] || '';
   }
-  function groupPresentation(controls,userCollapsed,searching=false,ackErrors=new Set(),searchCollapsed=false) {
-    const hasError=controls.some(control=>control.runtimeError || ackErrors.has(control.id));
-    return {hasError,collapsed:searching?Boolean(searchCollapsed):Boolean(userCollapsed),
-      headers:controls.filter(control=>control.groupHeader && !['label','heading'].includes(control.type)),
-      details:controls.filter(control=>!control.groupHeader)};
-  }
-  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, groupPresentation, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
+  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, featureBlocks, hasFeatureConfig, layoutGroups, displayPageControls, targetFor, restoredIndex, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
   if (typeof document === 'undefined') return;
 
   const $ = id => document.getElementById(id);
-  const CATEGORIES = [ ['视频','DISPLAY & VIDEO','调整画面、光标与监控视图。','<rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path>'], ['控制','INPUT & CONTROL','设置操作方式、快捷键与单位命令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'], ['自动功能','AUTOMATION','按需开启战术辅助与自动处理。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'], ['游戏规则','GAME RULES','管理游戏规则与相关功能选项。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'], ['实验性功能','EXPERIMENTAL','查看实验性选项及当前可用状态。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'], ['调试','RUNTIME DIAGNOSTICS','只读探测平台改写，查看入口用途、实时状态与签名校验。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect><path d="M9 10h6m-6 4h4"></path>'] ];
-  let selectedCategory = 0, videoModule = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, nextGroupId = 0, userNavigated = false, restoredNavigation = false;
+  const CATEGORIES = [
+    ['光标','管理光标外观、刷新率与位置。','<circle cx="12" cy="12" r="8"></circle><path d="M12 6v6l4 4"></path>'],
+    ['渲染','画面效果、GPU 加速与帧率。','<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m7 14 4-4 3 3 3-4"></path>'],
+    ['监控视图','副相机、小地图与战场信息。','<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 10h10M9 15h6"></path>'],
+    ['控制','键鼠操作、选兵、移动与下令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'],
+    ['自动功能','自动战斗、资源管理与辅助操作。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'],
+    ['游戏规则','科技、地图与游戏规则。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'],
+    ['实验功能','尚在完善中的功能。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'],
+    ['调试','运行状态与平台兼容性。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect>']
+  ];
+  let selectedCategory = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, userNavigated = false, restoredNavigation = false;
   let debugGroup = '', debugFilter = '', debugGroupSignature = '';
   const debugRows = new Map();
-  const groupNodes = new Map(), collapsed = new Set(), foldPreferencesSeen = new Set(), searchFolds = new Map();
+  const groupNodes = new Map(), expandedFeatures = new Set(), searchFeatureFolds = new Map();
   const bridge = global.chrome?.webview;
   const store = new ConsoleStore(message => { if (bridge?.postMessage) bridge.postMessage(message); }, schedule);
   global.RA2Console = Object.freeze({ store, receive: message => store.receive(message) });
   function schedule() { if (scheduled) return; scheduled = true; requestAnimationFrame(() => { scheduled = false; render(); }); }
   function notify(text) { const element = $('toast'); element.textContent = text; element.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { element.hidden = true; }, 6000); }
-  function setSearch(value) { if(search!==value)searchFolds.clear();search=value; }
-  function navigate(category, module = videoModule, restored = false) { if (!restored) userNavigated = true; selectedCategory = category; if (category === 0) videoModule = module; setSearch(''); $('search').value = ''; capture = null; if (restored) { store.current = {module: category === 0 ? videoModule : 2,category}; schedule(); } else store.navigate(category === 0 ? videoModule : 2, category); $('contentScroll').scrollTop = 0; }
-  for (let index = 0; index < CATEGORIES.length; index++) { const button = document.createElement('button'); button.className = 'nav-button'; button.type = 'button'; button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${CATEGORIES[index][3]}</svg><span></span>`; button.querySelector('span').textContent = CATEGORIES[index][0]; button.title = CATEGORIES[index][0]; button.addEventListener('click', () => navigate(index)); $('navigation').append(button); }
-  $('videoTabs').addEventListener('click', event => { const button = event.target.closest('button[data-module]'); if (button) navigate(0, Number(button.dataset.module)); });
-  $('videoTabs').addEventListener('keydown', event => {
-    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
-    event.preventDefault();
-    const buttons = [...$('videoTabs').children], current = buttons.indexOf(document.activeElement);
-    const index = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (Math.max(0,current) + (event.key === 'ArrowRight' ? 1 : buttons.length - 1)) % buttons.length;
-    navigate(0,Number(buttons[index].dataset.module)); buttons[index].focus();
-  });
+  function setSearch(value) { if(search!==value)searchFeatureFolds.clear();search=value; }
+  function navigate(index,restored=false){
+    if(!Number.isInteger(index)||index<0||index>=CATEGORIES.length)return;
+    if(!restored)userNavigated=true;
+    selectedCategory=index;setSearch('');$('search').value='';capture=null;
+    const target=targetFor(index);
+    if(restored){store.current=target;schedule();}
+    else if(restoredNavigation&&store.current.module===target.module&&store.current.category===target.category)schedule();
+    else store.navigate(target.module,target.category);
+    $('contentScroll').scrollTop=0;
+  }
+  for(let index=0;index<CATEGORIES.length;index++){
+    const button=document.createElement('button');button.className='nav-button';button.type='button';
+    button.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${CATEGORIES[index][2]}</svg><span></span>`;
+    button.querySelector('span').textContent=CATEGORIES[index][0];button.setAttribute('aria-label',CATEGORIES[index][0]);button.title=CATEGORIES[index][0];
+    button.addEventListener('click',()=>navigate(index));$('navigation').append(button);
+  }
   $('search').setAttribute('aria-keyshortcuts','Control+f');
   $('search').addEventListener('input', event => { setSearch(event.target.value); schedule(); });
   $('search').addEventListener('keydown', event => { if (!composingKey(event) && event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = ''; setSearch(''); schedule(); } });
-  $('clearSearch').addEventListener('click', () => { $('search').value = ''; setSearch(''); if(selectedCategory===5){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
+  $('clearSearch').addEventListener('click', () => { $('search').value = ''; setSearch(''); if(selectedCategory===7){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
   $('debugGroup').addEventListener('change',event=>{debugGroup=event.target.value;schedule();});
   $('debugFilter').addEventListener('change',event=>{debugFilter=event.target.value;schedule();});
-  $('moduleToggle').addEventListener('change', event => store.enable(videoModule, event.target.checked));
+  $('moduleToggle').addEventListener('change', event => store.enable(targetFor(selectedCategory).module, event.target.checked));
   $('retrySave').addEventListener('click', () => store.retryConfig());
-  $('foldAll').addEventListener('click', () => {
-    const groups = [...groupNodes.values()].filter(group => group.hasDetails);
-    const shouldCollapse = groups.some(group => !group.body.hidden);
-    for (const group of groups) setGroupCollapsed(group,shouldCollapse);
+  function configurableFeatures() {
+    const features=[];
+    for(const group of groupNodes.values())
+      for(const block of featureBlocks(group.controls))
+        if(hasFeatureConfig(block))features.push({group,key:block.key});
+    return features;
+  }
+  $('foldAll').addEventListener('click',()=>{
+    const features=configurableFeatures();
+    const expand=!features.some(({group,key})=>featureExpanded(group,key));
+    for(const {group,key}of features)setFeatureExpanded(group,key,expand);
     schedule();
   });
   document.addEventListener('keydown', event => { if (!capture && !composingKey(event) && event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); $('search').focus(); $('search').select(); } });
   const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const group = entry.target._group; if (!group) continue; group.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateGroup(group); else if (!group.body.contains(document.activeElement)) unmountGroup(group); } }, { root: $('contentScroll'), rootMargin: '600px' }) : null;
-  function clearGroups() { for (const group of groupNodes.values()) { observer?.unobserve(group.section); releaseChunks(group); group.section.remove(); } groupNodes.clear(); }
-  const estimateRows = controls => settingLines(controls).reduce((height,line) => height + (line.some(control=>control.type==='hotkey') ? 72 : 44),0);
-  const chunkObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const chunk = entry.target._chunk; if (!chunk) continue; chunk.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateChunk(chunk); else unmountChunk(chunk); } }, {root:$('contentScroll'),rootMargin:'500px'}) : null;
-  // A search can reveal and fold matches without overwriting the page's saved folds.
-  function setGroupCollapsed(group,value) {
-    const key=`${renderedPage}/${group.name}`;
-    if(group.searching){searchFolds.set(key,value);return;}
-    foldPreferencesSeen.add(key);if(value)collapsed.add(key);else collapsed.delete(key);
+  const estimateRows=controls=>settingLines(controls).reduce((height,line)=>height+(line.some(control=>control.type==='hotkey')?72:44),0);
+  const chunkObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{for(const entry of entries){const chunk=entry.target._chunk;if(!chunk)continue;chunk.intersecting=entry.isIntersecting;if(entry.isIntersecting)updateChunk(chunk);else unmountChunk(chunk);}},{root:$('contentScroll'),rootMargin:'500px'}):null;
+  function clearGroups(){
+    for(const group of groupNodes.values()){
+      observer?.unobserve(group.section);
+      for(const feature of group.features.values()){releaseFeatureChunks(feature.paramsChunks);releaseFeatureChunks(feature.hotkeysChunks);}
+      group.section.remove();
+    }
+    groupNodes.clear();
   }
-  function makeGroup(name) {
-    const section=document.createElement('section'),summary=document.createElement('button'),title=document.createElement('span'),count=document.createElement('span'),header=document.createElement('div'),status=document.createElement('div'),body=document.createElement('div');
-    section.className='settings-group';summary.className='group-summary';summary.type='button';title.className='group-title';title.textContent=name;count.className='group-count';header.className='group-header-controls';
-    const arrow=document.createElementNS('http://www.w3.org/2000/svg','svg');arrow.setAttribute('viewBox','0 0 12 12');arrow.setAttribute('class','chevron');arrow.innerHTML='<path d="m3 4 3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5"/>';
-    summary.append(title,count,arrow);body.className='group-body';body.id=`settings-group-${++nextGroupId}`;summary.setAttribute('aria-controls',body.id);
-    // Keep current failures outside the body, so closing parameters never hides them.
-    status.className='group-status';status.dataset.tone='error';status.hidden=true;status.setAttribute('role','alert');section.append(summary,header,body,status);
-    const group={name,section,summary,count,header,status,headerRows:new Map(),body,controls:[],rows:new Map(),chunks:[],intersecting:!observer};section._group=group;
-    summary.addEventListener('click',()=>{setGroupCollapsed(group,!group.body.hidden);updateGroup(group);updateFoldAction();});
-    observer?.observe(section);return group;
+  // No second, old-style collapsible group. Only a feature's own configuration
+  // can expand; a section heading is always a static, non-interactive heading.
+  function featureFoldKey(group,key){return renderedPage+'/'+group.name+'/'+key;}
+  function featureExpanded(group,key){const foldKey=featureFoldKey(group,key);return group.searching?!searchFeatureFolds.get(foldKey):expandedFeatures.has(foldKey);}
+  function setFeatureExpanded(group,key,value){const foldKey=featureFoldKey(group,key);if(group.searching)searchFeatureFolds.set(foldKey,!value);else if(value)expandedFeatures.add(foldKey);else expandedFeatures.delete(foldKey);}
+  function makeGroup(name){
+    const section=document.createElement('section'),summary=document.createElement('div'),title=document.createElement('h2'),body=document.createElement('div'),status=document.createElement('div');
+    section.className='settings-group';summary.className='group-summary';title.className='group-title';title.textContent=name;
+    summary.append(title);body.className='group-body';status.className='group-status';status.dataset.tone='error';
+    status.hidden=true;status.setAttribute('role','alert');section.append(summary,body,status);
+    const group={name,section,summary,body,status,controls:[],features:new Map(),intersecting:!observer};
+    section._group=group;observer?.observe(section);return group;
   }
-  function releaseChunks(group) { for (const chunk of group.chunks) { chunkObserver?.unobserve(chunk.element); chunk.element.remove(); } group.chunks=[]; group.chunkSignature=''; }
-  function unmountGroup(group) { if (group.body.contains(document.activeElement)) return; const measured=group.body.getBoundingClientRect().height; group.body.style.minHeight = `${measured || estimateRows(group.controls)}px`; releaseChunks(group); group.body.replaceChildren();group.body._settingLines?.clear(); group.rows.clear(); }
-  function unmountChunk(chunk) { if (chunk.element.contains(document.activeElement)) return; const measured=chunk.element.getBoundingClientRect().height; chunk.element.style.minHeight=`${measured || estimateRows(chunk.controls)}px`; chunk.element.replaceChildren();chunk.element._settingLines?.clear(); chunk.rows.clear(); }
-  function updateRows(container,rows,controls,groupTitle='',subsettings=false) {
+  function releaseFeatureChunks(state){
+    if(!state)return;
+    for(const chunk of state.items){chunkObserver?.unobserve(chunk.element);chunk.element.remove();}
+    state.items=[];state.signature='';
+  }
+  function updateChunk(chunk){
+    if(!chunk.intersecting&&chunkObserver&&!chunk.element.contains(document.activeElement)){unmountChunk(chunk);return;}
+    chunk.element.style.minHeight='';updateRows(chunk.element,chunk.rows,chunk.controls,chunk.subsettings);
+  }
+  function unmountChunk(chunk){
+    if(chunk.element.contains(document.activeElement))return;
+    const measured=chunk.element.getBoundingClientRect().height;
+    chunk.element.style.minHeight=(measured||estimateRows(chunk.controls))+'px';
+    chunk.element.replaceChildren();chunk.rows.clear();
+  }
+  function updateFeatureRows(container,rowMap,controls,subsettings,chunkState){
+    if(controls.length>48&&chunkObserver){
+      const lines=settingLines(controls),batches=[];let batch=[],size=0;
+      for(const line of lines){if(size&&size+line.length>24){batches.push(batch);batch=[];size=0;}batch.push(...line);size+=line.length;}
+      if(batch.length)batches.push(batch);
+      const signature=controls.map(control=>control.id+':'+control.row+':'+control.column).join(',');
+      if(chunkState.signature!==signature){
+        releaseFeatureChunks(chunkState);container.replaceChildren();rowMap.clear();chunkState.signature=signature;
+        for(const controlsInChunk of batches){
+          const element=document.createElement('div'),chunk={element,controls:controlsInChunk,rows:new Map(),subsettings,intersecting:false};
+          element.className='rows-chunk';element.style.minHeight=estimateRows(controlsInChunk)+'px';element._chunk=chunk;
+          chunkState.items.push(chunk);container.append(element);chunkObserver.observe(element);
+        }
+      }
+      chunkState.items.forEach((chunk,index)=>{chunk.controls=batches[index]||[];chunk.subsettings=subsettings;updateChunk(chunk);});
+      return;
+    }
+    if(chunkState.items.length)releaseFeatureChunks(chunkState);
+    updateRows(container,rowMap,controls,subsettings);
+  }
+  function unmountGroup(group){
+    if(group.body.contains(document.activeElement))return;
+    const measured=group.body.getBoundingClientRect().height;
+    group.body.style.minHeight=(measured||40*group.controls.length)+'px';
+    for(const feature of group.features.values()){
+      releaseFeatureChunks(feature.paramsChunks);releaseFeatureChunks(feature.hotkeysChunks);
+      feature.element.remove();
+    }
+    group.features.clear();group.body.replaceChildren();
+  }
+  function makeFeatureSection(titleText,className){
+    const section=document.createElement('section'),title=document.createElement('div'),rows=document.createElement('div');
+    section.className=className;title.className='feature-subheading';title.textContent=titleText;rows.className='feature-rows';section.append(title,rows);
+    return {section,title,rows,controls:new Map()};
+  }
+  function updateFeatureCards(group,blocks){
+    const wanted=new Set();let after=null;
+    for(const block of blocks){
+      const key=block.key,hasHeader=Boolean(block.headers.length);
+      wanted.add(key);let feature=group.features.get(key);
+      if(!feature){
+        const element=document.createElement('section'),header=document.createElement('div'),main=document.createElement('div'),button=document.createElement('button'),details=document.createElement('div');
+        element.className=hasHeader?'feature-card':'feature-common';
+        header.className='feature-header';main.className='feature-main-control';button.className='feature-config-toggle';button.type='button';
+        details.className='feature-details';header.append(main,button);if(hasHeader)element.append(header);element.append(details);
+        const params=makeFeatureSection('参数','feature-config'),hotkeys=makeFeatureSection('快捷键','feature-hotkeys');
+        details.append(params.section,hotkeys.section);
+        feature={key,element,header,main,button,details,mainRows:new Map(),params,hotkeys,paramsChunks:{items:[],signature:''},hotkeysChunks:{items:[],signature:''}};
+        group.features.set(key,feature);
+        if(hasHeader)button.addEventListener('click',()=>{
+          setFeatureExpanded(group,key,!featureExpanded(group,key));
+          updateGroup(group);updateFoldAction();
+        });
+      }
+      if(hasHeader)updateRows(feature.main,feature.mainRows,block.headers);
+      const hasConfig=hasFeatureConfig(block);
+      const expanded=!hasConfig||featureExpanded(group,key);
+      feature.button.hidden=!hasConfig;
+      if(hasHeader){
+        const head=block.headers.find(isFeatureHeader);
+        const label=head.label||head.text||'功能';
+        feature.button.textContent=expanded?'收起':'配置';
+        feature.button.setAttribute('aria-expanded',String(expanded));
+        feature.button.setAttribute('aria-label',(expanded?'收起 ':'展开 ')+label+' 的配置');
+      }
+      const lines=settingLines(block.details);
+      const hotkeys=hasHeader?lines.filter(line=>line.every(c=>c.type==='hotkey')).flat():[];
+      const hotkeyIds=new Set(hotkeys.map(c=>c.id));
+      const params=block.details.filter(c=>!hotkeyIds.has(c.id));
+      const hasParameters=params.some(control=>control.type!=='label');
+      feature.params.section.hidden=!params.length;feature.hotkeys.section.hidden=!hotkeys.length;
+      feature.params.title.hidden=!hasHeader||!hasParameters||!hotkeys.length;
+      feature.hotkeys.title.hidden=!hasParameters||!hotkeys.length;
+      feature.details.hidden=!expanded||!block.details.length;
+      feature.element.classList.toggle('is-expanded',expanded&&hasConfig);
+      // Render only mounted details. Avoid work on hundreds of collapsed cards.
+      if(expanded){
+        updateFeatureRows(feature.params.rows,feature.params.controls,params,hasHeader,feature.paramsChunks);
+        updateFeatureRows(feature.hotkeys.rows,feature.hotkeys.controls,hotkeys,true,feature.hotkeysChunks);
+      }
+      placeAfter(group.body,feature.element,after);after=feature.element;
+    }
+    for(const [key,feature]of group.features)if(!wanted.has(key)){
+      releaseFeatureChunks(feature.paramsChunks);releaseFeatureChunks(feature.hotkeysChunks);
+      feature.element.remove();group.features.delete(key);
+    }
+  }
+  function updateRows(container,rows,controls,subsettings=false) {
     const ids=new Set(controls.map(control=>control.id));
     for(const [id,row] of rows)if(!ids.has(id)){row.element.remove();rows.delete(id);}
     const lines=container._settingLines || (container._settingLines=new Map()), wanted=new Set();let after=null;
@@ -350,7 +511,6 @@
         row.control=control;
         row.element.dataset.settingLevel=control.type==='label'?'status':subsettings || (compound && index>0) || !['toggle','button'].includes(control.type)?'secondary':'primary';
         row.inlineLabel=compound && index>0 && control.label===name?inlineLabel(control,hasPreset):null;
-        if(control.groupHeader && control.label===groupTitle)row.inlineLabel='';
         // A pushbutton already carries its action name. Do not print it twice.
         if(control.type==='button' && control.label===control.text)row.inlineLabel='';
         patchRow(row);placeAfter(line,row.element,previous);previous=row.element;
@@ -359,40 +519,30 @@
     }
     for(const [key,line] of lines)if(!wanted.has(key)){line.remove();lines.delete(key);}
   }
-  function updateChunk(chunk) { if (!chunk.intersecting && chunkObserver && !chunk.element.contains(document.activeElement)) { unmountChunk(chunk); return; } chunk.element.style.minHeight=''; updateRows(chunk.element,chunk.rows,chunk.controls,'',chunk.subsettings); }
-  function updateGroup(group) {
-    const key=`${renderedPage}/${group.name}`;
-    if(!foldPreferencesSeen.has(key)){foldPreferencesSeen.add(key);if(group.controls.some(control=>control.collapsible&&control.collapsedDefault))collapsed.add(key);}
-    const ackErrors=new Set(group.controls.filter(control=>store.error(control.id)).map(control=>control.id));
-    const state=groupPresentation(group.controls,collapsed.has(key),group.searching,ackErrors,searchFolds.get(key));
-    group.section.classList.toggle('collapsed',state.collapsed);group.section.classList.toggle('has-runtime-error',state.hasError);
-    group.hasDetails=state.details.length>0;group.summary.disabled=!group.hasDetails;
-    group.summary.querySelector('.chevron').toggleAttribute('hidden',!group.hasDetails);
-    group.summary.setAttribute('aria-expanded',String(!state.collapsed));
-    const countText=`${group.controls.length} 项${state.hasError?' · 需要处理':''}`;if(group.count.textContent!==countText)group.count.textContent=countText;
-    const errors=state.hasError?group.controls.flatMap(control=>{
-      const error=store.error(control.id),label=control.label || control.text || '设置';
-      if(error)return [`${label}：${error}`];
+  function updateGroup(group){
+    const blocks=featureBlocks(group.controls);
+    const hasError=group.controls.some(control=>control.runtimeError||store.error(control.id));
+    group.section.classList.toggle('has-runtime-error',hasError);
+    const single=blocks.length===1&&blocks[0].headers.some(control=>isFeatureHeader(control)&&(control.label||control.text)===group.name);
+    group.summary.hidden=!group.name||group.name===CATEGORIES[selectedCategory][0]||single;
+    const errors=hasError?group.controls.flatMap(control=>{
+      const error=store.error(control.id),label=control.label||control.text||'设置';
+      if(error)return [label+'：'+error];
       if(!control.runtimeError)return [];
-      return [control.type==='label'?label:`${label}${control.text&&control.text!==label?'：'+control.text:'：运行异常'}`];
+      return [control.type==='label'?label:label+(control.text&&control.text!==label?'：'+control.text:'：运行异常')];
     }):[];
-    const statusText=[...new Set(errors)].join('\n');if(group.status.textContent!==statusText)group.status.textContent=statusText;group.status.hidden=!state.hasError;
-    updateRows(group.header,group.headerRows,state.headers,group.name);group.header.hidden=!state.headers.length;group.section.classList.toggle('has-header-controls',Boolean(state.headers.length));group.section.classList.toggle('multiple-header-rows',settingLines(state.headers).length>1);
-    group.body.hidden=state.collapsed;if(state.collapsed)return;
+    const statusText=[...new Set(errors)].join('\n');
+    if(group.status.textContent!==statusText)group.status.textContent=statusText;
+    group.status.hidden=!hasError;
     if(!group.intersecting&&observer&&!group.body.contains(document.activeElement)){unmountGroup(group);return;}
-    group.body.style.minHeight='';const details=state.details;
-    if(details.length>48&&chunkObserver){
-      const signature=details.map(control=>`${control.id}:${control.row}:${control.column}`).join(',');
-      const lines=settingLines(details),chunks=[];let batch=[];
-      for(const line of lines){if(batch.length && batch.length+line.length>24){chunks.push(batch);batch=[];}batch.push(...line);}if(batch.length)chunks.push(batch);
-      if(group.chunkSignature!==signature){releaseChunks(group);group.body.replaceChildren();group.rows.clear();group.body._settingLines?.clear();group.chunkSignature=signature;for(const controls of chunks){const element=document.createElement('div'),chunk={element,controls,rows:new Map(),intersecting:false,subsettings:Boolean(state.headers.length)};element.className='rows-chunk';element.style.minHeight=`${estimateRows(controls)}px`;element._chunk=chunk;group.chunks.push(chunk);group.body.append(element);chunkObserver.observe(element);}}
-      group.chunks.forEach((chunk,index)=>{chunk.controls=chunks[index];chunk.subsettings=Boolean(state.headers.length);updateChunk(chunk);});
-    }else{if(group.chunks.length){releaseChunks(group);group.body.replaceChildren();}updateRows(group.body,group.rows,details,'',Boolean(state.headers.length));}
+    group.body.style.minHeight='';
+    updateFeatureCards(group,blocks);
   }
-  function updateFoldAction() {
-    const groups=[...groupNodes.values()].filter(group=>group.hasDetails);
-    $('foldAll').hidden=!groups.length;
-    $('foldAll').textContent=groups.every(group=>group.body.hidden)?'全部展开':'全部收起';
+  function updateFoldAction(){
+    const features=configurableFeatures();
+    const expanded=features.some(({group,key})=>featureExpanded(group,key));
+    $('foldAll').hidden=!features.length;
+    $('foldAll').textContent=expanded?'全部收起':'全部展开';
   }
   function makeRow(control) {
     const element = document.createElement('div'), copy = document.createElement('div'), label = document.createElement('label'), description = document.createElement('p'), editor = document.createElement('div'); element.className = 'setting-row'; copy.className = 'setting-copy'; label.className = 'setting-label'; description.className = 'setting-description'; editor.className = 'setting-editor'; copy.append(label,description); element.append(copy,editor);
@@ -412,7 +562,7 @@
     }
     else if (control.type === 'text' || control.type === 'number') { const input = document.createElement('input'); input.className = 'field'; input.type = control.type === 'number' ? 'number' : 'text'; bindText(row,input); editor.append(input); row.input = input; }
     else if (control.type === 'range') { editor.classList.add('range-editor'); const input = document.createElement('input'), output = document.createElement('output'); input.type = 'range'; output.className = 'range-value'; input.addEventListener('input',event => { store.draft(row.control.id,Number(event.target.value)); output.textContent = event.target.value; }); input.addEventListener('change',event => { store.drafts.delete(controlKey(store.current.module,row.control.id)); send('range',Number(event.target.value)); }); editor.append(input,output); row.input = input; row.output = output; }
-    else if (control.type === 'hotkey') { editor.classList.add('hotkey-editor'); const button = document.createElement('button'), mode = document.createElement('select'), double = document.createElement('label'), check = document.createElement('input'), clear = document.createElement('button'), special = document.createElement('select'); button.type = 'button'; button.className = 'hotkey-capture'; button.addEventListener('click',() => { if (capture?.row === row) stopCapture(); else startCapture(row); }); check.type = 'checkbox'; double.className = 'hotkey-double'; double.append(check,document.createTextNode('双击')); clear.type = 'button'; clear.className = 'icon-button'; clear.textContent = '×'; clear.title = '清除快捷键'; clear.setAttribute('aria-label','清除快捷键'); clear.addEventListener('click',() => send('hotkey',0)); mode.setAttribute('aria-label','触发方式'); mode.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x3000) | Number(mode.value))); check.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x8000) | (check.checked ? 0x8000 : 0))); special.setAttribute('aria-label','选择特殊按键'); special.addEventListener('change',() => { const vk = Number(special.value); if (vk) send('hotkey',(Number(store.value(row.control,'hotkey')) & 0xb700) | vk); special.value = '0'; }); editor.append(button,mode,double,clear,special); row.input = button; row.mode = mode; row.double = check; row.clear = clear; row.special = special; }
+    else if (control.type === 'hotkey') { editor.classList.add('hotkey-editor'); const button = document.createElement('button'), mode = document.createElement('select'), double = document.createElement('label'), check = document.createElement('input'), clear = document.createElement('button'), special = document.createElement('select'); button.type = 'button'; button.className = 'hotkey-capture'; button.addEventListener('click',() => { if (capture?.row === row) stopCapture(); else startCapture(row); }); check.type = 'checkbox'; double.className = 'hotkey-double'; double.append(check,document.createTextNode('双击')); clear.type = 'button'; clear.className = 'icon-button'; clear.textContent = '×'; clear.title = '清除快捷键'; clear.setAttribute('aria-label','清除快捷键'); clear.addEventListener('click',() => send('hotkey',0)); mode.setAttribute('aria-label','触发方式'); mode.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x3000) | Number(mode.value))); check.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x8000) | (check.checked ? 0x8000 : 0))); special.setAttribute('aria-label','选择特殊按键'); special.addEventListener('change',() => { const vk = Number(special.value); if (vk) send('hotkey',(Number(store.value(row.control,'hotkey')) & 0xb700) | vk); special.value = '0'; }); editor.append(button,mode,double,clear,special); row.input = button; row.mode = mode; row.double = check; row.doubleLabel = double; row.clear = clear; row.special = special; }
     else { element.classList.add('label-row'); editor.remove(); }
     const inputId = `control-${store.current.module}-${control.id}`; if (row.input) { row.input.id = inputId; label.htmlFor = inputId; } return row;
   }
@@ -440,7 +590,43 @@
     else if (control.type === 'choice') { const optionSignature = JSON.stringify([control.options,control.optionEnabled,control.optionDescriptions]); if (row.optionSignature !== optionSignature) { row.optionSignature = optionSignature; row.input.replaceChildren(...control.options.map((text,index) => { const option = document.createElement('option'); option.value = String(index); option.textContent = text; option.title = control.optionDescriptions[index] || ''; option.disabled = control.optionEnabled[index] === false; return option; })); } const index = Number(store.value(control,'select')); if (row.input.selectedIndex !== index) row.input.selectedIndex = index; patchChoiceHelp(row,index); if (row.textInput) { row.textInput.disabled = disabled; if (document.activeElement !== row.textInput) row.textInput.value = String(store.value(control,'text')); } }
     else if (control.type === 'text' || control.type === 'number') { row.input.readOnly = control.readonly; if (document.activeElement !== row.input || control.readonly) row.input.value = String(store.value(control,'text')); }
     else if (control.type === 'range') { row.input.min = control.min; row.input.max = control.max; row.input.step = control.step; const value = store.value(control,'range'); if (document.activeElement !== row.input) row.input.value = value; row.output.textContent = String(value); }
-    else if (control.type === 'hotkey') { const value = Math.max(0,Number(store.value(control,'hotkey')) || 0), modes = control.options.filter(option => ['press','release','hold'].includes(option)); const allowed = modes.length ? modes : ['press','release','hold']; const signature = allowed.join(','); if (signature !== row.modeSignature) { row.modeSignature = signature; row.mode.replaceChildren(...allowed.map(name => { const option = document.createElement('option'); option.value = String(MODES[name]); option.textContent = {press:'按下触发',release:'松开触发',hold:'持续按住'}[name]; return option; })); }row.mode.hidden=allowed.length===1; const keyboardOnly = control.options.includes('keyboardOnly'); if (row.keyboardOnly !== keyboardOnly) { row.keyboardOnly = keyboardOnly; row.special.replaceChildren(...[['特殊按键…',0],['Esc',27],['Enter',13],['Tab',9],...(!keyboardOnly ? [['鼠标左键',1],['鼠标右键',2],['鼠标中键',4],['鼠标侧键 1',5],['鼠标侧键 2',6]] : [])].map(([text,vk]) => { const option = document.createElement('option'); option.textContent = text; option.value = String(vk); return option; })); } const mode = value & 0x3000 || (allowed.includes('hold') && allowed.length === 1 ? MODES.hold : MODES.press); row.mode.value = String(mode); row.double.checked = Boolean(value & 0x8000); row.mode.disabled = row.double.disabled = row.clear.disabled = disabled || !(value & 255); row.special.disabled = disabled; row.input.textContent = capture?.row === row ? '请按下组合键…' : keyName(value); row.input.classList.toggle('capturing',capture?.row === row); }
+    else if (control.type === 'hotkey') {
+      const value = Math.max(0, Number(store.value(control,'hotkey')) || 0);
+      const bound = Boolean(value & 255);
+      const modes = control.options.filter(option => ['press','release','hold'].includes(option));
+      const allowed = modes.length ? modes : ['press','release','hold'];
+      const signature = allowed.join(',');
+      if (signature !== row.modeSignature) {
+        row.modeSignature = signature;
+        row.mode.replaceChildren(...allowed.map(name => {
+          const option = document.createElement('option');
+          option.value = String(MODES[name]);
+          option.textContent = {press:'按下触发',release:'松开触发',hold:'持续按住'}[name];
+          return option;
+        }));
+      }
+      row.mode.hidden = !bound || allowed.length === 1;
+      row.doubleLabel.hidden = row.clear.hidden = !bound;
+      const keyboardOnly = control.options.includes('keyboardOnly');
+      if (row.keyboardOnly !== keyboardOnly) {
+        row.keyboardOnly = keyboardOnly;
+        const keys = [['特殊按键…',0],['Esc',27],['Enter',13],['Tab',9]];
+        if (!keyboardOnly) keys.push(['鼠标左键',1],['鼠标右键',2],['鼠标中键',4],['鼠标侧键 1',5],['鼠标侧键 2',6]);
+        row.special.replaceChildren(...keys.map(([text,vk]) => {
+          const option = document.createElement('option');
+          option.textContent = text;
+          option.value = String(vk);
+          return option;
+        }));
+      }
+      const mode = value & 0x3000 || (allowed.length === 1 && allowed.includes("hold") ? MODES.hold : MODES.press);
+      row.mode.value = String(mode);
+      row.double.checked = Boolean(value & 0x8000);
+      row.mode.disabled = row.double.disabled = row.clear.disabled = disabled || !bound;
+      row.special.disabled = disabled;
+      row.input.textContent = capture?.row === row ? '请按下组合键…' : keyName(value);
+      row.input.classList.toggle('capturing',capture?.row === row);
+    }
   }
   function startCapture(row) { stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
   function stopCapture() { const previous = capture?.row; capture = null; if (previous) patchRow(previous); }
@@ -467,10 +653,10 @@
     return row;
   }
   function renderSettingsGroups(controls,query='') {
-    const groups=groupControls(controls,query),count=[...groups.values()].reduce((sum,items)=>sum+items.length,0);
-    for(const [name,group]of groupNodes)if(!groups.has(name)){observer?.unobserve(group.section);releaseChunks(group);group.section.remove();groupNodes.delete(name);}
+    const groups=layoutGroups(controls,query,selectedCategory),count=[...groups.values()].reduce((sum,items)=>sum+items.length,0);
+    for(const [name,group]of groupNodes)if(!groups.has(name)){observer?.unobserve(group.section);for(const feature of group.features.values()){releaseFeatureChunks(feature.paramsChunks);releaseFeatureChunks(feature.hotkeysChunks);}group.section.remove();groupNodes.delete(name);}
     let after=null;for(const [name,items]of groups){let group=groupNodes.get(name);if(!group){group=makeGroup(name);groupNodes.set(name,group);}group.controls=items;group.searching=Boolean(query.trim());placeAfter($('settings'),group.section,after);after=group.section;updateGroup(group);}
-    return {groups,count};
+    return count;
   }
   function renderDebug(state) {
     // Diagnostics actions are ordinary adapter-issued controls. Keep them
@@ -500,15 +686,31 @@
     $('emptyState').hidden=controls.length>0;$('debugPanel').hidden=controls.length===0;$('foldAll').hidden=true;
   }
   function render() {
-    const category = CATEGORIES[selectedCategory], state = store.state, currentPage = pageKey(store.current.module,store.current.category);
-    if (renderedPage !== currentPage) { clearGroups();searchFolds.clear(); for(const row of debugRows.values())row.element.remove();debugRows.clear(); renderedPage = currentPage; }
+    const category=CATEGORIES[selectedCategory],state=store.state,currentPage=pageKey(store.current.module,store.current.category)+'/'+selectedCategory;
+    if(renderedPage!==currentPage){
+      clearGroups();searchFeatureFolds.clear();
+      for(const row of debugRows.values())row.element.remove();
+      debugRows.clear();renderedPage=currentPage;
+    }
     [...$('navigation').children].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
-    $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '正在连接…';
-    $('videoTabs').hidden = selectedCategory !== 0; $('categoryNote').hidden = selectedCategory === 0;
-    const debugging=selectedCategory===5;$('settings').hidden=!state;$('debugTools').hidden=!debugging;$('debugPanel').hidden=!debugging || !state;$('categoryNote').textContent=debugging?'平台探测与入口状态':'每项功能独立启用';$('search').placeholder=debugging?'搜索入口、地址或影响功能…':'搜索当前页面…';$('contentScroll').setAttribute('aria-label',debugging?'平台 Hook 探测与入口调试':'功能设置');
-    $('emptyState').querySelector('h2').textContent=debugging?'没有匹配的入口':'没有匹配的设置';$('clearSearch').textContent=debugging?'清除搜索与筛选':'清除搜索';
-    [...$('videoTabs').children].forEach(button => { const selected=Number(button.dataset.module) === videoModule;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;button.setAttribute('aria-controls','settings'); });
-    const moduleState = store.shell.modules.find(module => module.module === videoModule); $('moduleToggleWrap').hidden = selectedCategory !== 0 || !moduleState; if (moduleState) { $('moduleToggle').checked = Boolean(moduleState.enabled); $('moduleToggle').disabled = store.closed || !moduleState.ready; $('moduleToggleLabel').textContent=moduleState.enabled?'模块已启用':'启用此模块'; }
+    $('breadcrumb').textContent=category[0];$('pageTitle').textContent=category[0];
+    $('pageDescription').textContent=category[1];
+    $('version').textContent=store.shell.version||'正在连接…';
+    const debugging=selectedCategory===7;
+    $('settings').hidden=!state;$('debugTools').hidden=!debugging;
+    $('debugPanel').hidden=!debugging||!state;
+    $('search').placeholder=debugging?'搜索入口、地址或影响功能…':'搜索当前页面…';
+    $('contentScroll').setAttribute('aria-label',debugging?'平台 Hook 探测与入口调试':'功能设置');
+    $('emptyState').querySelector('h2').textContent=debugging?'没有匹配的入口':'没有匹配的设置';
+    $('clearSearch').textContent=debugging?'清除搜索与筛选':'清除搜索';
+    const selectedModule=targetFor(selectedCategory).module;
+    const moduleState=store.shell.modules.find(module=>module.module===selectedModule);
+    $('moduleToggleWrap').hidden=(selectedCategory!==0&&selectedCategory!==2)||!moduleState;
+    if(moduleState){
+      $('moduleToggle').checked=Boolean(moduleState.enabled);
+      $('moduleToggle').disabled=store.closed||!moduleState.ready;
+      $('moduleToggleLabel').textContent=moduleState.enabled?'模块已启用':'启用此模块';
+    }
     const serviceReady=store.connected && store.shell.servicesReady && store.shell.modules.some(module=>module.ready); $('connectionDot').classList.toggle('ready',serviceReady && !store.closed); $('connectionText').textContent = store.closed ? '正在退出' : serviceReady ? '控制台就绪' : store.connected ? '模块初始化中' : '正在连接';
     const config = store.shell.config || {};
     $('retrySave').hidden=!config.failed; $('retrySave').disabled=!config.canRetry || Boolean(store.configRetryPending);
@@ -523,16 +725,27 @@
     if (config.failed && config.error && config.error !== render.lastConfigError) { render.lastConfigError = config.error; notify(config.error); }
     if (!state) { $('resultCount').textContent = debugging?'正在载入入口目录':'正在载入设置'; $('emptyState').hidden = true; $('foldAll').hidden = true; return; }
     if(debugging)renderDebug(state);else {
-    const {groups,count}=renderSettingsGroups(state.controls,search);
-    $('resultCount').textContent = search ? `找到 ${count} 项设置` : `${count} 项设置 · ${groups.size} 个分组`; $('emptyState').hidden = count > 0;
+    const visibleControls=displayPageControls(state.controls,selectedCategory);
+    const count=renderSettingsGroups(visibleControls,search);
+    $('resultCount').textContent = search ? `找到 ${count} 项设置` : `${count} 项设置`; $('emptyState').hidden = count > 0;
     updateFoldAction();
     }
     if (store.errors.size) { const latest = [...store.errors.values()].at(-1); if (latest !== render.lastError) { render.lastError = latest; notify(latest); } }
 
   }
-  bridge?.addEventListener('message',event => { let message = event.data; if (typeof message === 'string') { try { message = JSON.parse(message); } catch { return; } } if (!store.receive(message)) return; if (message.kind === 'shell' && message.servicesReady && !restoredNavigation) { restoredNavigation = true; if (!userNavigated) { const category = Number.isInteger(message.selectedCategory) ? Math.max(0,Math.min(5,message.selectedCategory)) : 0, module = message.videoSection === 1 ? 1 : 0; videoModule = module; navigate(category,module,true); } } });
+  bridge?.addEventListener('message',event=>{
+    let message=event.data;if(typeof message==='string'){try{message=JSON.parse(message);}catch{return;}}
+    if(!store.receive(message))return;
+    if(message.kind==='shell'&&message.servicesReady&&!restoredNavigation){
+      restoredNavigation=true;
+      if(!userNavigated){
+        const native=Number.isInteger(message.selectedCategory)?Math.max(0,Math.min(5,message.selectedCategory)):0;
+        navigate(restoredIndex(native,message.videoSection),true);
+      }
+    }
+  });
   global.addEventListener('beforeunload',() => stopCapture());
   // Relative sample age keeps advancing if the owner/game stops publishing.
-  global.setInterval(()=>{if(selectedCategory===5 && store.state)schedule();},1000);
+  global.setInterval(()=>{if(selectedCategory===7 && store.state)schedule();},1000);
   store.ready(); schedule();
 })(globalThis);

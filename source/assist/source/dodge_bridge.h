@@ -12,7 +12,7 @@ struct DodgeJob {
 static DodgeJob dodgeJobs[512];static int dodgeCursor,dodgeJobCursor;static uint32_t dodgeSerial,dodgeTask;static bool dodgePending;
 struct DodgeThreatRef {uint32_t pointer,target;bool projectile;uint32_t id;};static DodgeThreatRef dodgeThreatRefs[8192];static int dodgeThreatCount;
 static bool collectDodgeThreats(){
- SampleReadScope frameRead;if(!frameRead)return false;
+ ObservationReadScope frameRead;if(!frameRead)return false;
  static DodgeThreatRef next[8192];int count=0;
  // BulletClass::Array and fields are checked against YRpp and native
  // Construct 4664C0: owner B0, target 10C, damage 6C, type AC.
@@ -113,6 +113,10 @@ static int dodgeSourceKnowledge(uint32_t p,uint32_t house){
  return sample.complete()?(eligible?1:-1):0;
 }
 static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
+ // An unavailable/stale worker roster is UNKNOWN, not proof that every
+ // active dodge owner disappeared. Only a complete same-frame index can
+ // authorize membership-based retirement.
+ if(indexedFrame!=frame||!commandRosterReady())return;
  for(int n=0;n<dodgeCount;){auto&j=dodgeJobs[n];
   // A complete index can prove absence. worldByID adds another fallible
   // live UID read; its failure cannot retire an otherwise owned job.
@@ -150,6 +154,9 @@ static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
  }
 }
 static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int frame,DWORD now,const dodgecompute::Input*source=nullptr){
+ // A delayed compute result cannot retire owners while the canonical index is
+ // unavailable. Re-admit only after the same-frame worker roster is ready.
+ if(indexedFrame!=frame||!commandRosterReady())return;
  const auto&input=source?*source:dodgeInput;
  if(r.match!=input.match||r.tick!=input.tick||r.frame!=input.frame||r.count!=input.count||r.count<0||r.count>dodgecompute::MaxSources)return;
  for(int n=0;n<r.count;++n){if(!freshness::valid(r.match,match,r.tick,r.frame,now,frame,freshness::Tactical)||snap.chat)break;
@@ -189,8 +196,11 @@ static void dispatchDodgeCalculation(uint32_t house,int frame,DWORD now,int next
 // Capture only facts. Native events, identity/lease checks and receipt changes
 // run after this scope has restored live reads.
 static bool collectDodgeInput(uint32_t house,int frame,DWORD now,int&nextCursor,int&nextJobCursor){
- SampleReadScope frameRead;if(!frameRead)return false;
- auto&i=dodgeCapture;memset(&i,0,sizeof i);i.match=match;i.tick=now;i.frame=frame;
+ ObservationReadScope frameRead;if(!frameRead)return false;
+ auto&i=dodgeCapture;memset(&i,0,sizeof i);i.match=match;
+ // Preserve the real acquisition age of an off-thread observation.
+ i.tick=sampleWorldSource&&sampleWorldSource->key.tick?sampleWorldSource->key.tick:now;
+ i.frame=frame;
  int checkedJobs=0;
  for(;checkedJobs<dodgeCount&&i.count<dodgecompute::MaxSources/2;++checkedJobs){const auto&j=dodgeJobs[(dodgeJobCursor+checkedJobs)%dodgeCount];
   if(j.active&&get<uint32_t>(j.pointer+0x10)==j.id)dodgeObserve(j.pointer,house,i.sources[i.count++]);

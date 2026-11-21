@@ -26,7 +26,16 @@ static void conversion(){
  reset();auto a=actor(0x20000,1);deploy(a);vec(0xA8EC78,{a.pointer});auto t=track(a);watch::follow(read,t);check(t.transition.armed&&t.transition.inventoryValid&&t.transition.kind==3&&t.transition.x==19*256+128&&t.transition.y==29*256+128);
  const auto inventoryCount=inventoryReads;for(int n=0;n<100;++n)watch::follow(read,t);check(inventoryReads==inventoryCount);
  before_watch::Track old;old.target={a.pointer,a.id};old.members={old.target};old.located=true;old.x=t.x;old.y=t.y;old.z=t.z;old.spatial=old.target;
- auto b=actor(0x22000,2,3,t.transition.x,t.transition.y);die(a);vec(0xA8EC78,{b.pointer});put(0xA8ED84,101);watch::follow(read,t);before_watch::follow(read,old);
+ auto b=actor(0x22000,2,3,t.transition.x,t.transition.y);die(a);vec(0xA8EC78,{b.pointer});put(0xA8ED84,101);
+ bool replaced=true;unsigned proofs=0;
+ auto proof=[&](uint32_t at,void*out,size_t n){
+  check((at>=a.pointer&&at<a.pointer+0x800)||(at>=b.pointer&&at<b.pointer+0x800));
+  ++proofs;
+  if(replaced&&at==b.pointer+0x10&&n==4){const uint32_t different=b.id+1;std::memcpy(out,&different,n);return true;}
+  return read(at,out,n);
+ };
+ watch::follow(read,t,proof);check(t.target==a&&t.transition.armed);
+ replaced=false;watch::follow(read,t,proof);check(proofs>0);before_watch::follow(read,old);
  check(!old);check(t.target==b&&!t.fixed&&t.members.size()==1&&t.members[0]==b);check(t.spatial==b&&t.spatialKind==3);
  // Reverse the exact native foundation offset; never use a nearest MCV.
  put(b.pointer+0xAC,19);put(b.pointer+0xBC,2);put(b.pointer+0x218,0x700000u);put(BuildingType+0x16B9,uint8_t(1));watch::follow(read,t);check(t.transition.armed&&t.transition.kind==2&&t.transition.x==20*256+128);

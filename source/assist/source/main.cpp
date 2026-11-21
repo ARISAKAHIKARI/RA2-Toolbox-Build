@@ -43,6 +43,7 @@
 #include "../../shared/source/host_game_input.h"
 #include "../../shared/source/command_cursor_hint.h"
 #include "../../shared/source/automatic_log.h"
+#include "sample_health_log.h"
 #include "../../shared/source/game_build_diagnostics.h"
 #include <tlhelp32.h>
 #include "../../shared/source/message_query.h"
@@ -386,7 +387,147 @@ static void logLoadedGameModules(){
   line+=std::wstring(entry.szModule)+L"@"+hex32(DWORD(uintptr_t(entry.modBaseAddr)))+L";";
  }while(Module32NextW(snapshot,&entry));CloseHandle(snapshot);autolog::write(line);
 }
+static void logSamplingHealth(DWORD now){
+ // Host only: no game-memory I/O, no file write on the native callback,
+ // no per-frame strings or sampling-thread mutex. Seqlock ensures the
+ // sampleFrame/pages/reads/bytes/serial fields describe one publication.
+ static samplinglog::Monitor monitor;
+ if(!shared||incoming.status!=1||!pid){monitor.reset();return;}
+ samplinglog::Input input{};
+ input.pid=pid;input.match=incoming.match;input.tick=now;
+ input.controlFrame=incoming.frame;input.controlUs=incoming.controlMicros;
+ input.scanUs=incoming.scanMicros;input.worldUs=incoming.worldMicros;
+ bool coherent=false;
+ for(unsigned n=0;n<3;++n){
+  const LONG before=shared->worldSampleSeq;
+  if(before&1)continue;
+  MemoryBarrier();
+  input.serial=shared->worldSampleSerial;
+  input.sampleFrame=shared->worldSampleFrame;
+  input.pages=shared->worldSamplePages;
+  input.reads=shared->worldSampleReads;
+  input.bytes=shared->worldSampleBytes;
+  MemoryBarrier();
+  const LONG after=shared->worldSampleSeq;
+  if(before==after&&!(after&1)){coherent=true;break;}
+ }
+ if(!coherent)return; // IPC publication is currently incomplete; retry later.
+ input.failures=shared->worldSampleFailures;
+ samplinglog::Summary summary{};
+ if(!monitor.observe(input,summary))return;
+ // These are cumulative counters of this one Host ProcessReader session.
+ // Other independent Host tasks have their own sessions and are not counted.
+ static DWORD externalCountPid=0;
+ static uint32_t externalCountMatch=0;
+ static uint64_t previousRemoteCalls=0,previousRemoteBytes=0,
+                 previousRemoteFailures=0,previousSealedHits=0;
+ const bool externalReset=externalCountPid!=pid||externalCountMatch!=input.match;
+ const uint64_t hostRPMCalls=externalReset?0:
+       externalReader.totalRemoteCalls-previousRemoteCalls;
+ const uint64_t hostRPMBytes=externalReset?0:
+       externalReader.totalRemoteRequestedBytes-previousRemoteBytes;
+ const uint64_t hostRPMFailures=externalReset?0:
+       externalReader.totalRemoteFailures-previousRemoteFailures;
+ const uint64_t hostSealedHits=externalReset?0:
+       externalReader.totalSealedHits-previousSealedHits;
+ externalCountPid=pid;externalCountMatch=input.match;
+ previousRemoteCalls=externalReader.totalRemoteCalls;
+ previousRemoteBytes=externalReader.totalRemoteRequestedBytes;
+ previousRemoteFailures=externalReader.totalRemoteFailures;
+ previousSealedHits=externalReader.totalSealedHits;
+ const uint64_t rateMilliHz=summary.periodMs?
+   uint64_t(summary.publications)*1000000ull/summary.periodMs:0;
+ autolog::write(L"sampling-health pid="+std::to_wstring(pid)+
+  L" match="+std::to_wstring(incoming.match)+
+  L" windowMs="+std::to_wstring(summary.periodMs)+
+  L" logicFrames="+std::to_wstring(summary.logicFrames)+
+  L" publications="+std::to_wstring(summary.publications)+
+  L" publicationsMilliHz="+std::to_wstring(rateMilliHz)+
+  L" failuresDelta="+std::to_wstring(summary.failures)+
+  L" controlFrame="+std::to_wstring(input.controlFrame)+
+  L" sampleFrame="+std::to_wstring(input.sampleFrame)+
+  L" frameLag="+std::to_wstring(summary.lastFrameLag)+
+  L" maxFrameLag="+std::to_wstring(summary.maxFrameLag)+
+  L" publishObservedAgoMs="+std::to_wstring(summary.lastPublicationObservedAgoMs)+
+  L" lastPages="+std::to_wstring(summary.lastPages)+
+  L" lastReads="+std::to_wstring(summary.lastReads)+
+  L" lastBytes="+std::to_wstring(summary.lastBytes)+
+  L" lastIsBoundaryOnly="+std::to_wstring(summary.sampleEverSeen&&summary.lastPages==0)+
+  L" observedCallbacks="+std::to_wstring(summary.observations)+
+  L" controlPeakUs="+std::to_wstring(summary.controlPeakUs)+
+  L" scanPeakUs="+std::to_wstring(summary.scanPeakUs)+
+  L" worldPeakUs="+std::to_wstring(summary.worldPeakUs)+
+  L" controlOver16667Us="+std::to_wstring(summary.controlOver16msSamples)+
+  L" hostReaderRPMCalls="+std::to_wstring(hostRPMCalls)+
+  L" hostReaderRPMRequestedBytes="+std::to_wstring(hostRPMBytes)+
+  L" hostReaderRPMFailures="+std::to_wstring(hostRPMFailures)+
+  L" hostReaderSealedHits="+std::to_wstring(hostSealedHits)+
+  L" hostReaderScope=externalReader-only"+ 
+  L" starved="+std::to_wstring(summary.starved)+
+  L" reasonBreakdown=sampling-work");
+ // Version 112: detailed failure reasons and worker throughput, again only
+ // in the five-second Host summary. Counters can change independently while
+ // the x86 worker is running, so deltas are approximate diagnostic evidence.
+ if(!shared)return;
+ const auto&d=shared->sampling;
+ const std::array<uint32_t,18> values={
+  d.captureCalls,d.gateDeferred,d.workerDeferred,d.requestsQueued,
+  d.strictAdopted,d.candidateAdopted,d.indexUnavailable,d.strictWorldRejected,
+  d.workerStarted,d.workerPublished,d.workerExact,d.workerCandidate,
+  d.workerStale,d.workerWorldChanged,d.workerBudget,d.workerRosterFailed,
+  d.workerGraphIncomplete,d.workerRejected
+ };
+ static std::array<uint32_t,18> prior{};
+ static uint32_t previousPID=0,previousMatch=0;
+ const bool reset=previousPID!=pid||previousMatch!=incoming.match;
+ if(reset){prior=values;previousPID=pid;previousMatch=incoming.match;}
+ const auto delta=[&](size_t i){return reset?0u:uint32_t(values[i]-prior[i]);};
+ // The published count is worker completions, including cross-frame
+ // observation-only graphs. It is NOT the number of strict native authorizations.
+ const uint64_t workerCompletedMilliHz=summary.periodMs?
+   uint64_t(delta(9))*1000000ull/summary.periodMs:0;
+ const uint32_t lastWorkerMeanBytesPerCall=d.workerLastCalls?
+   d.workerLastBytes/d.workerLastCalls:0;
+ const uint64_t hostReaderMeanBytesPerCall=hostRPMCalls?
+   hostRPMBytes/hostRPMCalls:0;
+ autolog::write(L"sampling-work pid="+std::to_wstring(pid)+
+  L" match="+std::to_wstring(incoming.match)+
+  L" warmup="+std::to_wstring(reset)+
+  L" captureInvoked="+std::to_wstring(delta(0))+
+  L" coalescedGate="+std::to_wstring(delta(1))+
+  L" workerBusy="+std::to_wstring(delta(2))+
+  L" jobsQueued="+std::to_wstring(delta(3))+
+  L" strictAdopted="+std::to_wstring(delta(4))+
+  L" candidateAdopted="+std::to_wstring(delta(5))+
+  L" indexUnavailable="+std::to_wstring(delta(6))+
+  L" strictWorldReject="+std::to_wstring(delta(7))+
+  L" workerStarted="+std::to_wstring(delta(8))+
+  L" workerPublished="+std::to_wstring(delta(9))+
+  L" workerCompletedMilliHz="+std::to_wstring(workerCompletedMilliHz)+
+  L" workerExact="+std::to_wstring(delta(10))+
+  L" workerCandidate="+std::to_wstring(delta(11))+
+  L" workerStale="+std::to_wstring(delta(12))+
+  L" workerWorldChanged="+std::to_wstring(delta(13))+
+  L" workerBudget="+std::to_wstring(delta(14))+
+  L" workerRosterFailed="+std::to_wstring(delta(15))+
+  L" workerGraphIncomplete="+std::to_wstring(delta(16))+
+  L" workerRejected="+std::to_wstring(delta(17))+
+  L" lastWorkerMs="+std::to_wstring(d.workerLastDurationMs)+
+  L" maxWorkerMs="+std::to_wstring(d.workerMaxDurationMs)+
+  L" lastWorkerCalls="+std::to_wstring(d.workerLastCalls)+
+  L" lastWorkerBytes="+std::to_wstring(d.workerLastBytes)+
+  L" lastWorkerMeanBytesPerCall="+std::to_wstring(lastWorkerMeanBytesPerCall)+
+  L" hostReaderMeanBytesPerRPM="+std::to_wstring(hostReaderMeanBytesPerCall)+
+  L" lastWorkerPages="+std::to_wstring(d.workerLastPages)+
+  L" capturedFromFrame="+std::to_wstring(d.workerFirstFrame)+
+  L" capturedThroughFrame="+std::to_wstring(d.workerLastFrame)+
+  L" scope=worker-aggregates;not-per-frame-atomic");
+ prior=values;
+}
 static void logBridgeHealth(bool force=false){
+ // Independent five-second interval, even when bridge-health logs more often
+ // for command changes. File I/O happens on this Host caller only.
+ logSamplingHealth(GetTickCount());
  static DWORD loggedAt=0,previousPid=0;static LONG previousStage=0;static DWORD previousError=0,previousFault=0;static int previousStatus=0;
  static bool previousData=false,previousSubscribed=false,previousHostEnabled=false;static uint32_t previousMatch=0;
  static int previousCS=0;static uint32_t previousQueued=0,previousRejected=0;
@@ -1078,7 +1219,7 @@ static void servicePlanner(){
  w.match=shared->world.match;w.tick=shared->world.tick;w.frame=shared->world.frame;w.count=shared->world.count;w.intentCount=shared->world.intentCount;w.refineryCount=shared->world.refineryCount;w.inputSerial=shared->world.inputSerial;w.combatCount=shared->world.combatCount;
  if(!planner::validWorldCounts(w.count,w.intentCount,w.refineryCount)||w.combatCount<0||w.combatCount>planner::MaxCombatProbes)return;
  memcpy(w.combat,shared->world.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));memcpy(w.actors,shared->world.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(w.intents,shared->world.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(w.refineries,shared->world.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));MemoryBarrier();
- if(seq!=shared->worldSeq||batch!=shared->computeFrameSeq||w.frame!=shared->computeFrame||w.match!=shared->computeFrameMatch)return;
+ if(seq!=shared->worldSeq||batch!=shared->computeFrameSeq||w.frame>shared->computeFrame||w.match!=shared->computeFrameMatch)return;
  if(w.match==uint32_t(snap.match)&&w.frame>snap.frame){wakeGame();return;}
  worldRevision=seq;
  if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)){logPlanning(w,L"stale-source");wakeGame();return;}
@@ -1422,9 +1563,16 @@ static void sampleExternal(DWORD now){
   if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
     ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
   const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
-  externalReader.setWorldDemand(worldframe::Resources|
-   (((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)?worldframe::HostVisualPassengers:0)|
-   (passengerOverlay?worldframe::HostVisualCombat:0));
+  // Host no longer creates an independent VisualCache/readLive world sample.
+  // These are native Runtime demands and are fulfilled by the one sealed
+  // CommandCaptureWorker graph; resource-only legacy display projections stay
+  // suspended until they are produced by that Worker.
+  uint32_t displayDemand=worldframe::Base;
+  if((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)
+   displayDemand|=worldframe::Passengers;
+  if(passengerOverlay||extra.enemyMarkers||extra.enemySpecialOnly)
+   displayDemand|=worldframe::Combat;
+  externalReader.setWorldDemand(displayDemand);
   external::WorldFrameScope worldScope(externalReader,commandMatch());
   if(!worldScope){
    if(externalWorldSource){external::WorldFrameScope retained(externalReader,commandMatch(),externalWorldSource);if(!retained)discardExternalWorld();}

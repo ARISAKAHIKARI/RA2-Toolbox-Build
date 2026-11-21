@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse,subprocess
 here=Path(__file__).resolve().parent
 source=(here.parent/'source'/'native_orders_bridge.h').read_text()
-marker='static void watchEjections(uint32_t house,int frame,Vec all){'
+marker='static void watchEjections(uint32_t house,int frame){'
 start=source.index(marker);at=source.index('{',start);end=at+1;depth=1
 while depth:
  depth+=(source[end]=='{')-(source[end]=='}');end+=1

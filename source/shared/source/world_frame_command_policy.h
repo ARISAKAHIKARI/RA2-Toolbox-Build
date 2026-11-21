@@ -15,6 +15,21 @@ inline bool acceptCommandCapture(const Key&captured,const Key&current,
         capturedRevision==currentRevision&&
         uint32_t(now-captured.tick)<=maxAgeMs;
 }
+// OBSERVATION ONLY. A completed background graph may span more than one
+// game frame; that makes it useful for candidate discovery but NEVER a native
+// EventClass authorization. It must not be passed to acceptCommandCapture,
+// nor used as proof that an actor still exists. Individual native actions must
+// re-read current UID, owner, manual version and eligibility.
+// A mutable Host dependency revision does not change candidate provenance;
+// it still invalidates the strict command authority above.
+inline bool acceptObservationCandidate(const Key&captured,const Key&current,
+ uint32_t capturedDemand,uint32_t requiredDemand,uint32_t now,
+ uint32_t maxAgeMs=500){
+ return captured.pid&&captured.owner&&captured.match&&
+        captured.sameWorld(current)&&captured.frame<=current.frame&&
+        (requiredDemand&~capturedDemand)==0&&
+        uint32_t(now-captured.tick)<=maxAgeMs;
+}
 // Only suppress redundant *work submission*, not permission to reuse a
 // captured graph. A worker still busy on the same world/revision must not be
 // cancelled every 16ms when the Game frame advances. Exact-frame take() remains

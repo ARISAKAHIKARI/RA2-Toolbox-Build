@@ -37,7 +37,7 @@ static int nativeSellCursorAction(unsigned op,uint32_t object,uint32_t suppliedO
  if(!nativeSellCursorReady()){nativeSellCandidate={};return 0;}
  // Cursor callbacks can run without a toolbox command or another feature that
  // requests the world index. Refresh on this guarded game-thread entry as well.
- indexWorld(get<int>(0xA8ED84));
+ if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady()){nativeSellCandidate={};return 0;}
  uint32_t owner=0,index=0;
  if(!nativeSellCursorTarget(object,owner,index)){nativeSellCandidate={};return 0;}
  const uint32_t id=get<uint32_t>(object+0x10),ownerID=get<uint32_t>(owner+0x10);

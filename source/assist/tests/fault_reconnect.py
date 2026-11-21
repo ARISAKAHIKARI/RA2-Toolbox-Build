@@ -72,7 +72,7 @@ def main():
         'template<class Fn>static void withInputPublication(')) + '\n')
     assert bridge.count('withNativeQueueCallDepth(nativeMegaQueueCallDepth,') == 1
     assert bridge.count('withNativeQueueCallDepth(nativeObjectQueueCallDepth,') == 1
-    assert bridge.count('withInputPublication(sh,match,now,frame,externalInputFrame,') == 1
+    assert bridge.count('withInputPublication(sh,match,now,frame,observationFrame,') == 1
     scoped = out / 'scoped.inc'
     scoped.write_text(block(client.read_text(), 'template<class Fn>bool scoped(') + '\n')
     input_route = out / 'input.inc'
