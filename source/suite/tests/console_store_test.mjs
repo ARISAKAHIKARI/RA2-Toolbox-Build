@@ -612,7 +612,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await line.count(),1);assert.equal(await line.locator('.setting-row').count(),4);
     const compoundHotkey=line.locator('.setting-row[data-type="hotkey"]');
     const compoundHotkeyLayout=await compoundHotkey.evaluate(element=>({basis:getComputedStyle(element).flexBasis,row:element.getBoundingClientRect(),editor:element.querySelector('.setting-editor').getBoundingClientRect()}));
-    assert.equal(compoundHotkeyLayout.basis,'100%','a shortcut in a compound row moves to the same dedicated line');
+    assert.equal(compoundHotkeyLayout.basis,'auto','compound shortcuts keep a stable compact intrinsic width instead of forcing a full-width line');
     assert.ok(Math.abs(compoundHotkeyLayout.row.right-compoundHotkeyLayout.editor.right)<2,'compound shortcut editors share the right alignment');
     assert.equal(await line.locator('.setting-label').filter({hasText:/^高级进驻$/}).count(),1);
     assert.equal(await line.locator('[data-setting-level="primary"]').count(),1);
