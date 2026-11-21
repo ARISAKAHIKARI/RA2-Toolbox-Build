@@ -294,14 +294,20 @@ static void testDelayedAircraftPlan(){
  clockNow+=4;
  serviceCooperativePlan(lastHouse,snap.frame,clockNow,true,start+4000);
  check(cooperativeSubmitted==4&&sh->cooperativeAcceptedBits[0]==15&&sh->cooperativeProcessed==5&&
-       sh->cooperativeResult==-7&&sh->cooperativeAck==1,
-       "same-frame continuation stalled or lost the committed prefix or the retry suffix");
+       sh->cooperativeResult==1&&!sh->cooperativeAck,
+       "UNKNOWN aircraft identity must preserve accepted prefix and unprocessed suffix");
+ cooperativeUnreadable=0;
+ clockNow+=4;
+ serviceCooperativePlan(lastHouse,snap.frame,clockNow,true,start+8000);
+ check(cooperativeSubmitted==6&&sh->cooperativeAcceptedBits[0]==111&&sh->cooperativeProcessed==7&&
+       sh->cooperativeAccepted==6&&sh->cooperativeRejected==1&&sh->cooperativeAck==1,
+       "next complete game observation must drain remaining actors once without replaying prefix");
  sh->cooperativePlan=2;sh->cooperativeMode=cooperative::Enter;
  ++snap.frame;set<int>(0xA8ED84,snap.frame);
- serviceCooperativePlan(lastHouse,snap.frame,clockNow,true,start+8000);
+ serviceCooperativePlan(lastHouse,snap.frame,clockNow,true,start+12000);
  check(sh->cooperativeAck==1,"capacity-dependent boarding used an aircraft-only candidate");
- cooperativeUnreadable=0;candidateReadyForCooperative=false;
- std::puts("PASS delayed aircraft admission uses frozen identity, preserves the retry suffix and drains in bounded 4ms passes within one game frame");
+ candidateReadyForCooperative=false;
+ std::puts("PASS delayed aircraft admission uses frozen identity; UNKNOWN retains suffix, later 4ms pass accepts once");
 }
 static void setupLoad(int variant){
  reset();sh->computeApplied=compute::All;sh->loadMode=variant%2;sh->loadRadius=30;
