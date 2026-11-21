@@ -119,7 +119,7 @@ class Client {
  std::array<DataView,2>data_;DataRef copiedData_{};LONG copiedSlot_=-1;
  uint64_t generation_=0;
  struct Lease {
-  std::array<uint32_t,7>ticks{};uint32_t used=0;
+  std::array<uint32_t,12>ticks{};uint32_t used=0;
 #if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
   uint32_t displayAt=0,controlAt=0;
   bool everDisplay=false,everControl=false;

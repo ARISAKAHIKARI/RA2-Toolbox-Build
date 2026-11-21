@@ -21,8 +21,10 @@ struct PtrList {
 inline bool sameAscii(const char* a,const char* b){for(;*a&&*b;a++,b++){char x=*a,y=*b;if(x>='A'&&x<='Z')x+=32;if(y>='A'&&y<='Z')y+=32;if(x!=y)return false;}return *a==*b;}
 
 template<class Read,class Resolve> class Sampler {
+ using ArtRead=bool(*)(uint32_t,void*,size_t);
  TypeIndex typeIndex_;
- Read read; Resolve resolve;AssetLoad files=nullptr;CameoResolve resolveCameo=nullptr; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
+ external::catalogue::Dependencies cataloguePages_;
+ Read read; Resolve resolve;AssetLoad files=nullptr;CameoResolve resolveCameo=nullptr;ArtRead art=nullptr; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
  const Snapshot& invalidate(uint32_t tick,bool forgetRound=false){
   memset(&state,0,sizeof state);typeIndex_.clear();state.tick=tick;state.match=matchSerial;if(forgetRound)haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;return state;
  }
@@ -34,8 +36,9 @@ template<class Read,class Resolve> class Sampler {
   PtrList r;r.n=n;if(n&&!bytes(p,r.data(),n*4)){state.readErrors++;return {};}return r;
  }
  int find(uint32_t p){return typeIndex_.find(p);}
- bool loadIcon(Type&t){return readCameo(read,resolve,t,iconBuffer,sizeof iconBuffer,files);}
- void palette(){state.paletteReady=0;readCameoPalette(read,state,files);}
+ auto artReader(){return [this](uint32_t at,void*out,size_t n){return art?art(at,out,n):read(at,out,n);};}
+ bool loadIcon(Type&t){return readCameo(artReader(),resolve,t,iconBuffer,sizeof iconBuffer,files);}
+ void palette(){state.paletteReady=0;readCameoPalette(artReader(),state,files);}
  bool types(bool buildings) {
   // Artwork survives a match. Rebuilding Type pointers must not start a new
   // disk scan or abandon the previous match's pending icon writes.
@@ -80,21 +83,23 @@ template<class Read,class Resolve> class Sampler {
   }
  }
 public:
- Sampler(Read r,Resolve s,IconCache* c=nullptr,AssetLoad f=nullptr,CameoResolve cr=nullptr):read(r),resolve(s),files(f),resolveCameo(cr),cache(c){}
+ Sampler(Read r,Resolve s,IconCache* c=nullptr,AssetLoad f=nullptr,CameoResolve cr=nullptr,ArtRead ar=nullptr):
+  read(r),resolve(s),files(f),resolveCameo(cr),art(ar),cache(c){}
  external::layout::Result probe()const{return probe_;}
- void reset(){probe_={};invalidate(0,true);}
+ void reset(){probe_={};cataloguePages_.clear();invalidate(0,true);}
  const Snapshot& sample(uint32_t tick,bool buildings){
   roundstate::Stamp start{},end{};
   if(!roundstate::capture(read,start,probe_))return invalidate(tick,probe_.stage==external::layout::Stage::WaitingForMatch);
   const bool newRound=!haveRound||!start.follows(previous);
   if(newRound){memset(&state,0,sizeof state);if(++matchSerial==0)++matchSerial;}
+  cataloguePages_.maintain(read);
   state.tick=tick;state.readErrors=0;state.playerCount=0;state.status=1;
   uint32_t local=start.local,observer=get<uint32_t>(0xAC1198);
   state.match=matchSerial;state.frame=start.frame;state.chatActive=get<uint8_t>(0xA8BC60+25)!=0;
   bool reload=newRound||prevBuildings!=buildings||!state.typeCount;
   if(reload||!catalogueReady||uint32_t(tick-catalogueAt)>=500){
    external::catalogue::Stamp stamp;catalogueAt=tick;
-   if(external::catalogue::capture(read,stamp)){reload=reload||!catalogueReady||catalogueHash!=stamp.hash;catalogueHash=stamp.hash;catalogueReady=true;}
+   if(cataloguePages_.capture(read,stamp)){reload=reload||!catalogueReady||catalogueHash!=stamp.hash;catalogueHash=stamp.hash;catalogueReady=true;}
    else catalogueReady=false;
   }
   // A successful metadata stamp does not certify the later table reads.

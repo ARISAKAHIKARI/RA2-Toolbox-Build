@@ -212,6 +212,32 @@ void graphs(){
   CHECK(s.read(product+0x10,&uid,4)&&uid==61);
   CHECK(s.read(type+0xDF8,&index,4)&&index==11);
  }
+ {Memory m;setup(m);
+  constexpr uint32_t type=0x721100,counts=0x725100,factory=0x727100,product=0x729100,queue=0x72C100;
+  m.vector(0xA8E348,0x720100,{type});
+  m.vector(0xA83E30,0x726100,{factory});
+  m.vector(factory+64,queue,{type});
+  m.put(House+0x5528+4,counts);m.put(House+0x5528+8,1);m.put(counts,7);
+  m.put(House+90154,char16_t(u'陈'));m.put(factory+88,product);m.put(product+0x6C0,type);
+  m.put(type+0x634,3);
+  const auto demand=worldframe::canonicalHostDemand(worldframe::Base|worldframe::MonitorStats);
+  CHECK(demand==(worldframe::Base|worldframe::MonitorStats));
+  CHECK(worldframe::visualDemand(demand)&&worldframe::runtimeDemand(demand)==worldframe::Base);
+  std::vector<uint32_t> noRequests;
+  worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});
+  CHECK(g.capture(demand,noRequests)&&s.seal());
+  m.put(counts,99);m.put(queue,0u);
+  int owned=0,level=0;uint32_t queued=0,activeType=0;char16_t houseName=0;
+  CHECK(s.read(counts,&owned,4)&&owned==7);
+  CHECK(s.read(queue,&queued,4)&&queued==type);
+  CHECK(s.read(product+0x6C0,&activeType,4)&&activeType==type);
+  CHECK(s.read(type+0x634,&level,4)&&level==3);
+  CHECK(s.read(House+90154,&houseName,2)&&houseName==u'陈');
+  worldframe::Snapshot baseOnly;baseOnly.reset(key());
+  worldframe::CaptureGraph<Read>ordinary(baseOnly,Read{&m});
+  CHECK(ordinary.capture(worldframe::Base,noRequests)&&baseOnly.seal());
+  CHECK(!baseOnly.read(counts,&owned,4)&&!baseOnly.read(queue,&queued,4));
+ }
  std::printf("GRAPH Base %u reads/%u bytes/%u rosters; Combat %u/%u/%u; Passengers %u/%u/%u; Ore %u/%u/%u; Visual %u/%u/%u\n",base.calls,base.bytes,base.rosters,combat.calls,combat.bytes,combat.rosters,passengers.calls,passengers.bytes,passengers.rosters,ore.calls,ore.bytes,ore.rosters,visual.calls,visual.bytes,visual.rosters);
  for(int bad:{-1,16385}){Memory m;setup(m);m.put(0xA8EC78+16,bad);worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});CHECK(!g.capture(worldframe::Base,{}));}
  {Memory m;setup(m);m.put(0xA8EC78+8,2);worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});CHECK(!g.capture(worldframe::Base,{}));}
@@ -814,6 +840,8 @@ void canonicalDisplayTransport(){
  const auto oldReads=rpmCalls;
  publish(worldframe::BoundaryOnlyKeyBit);CHECK(!reader.beginWorldFrame(7));
  publish(worldframe::ObservationOnlyKeyBit);CHECK(!reader.beginWorldFrame(7));
+ reader.setWorldDemand(worldframe::MonitorStats);CHECK(reader.beginWorldFrame(7));
+ CHECK((channel()->demandMask&worldframe::MonitorStats)!=0&&rpmCalls==oldReads);
  reader.setWorldDemand(worldframe::Resources);CHECK(reader.beginWorldFrame(7));
  publish(worldframe::ObservationOnlyKeyBit|worldframe::SceneKeyBit);
  reader.setWorldDemand(sceneDemand);CHECK(reader.beginWorldFrame(7));

@@ -7,6 +7,8 @@
 
 struct Request {int generation=0;};
 struct Result {int generation=0;std::shared_ptr<const um::Snapshot> snapshot;};
+static unsigned artReads=0;
+static bool missingArt(uint32_t,void*,size_t){++artReads;return false;}
 int main(){
  Fixture f;std::mutex gate;std::condition_variable cv;bool entered=false,released=false;
  auto ui=std::this_thread::get_id();
@@ -27,6 +29,13 @@ int main(){
  assert(um::samePresentation(*primary,*next));next->players[0].cells[0].owned++;assert(!um::samePresentation(*primary,*next));
  next->players[0].cells[0].owned--;next->types[0].iconReady=1;next->types[0].icon[0]=10;assert(!um::samePresentation(*primary,*next));
  worker.shutdown();assert(primary->players[0].cells[0].owned==5);
+ auto sampler=std::make_unique<um::Sampler<Read,Resolve>>(Read{&f.m},Resolve{},nullptr,nullptr,nullptr,missingArt);
+ f.m.vector(0xA83E30,0x400000,{0x410000});
+ f.m.put(0x410000+108,Self);
+ f.m.vector(0x410000+64,0x420000,{Infantry});
+ const auto& withoutArt=sampler->sample(800,true);
+ assert(artReads&&withoutArt.status==1&&withoutArt.playerCount==2&&!withoutArt.paletteReady);
+ assert(withoutArt.players[0].cells[0].owned==5&&withoutArt.players[0].cells[0].queued==1);
  // The pointer index preserves the original first-match result for duplicates.
  auto indexSnapshot=std::make_unique<um::Snapshot>();indexSnapshot->typeCount=3;indexSnapshot->types[0].ptr=9;indexSnapshot->types[1].ptr=8;indexSnapshot->types[2].ptr=9;
  um::TypeIndex index;index.rebuild(*indexSnapshot);assert(index.find(9)==0&&index.find(8)==1&&index.find(7)==-1);index.clear();assert(index.find(9)==-1);

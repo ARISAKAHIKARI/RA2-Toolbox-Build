@@ -91,6 +91,7 @@
 static swsidebar::Panel superweaponPanel;static swsidebar::Options superweaponOptions;
 #include "../../external_reader/source/cooperative_reader.h"
 #include "../../external_reader/source/shared_reader.h"
+#include "../../external_reader/source/monitor_world_source.h"
 #include "../../external_reader/source/process_discovery.h"
 #include "../../external_reader/source/tactical_sampler.h"
 #ifdef RA2_UNIFIED
@@ -1252,6 +1253,7 @@ static void reapBridges(){DWORD now=GetTickCount();for(size_t i=0;i<retiredBridg
  else{if(DWORD(now-r.lastWake)>=100){r.lastWake=now;wakeRetiredBridge(r);}++i;}}
 }
 static void releaseBridge(){
+ external::setMonitorWorldProducer({});
  // Logical lease loss happens here, even if a retired view stays mapped for
  // Runtime cleanup. Never wait for a later paint to notice shared=nullptr.
  nativeviewhost::mappingLost(shared);
@@ -1407,6 +1409,7 @@ static bool ensureBridge(){
   if(stage==L"target-slots")return bridgeConnectFailed(L"8 个游戏进程连接槽已占用；这不是功能数量限制，请查看旧连接清理日志",error);
   if(stage==L"subscription-slots")return bridgeConnectFailed(L"32 个功能订阅槽已占用，请查看旧订阅清理日志",error);
   return bridgeConnectFailed(L"无法建立游戏操作连接（"+stage+L"）",error);}
+ external::setMonitorWorldProducer(externalReader.connectionIdentity());
  bridgeFailure.clear();ack=notice=0;lastData=0;attachAt=now;wakeGame();
  wchar_t dllPath[32768]={},transportName[96];uint64_t moduleBase=0,hookRva=0;
 #ifdef _WIN64

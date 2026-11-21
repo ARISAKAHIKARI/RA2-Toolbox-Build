@@ -92,6 +92,37 @@ template<class Read>class CaptureGraph {
   auxiliary(value<uint32_t>(p+0x34),0x400);
   for(uint32_t offset:{0x53ACu,0x53B0u,0x53B4u,0x53B8u,0x53BCu,0x53CCu})auxiliary(value<uint32_t>(p+offset),0x80);
  }
+ // Unit Monitor's existing read-only layouts. Warm their pointer-dependent
+ // ranges here so a cold consumer need not discover one missing type per tick.
+ void monitorStats(const std::vector<uint32_t>&houses){
+  constexpr uint32_t tables[]={0xA8E348u,0xA83CE0u,0xA8B218u,0xA83C68u};
+  constexpr uint32_t counters[]={0x5528u,0x5514u,0x553Cu,0x5500u};
+  auto&list=scratch_->docks;
+  for(size_t i=0;i<4;++i){
+   if(!vector(tables[i],4096,list))continue;
+   for(uint32_t p:list){
+    if(!range(p,0xD55))continue;
+    block(p+0x24,24);block(p+0x232,1);block(p+0x634,0xBA);block(p+0xD54,1);
+   }
+   for(uint32_t h:houses){
+    if(!range(h,0x5800))continue;
+    const int capacity=value<int>(h+counters[i]+8);
+    const size_t count=capacity>0&&capacity<=65536?std::min(size_t(capacity),list.size()):0;
+    if(count)block(value<uint32_t>(h+counters[i]+4),count*sizeof(int));
+   }
+  }
+  for(uint32_t h:houses)if(range(h,90200))block(h+90154,40);
+  if(vector(0xA8DA74u,32,list))for(uint32_t node:list)auxiliary(node,0x74);
+  if(vector(0xA83E30u,1024,list))
+   for(uint32_t factory:list){
+    if(!range(factory,0x72))continue;
+    block(factory,0x72);
+    const uint32_t items=value<uint32_t>(factory+68);
+    const int count=value<int>(factory+80),capacity=value<int>(factory+72);
+    if(count>0&&count<=4096&&capacity>=count&&capacity<=65536)block(items,size_t(count)*4);
+    block(value<uint32_t>(factory+88),0x6C8);
+   }
+ }
  void type(uint32_t p){
   if(!working()||p<0x10000||!scratch_->types.insert(p).second)return;block(p,0x2000);auxiliary(value<uint32_t>(p+0x60),128);
   if(demand_&Ore){auto&docks=scratch_->docks;if(vector(p+0x3E8,256,docks))for(uint32_t dock:docks)block(dock,0x2000);}
@@ -230,6 +261,7 @@ public:
   if((demand_&Passengers)&&vector(0xA83DE8,16384,list))
    for(uint32_t p:list)enqueue(p);
   if(!vector(0xA80228,32,list))return false;for(uint32_t p:list)house(p);
+  if(demand_&MonitorStats)monitorStats(list);
   if(demand_&(Bullets|Visual)){
    if(!vector(0xA8ED40,16384,list))return false;
    for(uint32_t p:list){if(!working())return false;block(p,0x200);auxiliary(value<uint32_t>(p+0xAC),0x400);enqueue(value<uint32_t>(p+0xB0));enqueue(value<uint32_t>(p+0x10C));}
