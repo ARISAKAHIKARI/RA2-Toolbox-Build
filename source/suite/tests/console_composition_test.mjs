@@ -202,7 +202,8 @@ test('native shared rows and status notes have no redundant configuration title'
  f.render();
  assert.ok(f.find('feature-subheading').every(title=>title.hidden));
  assert.ok(f.find('feature-config-toggle').every(button=>button.hidden));
- assert.equal(f.find('setting-label').some(label=>label.textContent==='等待对局'),false,'standalone explanatory labels are not printed into the settings list');
+ const noteLabel=f.find('setting-label').find(label=>label.textContent==='等待对局');
+ assert.ok(noteLabel?.hidden,'standalone explanatory text is hidden rather than occupying the settings list');
  assert.equal(f.find('label-help').length,1);
  assert.equal(f.find('label-help')[0].open,false);
  assert.equal(f.find('label-help')[0].children[0].textContent,'ⓘ');
