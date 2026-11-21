@@ -446,7 +446,7 @@
       const {help,summary,body}=owner.noteHelp;
       const caption='查看'+name+'的说明';
       help.hidden=!text;
-      if(!text)help.open=false;
+      if(!text||summary.title!==caption)help.open=false;
       summary.title=caption;summary.setAttribute('aria-label',caption);
       if(body.textContent!==text)body.textContent=text;
     }
@@ -601,8 +601,9 @@
     group.section.classList.toggle('has-runtime-error',hasError);
     const single=blocks.length===1&&blocks[0].headers.some(control=>isFeatureHeader(control)&&(control.label||control.text)===group.name);
     const commonNotes=blocks.flatMap(block=>block.headers.length?[]:block.details.filter(isExplanation));
-    const hasNote=updateNoteHelp(group.summary,group.name,commonNotes);
-    group.summary.hidden=!hasNote&&(!group.name||group.name===CATEGORIES[selectedCategory][0]||single);
+    const isPageGroup=group.name===CATEGORIES[selectedCategory][0];
+    const hasNote=updateNoteHelp(isPageGroup?$('pageTitleBar'):group.summary,group.name,commonNotes);
+    group.summary.hidden=isPageGroup||(!hasNote&&(!group.name||single));
     group.body.hidden=blocks.every(block=>block.controls.every(isExplanation));
     const errors=hasError?group.controls.flatMap(control=>{
       const error=store.error(control.id),label=control.label||control.text||'设置';
@@ -740,6 +741,8 @@
   }
   function renderSettingsGroups(controls,query='') {
     const groups=layoutGroups(controls,query,selectedCategory),count=[...groups.values()].reduce((sum,items)=>sum+items.length,0);
+    const pageName=CATEGORIES[selectedCategory][0];
+    if(!groups.has(pageName))updateNoteHelp($('pageTitleBar'),pageName,[]);
     for(const [name,group]of groupNodes)if(!groups.has(name)){observer?.unobserve(group.section);for(const feature of group.features.values()){releaseFeatureChunks(feature.paramsChunks);releaseFeatureChunks(feature.hotkeysChunks);}group.section.remove();groupNodes.delete(name);}
     let after=null;for(const [name,items]of groups){let group=groupNodes.get(name);if(!group){group=makeGroup(name);groupNodes.set(name,group);}group.controls=items;group.searching=Boolean(query.trim());placeAfter($('settings'),group.section,after);after=group.section;updateGroup(group);}
     return count;
@@ -813,7 +816,7 @@
     $('loadingState').hidden = Boolean(state); $('loadingText').textContent = !bridge ? '此页面需要由红警工具箱打开。' : '正在等待功能模块状态…';
     if(!config.failed) render.lastConfigError='';
     if (config.failed && config.error && config.error !== render.lastConfigError) { render.lastConfigError = config.error; notify(config.error); }
-    if (!state) { $('resultCount').textContent = debugging?'正在载入入口目录':'正在载入设置'; $('emptyState').hidden = true; $('foldAll').hidden = true; return; }
+    if (!state) { updateNoteHelp($('pageTitleBar'),category[0],[]); $('resultCount').textContent = debugging?'正在载入入口目录':'正在载入设置'; $('emptyState').hidden = true; $('foldAll').hidden = true; return; }
     if(debugging)renderDebug(state);else {
     const visibleControls=displayPageControls(state.controls,selectedCategory);
     const count=renderSettingsGroups(visibleControls,search);
