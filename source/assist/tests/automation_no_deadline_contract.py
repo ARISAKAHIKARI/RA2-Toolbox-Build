@@ -19,6 +19,13 @@ assert "frame-r.frame>900" not in unload
 assert "manualVersions.get(r.id)!=s.token" in unload
 assert "unloadSourceCurrent(r,s,house,frame)" in unload
 native=(root/"native_orders_bridge.h").read_text()
+# Three formerly live infantry enumerations now consume worker-published frame pages.
+assert "Vec inf=vec(0xA83DE8)" not in native
+assert native.count("sampleRoster(0xA83DE8,inf)") == 4
+assert "int stagedCount=recentPassengerCount;" in native
+assert "if(!sample.complete())return;" in native
+assert "if(sample.complete()){" in native
+
 for old in ("frame-r.frame>900","frame-r.frame<=900",
             "DWORD(now-queuedUnload.lastProgress)>12000",
             "task.attempted&&DWORD(now-task.attemptedAt)>3500"):

@@ -111,17 +111,21 @@ static bool unloadExit(const UnloadPassenger&r,int mission,int frame){
 static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  if(!(sh->flags&SmartUnloadOrders)||snap.chat){recentPassengerCount=0;return;}
  if(indexedFrame!=frame)return; // incomplete identity sample: retain history until retry
- for(int n=0;n<recentPassengerCount;){auto&r=recentPassengers[n];
+ SampleReadScope sample;if(!sample)return;
+ Vec inf{};if(!sampleRoster(0xA83DE8,inf))return;
+ static RecentPassenger staged[nativeorders::MaxPassengers];
+ int stagedCount=recentPassengerCount;
+ std::memcpy(staged,recentPassengers,sizeof(RecentPassenger)*stagedCount);
+ for(int n=0;n<stagedCount;){auto&r=staged[n];
   const bool expired=DWORD(now-r.tick)>1500||frame<r.frame||frame-r.frame>90;
   const bool present=worldObjects.contains(r.p);
   uint32_t uid=0;const bool known=present&&read(r.p+0x10,&uid,sizeof uid);
   if(expired||!present||manualVersions.get(r.id)!=r.token||(known&&uid!=r.id))
-   r=recentPassengers[--recentPassengerCount];
+   r=staged[--stagedCount];
   else ++n; // Unreadable UID is not proof the prior Ctrl+D passenger vanished.
  }
  static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> history;history.clear();
- for(int n=0;n<recentPassengerCount;++n)history.add(recentPassengers[n].p,n);
- Vec inf=vec(0xA83DE8);
+ for(int n=0;n<stagedCount;++n)history.add(staged[n].p,n);
  for(int n=0;n<inf.count;++n){uint32_t p=item(inf,n);if(!p)continue;uint32_t carrier=get<uint32_t>(p+0x11C);
   // Normal loaded passengers must be remembered too. 0x83 is an
   // exceptional vehicle state used by EjectAssist; requiring it here
@@ -132,9 +136,12 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
   uint32_t uid=0,carrierUID=0;
   if(!read(p+0x10,&uid,sizeof uid)||!read(carrier+0x10,&carrierUID,sizeof carrierUID)||!uid||!carrierUID)continue;
   int at=history.find(p);
-  if(at<0){if(recentPassengerCount==nativeorders::MaxPassengers)continue;at=recentPassengerCount++;history.add(p,at);}
-  recentPassengers[at]={p,uid,carrier,carrierUID,typeOf(carrier,2),manualVersions.get(uid),now,frame};
+  if(at<0){if(stagedCount==nativeorders::MaxPassengers)continue;at=stagedCount++;history.add(p,at);}
+  staged[at]={p,uid,carrier,carrierUID,typeOf(carrier,2),manualVersions.get(uid),now,frame};
  }
+ if(!sample.complete())return;
+ recentPassengerCount=stagedCount;
+ std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
 }
 // Build one carrier-keyed roster per admission tick. A large selected cohort
 // must not rescan every infantry object once for each selected transport.
@@ -165,7 +172,9 @@ static int unloadPassengerKnowledge(uint32_t p,uint32_t house,uint32_t&id,uint32
 struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
 static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static UnloadRosterEntry unloadRosterScratch[nativeorders::MaxPassengers*2];static int unloadRosterCount;
 static void buildUnloadAdmissionRoster(uint32_t house){
- unloadRosterCount=0;Vec inf=vec(0xA83DE8);
+ unloadRosterCount=0;
+ SampleReadScope sample;if(!sample)return;
+ Vec inf{};if(!sampleRoster(0xA83DE8,inf))return;
  for(int n=0;n<inf.count&&unloadRosterCount<nativeorders::MaxPassengers;++n){uint32_t p=item(inf,n),carrier=p?get<uint32_t>(p+0x11C):0;
   if(!carrier||!worldObjects.contains(carrier)||queuedUnload.find(carrier,get<uint32_t>(carrier+0x10))<0||!unloadPassengerEligible(p,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
   unloadRoster[unloadRosterCount++]={carrier,p,get<uint32_t>(p+0x10),manualVersions.get(get<uint32_t>(p+0x10)),-1};
@@ -173,7 +182,8 @@ static void buildUnloadAdmissionRoster(uint32_t house){
  for(int n=0;n<recentPassengerCount&&unloadRosterCount<nativeorders::MaxPassengers*2;++n){const auto&r=recentPassengers[n];
   if(queuedUnload.find(r.carrier,r.carrierID)>=0)unloadRoster[unloadRosterCount++]={r.carrier,r.p,r.id,r.token,n};
  }
- if(!unloadpolicy::radixSortRoster(unloadRoster,unloadRosterScratch,unloadRosterCount))unloadRosterCount=0; // Invalid candidate batch is UNKNOWN, never partially admitted.
+ if(!sample.complete()||!unloadpolicy::radixSortRoster(unloadRoster,unloadRosterScratch,unloadRosterCount))
+  unloadRosterCount=0; // A missing page is UNKNOWN, never a partial batch.
 }
 // A Ctrl+D command may arrive after the game's native D began deploying.
 // Reject stale/foreign carriers, not the transport's own unload-in-progress
@@ -318,16 +328,25 @@ static int smartUnload(uint32_t house){
  // This only remembers members of the explicitly selected own transports;
  // all UID/manual-command/owner/filter checks still run at admission.
  if(count){
-  static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> tracked;tracked.clear();
-  for(int n=0;n<recentPassengerCount;++n)tracked.add(recentPassengers[n].p,n);
-  Vec inf=vec(0xA83DE8);
-  for(int n=0;n<inf.count;++n){uint32_t q=item(inf,n);if(!q)continue;
+  SampleReadScope sample;Vec inf{};
+  if(sample&&sampleRoster(0xA83DE8,inf)){
+   static RecentPassenger staged[nativeorders::MaxPassengers];
+   int stagedCount=recentPassengerCount;
+   std::memcpy(staged,recentPassengers,sizeof(RecentPassenger)*stagedCount);
+   static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> tracked;tracked.clear();
+   for(int n=0;n<stagedCount;++n)tracked.add(staged[n].p,n);
+   for(int n=0;n<inf.count;++n){uint32_t q=item(inf,n);if(!q)continue;
    uint32_t carrier=get<uint32_t>(q+0x11C);
    if(selected.find(carrier)<0||!unloadPassengerEligible(q,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
    const uint32_t id=get<uint32_t>(q+0x10),carrierID=get<uint32_t>(carrier+0x10);
    int at=tracked.find(q);
-   if(at<0){if(recentPassengerCount==nativeorders::MaxPassengers)continue;at=recentPassengerCount++;tracked.add(q,at);}
-   recentPassengers[at]={q,id,carrier,carrierID,typeOf(carrier,2),manualVersions.get(id),now,frame};
+   if(at<0){if(stagedCount==nativeorders::MaxPassengers)continue;at=stagedCount++;tracked.add(q,at);}
+   staged[at]={q,id,carrier,carrierID,typeOf(carrier,2),manualVersions.get(id),now,frame};
+   }
+   if(sample.complete()){
+    recentPassengerCount=stagedCount;
+    std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
+   }
   }
  }
  return count; // acknowledgement means arranged, not physically unloaded
