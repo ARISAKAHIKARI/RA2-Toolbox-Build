@@ -220,6 +220,8 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .label-row { min-height:30px; align-items:center; justify-content:flex-start; }
 .label-row .setting-copy { flex:0 0 auto; }
 .label-row .setting-label, .label-row .setting-description { display:none; }
+.label-row.label-heading .setting-copy { flex:1 1 auto; }
+.label-row.label-heading .setting-label { display:block; color:var(--muted); font-size:var(--text-small); font-weight:650; line-height:1.45; white-space:pre-wrap; }
 .setting-row[data-type="hotkey"] { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; }
 .setting-row[data-type="hotkey"] .setting-copy { flex:1 1 auto; }
 .setting-row[data-type="hotkey"] .setting-editor { flex:0 0 auto; width:auto; max-width:none; justify-content:flex-end; }
