@@ -4,6 +4,7 @@
 #include "business_effects.h"
 #include "../../external_reader/source/cooperative_reader.h"
 #include "aircraft_selection_bridge.h"
+#include "entry_cohort.h"
 struct LocalRawRead {bool operator()(uint32_t a,void*out,size_t n)const{if(a<0x10000||uint64_t(a)+n>=0x80000000ull)return false;memcpy(out,(const void*)(uintptr_t)a,n);return true;}};
 static external::GameView<LocalRawRead> clickView(LocalRawRead{});
 // UI click capture keeps its independent live input generation. Tactical
@@ -121,12 +122,14 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
  }
  r.tick=now;r.sources[r.count++]={id,manualVersions.get(id)};MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();return true;
 }
-static int cooperativeInput(uint32_t p,uint32_t target,uint32_t bindings){
+static int cooperativeInput(uint32_t p,uint32_t target,uint32_t bindings,bool candidateEntry=false){
  if(!nativeReady()||!p||!target||!own(p,lastHouse)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C))return 0;
  if(((bindings&pointerinput::Shift)&&!(bindings&(pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)))||get<bool>(0x87F7E8+0x11B3)||get<bool>(0x87F7E8+0x11B1))return 0;
- if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady())return 0;if(!worldObjects.contains(p)||!worldObjects.contains(target)||!live(target))return 0;
+ if(indexedFrame!=get<int>(0xA8ED84)||(!commandRosterReady()&&(!candidateEntry||!candidateRosterReady())))return 0;
+ if(!worldObjects.contains(p)||!worldObjects.contains(target)||!live(target))return 0;
  if((sh->flags&AdvancedEnter)&&(bindings&pointerinput::Enter)&&featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,target)&&clickView.entryCompatible(p,target,lastHouse))return newCooperative(p,target,cooperative::Enter)?1:0;
 
+ if(candidateEntry)return 0;
  if((sh->flags&DiskPrimary)&&kind(p)==2&&kind(target)==3&&(bindings&pointerinput::Control)){
   uint32_t t=typeOf(p,2),secondary=t?get<uint32_t>(t+0x898+28):0;
   if(t&&featureTypeAllowed(featuretypes::Disk,t)&&(sameid((const char*)(t+0x24),"DISK")||(secondary>=0x10000&&get<bool>(secondary+0x142)))){
@@ -217,24 +220,94 @@ static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house,bool* ev
  }
  return std::min(reserved,1024);
 }
+// Cross-frame lookup can only supply identities. A small local boarding
+// cohort proves current membership and incoming seats explicitly.
+static bool candidateEntryCohortReady(){
+ return eventdelivery::isSingleplayer(snap.session)&&candidateRosterReady()&&
+  worldFrameCandidateRoster.count>0&&worldFrameCandidateRoster.count<=entrycohort::MaxMembers;
+}
+static bool candidateEntryCapacity(uint32_t target,uint32_t actor,uint32_t ignore,uint32_t house,
+ external::EntryCapacity&capacity,int&slots,int&reserved){
+ if(!candidateEntryCohortReady())return false;
+ const auto&roster=worldFrameCandidateRoster;
+ const uint64_t started=preciseclock::micros();
+ unsigned reads=0;bool complete=true;
+ auto withinBudget=[&](){return preciseclock::micros()-started<=750;};
+ auto read=[&](uint32_t at,void*out,size_t n){
+  if(!complete)return false;
+  if(++reads>768||(reads%16==0&&!withinBudget())){complete=false;return false;}
+  return complete=readLiveWorld(at,out,n);
+ };
+ entrycohort::Members members{};
+ if(!entrycohort::verify(read,[&](uint32_t at,void*out,size_t n){return worldFrameCandidate.read(at,out,n);},
+  [&](uint32_t id){return roster.objects->byId(id);},roster.items,roster.count,members))return false;
+ external::GameView<decltype(read)> current(read);
+ capacity=current.capacity(target);slots=current.entrySlots(actor,target);reserved=0;
+ const uint32_t targetID=current.get<uint32_t>(target+0x10);
+ auto represented=[&](uint32_t pointer){
+  return pointer&&(current.get<uint32_t>(pointer+0x11C)==target||
+                  current.entryDestination(pointer)==target||
+                  (capacity.singleVehicle&&current.radioLinked(target,pointer)));
+ };
+ for(uint32_t pointer:members){
+  if(!pointer||pointer==actor)continue;
+  const int k=current.kind(pointer);
+  if((k!=1&&k!=2)||current.get<uint32_t>(pointer+0x21C)!=house||
+     current.entryDestination(pointer)!=target)continue;
+  if(capacity.singleVehicle&&current.radioLinked(target,pointer))continue;
+  const int seats=current.entrySlots(pointer,target);
+  if(!seats)return false;
+  reserved+=seats;
+ }
+ for(int i=0;i<entryReservationCount;++i){
+  if((i&15)==0&&!withinBudget())return false;
+  const auto&r=entryReservations[i];
+  if(r.target==targetID&&r.id!=ignore&&manualVersions.get(r.id)==r.token&&
+     !represented(roster.objects->byId(r.id)))reserved+=r.slots;
+ }
+ for(int i=0;i<loadLedger.count;++i){
+  if((i&15)==0&&!withinBudget())return false;
+  const auto&r=loadLedger.records[i];
+  if(r.id==ignore||r.vehicleID!=targetID||r.vehicle!=target||r.slots<=0||
+     manualVersions.get(r.id)!=r.manualToken)continue;
+  const uint32_t pointer=roster.objects->byId(r.id);
+  if((pointer&&pointer!=r.object)||represented(pointer))continue;
+  bool shared=false;
+  for(int j=0;j<entryReservationCount;++j){
+   const auto&entry=entryReservations[j];
+   if(entry.id==r.id&&entry.target==targetID&&entry.token==r.manualToken){shared=true;break;}
+  }
+  if(!shared)reserved+=r.slots;
+ }
+ return complete&&withinBudget()&&targetID&&current.get<int>(0xA8ED84,-1)==snap.frame;
+}
 static int admitCooperative(const cooperative::Assignment&o,int mode,uint32_t house,int frame,DWORD now,
- const executionproof::Ticket*proof=nullptr){
+ const executionproof::Ticket*proof=nullptr,bool candidateEntry=false){
  const bool enter=mode==cooperative::Enter;
  if(!nativeReady()||get<bool>(0xA8BC60+25)||!(sh->flags&(enter?AdvancedEnter:AircraftSpread)))return -1;
  uint32_t p=worldByID(o.id),t=worldByID(o.target);
  if(proof){
+  const auto&target=enter?proof->destination:proof->target;
   if(proof->match!=match||proof->house!=house||proof->actor.id!=o.id||
-     proof->actor.manualVersion!=o.token||proof->target.id!=o.target||
+     proof->actor.manualVersion!=o.token||target.id!=o.target||
      manualVersions.get(o.id)!=o.token)return -1;
   uint32_t actorID=0,targetID=0;
-  if(!readObjectIdentity(proof->actor.pointer,actorID)||!readObjectIdentity(proof->target.pointer,targetID))return -2;
-  if(actorID!=o.id||targetID!=o.target||(p&&p!=proof->actor.pointer)||(t&&t!=proof->target.pointer))return -1;
+  if(!readObjectIdentity(proof->actor.pointer,actorID)||!readObjectIdentity(target.pointer,targetID))return -2;
+  if(actorID!=o.id||targetID!=o.target||(p&&p!=proof->actor.pointer)||(t&&t!=target.pointer))return -1;
   if(!p||!t)return -2; // Missing candidate membership is unknown.
  }
  bool valid=p&&t&&own(p,house)&&live(t)&&typeOf(t,kind(t))==o.type&&manualVersions.get(o.id)==o.token&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C);
   int slots=0,mission=enter?7:1;
-  if(valid&&enter){valid=featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,t)&&clickView.entryCompatible(p,t,house);auto c=clickView.capacity(t);slots=clickView.entrySlots(p,t);bool capacityEvidence=false;int reserved=entryReserved(t,o.id,house,&capacityEvidence);
-   if(!capacityEvidence)return -2; // defer incomplete graph; do not reject
+  if(valid&&enter){
+   external::EntryCapacity c{};int reserved=0;
+   if(candidateEntry){
+    if(!proof||!candidateEntryCapacity(t,p,o.id,house,c,slots,reserved))return -2;
+   }else{
+    bool capacityEvidence=false;c=clickView.capacity(t);slots=clickView.entrySlots(p,t);
+    reserved=entryReserved(t,o.id,house,&capacityEvidence);
+    if(!capacityEvidence)return -2;
+   }
+   valid=featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,t)&&clickView.entryCompatible(p,t,house);
    bool ownContact=c.singleVehicle&&clickView.entryDestination(p)==t&&clickView.radioLinked(t,p);
    valid=valid&&entryReservationCount<cooperative::MaxSources&&slots>0&&int64_t(c.used)-(ownContact?1:0)+reserved+slots<=c.maximum;
    if(valid){int action=call<int>(get<uint32_t>(get<uint32_t>(p)+0x74),p,t,true);bool bunker=kind(t)==3&&get<bool>(o.type+0x16AB);valid=action==3||action==11||(bunker&&(action==1||ownContact));
@@ -330,17 +403,15 @@ static void captureCooperativeFrame(DWORD now,bool indexedWorkReady){
  static compute::QuotaConfig quotas;
  MemoryBarrier();memcpy(&quotas,&sh->quotaConfig,sizeof quotas);MemoryBarrier();if(seq!=sh->quotaConfigSeq||quotas.count<0||quotas.count>512)return;
  cooperative::Input input;worldframe::Key source{};cooperative::CapturedIdentities identities;
- if(!collectCooperativeInput(r,quotas,input,&source,r.mode==cooperative::Enter?nullptr:&identities)||
+ if(!collectCooperativeInput(r,quotas,input,&source,&identities)||
     !freshness::valid(source.match,match,source.tick,source.frame,now,snap.frame,freshness::Cooperative))return;
  // The Host distinguishes an observation-only plan by its earlier frame.
  // A candidate stamped with this frame must not look like exact authority.
  if(!indexedWorkReady&&source.frame==snap.frame)return;
  if(!cooperative::pack(out,input,r,source.tick,source.frame))return;
  lastQuotaRevision=seq;
- if(r.mode!=cooperative::Enter){
-  identities.stamp={r.serial,r.match,source.tick,source.frame};
-  cooperativeCaptures.keep(std::move(identities));
- }
+ identities.stamp={r.serial,r.match,source.tick,source.frame};
+ cooperativeCaptures.keep(std::move(identities));
 }
 static void serviceCooperativePlan(uint32_t house,int frame,DWORD now,bool candidateOnly,uint64_t preciseNow=0){
  // More than one small pass can run in a long simulation frame. Both the
@@ -349,7 +420,7 @@ static void serviceCooperativePlan(uint32_t house,int frame,DWORD now,bool candi
                     sampleReadDepth||!candidateRosterReady()))return;
  uint32_t plan=sh->cooperativePlan;if(plan==sh->cooperativeAck)return;MemoryBarrier();
  if(candidateOnly){
-  if(sh->cooperativeMode==cooperative::Enter)return;
+  if(sh->cooperativeMode==cooperative::Enter&&!candidateEntryCohortReady())return;
   cooperativeCandidateAt=preciseNow;
  }
  if(plan!=cooperativePlanSeen){cooperativePlanSeen=plan;cooperativeAt=0;sh->cooperativeAccepted=sh->cooperativeRejected=0;sh->cooperativeProcessed=0;sh->cooperativeResult=1;memset(sh->cooperativeAcceptedBits,0,sizeof sh->cooperativeAcceptedBits);}
@@ -359,15 +430,16 @@ static void serviceCooperativePlan(uint32_t house,int frame,DWORD now,bool candi
  auto expire=[&](){sh->cooperativeResult=-7;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;};
  if(compute::inside(sh->computeApplied,enter?compute::Enter:compute::Aircraft)||!nativeReady()||sh->cooperativeSerial!=sh->cooperativeRequest.serial||sh->cooperativeMode!=sh->cooperativeRequest.mode||sh->cooperativeMode<cooperative::Enter||sh->cooperativeMode>cooperative::AirSingle||sh->cooperativeRequest.match!=match||sh->cooperativeCount<0||sh->cooperativeCount>cooperative::MaxSources||!(sh->flags&(enter?AdvancedEnter:AircraftSpread))){sh->cooperativeResult=-4;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;}
  if(cooperativeAt<sh->cooperativeCount&&!fresh())expire();
- const auto*identities=enter?nullptr:cooperativeCaptures.find({sh->cooperativeSerial,sh->cooperativeMatch,sh->cooperativeTick,sh->cooperativeFrame});
- if(!enter&&cooperativeAt<sh->cooperativeCount&&!identities)expire();
- int budget=candidateOnly?4:cooperative::MaxSources;
+ const auto*identities=enter&&!candidateOnly?nullptr:cooperativeCaptures.find({sh->cooperativeSerial,sh->cooperativeMatch,sh->cooperativeTick,sh->cooperativeFrame});
+ if(cooperativeAt<sh->cooperativeCount&&(!enter||candidateOnly)&&!identities)expire();
+ int budget=candidateOnly?(enter?1:4):cooperative::MaxSources;
  while(cooperativeAt<sh->cooperativeCount&&budget>0&&planningRoom(1)>0&&outgoingRoom()>0){
   if(!fresh()){expire();break;}
   --budget;
   const auto&order=sh->cooperativeOrders[cooperativeAt];
-  const auto proof=identities?identities->attack(order.id,order.target):executionproof::Ticket{};
-  const int admitted=admitCooperative(order,sh->cooperativeMode,house,frame,now,identities?&proof:nullptr);
+  const auto proof=identities?(enter?identities->boarding(order.id,order.target):
+    identities->attack(order.id,order.target)):executionproof::Ticket{};
+  const int admitted=admitCooperative(order,sh->cooperativeMode,house,frame,now,identities?&proof:nullptr,enter&&candidateOnly);
   if(admitted==-2){
    // Preserve the original source and serial until fresh evidence arrives.
    // A game-frame lag is not proof that the entry target became illegal.

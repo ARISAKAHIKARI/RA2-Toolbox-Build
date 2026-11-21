@@ -167,11 +167,14 @@ local_fallback = between(dispatcher, "else{\n  uiSoundCommand(now);", "nativePla
 assert "eventdelivery::isSingleplayer(sessionMode)" in local_fallback
 assert "candidateRosterReady()" in local_fallback
 assert "externalOrdersTick(house,frame,now,true);" in local_fallback
+assert "if(sh->pointer.request!=sh->pointer.ack)pointerTick(true);" in local_fallback
 assert "serviceCooperativePlan(house,frame,now,true,preciseNow);" in local_fallback
 coop = (root / "cooperative_bridge.h").read_text()
 coop_plan = between(coop, "static void serviceCooperativePlan(", "static void cooperativeTick(")
-assert "if(sh->cooperativeMode==cooperative::Enter)return;" in coop_plan
-assert "int budget=candidateOnly?4:cooperative::MaxSources" in coop_plan
+assert "if(sh->cooperativeMode==cooperative::Enter&&!candidateEntryCohortReady())return;" in coop_plan
+assert "int budget=candidateOnly?(enter?1:4):cooperative::MaxSources" in coop_plan
+assert "identities->boarding(order.id,order.target)" in coop_plan
+assert "!proof||!candidateEntryCapacity(t,p,o.id,house,c,slots,reserved)" in coop
 assert "preciseNow-cooperativeCandidateAt<CooperativeCandidateIntervalUs" in coop_plan
 assert "identities->attack(order.id,order.target)" in coop_plan
 assert "mode==cooperative::AirSingle,false,proof" in coop

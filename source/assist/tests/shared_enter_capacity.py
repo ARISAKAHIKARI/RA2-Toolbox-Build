@@ -24,7 +24,8 @@ def main():
  dest=a.out or Path(tempfile.mkdtemp(prefix="shared-enter-capacity-"))
  dest.mkdir(parents=True,exist_ok=True)
  production=(SRC/"cooperative_bridge.h").read_text(encoding="utf-8-sig")
- signatures=("static bool cooperativePendingActor(","static int cooperativePendingSlots(","static int entryReserved(")
+ signatures=("static bool cooperativePendingActor(","static int cooperativePendingSlots(","static int entryReserved(",
+             "static bool candidateEntryCohortReady(","static bool candidateEntryCapacity(")
  selected="\n".join(function(production,s) for s in signatures)
  before=(HERE/"shared_enter_capacity.cpp").read_text(encoding="utf-8")
  assert before.count("/* INSERT_EXTRACTED */")==1

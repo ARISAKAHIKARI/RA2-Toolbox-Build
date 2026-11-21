@@ -1888,6 +1888,7 @@ static void tick(){
     if(snap.nativeHookStatus!=1)nativeHooksTick(sh->flags);
     externalOrdersTick(house,frame,now,true);
    }
+   if(sh->pointer.request!=sh->pointer.ack)pointerTick(true);
    serviceCooperativePlan(house,frame,now,true,preciseNow);
   }
  }

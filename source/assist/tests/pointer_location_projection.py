@@ -22,7 +22,8 @@ def main():
     a=p.parse_args()
     if not a.portable and not a.zig:p.error('--zig is required unless --portable is selected')
     a.out=a.out.resolve();a.out.mkdir(parents=True,exist_ok=True)
-    production=a.pointer_source.read_text(encoding='utf-8');(a.out/'pointer_location_extract.h').write_text(function(production,'static bool pointerLocation(')+'\n',encoding='utf-8')
+    production=a.pointer_source.read_text(encoding='utf-8');extracted=function(production,'static bool pointerLocation(')
+    (a.out/'pointer_location_extract.h').write_text(extracted+'\n',encoding='utf-8')
     paths=[a.pointer_source,SRC/'native_viewport_query.h',SRC/'protocol.h',SRC.parents[1]/'shared/source/native_viewport_projection.h',HERE/'pointer_location_projection.cpp',Path(__file__).resolve()]
     hashes={str(path.resolve()):hashlib.sha256(path.read_bytes()).hexdigest()for path in paths}
     report={'scope':__doc__,'architectures':{},'portable':a.portable,'game_process_tested':False,'windows_hooks_tested':False,'multiplayer_tested':False,'native_dependency_boundary':'synthetic; real entry policy covered by native_entry_runtime.py'}
@@ -34,6 +35,7 @@ def main():
         exe=a.out/(arch+(''if a.portable else'.exe'))
         compiler=[a.cxx,'-I'+str(stub)]if a.portable else[str(a.zig.resolve()),'c++','-target',arch+'-windows-gnu']
         cmd=[*compiler,'-std=c++17','-O2','-UNDEBUG','-I'+str(a.out),str(HERE/'pointer_location_projection.cpp'),'-o',str(exe)]
+        if 'bool* missingCandidate' in extracted:cmd.insert(1,'-DRA2_POINTER_CANDIDATE_FIXTURE')
         build=subprocess.run(cmd,capture_output=True,text=True);(a.out/(arch+'-build.log')).write_text(build.stdout+build.stderr,encoding='utf-8');print(build.stdout+build.stderr,end='');build.check_returncode()
         run=subprocess.run([str(exe)],capture_output=True,text=True,timeout=20);(a.out/(arch+'.log')).write_text(run.stdout+run.stderr,encoding='utf-8');print(run.stdout+run.stderr,end='');run.check_returncode();report['architectures'][arch]=json.loads(run.stdout)
     assert hashes=={str(path.resolve()):hashlib.sha256(path.read_bytes()).hexdigest()for path in paths}

@@ -21,7 +21,7 @@ static void pointerFinish(int result){
  if(b.intent.operation==pointerinput::Sell)b.rejected=b.accepted?0:1;
  if(b.rejected<0)b.rejected=0;MemoryBarrier();b.ack=b.request;notifyHost();
 }
-static bool pointerLocation(const pointerinput::Intent&i){
+static bool pointerLocation(const pointerinput::Intent&i,bool* missingCandidate=nullptr){
  if(i.operation==pointerinput::AirWaypoint&&!nativeDependencyReady(0x578080))return false;
  if(nativeSidebarUIHit(i.x,i.y))return false;
  uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return false;
@@ -43,7 +43,10 @@ static bool pointerLocation(const pointerinput::Intent&i){
  // YRpp DisplayClass::ProcessClickCoords: thiscall, six pointer arguments.
  if(!nativeViewQuery(&point,&cell,&coord,&object,&a,&b)||!nativeViewTransformUnchanged(view))return false;
  if(cell.x<=0||cell.y<=0||cell.x>=512||cell.y>=512||!readMapCell(cell.x,cell.y))return false;
- if(object&&!worldObjects.contains(object))return false;
+ if(object&&!worldObjects.contains(object)){
+  if(missingCandidate)*missingCandidate=true;
+  return false;
+ }
  // Forced entry may click a building footprint covered by another object.
  // Resolve the building from the same cell content chain used by boarding.
  if(i.operation==pointerinput::C4Test&&(!object||kind(object)!=3)){
@@ -81,8 +84,11 @@ static bool pointerEntryOrder(uint32_t p,int mission,uint32_t cell,bool planning
  recordReceipt(receipt);actorLeaseArbiter.record(match,frame,id,p,manualVersions.get(id),taskarbiter::Owner::Generic,receipt.serial);
  return true;
 }
-static void pointerTick(){
+static void pointerTick(bool candidateEntry=false){
  auto&b=sh->pointer;uint32_t request=b.request;MemoryBarrier();
+ if(candidateEntry&&(!(sh->flags&AdvancedEnter)||!candidateEntryCohortReady()||
+    !pointerinput::entryClick(b.intent.operation,b.intent.bindings)||
+    b.intent.count<1||b.intent.count>entrycohort::MaxMembers))return;
  // Refuse retired input before coordinate queries, cancellation of existing
  // jobs, or native event construction, including queued/stale host requests.
  if(request!=b.ack&&!featuregate::pointer(b.intent.operation)){
@@ -110,13 +116,21 @@ static void pointerTick(){
   if(i.operation!=pointerinput::Cancel){
    bool shiftUnsupported=(i.bindings&pointerinput::Shift)&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick)||!(i.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS|pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)));
    uint32_t tactical=get<uint32_t>(0x887324);
-   bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0x8A00A4)&&i.height==get<int>(0x8A00A8)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
+   bool missingCandidate=false;
+   bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0x8A00A4)&&i.height==get<int>(0x8A00A8)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i,candidateEntry?&missingCandidate:nullptr);
+   if(missingCandidate){pointerActive=false;return;}
    // Z sets DisplayClass::PlanningMode. AirWaypoint only records a validated
    // point for the host; rejecting it here would reject its own activation key.
    // Forced entry appends only while Z is held; native Z release owns commit.
    // Other orders keep the exclusion; never change native PlanningMode here.
    const bool nativePlanningBlocked=get<bool>(0x87F7E8+0x11B3)&&i.operation!=pointerinput::AirWaypoint&&i.operation!=pointerinput::C4Test;
    if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder&&i.operation!=pointerinput::C4Test)||nativePlanningBlocked||!location){pointerFinish(-4);return;}
+  }
+  if(candidateEntry){
+   if(!pointerTarget){pointerFinish(-4);return;}
+   for(int n=0;n<i.count;++n){
+    if(worldByID(i.sources[n].id)!=i.sources[n].pointer){pointerActive=false;return;}
+   }
   }
   if(start){pointerBatchCapture=i;pointerBatchValid=true;memset(pointerBatchTickets,0,sizeof pointerBatchTickets);memset(pointerBatchFollow,0,sizeof pointerBatchFollow);}
   if(start||continuation)pointerBatchRequest=request;
@@ -196,9 +210,10 @@ static void pointerTick(){
    }else ++remaining;
    continue;
   }
+  if(candidateEntry&&!pointerTarget){pointerDone[n]=1;continue;}
   if(pointerTarget){
    if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
-   uint32_t before=snap.queuedEvents;int result=cooperativeInput(p,pointerTarget,i.bindings);bool nativeObserved=false;
+   uint32_t before=snap.queuedEvents;int result=cooperativeInput(p,pointerTarget,i.bindings,candidateEntry);bool nativeObserved=false;
    // Object clicks are not limited to transport/aircraft cooperative actions.
    // Native LEFT object clicks are retained by the message filter; observe
    // their Attack instead of duplicating it. Other explicit bindings submit
@@ -206,7 +221,7 @@ static void pointerTick(){
    bool mag=(i.bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput)&&rawMagnetron(p);
    bool advanced=(i.bindings&pointerinput::Advanced)&&(sh->flags&AdvancedInput)&&featureObjectAllowed(featuretypes::AdvancedAttack,p);
    bool cs=i.operation==pointerinput::AttackMove||((i.bindings&pointerinput::CS)&&csAllowedFor(p,true));
-   if(!singleCooperative&&!result&&!(i.bindings&pointerinput::Shift)&&(mag||advanced||cs)&&(kind(p)==1||kind(p)==2)&&nativeEnemy(pointerTarget,lastHouse)&&rawArmed(p)){
+   if(!candidateEntry&&!singleCooperative&&!result&&!(i.bindings&pointerinput::Shift)&&(mag||advanced||cs)&&(kind(p)==1||kind(p)==2)&&nativeEnemy(pointerTarget,lastHouse)&&rawArmed(p)){
     if((i.bindings&pointerinput::LeftClick)&&!suppressed){
      if(get<uint32_t>(p+0x2B4)!=pointerTarget||(get<int>(p+0xAC)!=1&&get<int>(p+0xB4)!=1)){++remaining;continue;}
      result=1;nativeObserved=true;
