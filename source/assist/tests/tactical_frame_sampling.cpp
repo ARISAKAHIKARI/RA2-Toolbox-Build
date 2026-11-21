@@ -160,6 +160,10 @@ static uint32_t pendingAck=0;
 static int loadingSubmitResult=1;
 static bool enterEvent(uint32_t,uint32_t,uint32_t,const executionproof::Ticket&,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
 static loading::Ledger<> loadLedger;
+// This fixture intentionally isolates AutoLoad sampling; cooperative pending
+// capacity is exercised separately against source-extracted production code.
+static bool cooperativePendingActor(uint32_t){return false;}
+static int cooperativePendingSlots(uint32_t,uint32_t){return 0;}
 static repairdelivery::Pending<> pendingRepairs;
 static compute::FrameHistory<compute::RepairInput> repairFrames;
 static uint32_t repairIDs[8192],repairTaskSeen;static int repairCount,repairAt,repairDone;
