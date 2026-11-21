@@ -65,7 +65,12 @@ if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('--zig',required=True,type=Path);p.add_argument('--out',required=True,type=Path);p.add_argument('--baseline',type=Path,default=HERE/'fixtures/mo_smartarea_baseline');a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
  paths=['assist/source/mo_orders_bridge.h','assist/source/mo_orders.h','assist/source/mo_gesture_bridge.h','assist/source/bridge.cpp','assist/source/cooperative_bridge.h','assist/source/cooperative_types.h','external_reader/source/game_view.h','assist/source/command_gateway.h','assist/source/unit_task_arbiter.h','assist/source/autoload.h','assist/tests/smartarea_capacity.cpp','assist/tests/smartarea_capacity.py','assist/tests/mo_orders_bridge_test.py','assist/tests/formation_quick_bridge_test.py']
  manifest=json.loads((a.baseline/'manifest.json').read_text()) if (a.baseline/'manifest.json').is_file() else {}
- for name,digest in manifest.get('files',{}).items():assert hashlib.sha256((a.baseline/name).read_bytes()).hexdigest()==digest
+ # Historical fixtures are stored as LF in Git. Git for Windows may check
+ # them out as CRLF; normalize that transport conversion before SHA-256,
+ # while continuing to reject any substantive fixture content modification.
+ for name,digest in manifest.get('files',{}).items():
+  raw=(a.baseline/name).read_bytes().replace(b'\r\n',b'\n')
+  assert hashlib.sha256(raw).hexdigest()==digest,(name,'baseline source digest mismatch')
  paths += [str(p.relative_to(ROOT)).replace('\\','/') for p in (HERE/'fixtures/mo_smartarea_baseline').iterdir() if p.is_file()]
  snapshot=lambda:{n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in paths};before=snapshot();reports={}
  variants=[('current',SOURCE/'bridge.cpp',SOURCE/'mo_orders_bridge.h')]
