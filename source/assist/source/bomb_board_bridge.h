@@ -76,7 +76,7 @@ static void tick(uint32_t house,int frame){
    bool sent=false;runtimeunwind::run([&]{submitting=&j;destination=target;destinationSlots=slots;
     sent=nativeMission(house,j.unit.id,7,0,get<uint32_t>(target+0x10),0x34,0,0,taskarbiter::Owner::BombBoard,nullptr,-1,OrderAuthority::Local,false,false,true);
     if(sent){for(int n=0;n<entryReservationCount;)if(entryReservations[n].id==j.unit.id)entryReservations[n]=entryReservations[--entryReservationCount];else ++n;
-     entryReservations[entryReservationCount++]={j.unit.id,get<uint32_t>(target+0x10),typeOf(target,2),j.token,frame,slots};
+     entryReservations[entryReservationCount++]={j.unit.id,get<uint32_t>(target+0x10),typeOf(target,2),j.token,sampleClock(sh),slots};
      j.target=get<uint32_t>(target+0x10);j.sent=frame;++sh->bombBoardIssued;++sends;
     }
    },[&]{submitting=nullptr;destination=0;destinationSlots=0;});
