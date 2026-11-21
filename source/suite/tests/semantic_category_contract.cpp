@@ -7,5 +7,5 @@ int main(){
  assert(row(2,autoFilter,2)==Automatic); // native targeting stays by low-damage filter
  assert(row(2,repair,2)==Automatic); // options stay with automatic repair
  assert(row(1,combat,1)==Control);
- assert(row(4,tech,1)==Experimental||row(4,tech,1)==Control); // no invented ownership
+ assert(row(4,tech,1)==Rules); // keep native technology eligibility in rules
 }
