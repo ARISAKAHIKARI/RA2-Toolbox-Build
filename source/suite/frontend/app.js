@@ -302,7 +302,7 @@
       // A feature header owns its params; unheaded keyboard controls are
       // independent action rows. Preserve compound shortcut rows as a unit.
       for(const block of featureBlocks(items)){
-        const pieces=block.headers.length?[block.controls]:settingLines(block.controls);
+        const pieces=(block.headers.length||block.controls.some(c=>c.groupHeader))?[block.controls]:settingLines(block.controls);
         for(const piece of pieces){
           const section=names[semanticSection(name,piece,navigationIndex)];
           if(!combined.has(section))combined.set(section,[]);

@@ -42,9 +42,10 @@ static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int 
 // It never creates a task without the explicit original Ctrl+D.
 struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;int frame;};
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
+static DWORD lastUnloadHistoryTick=0; // wall-clock cadence independent of game FPS
 static ObjectIndex watchedPassengers;
 static void restoreNativeHooks();
-static void clearNativeOrders(bool retireHooks){queuedUnload.clear();globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;if(retireHooks)restoreNativeHooks();resetUnloadCalculation();}
+static void clearNativeOrders(bool retireHooks){queuedUnload.clear();globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;lastUnloadHistoryTick=0;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;if(retireHooks)restoreNativeHooks();resetUnloadCalculation();}
 static bool nativeMember(uint32_t p){return worldObjects.contains(p);}
 static bool nativeReady(){return simulationReady()&&sh->foreground&&!get<bool>(0xA8BC60+25);}
 
@@ -113,6 +114,9 @@ static bool unloadExit(const UnloadPassenger&r,int mission,int frame){
 static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  if(!(sh->flags&SmartUnloadOrders)||snap.chat){recentPassengerCount=0;return;}
  if(indexedFrame!=frame)return; // incomplete identity sample: retain history until retry
+ // No 16K passenger walk on every game frame (which can exceed 800Hz).
+ // The explicit Ctrl+D command independently gathers its own latest cohort.
+ if(lastUnloadHistoryTick&&DWORD(now-lastUnloadHistoryTick)<33)return;
  SampleReadScope sample;if(!sample)return;
  Vec inf{};if(!sampleRoster(0xA83DE8,inf))return;
  static RecentPassenger staged[nativeorders::MaxPassengers];
@@ -144,6 +148,7 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  if(!sample.complete())return;
  recentPassengerCount=stagedCount;
  std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
+ lastUnloadHistoryTick=now;
 }
 // Build one carrier-keyed roster per admission tick. A large selected cohort
 // must not rescan every infantry object once for each selected transport.

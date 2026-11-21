@@ -62,6 +62,8 @@ jobs:
           checks/plan-freshness | tee checks/plan-freshness.log
           python source/assist/tests/automation_no_deadline_contract.py | tee checks/automation-no-deadline.log
           python source/assist/tests/ui_recovery_contract.py | tee checks/ui-recovery.log
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/assist/tests/construction_cameo_index.cpp -o checks/cameo-index
+          checks/cameo-index | tee checks/cameo-index.log
           node source/suite/tests/console_store_test.mjs | tee checks/console-store.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/suite/tests/semantic_category_contract.cpp -o checks/category-routing
           checks/category-routing | tee checks/category-routing.log
