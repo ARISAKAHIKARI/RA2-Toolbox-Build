@@ -638,6 +638,27 @@ if (!failed && process.argv.includes('--browser')) {
     action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,702);assert.equal(action.action,'toggle');
     await page.locator('#search').fill('左键');await page.waitForFunction(()=>document.getElementById('resultCount').textContent==='找到 4 项设置');
     assert.equal(await line.locator('.setting-row').count(),4,'search retains sibling editors and the feature switch');await page.locator('#search').fill('');
+    const pairedShortcut=[
+      {id:9042,type:'toggle',label:'磁电全局无限吸',checked:true,row:120,column:20},
+      {id:9511,type:'hotkey',label:'磁电全局无限吸',selected:0,options:['press','release'],row:120,column:345}
+    ];
+    await receive(compactState({controls:pairedShortcut}));
+    const pairedRow=page.locator('.compound-row');
+    await pairedRow.locator('#control-0-9511').waitFor();
+    for (const width of [1240,720,390]) {
+      await page.setViewportSize({width,height:880});
+      const bounds=await pairedRow.evaluate(element=>{
+        const box=selector=>element.querySelector(selector).getBoundingClientRect();
+        return {line:element.getBoundingClientRect(),toggle:box('.toggle'),label:box('[data-type="hotkey"] .setting-label'),editor:box('.hotkey-editor')};
+      });
+      assert.ok(Math.abs(bounds.line.right-bounds.editor.right)<2,'two-control shortcuts use the full row right edge');
+      if (width>=720) {
+        assert.ok(Math.abs(bounds.toggle.top-bounds.editor.top)<8,'an unbound shortcut stays beside its switch when there is room');
+        assert.ok(Math.abs(bounds.label.top+bounds.label.height/2-bounds.editor.top-bounds.editor.height/2)<4,'the shortcut caption stays beside its editor');
+      }
+      await assertFits();
+    }
+    await page.setViewportSize({width:1240,height:880});
     const pinned=[{id:880,type:'toggle',label:'科技设置',group:'科技设置',groupHeader:true,collapsible:true,collapsedDefault:true},{id:881,type:'number',label:'科技等级',text:'1',group:'科技设置',collapsible:true,collapsedDefault:true}];
     await receive(compactState({generation:7,controls:pinned}));await page.getByLabel('科技设置',{exact:true}).waitFor();
     assert.equal(await page.getByRole('heading',{name:'科技设置',exact:true}).count(),0,'a feature carries its own visible name');

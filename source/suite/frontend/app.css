@@ -238,8 +238,8 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .compound-row > .setting-row { flex: 0 1 auto; min-width: 0; max-width: 100%; min-height: var(--control-height); padding: 0; gap: 6px; flex-direction: row; align-items: center; }
 .compound-row > .setting-row:first-child { min-width:min(164px,100%); padding-right:4px; justify-content:flex-start; }
 .compound-row > .setting-row[data-type="hotkey"] { flex:0 1 auto; }
+.compound-row > .setting-row:is([data-type="toggle"], [data-type="button"]):first-child + .setting-row[data-type="hotkey"]:last-child { margin-inline-start:auto; }
 .compound-row .setting-row[data-type="hotkey"] .setting-editor { justify-content:flex-end; }
-.compound-row .hotkey-editor { max-width:410px; }
 .subsettings-line.compound-row { padding-left: var(--space-4); }
 .compound-row .setting-copy { flex: 0 1 auto; }
 .compound-row .setting-label, .compound-row > .setting-row[data-setting-level="secondary"] .setting-label { color: var(--muted); font-size: var(--text-small); font-weight: 400; }
@@ -327,8 +327,8 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 }
 @media (max-width: 760px) {
   .setting-row { flex-direction: column; align-items: stretch; gap: 5px; }
-  .setting-row[data-type="hotkey"] { grid-template-columns:minmax(0,1fr); gap:5px; }
-  .setting-row[data-type="hotkey"] .setting-editor { width:100%; justify-content:flex-start; }
+  .setting-row[data-type="hotkey"] { display:flex; flex-flow:row wrap; align-items:center; }
+  .setting-row[data-type="hotkey"] .setting-editor { width:auto; max-width:100%; margin-inline-start:auto; }
   .hotkey-editor { display:flex; flex-wrap:wrap; justify-content:flex-start; max-width:100%; }
   .setting-copy { flex: 0 1 auto; }
   .setting-editor { width: 100%; max-width: 100%; justify-content: flex-start; }
@@ -343,7 +343,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
   .page-heading { align-items: flex-start; gap: 12px; }
   h1 { font-size: 21px; }
   .compound-row > .setting-row:first-child, .compound-row > .setting-row[data-type="hotkey"] { flex-basis: 100%; }
-  .compound-row .hotkey-editor { flex: 1 1 180px; min-width: 0; }
+  .compound-row:has(> .setting-row:is([data-type="toggle"], [data-type="button"]):first-child + .setting-row[data-type="hotkey"]:last-child) > .setting-row { flex-basis:auto; }
   .compound-row .setting-copy { max-width: 100%; }
   .compound-row > .setting-row[data-type="text"], .compound-row > .setting-row[data-type="choice"] { flex-wrap: wrap; }
   .debug-row { grid-template-columns: minmax(0, 1fr) 74px; }
