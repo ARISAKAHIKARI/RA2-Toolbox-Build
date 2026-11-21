@@ -29,6 +29,15 @@ static int indexedFrame=-1;
 struct Vec{int count;const std::vector<uint32_t>*values;};
 static Vec vec(uint32_t p,int maximum=16384){auto*v=p==0xA8ECB8?&selectedObjects:p==0xA83DE8?&infantry:&allObjects;return {v->size()<=unsigned(maximum)?int(v->size()):0,v};}
 static uint32_t item(Vec v,int n){return v.values->at(n);}
+// Extracted function fixture: the synthetic roster is already a complete
+// immutable vector; production uses SampleReadScope + sampleRoster from
+// tactical_frame_read.h and the real sealed Runtime world sample.
+struct SampleReadScope {
+ explicit operator bool() const{return true;}
+ bool complete() const{return true;}
+};
+static bool sampleRoster(uint32_t address,Vec&out){out=vec(address);return out.count>=0;}
+
 template<class T>static T get(uint32_t p){return T(memory[p]);}
 static uint32_t unreadableField=0;
 static bool read(uint32_t p,void*out,size_t size){
