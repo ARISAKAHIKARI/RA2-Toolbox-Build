@@ -466,9 +466,9 @@ if (!failed && process.argv.includes('--browser')) {
     const noteHelp=page.locator('.label-help').first();
     assert.equal(await noteHelp.locator('summary').textContent(),'ⓘ');
     assert.equal(await noteHelp.evaluate(element=>element.open),false,'standalone explanations are hidden until requested');
-    assert.equal(await page.getByText('设置会自动保存；每项功能独立启用。',{exact:true}).isVisible(),false);
+    assert.equal(await noteHelp.locator('.label-help-text').isVisible(),false);
     await noteHelp.locator('summary').click();
-    assert.equal(await page.getByText('设置会自动保存；每项功能独立启用。',{exact:true}).isVisible(),true);
+    assert.equal(await noteHelp.locator('.label-help-text').isVisible(),true);
     await noteHelp.locator('summary').click();
     const shortcutRow=page.locator('.setting-row[data-type="hotkey"]').first();
     const shortcutLayout=await shortcutRow.evaluate(element=>({display:getComputedStyle(element).display,row:element.getBoundingClientRect(),label:element.querySelector('.setting-label').getBoundingClientRect(),editor:element.querySelector('.setting-editor').getBoundingClientRect()}));
