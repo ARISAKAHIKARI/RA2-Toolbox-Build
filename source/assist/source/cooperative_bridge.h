@@ -154,7 +154,9 @@ static void resetRuntimeCooperative();
 static void resetCooperativeState(){resetRuntimeCooperative();cooperativeCaptures={};cooperativeCandidateAt=0;singleDamageSerial=singleDamageMatch=0;singleDamageCommitted=0;entryReservationCount=cooperativeEffectCount=0;cooperativeAt=0;cooperativePlanSeen=0;}
 static void restoreClickHooks(){}
 static void clickHooksTick(uint32_t flags){sh->clickHookStatus=(flags&SpecialClickFlags)?1:0;}
-static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house){
+static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house,bool* evidenceReady=nullptr){
+ // An incomplete frame is UNKNOWN, not a permanent capacity denial.
+ if(evidenceReady)*evidenceReady=false;
  struct Candidate {uint32_t pointer,id;};static Candidate candidates[16384];
  int count=0;SampleReadScope frameRead;if(!frameRead||!commandRosterReady())return 1024;
  // Filter the canonical worker-owned Techno membership using the sealed
@@ -168,6 +170,7 @@ static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house){
  }
  if(!frameRead.complete())return 1024;
  frameRead.finish();
+ if(evidenceReady)*evidenceReady=true;
  int reserved=0;const bool facility=clickView.capacity(target).singleVehicle;
  for(int i=0;i<count;++i){
   const auto&candidate=candidates[i];const uint32_t p=candidate.pointer;
@@ -196,7 +199,8 @@ static int admitCooperative(const cooperative::Assignment&o,int mode,uint32_t ho
  }
  bool valid=p&&t&&own(p,house)&&live(t)&&typeOf(t,kind(t))==o.type&&manualVersions.get(o.id)==o.token&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C);
   int slots=0,mission=enter?7:1;
-  if(valid&&enter){valid=featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,t)&&clickView.entryCompatible(p,t,house);auto c=clickView.capacity(t);slots=clickView.entrySlots(p,t);int reserved=entryReserved(t,o.id,house);
+  if(valid&&enter){valid=featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,t)&&clickView.entryCompatible(p,t,house);auto c=clickView.capacity(t);slots=clickView.entrySlots(p,t);bool capacityEvidence=false;int reserved=entryReserved(t,o.id,house,&capacityEvidence);
+   if(!capacityEvidence)return -2; // defer incomplete graph; do not reject
    bool ownContact=c.singleVehicle&&clickView.entryDestination(p)==t&&clickView.radioLinked(t,p);
    valid=valid&&entryReservationCount<cooperative::MaxSources&&slots>0&&int64_t(c.used)-(ownContact?1:0)+reserved+slots<=c.maximum;
    if(valid){int action=call<int>(get<uint32_t>(get<uint32_t>(p)+0x74),p,t,true);bool bunker=kind(t)==3&&get<bool>(o.type+0x16AB);valid=action==3||action==11||(bunker&&(action==1||ownContact));
@@ -262,7 +266,7 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
  }
  while(runtimeCoopAt<runtimeCoopOrders.size()&&planningRoom(1)>0&&outgoingRoom()>0){
   if(!freshness::valid(request.match,match,runtimeCoopTick,runtimeCoopFrame,sampleClock(sh),get<int>(0xA8ED84),freshness::Cooperative))return;
-  const auto&o=runtimeCoopOrders[runtimeCoopAt];int accepted=admitCooperative(o,request.mode,house,frame,now);if(!accepted)return;
+  const auto&o=runtimeCoopOrders[runtimeCoopAt];int accepted=admitCooperative(o,request.mode,house,frame,now);if(!accepted||accepted==-2)return;
   runtimeCoopProcessed.push_back(o);if(accepted>0){runtimeCoopAccepted.push_back(o);++sh->runtimeCoopAccepted;}else ++sh->runtimeCoopRejected;++runtimeCoopAt;
  }
  if(runtimeCoopAt>=runtimeCoopOrders.size()){
@@ -329,8 +333,8 @@ static void serviceCooperativePlan(uint32_t house,int frame,DWORD now,bool candi
   const auto proof=identities?identities->attack(order.id,order.target):executionproof::Ticket{};
   const int admitted=admitCooperative(order,sh->cooperativeMode,house,frame,now,identities?&proof:nullptr);
   if(admitted==-2){
-   // The Host retains unprocessed actors when asked to plan from new evidence.
-   if(!candidateOnly||worldFrameCandidate.key.frame>sh->cooperativeFrame)expire();
+   // Preserve the original source and serial until fresh evidence arrives.
+   // A game-frame lag is not proof that the entry target became illegal.
    break;
   }
   if(!admitted)break;
@@ -343,7 +347,22 @@ static void cooperativeTick(uint32_t house,int frame,DWORD now){
  observeCooperativeEffects(house,frame,now);
  runtimeCooperativeTick(house,frame,now);
  for(int i=0;i<entryReservationCount;){auto&r=entryReservations[i];uint32_t p=worldByID(r.id),t=worldByID(r.target);
-  if(!p||!t||!own(p,house)||manualVersions.get(r.id)!=r.token||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x2E4)||!live(p)||DWORD(now-r.queuedAt)>3000)entryReservations[i]=entryReservations[--entryReservationCount];else ++i;
+  if(!p||!t||!own(p,house)||manualVersions.get(r.id)!=r.token||
+     get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x2E4)||!live(p)){
+   entryReservations[i]=entryReservations[--entryReservationCount];continue;
+  }
+  // A reservation remains in flight while native Enter/Radio is observable.
+  // Missing evidence is not a cancellation. Revalidate both UIDs before
+  // discarding it; do not rely solely on wall time or game-frame age.
+  uint32_t uid=0,targetUID=0,destination=0,incoming=0;int mission=0,queued=0;
+  bool observed=read(p+0x10,&uid,4)&&read(t+0x10,&targetUID,4)&&
+   read(p+0x5A4,&destination,4)&&read(p+0x500,&incoming,4)&&
+   read(p+0xAC,&mission,4)&&read(p+0xB4,&queued,4);
+  if(!observed){++i;continue;}
+  bool stillEntering=destination==t||incoming==t||mission==7||queued==7||mission==9||queued==9;
+  if(uid!=r.id||targetUID!=r.target||(DWORD(now-r.queuedAt)>3000&&!stillEntering))
+   entryReservations[i]=entryReservations[--entryReservationCount];
+  else ++i;
  }
  serviceCooperativePlan(house,frame,now,false);
 }
