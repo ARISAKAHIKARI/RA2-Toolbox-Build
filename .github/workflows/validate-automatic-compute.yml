@@ -127,6 +127,12 @@ jobs:
           Expand-Archive zig.zip zig
           Add-Content $env:GITHUB_ENV ('ZIG_EXE='+(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)
           New-Item -ItemType Directory -Force diagnostics,artifacts/console | Out-Null
+      - name: Test actual cross-feature Enter seat accounting (x86/x64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/smartarea_capacity.py --zig "$ZIG" --out diagnostics/entry-capacity
       - name: Compile paired Windows x86 Runtime and x64 Host
         shell: bash
         run: |
