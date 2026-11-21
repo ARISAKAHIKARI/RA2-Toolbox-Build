@@ -256,6 +256,8 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true,bool 
  static uint32_t roster[nativeorders::MaxPassengers];int count=0;uint32_t previous=0;
  auto*begin=std::lower_bound(unloadRoster,unloadRoster+unloadRosterCount,p,[](const UnloadRosterEntry&r,uint32_t carrier){return r.carrier<carrier;});
  auto*rosterEnd=chainOnly?begin:std::upper_bound(begin,unloadRoster+unloadRosterCount,p,[](uint32_t carrier,const UnloadRosterEntry&r){return carrier<r.carrier;});
+ bool frozenCohort=false;
+ for(auto*at=begin;at<rosterEnd;++at)if(at->history<=-2)frozenCohort=true;
  for(auto*at=begin;at<rosterEnd;++at){uint32_t q=at->pointer;
   if(q==previous)continue;
   uint32_t uid=0,carrier=0;const int known=unloadPassengerKnowledge(q,house,uid,carrier);
@@ -313,8 +315,16 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true,bool 
     // passengers again for every native cargo link; check *all* duplicate
     // records for the same pointer to preserve mismatched-token rejection.
     auto*same=unloadpolicy::firstRosterPointer(begin,rosterEnd,q);
-    for(auto*at=same;at<rosterEnd&&at->pointer==q;++at)
+    bool frozenMember=false;
+    for(auto*at=same;at<rosterEnd&&at->pointer==q;++at){
      if(at->id!=id||at->token!=token)return -6;
+     frozenMember|=at->history<=-2;
+    }
+    // Units boarded AFTER the original Ctrl+D never inherit its follow-up.
+    if(frozenCohort&&!frozenMember){uint32_t next=0;
+     if(!read(q+0x30,&next,sizeof next))return -6;
+     q=next;continue;
+    }
     bool enrolled=false;for(int k=0;k<count;++k)if(roster[k]==q){enrolled=true;break;}
     if(!enrolled){if(count==nativeorders::MaxPassengers)return -6;roster[count++]=q;}
    }
@@ -330,7 +340,7 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true,bool 
  // on initial admission, but retain this Ctrl+D for later passenger enrolment.
  // Return 2 means "native event issued, passenger admission still pending".
  if(!count){
-  if(chainOnly)return -6;
+  if(chainOnly||frozenCohort)return -6;
   if(!loaded||!firstAttempt||get<bool>(p+0x1C8)||get<int>(p+0xAC)==16||get<int>(p+0xB4)==16)return -6;
   return nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload)?2:-6;
  }

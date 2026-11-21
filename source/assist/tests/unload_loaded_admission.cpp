@@ -22,7 +22,8 @@ struct Shared{uint32_t flags=1;} shared,*sh=&shared;
 constexpr uint32_t SmartUnloadOrders=1;
 static bool loadInterfaces(){return true;}
 static bool simulationReady(){return true;}
-static DWORD sampleClock(Shared*){return 1000;}
+static DWORD nowClock=1000;
+static DWORD sampleClock(Shared*){return nowClock;}
 template<class T>static T get(uint32_t address){
  if(address==0xA8ED84)return T(10);
  auto at=objects.find(address&~0xfffu);if(at==objects.end())return T{};const auto&o=at->second;
@@ -79,7 +80,7 @@ static bool unloadCarrierEligible(uint32_t p,uint32_t house);
 static bool unloadCarrierEligible(uint32_t p,uint32_t house){return worldObjects.contains(p)&&own(p,house)&&kind(p)==2;}
 #endif
 static void check(bool v,const char*why){if(!v)throw std::runtime_error(why);}
-static void reset(){lastUnloadHistoryTick=0;objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[transport].head=passenger;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=frozenUnloadCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=manualVersions.carrierMove=0;}
+static void reset(){nowClock=1000;lastUnloadHistoryTick=0;objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[transport].head=passenger;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=frozenUnloadCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=manualVersions.carrierMove=0;}
 int main(){try{
 #ifdef USE_PRODUCTION_CARRIER_AND_COMMAND
  reset();sampleComplete=false;
@@ -192,6 +193,44 @@ int main(){try{
  buildUnloadAdmissionRoster(1);
  check(smartUnloadNow(1,transport)==1&&unloadCount==3,
        "native-first staggered ejection must retain all three passengers");
+ // Freeze a full three-person Ctrl+D cohort before any native Deploy.
+ // The oldest passenger has already left by the later worker callback and
+ // the original 1500ms observation history has expired.
+ reset();
+ objects[transport].passengers=3;
+ objects[passenger].type=42;
+ objects[second]={12,1,transport,43,1};objects[third]={13,1,transport,45,1};
+ objects[passenger].next=second;objects[second].next=third;
+ objects[second].active=objects[third].active=false;
+ objects[second].limbo=objects[third].limbo=true;
+ objects[second].onMap=objects[third].onMap=false;
+ infantry.push_back(second);infantry.push_back(third);
+ check(smartUnload(1)==1&&frozenUnloadCount==3,
+       "Ctrl+D must freeze all three loaded passengers at the click boundary");
+ objects[transport].passengers=0;objects[transport].head=0;
+ for(uint32_t q:{passenger,second,third}){objects[q].carrier=0;
+  objects[q].active=true;objects[q].limbo=false;objects[q].onMap=true;}
+ nowClock=3100;buildUnloadAdmissionRoster(1);
+ check(smartUnloadNow(1,transport)==1&&unloadCount==3&&deployments==0,
+       "all original Ctrl+D passengers must survive a 2100ms/huge-frame gap");
+ bool frozenSecond=false,frozenThird=false;
+ for(int i=0;i<unloadCount;++i){frozenSecond|=unloadPassengers[i].id==12;
+  frozenThird|=unloadPassengers[i].id==13;}
+ check(frozenSecond&&frozenThird,"late admission lost the original second/third passengers");
+ // Identity reuse cannot hijack a previously frozen passenger command.
+ reset();check(smartUnload(1)==1&&frozenUnloadCount==1,"single click must freeze identity");
+ objects[passenger].id=99;objects[transport].passengers=0;objects[passenger].carrier=0;
+ objects[passenger].limbo=false;objects[passenger].onMap=true;
+ nowClock=3100;buildUnloadAdmissionRoster(1);smartUnloadNow(1,transport);
+ check(unloadCount==0,"frozen pointer reuse must not inherit a Ctrl+D follow-up");
+ // Complete snapshot alone is not enough: the frozen cohort is immutable.
+ reset();check(smartUnload(1)==1&&frozenUnloadCount==1,"frozen single passenger");
+ objects[second]={12,1,transport,43,1};
+ objects[second].limbo=true;objects[second].onMap=false;
+ objects[passenger].next=second;infantry.push_back(second);objects[transport].passengers=2;
+ buildUnloadAdmissionRoster(1);smartUnloadNow(1,transport);
+ check(unloadCount==1&&unloadPassengers[0].id==11,
+       "passenger boarded after Ctrl+D must not get its automated follow-up");
  check(unloadpolicy::completeIdentityIndex(10,10),
        "complete index permits independent passenger followups");
  check(!unloadpolicy::completeIdentityIndex(-1,10)&&
