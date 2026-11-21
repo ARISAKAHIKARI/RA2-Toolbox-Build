@@ -10,6 +10,9 @@ inline bool rule(int id){
 // Classify a complete label/input row, keeping related controls together.
 // Historical page numbers describe control ownership, not navigation.
 inline int row(int section,const int*ids,unsigned count){
+ // Manual loading is a user command, so its dispatch policy and radius
+ // belong with the manual keyboard operation, not the continuous automation.
+ for(unsigned i=0;i<count;++i)if(ids[i]==700||ids[i]==701)return Control;
  for(unsigned i=0;i<count;++i)if(ids[i]==9494)return Rules; // Single-player simulation FPS belongs to game rules, not presentation.
  for(unsigned i=0;i<count;++i)if(rule(ids[i]))return Rules;
  for(unsigned i=0;i<count;++i){int id=ids[i];if(id==9750||id==9751||id==9185||id==9186||id==9253||id==9254||(id>=9090&&id<=9093)||id==9403||id==9404||id==9406||id==9407||(id>=9462&&id<=9464)||(id>=9450&&id<=9455))return Experimental;
