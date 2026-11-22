@@ -37,6 +37,7 @@
 #include "../../shared/source/native_sell_policy.h"
 #ifdef RA2_CONSOLE_WEBVIEW2
 #include "../../suite/source/console_model.h"
+#include "../../suite/source/tactical_console_layout.h"
 #endif
 #include "reveal_permission.h"
 
@@ -2425,7 +2426,7 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  {int c=shared?shared->smallMapClampStatus:0;const wchar_t*status=c==1?L"已安装单轴／双轴修正":c==2?L"当前地图无需修正":c==3?L"等待有效几何":c==-2?L"入口冲突或还原未完成":L"关闭";SetWindowTextW(GetDlgItem(ui,9464),(std::wstring(L"小图相机：")+status).c_str());}
  {const int s=shared?shared->nativePipStatus:0;const wchar_t*text=s==3?L"跟随单位":s==2?L"固定区域":s==1?L"等待战场绘制":s==-1?L"当前渲染布局不兼容":s==-2?L"离屏资源尚未就绪":s<0?L"异常已暂停":L"关闭";
-  std::wstring status=std::wstring(L"原生画中画：")+text;if(shared&&s>1)status+=L" · 绘制 "+std::to_wstring(shared->nativePipMicros)+L" μs · 累计 "+std::to_wstring(shared->nativePipFrames)+L" 帧";SetWindowTextW(GetDlgItem(ui,9223),status.c_str());setConsoleRuntimeError(GetDlgItem(ui,9223),s<0);}
+  std::wstring status=std::wstring(L"原生画中画：")+text;if(shared&&s>1)status+=L" · 绘制 "+std::to_wstring(shared->nativePipMicros)+L" μs · 累计 "+std::to_wstring(shared->nativePipFrames)+L" 帧";SetWindowTextW(GetDlgItem(ui,uilayout::NativePipStatus),status.c_str());setConsoleRuntimeError(GetDlgItem(ui,uilayout::NativePipStatus),s<0);}
  {int s=shared?shared->sidebarStatus:0;const wchar_t*status=s==1?L"已全部隐藏":s==3?L"只保留雷达":s==2?L"等待绘制安全点":s==-1?L"不支持当前显示几何":s==-2?L"版本或 Hook 冲突":s==-3?L"原生布局切换失败":L"完整";SetWindowTextW(GetDlgItem(ui,9407),(std::wstring(L"侧边栏：")+status).c_str());}
  {int p=shared?shared->pauseViewStatus:0;const wchar_t*status=p==1?L"运行中":p==2?L"已暂停":p==3?L"等待前进一帧":p==-1?L"仅支持单机／战役":p==-2?L"版本或 Hook 冲突":p==-3?L"原生暂停调用失败":p==-4?L"跨过多帧，已暂停":L"关闭";
   std::wstring text=std::wstring(L"逐帧操作：")+status;SetWindowTextW(GetDlgItem(ui,9406),text.c_str());}
@@ -2872,7 +2873,11 @@ static void finalizeTacticalLayout(){
   for(size_t at=0;at<items.size();){size_t end=at+1;const int top=pageControls[items[at]].rect.y;int bottom=top+pageControls[items[at]].visibleHeight;
    while(end<items.size()&&pageControls[items[end]].rect.y<bottom){auto&c=pageControls[items[end++]];bottom=std::max(bottom,c.rect.y+c.visibleHeight);}
    std::vector<int> ids;std::wstring rowHelp;for(size_t i=at;i<end;++i){int id=GetDlgCtrlID(pageControls[items[i]].hwnd);if(id){ids.push_back(id);if(rowHelp.empty())rowHelp=controlHelp(id,L"");}}
-   int category=suite::categories::row(section,ids.data(),unsigned(ids.size()));int&y=bottoms[category];
+   int category=suite::categories::row(section,ids.data(),unsigned(ids.size()));
+#ifdef RA2_CONSOLE_WEBVIEW2
+   for(int id:ids)if(const auto* feature=suite::consolelayout::feature(id)){category=feature->page;break;}
+#endif
+   int&y=bottoms[category];
    for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);if(c.help.empty())c.help=controlHelp(GetDlgCtrlID(c.hwnd),L"");if(c.help.empty())c.help=rowHelp.empty()?controlHelp(0,label):rowHelp;c.rect.y=y+c.rect.y-top;c.page=category;
 #ifdef RA2_UNIFIED
     if(category==suite::categories::Video){c.page=-3;ShowWindow(c.hwnd,SW_HIDE);}
@@ -2916,12 +2921,33 @@ static void prepareConsoleSettingsModel(){
    else if(extraDetail)RemovePropW(c.hwnd,L"RA2.Console.GroupHeader");
    foldButton|=id==g.fold;
   }
+  // Explicit ownership supersedes the Win32 fold and label heuristics.
+  using namespace suite::consolelayout;
+  const auto* entry=feature(id);
+  int key=entry?entry->key:0;
+  const wchar_t* section=entry?entry->section:nullptr;
+  const wchar_t* title=entry?entry->title:nullptr;
+  const int filter=id>=9200&&id<9200+2*featuretypes::Count?(id-9200)/2:-1;
+  if(!entry)if(const auto* scope=typeScope(filter)){
+   key=9200+scope->owner*2;section=L"适用单位清单";title=scope->title;
+  }
+  if(key){
+   SetPropW(c.hwnd,L"RA2.Console.Feature",reinterpret_cast<HANDLE>(INT_PTR(key)));
+   SetPropW(c.hwnd,L"RA2.Console.Section",const_cast<wchar_t*>(section));
+   SetPropW(c.hwnd,L"RA2.Console.Group",const_cast<wchar_t*>(title));
+   if(entry&&entry->primary&&id==key)SetPropW(c.hwnd,L"RA2.Console.GroupHeader",reinterpret_cast<HANDLE>(1));
+   else RemovePropW(c.hwnd,L"RA2.Console.GroupHeader");
+  }
+  if(const wchar_t* caption=suite::consolelayout::label(id))
+   SetPropW(c.hwnd,L"RA2.Console.Label",const_cast<wchar_t*>(caption));
+  // Skip headings and captions which belong only to the Win32 presentation.
+  const bool captionsOnly=(c.page==suite::categories::Rules||c.page==suite::categories::Experimental)&&(id==0||id==904);
   // Presentation only: command IDs, dispatch and confirmation rules are unchanged.
   // Explicit metadata avoids guessing action severity from localized labels.
   if(id==423||id==449||id==453)SetPropW(c.hwnd,L"RA2.Console.ActionRole",reinterpret_cast<HANDLE>(1));
   else if(id==108||id==426||id==443||id==814||id==9185)SetPropW(c.hwnd,L"RA2.Console.ActionRole",reinterpret_cast<HANDLE>(2));
   if(id==9185||id==9176)SetPropW(c.hwnd,L"RA2.Console.Immediate",reinterpret_cast<HANDLE>(1));
-  if(foldButton||id==989||id==990||id==991){SetPropW(c.hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(c.hwnd,SW_HIDE);}
+  if(foldButton||captionsOnly||id==905||id==989||id==990||id==991){SetPropW(c.hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(c.hwnd,SW_HIDE);}
  }
  layoutPanel();
 }

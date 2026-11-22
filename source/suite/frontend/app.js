@@ -64,6 +64,7 @@
     if (!control || !safeInteger(control.id) || !control.id || control.id>4294967295) return null;
     const type = aliases[control.type] || control.type;
     const result = { ...control, type: TYPES.has(type) ? type : 'label', label: String(control.label || ''), text: String(control.text || ''), group: String(control.group || ''), hint: String(control.hint || ''),
+      section: String(control.section || ''), featureId: uint32(control.featureId) ? control.featureId : 0,
       options: Array.isArray(control.options) ? control.options.map(String).slice(0, 65536) : [],
       optionDescriptions: Array.isArray(control.optionDescriptions) ? control.optionDescriptions.map(String).slice(0, Array.isArray(control.options) ? control.options.length : 0) : [],
       optionEnabled: Array.isArray(control.optionEnabled) ? control.optionEnabled.map(value => value !== false).slice(0, 65536) : [],
@@ -238,12 +239,13 @@
       const matches=[];
       for(const block of featureBlocks(items)){
         const matchingLines=settingLines(block.controls).filter(line=>line.some(control=>
-          [control.label,control.text,control.hint,name,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle)
+          [control.label,control.text,control.hint,name,control.section,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle)
         ));
-        if(matchingLines.length){
-          if(block.headers.length)matches.push(...block.headers);
-          matches.push(...matchingLines.flat());
-        }
+        if(!matchingLines.length)continue;
+        // Named features can contain controls that depend on each other.
+        // A search for a permission, a type ID, or an action keeps its whole card.
+        if(block.title)matches.push(...block.controls);
+        else matches.push(...block.headers,...matchingLines.flat());
       }
       const unique=[...new Map(matches.map(control=>[control.id,control])).values()];
       if(unique.length)groups.set(name,unique);else groups.delete(name);
@@ -251,11 +253,11 @@
     return groups;
   }
   const isFeatureHeader=control=>control.groupHeader&&!['label','heading'].includes(control.type);
-  const isExplanation=control=>control.type==='label'&&!control.groupHeader;
-  const hasFeatureConfig=block=>Boolean(block.headers.length)&&block.details.some(control=>!['label','heading'].includes(control.type));
+  const isExplanation=control=>control.type==='label'&&!control.groupHeader&&(!control.featureId||!control.nativeId);
+  const hasFeatureConfig=block=>Boolean(block.title||block.headers.length)&&block.details.some(control=>!['label','heading'].includes(control.type));
   // Keep compound command rows intact and give each marked feature its own settings.
   function featureBlocks(controls) {
-    const blocks=[];let current=null,common=[];
+    const blocks=[],named=new Map();let current=null,common=[];
     const flush=()=>{
       if(current){blocks.push(current);current=null;}
       if(common.length){
@@ -264,7 +266,19 @@
       }
     };
     for(const line of settingLines(controls)){
-      if(line[0].layoutBreak||line.some(control=>control.groupHeader&&control.type==='label'))flush();
+      const first=line[0];
+      if(first.featureId){
+        flush();
+        let block=named.get(first.featureId);
+        if(!block){
+          block={key:'named:'+first.featureId,title:first.group,headers:[],details:[],controls:[]};
+          named.set(first.featureId,block);blocks.push(block);
+        }
+        for(const control of line)(isFeatureHeader(control)?block.headers:block.details).push(control);
+        block.controls.push(...line);
+        continue;
+      }
+      if(first.layoutBreak||line.some(control=>control.groupHeader&&control.type==='label'))flush();
       const header=line.find(isFeatureHeader);
       if(header){
         flush();current={key:'feature:'+header.id,headers:line,details:[],controls:[...line]};
@@ -277,7 +291,10 @@
   // Never flatten every control/automatic feature into one enormous group:
   // doing so loses the original feature boundary and doubles the fold layer.
   const CONTROL_SECTIONS=['选兵与编组','移动、攻击与操作手势','队形、巡逻与飞机路径','进驻、装卸与超武目标选择','其他快捷操作'];
-  const AUTOMATIC_SECTIONS=['采矿、倒矿与防蜘蛛','维修与自动救援','自动战斗与防空','适用单位清单','其他自动功能'];
+  const AUTOMATIC_SECTIONS=['采矿、倒矿与防蜘蛛','维修与自动救援','自动战斗与防空','其他自动功能','适用单位清单'];
+  const RULE_SECTIONS=['单机速度与暂停','科技与建造','地图显示与揭示','操控与变卖','运行状态'];
+  const EXPERIMENT_SECTIONS=['视角与界面','剧情触发器','命令与兼容','规则实验','暂不可用'];
+  const SECTION_ORDER={3:CONTROL_SECTIONS,4:AUTOMATIC_SECTIONS,5:RULE_SECTIONS,6:EXPERIMENT_SECTIONS};
   function semanticSection(name,controls,navigationIndex){
     const hint=[name,...controls.map(c=>c.label||c.text||'')].join(' ').toLocaleLowerCase();
     const ids=new Set(controls.map(item=>item.nativeId));
@@ -289,30 +306,31 @@
       if(/键鼠|高级移动|磁电|飞机分配|操作手势|攻击/.test(hint)||has(9601,9606,458,477,478,705))return 1;
       return 4;
     }
-    if(/清单|单位类型/.test(hint)||has(9610))return 3;
+    if(/清单|单位类型/.test(hint)||has(9610))return 4;
     if(/采矿|矿车|倒矿|蜘蛛|矿厂/.test(hint)||has(9605,832,833))return 0;
     if(/维修|救援|炸弹|寄生/.test(hint)||has(312,780,9184))return 1;
     if(/防空|战斗|攻击|低伤害|磁电|躲弹|索敌/.test(hint)||has(9182,9183,9042))return 2;
-    return 4;
+    return 3;
   }
   function layoutGroups(controls,query='',navigationIndex=0){
     const groups=groupControls(controls,query);
-    if(navigationIndex!==3&&navigationIndex!==4)return groups;
-    const names=navigationIndex===3?CONTROL_SECTIONS:AUTOMATIC_SECTIONS;
+    const names=SECTION_ORDER[navigationIndex];
+    if(!names)return groups;
     const combined=new Map();
     for(const [name,items] of groups){
       // A feature header owns its params; unheaded keyboard controls are
       // independent action rows. Preserve compound shortcut rows as a unit.
       for(const block of featureBlocks(items)){
-        const pieces=(block.headers.length||block.controls.some(c=>c.groupHeader))?[block.controls]:settingLines(block.controls);
+        const pieces=(block.title||block.headers.length||block.controls.some(c=>c.groupHeader))?[block.controls]:settingLines(block.controls);
         for(const piece of pieces){
-          const section=names[semanticSection(name,piece,navigationIndex)];
+          const legacy=navigationIndex===3||navigationIndex===4;
+          const section=piece[0].section||(legacy?names[semanticSection(name,piece,navigationIndex)]:name);
           if(!combined.has(section))combined.set(section,[]);
           combined.get(section).push(...piece.map((control,i)=>({...control,layoutBreak:i===0})));
         }
       }
     }
-    return new Map(names.filter(name=>combined.has(name)).map(name=>[name,combined.get(name)]));
+    return new Map([...names,...[...combined.keys()].filter(name=>!names.includes(name))].filter(name=>combined.has(name)).map(name=>[name,combined.get(name)]));
   }
   const PRODUCTION_PAGE=8, PRODUCTION_NOTICES=9;
   function displayPageControls(controls,index){
@@ -332,7 +350,8 @@
     const lines=[];
     for (const control of controls) {
       const previous=lines.at(-1), positioned=control.row>0 && control.column>0;
-      if (!control.layoutBreak && positioned && previous && previous[0].row===control.row && previous[0].column>0) previous.push(control);
+      if (!control.layoutBreak && positioned && previous && previous[0].row===control.row &&
+          previous[0].column>0 && previous[0].featureId===control.featureId) previous.push(control);
       else lines.push([control]);
     }
     return lines;
@@ -356,14 +375,15 @@
     ['监控视图','副相机、小地图与战场信息。','<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 10h10M9 15h6"></path>'],
     ['控制','键鼠操作、选兵、移动与下令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'],
     ['自动功能','自动战斗、资源管理与辅助操作。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'],
-    ['游戏规则','科技、地图与游戏规则。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'],
-    ['实验功能','尚在完善中的功能。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'],
+    ['游戏规则','游戏速度、科技、地图与操控权限。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'],
+    ['实验功能','原生视图、剧情触发与兼容设置。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'],
     ['调试','运行状态与平台兼容性。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect>']
     ,['生产','设置生产预定、批量队列和面板大小。','<path d="M3 20V9l6 3V7l6 4V4h4l2 16H3Zm4-4h2m3 0h2m3 0h2"></path>'],
     ['生产','设置各类生产队列提醒和建造时间提示。','']
   ];
   const navigationButtons=new Map();
   let selectedCategory = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, userNavigated = false, restoredNavigation = false;
+  let hotkeyOptions = null;
   let debugGroup = '', debugFilter = '', debugGroupSignature = '';
   const debugRows = new Map();
   const groupNodes = new Map(), expandedFeatures = new Set(), searchFeatureFolds = new Map();
@@ -372,11 +392,11 @@
   global.RA2Console = Object.freeze({ store, receive: message => store.receive(message) });
   function schedule() { if (scheduled) return; scheduled = true; requestAnimationFrame(() => { scheduled = false; render(); }); }
   function notify(text) { const element = $('toast'); element.textContent = text; element.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { element.hidden = true; }, 6000); }
-  function setSearch(value) { if(search!==value)searchFeatureFolds.clear();search=value; }
+  function setSearch(value) { if(search!==value){searchFeatureFolds.clear();closeHotkeyOptions();}search=value; }
   function navigate(index,restored=false){
     if(!Number.isInteger(index)||index<0||index>=CATEGORIES.length)return;
     if(!restored)userNavigated=true;
-    selectedCategory=index;setSearch('');$('search').value='';capture=null;
+    selectedCategory=index;setSearch('');$('search').value='';closeHotkeyOptions();capture=null;
     const target=targetFor(index);
     if(restored){store.current=target;schedule();}
     else store.navigate(target.module,target.category,index);
@@ -417,7 +437,7 @@
   });
   document.addEventListener('keydown', event => { if (!capture && !composingKey(event) && event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); $('search').focus(); $('search').select(); } });
   const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const group = entry.target._group; if (!group) continue; group.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateGroup(group); else if (!group.body.contains(document.activeElement)) unmountGroup(group); } }, { root: $('contentScroll'), rootMargin: '600px' }) : null;
-  const estimateRows=controls=>settingLines(controls).reduce((height,line)=>height+(line.some(control=>control.type==='hotkey')?72:44),0);
+  const estimateRows=controls=>44*settingLines(controls).length;
   const chunkObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{for(const entry of entries){const chunk=entry.target._chunk;if(!chunk)continue;chunk.intersecting=entry.isIntersecting;if(entry.isIntersecting)updateChunk(chunk);else unmountChunk(chunk);}},{root:$('contentScroll'),rootMargin:'500px'}):null;
   function clearGroups(){
     for(const group of groupNodes.values()){
@@ -431,10 +451,10 @@
   // can expand; a section heading is always a static, non-interactive heading.
   function featureFoldKey(group,key){return renderedPage+'/'+group.name+'/'+key;}
   function featureExpanded(group,key){const foldKey=featureFoldKey(group,key);return group.searching?!searchFeatureFolds.get(foldKey):expandedFeatures.has(foldKey);}
-  function setFeatureExpanded(group,key,value){const foldKey=featureFoldKey(group,key);if(group.searching)searchFeatureFolds.set(foldKey,!value);else if(value)expandedFeatures.add(foldKey);else expandedFeatures.delete(foldKey);}
+  function setFeatureExpanded(group,key,value){closeHotkeyOptions();const foldKey=featureFoldKey(group,key);if(group.searching)searchFeatureFolds.set(foldKey,!value);else if(value)expandedFeatures.add(foldKey);else expandedFeatures.delete(foldKey);}
   function updateNoteHelp(owner, name, notes, before=null) {
     const lines=notes.filter(note=>!note.runtimeError)
-      .flatMap(note=>[note.text||note.label,note.hint]).filter(Boolean);
+      .flatMap(note=>[isExplanation(note)?note.text||note.label:'',note.hint]).filter(Boolean);
     const text=[...new Set(lines)].join('\n');
     if(text&&!owner.noteHelp){
       const help=document.createElement('details'),summary=document.createElement('summary'),body=document.createElement('p');
@@ -513,31 +533,43 @@
   function updateFeatureCards(group,blocks){
     const wanted=new Set();let after=null;
     for(const block of blocks){
-      const key=block.key,hasHeader=Boolean(block.headers.length);
+      const key=block.key,hasHeader=Boolean(block.title||block.headers.length);
       wanted.add(key);let feature=group.features.get(key);
       if(!feature){
         const element=document.createElement('section'),header=document.createElement('div'),main=document.createElement('div'),button=document.createElement('button'),details=document.createElement('div');
         element.className=hasHeader?'feature-card':'feature-common';
         header.className='feature-header';main.className='feature-main-control';button.className='feature-config-toggle';button.type='button';
+        const caption=document.createElement('h3');caption.className='feature-title';
+        const activeScopes=document.createElement('span');activeScopes.className='feature-scope-state';activeScopes.hidden=true;
+        caption.append(activeScopes);
         const actions=document.createElement('div');actions.className='feature-header-actions';actions.append(button);
         details.className='feature-details';header.append(main,actions);if(hasHeader)element.append(header);element.append(details);
         const params=makeFeatureSection('参数','feature-config'),hotkeys=makeFeatureSection('快捷键','feature-hotkeys');
         details.append(params.section,hotkeys.section);
-        feature={key,element,header,main,actions,button,details,mainRows:new Map(),params,hotkeys,paramsChunks:{items:[],signature:''},hotkeysChunks:{items:[],signature:''}};
+        feature={key,element,header,main,caption,activeScopes,actions,button,details,mainRows:new Map(),params,hotkeys,paramsChunks:{items:[],signature:''},hotkeysChunks:{items:[],signature:''}};
         group.features.set(key,feature);
         if(hasHeader)button.addEventListener('click',()=>{
           setFeatureExpanded(group,key,!featureExpanded(group,key));
           updateGroup(group);updateFoldAction();
         });
       }
-      if(hasHeader)updateRows(feature.main,feature.mainRows,block.headers.filter(control=>!isExplanation(control)));
+      if(block.headers.length)updateRows(feature.main,feature.mainRows,block.headers.filter(control=>!isExplanation(control)));
+      else if(hasHeader){
+        if(feature.caption.parentNode!==feature.main){
+          feature.caption.prepend(document.createTextNode(block.title));
+          feature.main.append(feature.caption);
+        }
+        const scopes=group.name==='适用单位清单'?block.controls.filter(c=>c.type==='toggle'&&store.value(c,'toggle')).length:0;
+        feature.activeScopes.hidden=!scopes;
+        feature.activeScopes.textContent=scopes===1?'已限定范围':scopes>1?`${scopes} 项限制已启用`:'';
+      }
       const hasConfig=hasFeatureConfig(block);
       const expanded=!hasConfig||featureExpanded(group,key);
       feature.button.hidden=!hasConfig;
       if(hasHeader){
         const head=block.headers.find(isFeatureHeader);
-        const label=head.label||head.text||'功能';
-        const hasNote=updateNoteHelp(feature.actions,label,block.controls.filter(isExplanation),feature.button);
+        const label=block.title||head?.label||head?.text||'功能';
+        const hasNote=updateNoteHelp(feature.actions,label,block.controls.filter(control=>control.type==='label'&&!control.groupHeader),feature.button);
         feature.actions.hidden=!hasConfig&&!hasNote;
         feature.button.textContent=expanded?'收起':'展开';
         feature.button.setAttribute('aria-expanded',String(expanded));
@@ -587,6 +619,7 @@
         row.control=control;
         row.element.dataset.settingLevel=control.type==='label'?'status':subsettings || (compound && index>0) || !['toggle','button'].includes(control.type)?'secondary':'primary';
         row.inlineLabel=compound && index>0 && control.label===name?inlineLabel(control,hasPreset):null;
+        row.element.classList.toggle('inline-hotkey',control.type==='hotkey'&&Boolean(row.inlineLabel));
         // A pushbutton already carries its action name. Do not print it twice.
         if(control.type==='button' && control.label===control.text)row.inlineLabel='';
         patchRow(row);placeAfter(line,row.element,previous);previous=row.element;
@@ -599,12 +632,13 @@
     const blocks=featureBlocks(group.controls);
     const hasError=group.controls.some(control=>control.runtimeError||store.error(control.id));
     group.section.classList.toggle('has-runtime-error',hasError);
-    const single=blocks.length===1&&blocks[0].headers.some(control=>isFeatureHeader(control)&&(control.label||control.text)===group.name);
-    const commonNotes=blocks.flatMap(block=>block.headers.length?[]:block.details.filter(isExplanation));
+    const single=blocks.length===1&&(blocks[0].title===group.name||
+      blocks[0].headers.some(control=>isFeatureHeader(control)&&(control.label||control.text)===group.name));
+    const commonNotes=blocks.flatMap(block=>block.title||block.headers.length?[]:block.details.filter(isExplanation));
     const isPageGroup=group.name===CATEGORIES[selectedCategory][0];
     const hasNote=updateNoteHelp(isPageGroup?$('pageTitleBar'):group.summary,group.name,commonNotes);
     group.summary.hidden=isPageGroup||(!hasNote&&(!group.name||single));
-    group.body.hidden=blocks.every(block=>block.controls.every(isExplanation));
+    group.body.hidden=blocks.every(block=>!block.title&&block.controls.every(isExplanation));
     const errors=hasError?group.controls.flatMap(control=>{
       const error=store.error(control.id),label=control.label||control.text||'设置';
       if(error)return [label+'：'+error];
@@ -642,11 +676,55 @@
     }
     else if (control.type === 'text' || control.type === 'number') { const input = document.createElement('input'); input.className = 'field'; input.type = control.type === 'number' ? 'number' : 'text'; bindText(row,input); editor.append(input); row.input = input; }
     else if (control.type === 'range') { editor.classList.add('range-editor'); const input = document.createElement('input'), output = document.createElement('output'); input.type = 'range'; output.className = 'range-value'; input.addEventListener('input',event => { store.draft(row.control.id,Number(event.target.value)); output.textContent = event.target.value; }); input.addEventListener('change',event => { store.drafts.delete(controlKey(store.current.module,row.control.id)); send('range',Number(event.target.value)); }); editor.append(input,output); row.input = input; row.output = output; }
-    else if (control.type === 'hotkey') { editor.classList.add('hotkey-editor'); const button = document.createElement('button'), mode = document.createElement('select'), double = document.createElement('label'), check = document.createElement('input'), clear = document.createElement('button'), special = document.createElement('select'); button.type = 'button'; button.className = 'hotkey-capture'; button.addEventListener('click',() => { if (capture?.row === row) stopCapture(); else startCapture(row); }); check.type = 'checkbox'; double.className = 'hotkey-double'; double.append(check,document.createTextNode('双击')); clear.type = 'button'; clear.className = 'icon-button'; clear.textContent = '×'; clear.title = '清除快捷键'; clear.setAttribute('aria-label','清除快捷键'); clear.addEventListener('click',() => send('hotkey',0)); mode.setAttribute('aria-label','触发方式'); mode.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x3000) | Number(mode.value))); check.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x8000) | (check.checked ? 0x8000 : 0))); special.setAttribute('aria-label','选择特殊按键'); special.addEventListener('change',() => { const vk = Number(special.value); if (vk) send('hotkey',(Number(store.value(row.control,'hotkey')) & 0xb700) | vk); special.value = '0'; }); editor.append(button,mode,double,clear,special); row.input = button; row.mode = mode; row.double = check; row.doubleLabel = double; row.clear = clear; row.special = special; }
+    else if (control.type === 'hotkey') makeHotkeyEditor(row,send);
     else if(control.type==='label'){ element.classList.add('label-row'); editor.remove(); }
     const inputId = `control-${store.current.module}-${control.id}`; if (row.input) { row.input.id = inputId; label.htmlFor = inputId; } return row;
   }
   function bindText(row,input) { input.autocomplete = 'off'; input.spellcheck = false; input.addEventListener('focus',() => { store.beginEdit(row.control.id); store.draft(row.control.id,input.value); }); input.addEventListener('input',() => store.draft(row.control.id,input.value)); input.addEventListener('blur',() => store.commit(row.control.id)); input.addEventListener('keydown',event => { if (composingKey(event)) return; if (event.key === 'Enter') { event.preventDefault(); store.commit(row.control.id); input.blur(); } else if (event.key === 'Escape') { event.preventDefault(); store.cancelEdit(row.control.id); input.blur(); } }); }
+  function closeHotkeyOptions(restoreFocus=false) {
+    const row=hotkeyOptions;
+    if(!row)return;
+    hotkeyOptions=null;row.hotkeyDetails.open=false;
+    if(restoreFocus)row.hotkeySummary.focus();
+  }
+  function makeHotkeyEditor(row,send) {
+    const {editor}=row;
+    editor.classList.add('hotkey-editor');
+    const button=document.createElement('button'),details=document.createElement('details');
+    const summary=document.createElement('summary'),menu=document.createElement('div');
+    const modeLabel=document.createElement('label'),mode=document.createElement('select');
+    const doubleLabel=document.createElement('label'),check=document.createElement('input');
+    const specialLabel=document.createElement('label'),special=document.createElement('select');
+    const clear=document.createElement('button');
+    button.type='button';button.className='hotkey-capture';
+    button.addEventListener('click',()=>{if(capture?.row===row)stopCapture();else startCapture(row);});
+    details.className='hotkey-options';summary.textContent='⋯';menu.className='hotkey-menu';
+    summary.addEventListener('click',event=>{
+      event.preventDefault();
+      const wasOpen=details.open;
+      closeHotkeyOptions();
+      if(!wasOpen){details.open=true;hotkeyOptions=row;menu.scrollIntoView?.({block:'nearest',inline:'nearest'});}
+    });
+    const current=()=>Number(store.value(row.control,'hotkey'));
+    mode.setAttribute('aria-label','触发方式');
+    modeLabel.append(document.createTextNode('触发方式'),mode);
+    mode.addEventListener('change',()=>send('hotkey',(current()&~0x3000)|Number(mode.value)));
+    check.type='checkbox';doubleLabel.className='hotkey-double';
+    doubleLabel.append(check,document.createTextNode('双击触发'));
+    check.addEventListener('change',()=>send('hotkey',(current()&~0x8000)|(check.checked?0x8000:0)));
+    special.setAttribute('aria-label','选择特殊按键');
+    specialLabel.append(document.createTextNode('特殊按键'),special);
+    special.addEventListener('change',()=>{
+      const vk=Number(special.value);
+      if(vk){send('hotkey',(current()&0xb700)|vk);closeHotkeyOptions(true);}
+      special.value='0';
+    });
+    clear.type='button';clear.className='text-button hotkey-clear';clear.textContent='清除绑定';
+    clear.setAttribute('aria-label','清除快捷键');
+    clear.addEventListener('click',()=>{send('hotkey',0);closeHotkeyOptions(true);});
+    menu.append(modeLabel,doubleLabel,specialLabel,clear);details.append(summary,menu);editor.append(button,details);
+    Object.assign(row,{input:button,mode,modeLabel,double:check,doubleLabel,clear,special,hotkeyDetails:details,hotkeySummary:summary});
+  }
   function patchChoiceHelp(row) {
     const c=row.control, descriptions=c.optionDescriptions || [];
     const available=descriptions.length===c.options.length && descriptions.some(Boolean);
@@ -692,12 +770,12 @@
           return option;
         }));
       }
-      row.mode.hidden = !bound || allowed.length === 1;
+      row.modeLabel.hidden = row.mode.hidden = !bound || allowed.length === 1;
       row.doubleLabel.hidden = row.clear.hidden = !bound;
       const keyboardOnly = control.options.includes('keyboardOnly');
       if (row.keyboardOnly !== keyboardOnly) {
         row.keyboardOnly = keyboardOnly;
-        const keys = [['特殊按键…',0],['Esc',27],['Enter',13],['Tab',9]];
+        const keys = [['选择…',0],['Esc',27],['Enter',13],['Tab',9]];
         if (!keyboardOnly) keys.push(['鼠标左键',1],['鼠标右键',2],['鼠标中键',4],['鼠标侧键 1',5],['鼠标侧键 2',6]);
         row.special.replaceChildren(...keys.map(([text,vk]) => {
           const option = document.createElement('option');
@@ -711,15 +789,29 @@
       row.double.checked = Boolean(value & 0x8000);
       row.mode.disabled = row.double.disabled = row.clear.disabled = disabled || !bound;
       row.special.disabled = disabled;
-      row.input.textContent = capture?.row === row ? '请按下组合键…' : keyName(value);
+      const binding=keyName(value);
+      row.input.dataset.bound=String(bound);
+      row.input.title=binding;
+      row.input.textContent=capture?.row===row?'请按键…':binding;
+      row.hotkeySummary.setAttribute('aria-label','快捷键选项 · '+control.label);
+      row.hotkeySummary.title='快捷键选项';
+      row.hotkeyDetails.hidden=disabled;
+      if(disabled&&hotkeyOptions===row)closeHotkeyOptions();
       row.input.classList.toggle('capturing',capture?.row === row);
     }
   }
-  function startCapture(row) { stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
+  function startCapture(row) { closeHotkeyOptions(); stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
   function stopCapture() { const previous = capture?.row; capture = null; if (previous) patchRow(previous); }
   document.addEventListener('keydown',event => { if (!capture || composingKey(event)) return; event.preventDefault(); event.stopPropagation(); if (event.repeat) return; if (event.key === 'Escape') { stopCapture(); return; } if (event.metaKey) { notify('当前快捷键格式不支持 Win 组合键，请使用 Ctrl、Shift 或 Alt。'); return; } if (['Shift','Control','Alt'].includes(event.key)) { capture.modifier = event; return; } capture.usedModifier = true; const row = capture.row, previous = Number(store.value(row.control,'hotkey')) || 0, value = encodeHotkey(event,previous); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
   document.addEventListener('keyup',event => { if (!capture || composingKey(event) || capture.usedModifier || !capture.modifier || event.key !== capture.modifier.key) return; event.preventDefault(); const row = capture.row, value = encodeHotkey(capture.modifier,Number(store.value(row.control,'hotkey')) || 0); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
-  document.addEventListener('pointerdown',event => { if (capture && event.target !== capture.row.input) stopCapture(); },true);
+  document.addEventListener('pointerdown',event => {
+    if(capture&&event.target!==capture.row.input)stopCapture();
+    if(hotkeyOptions&&!hotkeyOptions.hotkeyDetails.contains(event.target))closeHotkeyOptions();
+  },true);
+  document.addEventListener('keydown',event=>{
+    if(!hotkeyOptions||composingKey(event)||event.key!=='Escape')return;
+    event.preventDefault();event.stopPropagation();closeHotkeyOptions(true);
+  },true);
   document.addEventListener('focusin',event => { if (capture && event.target !== capture.row.input) stopCapture(); });
   global.addEventListener('blur',stopCapture);
   function makeDebugRow() {

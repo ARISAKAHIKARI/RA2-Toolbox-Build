@@ -5,6 +5,7 @@ on:
     paths:
       - 'source/suite/frontend/**'
       - 'source/suite/source/console_adapter.h'
+      - 'source/suite/source/tactical_console_layout.h'
       - 'source/suite/source/choice_descriptions.h'
       - 'source/suite/tests/console_*'
       - 'source/suite/tests/choice_help_test.mjs'
@@ -13,6 +14,7 @@ on:
     paths:
       - 'source/suite/frontend/**'
       - 'source/suite/source/console_adapter.h'
+      - 'source/suite/source/tactical_console_layout.h'
       - 'source/suite/source/choice_descriptions.h'
       - 'source/suite/tests/console_*'
       - 'source/suite/tests/choice_help_test.mjs'
@@ -47,6 +49,7 @@ jobs:
           diagnostics/console-ui/choice_descriptions
           node source/suite/tests/choice_help_test.mjs
           node source/suite/tests/console_composition_test.mjs
+          python3 source/assist/tests/miner_defense_settings.py --out diagnostics/console-ui/type-settings
           python3 source/suite/tests/console_review_fixture.py --out diagnostics/console-ui/review
       - name: Verify responsive layout and capture actual Chromium screenshots
         env:
@@ -61,3 +64,32 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
           path: diagnostics/console-ui/
+  settings-migration:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the original Win32 setting owners and saves
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          python source/suite/tests/console_ui_regression.py --zig $zig --out diagnostics/console-migration
+          if($LASTEXITCODE -ne 0){throw 'Settings migration regression failed'}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-Console-Settings-Migration
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/console-migration/

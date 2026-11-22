@@ -33,6 +33,10 @@ prologue = handler.split("{", 1)[1].split(" if(id==", 1)[0]
 toggle = block(handler, "if(id==9496&&notification==BN_CLICKED)")
 numeric = handler[handler.index(" auto number="):handler.index(" if(id==714&&edit)")]
 participant_handler = block(handler, "if(id>=9200&&id<9200+2*featuretypes::Count)")
+pip_handlers = "\n".join(block(handler, "if(id==uilayout::NativePip" + part)
+                         for part in ("Toggle", "Shortcut", "Pin"))
+pip_load = re.search(r"extra\.nativePip=value[^\n]+", io)[0]
+pip_save = re.search(r'write\(L"NativePiP",[^\n]+', io)[0]
 ore_toggle = block(handler, "if((id==781||id==782)&&notification==BN_CLICKED)")
 ore_editor = block(handler, "if((id==783||id==784)&&edit)")
 type_load = block(io, "for(int i=0;i<featuretypes::Count;++i){auto&f=featureTypes.filters[i]")
@@ -54,6 +58,7 @@ cpp = r'''
 #include "runtime_feature_demand.h"
 #include "single_player_fps.h"
 #include "settings_dependencies.h"
+#include "ui_layout.h"
 #include "../../suite/source/settings_categories.h"
 #include <algorithm>
 #include <cassert>
@@ -63,7 +68,9 @@ cpp = r'''
 #include <string>
 using namespace assist;
 using BOOL=int;
+using WORD=unsigned short;
 constexpr int FALSE=0,EN_CHANGE=1,CBN_SELCHANGE=2,BN_CLICKED=3,BM_GETCHECK=4,BST_CHECKED=1;
+constexpr int BM_SETCHECK=5,BST_UNCHECKED=0,HKM_GETHOTKEY=6,HKM_SETHOTKEY=7;
 static AdditionalSettings extra;
 static Shared wire,*shared=&wire;
 static featuretypes::Config featureTypes;
@@ -83,7 +90,7 @@ static void GetWindowTextW(int,wchar_t*out,int n){std::wcsncpy(out,editText.c_st
 static void MemoryBarrier(){}
 static long InterlockedIncrement(volatile long*p){return ++*p;}
 static bool ready=true,updatingControls=false;
-static int ui=1,settingsRevision=0,paintRevision=0,syncs=0,wakes=0;
+static int ui=1,settingsRevision=0,paintRevision=0,syncs=0,wakes=0,pins=0;
 static int&changes=settingsRevision;
 static bool autoSavePending=false;
 static constexpr unsigned AutoSaveTimer=3901;
@@ -98,17 +105,31 @@ static bool hardwareBudgetAvailable(uint32_t){assert(false);return false;}
 static std::wstring hardwareBudgetReason(uint32_t){assert(false);return L"";}
 static int value(const wchar_t*s,const wchar_t*k,int fallback){auto i=ini.find({s,k});return i==ini.end()?fallback:i->second;}
 static void write(const wchar_t*s,const wchar_t*k,int v){ini[{s,k}]=v;}
-static void load(){LOAD TYPE_LOAD}
-static void save(){SAVE TYPE_SAVE}
+static void load(){LOAD TYPE_LOAD PIP_LOAD}
+static void save(){SAVE TYPE_SAVE PIP_SAVE}
 static void syncTypeConfig(){if(!shared)return;TYPE_SYNC}
 CHANGED
 static void syncAdditional(){SYNC ++syncs;}
 static void wakeGame(){++wakes;}
 static void setStatus(const std::wstring&text){status=text;}
+static void notify(const wchar_t* text){setStatus(text);}
+static void registerKeys(){}
+static void requestNativePipPin(){++pins;}
+static bool keyConflict(WORD,const char*,bool){return false;}
+struct ControlUpdate{
+ const bool previous=updatingControls;
+ ControlUpdate(){updatingControls=true;}
+ ~ControlUpdate(){updatingControls=previous;}
+};
 static int GetDlgItem(int,int id){return id;}
-static int SendMessageW(int id,int message,int,int){assert(message==BM_GETCHECK);return fields[id];}
+static int SendMessageW(int id,int message,int value,int){
+ if(message==BM_SETCHECK||message==HKM_SETHOTKEY)fields[id]=value;
+ else assert(message==BM_GETCHECK||message==HKM_GETHOTKEY);
+ return fields[id];
+}
+static int SendDlgItemMessageW(int,int id,int message,int value,int other){return SendMessageW(id,message,value,other);}
 static unsigned GetDlgItemInt(int,int id,BOOL*ok,int){*ok=fields.count(id)!=0;return *ok?unsigned(fields[id]):0;}
-static bool route(int id,int notification){PROLOGUE TOGGLE PARTICIPANTS ORE_TOGGLE ORE_EDITOR NUMERIC return false;}
+static bool route(int id,int notification){PROLOGUE TOGGLE PIP_HANDLERS PARTICIPANTS ORE_TOGGLE ORE_EDITOR NUMERIC return false;}
 int main(){unsigned checks=0;auto check=[&](bool okay){assert(okay);++checks;};
  for(auto&key:extra.missionModeKeys)key=0;
  check(!extra.minerDefenseEnabled&&extra.minerDefenseRangeCells==1);
@@ -208,13 +229,52 @@ int main(){unsigned checks=0;auto check=[&](bool okay){assert(okay);++checks;};
  ini.erase({L"FeatureTypes",L"SpiderDefenseCustom"});textIni.erase({L"FeatureTypes",L"SpiderDefense"});
  load();syncTypeConfig();check(!participants.custom&&participants.count==2&&featureTypeText[feature]==L"HARV,CMIN");
  for(int id:{9496,9497,9498,checkbox,editor})check(suite::categories::row(2,&id,1)==suite::categories::Automatic);
- check(Version==99);std::printf("PASS miner defense settings checks=%u\n",checks);
+ // Exercise every live per-feature editor through its saved INI key and Shared slot.
+ int migrated=0;
+ for(int i=0;i<featuretypes::Count;++i){
+  if(i==featuretypes::BurstRefresh)continue;
+  const int toggleId=9200+2*i,editId=toggleId+1;
+  const int neighbor=(i+1)%featuretypes::Count;
+  const auto previousNeighbor=featureTypes.filters[neighbor];
+  auto&filter=featureTypes.filters[i];
+  const std::wstring key=featuretypes::key(i),customKey=key+L"Custom";
+  const auto saved=L"TYPE_"+std::to_wstring(i)+L",E1";
+  textIni[{L"FeatureTypes",key}]=saved;ini[{L"FeatureTypes",customKey}]=1;
+  load();syncTypeConfig();
+  check(filter.custom&&filter.count==2&&featureTypeText[i]==saved);
+  check(std::memcmp(&filter,&wire.featureConfig.filters[i],sizeof filter)==0);
+  fields[toggleId]=0;check(route(toggleId,BN_CLICKED)&&!filter.custom);
+  check(featureTypeText[i]==saved);
+  fields[toggleId]=1;check(route(toggleId,BN_CLICKED)&&filter.custom);
+  editText=L"E1,mod_tank";check(route(editId,EN_CHANGE)&&featuretypes::allowed(featureTypes,i,"MOD_TANK"));
+  check(std::memcmp(&filter,&wire.featureConfig.filters[i],sizeof filter)==0);
+  check(std::memcmp(&previousNeighbor,&featureTypes.filters[neighbor],sizeof filter)==0);
+  save();check(ini[{L"FeatureTypes",customKey}]==1&&textIni[{L"FeatureTypes",key}]==editText);
+  filter={};featureTypeText[i].clear();load();
+  check(filter.custom&&filter.count==2&&featureTypeText[i]==editText);
+  ++migrated;
+ }
+ const auto escapeTransport=featureTypes.filters[featuretypes::EscapeTransport];
+ const auto escapePassenger=featureTypes.filters[featuretypes::EscapePassenger];
+ fields[uilayout::NativePipToggle]=1;
+ check(route(uilayout::NativePipToggle,BN_CLICKED)&&extra.nativePip);
+ fields[uilayout::NativePipShortcut]=0x0242;
+ check(route(uilayout::NativePipShortcut,EN_CHANGE)&&extra.nativePipKey==0x0242);
+ check(route(uilayout::NativePipPin,BN_CLICKED)&&pins==1);
+ save();extra.nativePip=false;extra.nativePipKey=0;load();
+ check(extra.nativePip&&extra.nativePipKey==0x0242);
+ check(std::memcmp(&escapeTransport,&featureTypes.filters[featuretypes::EscapeTransport],sizeof escapeTransport)==0);
+ check(std::memcmp(&escapePassenger,&featureTypes.filters[featuretypes::EscapePassenger],sizeof escapePassenger)==0);
+ fields[9220]=0;check(route(9220,BN_CLICKED)&&extra.nativePip&&!featureTypes.filters[featuretypes::EscapeTransport].custom);
+ editText=L"IFV";check(route(9221,EN_CHANGE)&&extra.nativePipKey==0x0242);
+ std::printf("PASS %d type filters, spider defense and PiP routes checks=%u\n",migrated,checks);
 }
 '''
 for marker, text in sorted({"LOAD": load, "SAVE": save, "SYNC": sync, "PROLOGUE": prologue,
                      "TOGGLE": toggle, "NUMERIC": numeric, "PARTICIPANTS": participant_handler,
                      "ORE_TOGGLE": ore_toggle, "ORE_EDITOR": ore_editor,
                      "TYPE_LOAD": type_load, "TYPE_SAVE": type_save, "TYPE_SYNC": type_sync,
+                     "PIP_HANDLERS": pip_handlers, "PIP_LOAD": pip_load, "PIP_SAVE": pip_save,
                      "CHANGED": changed}.items(), key=lambda pair: -len(pair[0])):
     cpp = cpp.replace(marker, text)
 cpp_file = out / "miner_defense_settings.cpp"
@@ -230,7 +290,7 @@ for mode, defines in (("standalone", []), ("unified", ["-DRA2_UNIFIED"])):
     results[mode] = result.stdout.strip()
 files = ["additional_settings.h", "extra_settings_io.h", "auto_settings_ui.h",
          "protocol.h", "runtime_feature_demand.h", "feature_type_config.h", "ore_type_config.h",
-         "type_bindings_ui.h", "tactical_controls.h", "settings_dependencies.h"]
+         "type_bindings_ui.h", "tactical_controls.h", "settings_dependencies.h", "ui_layout.h"]
 (out / "result.json").write_text(json.dumps({
     "passed": True, "scope": __doc__, "results": results,
     "source_sha256": {name: hashlib.sha256((src / name).read_bytes()).hexdigest() for name in files},

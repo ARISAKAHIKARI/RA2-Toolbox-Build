@@ -152,14 +152,14 @@ consoleFeature(productionRows,L"生产预定",productionMaster);
 oreCheck=toggle(470,L"矿车自动卸矿",oreMode,20,245);key(9504,extra.automaticKeys[autofeatures::OreReturn],280,205);button(9605,L"展开设置",500,125);next();
 activeFoldGroup=9605;
 oreStatus=item(L"STATIC",L"等待对局",20,605,0,0,44);next(44);
-for(int i=0;i<2;++i){bool miner=i==0;toggle(781+i,miner?L"指定矿车类型":L"指定矿场类型",miner?oreTypes.customMiners:oreTypes.customRefineries);next();auto h=edit(783+i,miner?oreMiners:oreRefineries,20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);next();}
+for(int i=0;i<2;++i){bool miner=i==0;toggle(781+i,miner?L"指定矿车类型":L"指定矿场类型",miner?oreTypes.customMiners:oreTypes.customRefineries);next();auto h=edit(783+i,miner?oreMiners:oreRefineries,20,605);SendMessageW(h,EM_SETLIMITTEXT,featuretypes::TypeListTextLimit,0);next();}
 note(L"类型 ID 用逗号分隔；未启用清单时自动识别，启用后仅使用所列类型。",44);
 activeFoldGroup=0;
 automaticToggle(9496,L"自动点杀蜘蛛",extra.minerDefenseEnabled);next();
 note(L"默认由正在工作的己方武装矿车点杀敌方蜘蛛。可在下方单独指定参与单位，独立于自动卸矿的矿车清单。玩家手动命令优先。",60);
 {const int f=featuretypes::SpiderDefense;
  toggle(9200+f*2,L"自定义点杀单位类型",featureTypes.filters[f].custom);next();
- auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"参与点杀的己方单位类型 ID，以逗号分隔");next();
+ auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,featuretypes::TypeListTextLimit,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"参与点杀的己方单位类型 ID，以逗号分隔");next();
 }
 note(L"填写参与点杀的己方地面载具或步兵类型 ID（不是蜘蛛 ID），以逗号分隔。勾选后只处理清单；清单为空时不处理任何单位。未勾选时自动识别矿车。",76);
 number(9497,L"防蛛额外索敌距离 / 格",extra.minerDefenseRangeCells,L"0–30 · 默认 1");
@@ -203,9 +203,13 @@ note(L"每个功能独立设置。关闭限制时按功能本身的条件处理�
 activeFoldGroup=9610;
 for(int f=0;f<featuretypes::Count;++f){
  if(f==featuretypes::BurstRefresh||f==featuretypes::SpiderDefense)continue; // Retired slot; spider controls are beside the feature.
- label(featuretypes::name(f),20,350);toggle(9200+f*2,L"仅处理清单中的类型",featureTypes.filters[f].custom,380,245);next();
- auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"单位类型 ID，以逗号分隔");next();
- note(L"此开关和清单只作用于上方命名的功能；不勾选时忽略预填 ID，按功能自身能力条件自动识别；勾选后再按清单缩小范围，留空则不处理任何类型。");
+ auto caption=label(featuretypes::name(f),20,350);
+#ifdef RA2_CONSOLE_WEBVIEW2
+ SetPropW(caption,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));
+#endif
+ toggle(9200+f*2,L"仅处理清单中的类型",featureTypes.filters[f].custom,380,245);next();
+ auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,featuretypes::TypeListTextLimit,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"单位类型 ID，以逗号分隔");next();
+ note(L"用逗号分隔类型 ID。关闭限制时按功能条件自动识别；开启且留空时不处理任何类型。");
 }
 activeFoldGroup=0;
 
@@ -316,11 +320,11 @@ note(L"自定义坐标是布局框左上角，对齐决定地图在框内的位�
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"各项按实际实现单独标注。全图 CRC 原值镜像属于高危；原生武器／射程查询仍不标高危。详细限制悬停查看。");
-toggle(9220,L"原生画中画（实验）",extra.nativePip);next();
-label(L"固定区域／跟随选中单位快捷键",20,306);key(9221,extra.nativePipKey);next();
-button(9222,L"固定当前区域／跟随选中单位",20,605);next();
+toggle(uilayout::NativePipToggle,L"原生画中画（实验）",extra.nativePip);next();
+label(L"固定区域／跟随选中单位快捷键",20,306);key(uilayout::NativePipShortcut,extra.nativePipKey);next();
+button(uilayout::NativePipPin,L"固定当前区域／跟随选中单位",20,605);next();
 note(L"使用游戏原生画面，在右上角观察另一区域。开启时固定当前视野；按快捷键或点击按钮，有选中单位时独立跟随，无选中时固定当前区域。左击小窗可跳转主视图。与工具箱游戏内小窗互斥，副屏小窗独立。",65);
-item(L"STATIC",L"原生画中画：关闭",20,605,9223,0,44);next(44);
+item(L"STATIC",L"原生画中画：关闭",20,605,uilayout::NativePipStatus,0,44);next(44);
 toggle(9536,L"保持操作权限（解除触发输入锁）",extra.keepInputUnlocked);next();
 note(L"恢复被剧情触发器限制的鼠标和操作状态，并可阻止重复锁定或强制切换视角。重复锁定拦截与视角保护共用一个硬件断点。",60);
 item(L"STATIC",L"保持操作权限：关闭",20,605,9537,0,44);next(44);

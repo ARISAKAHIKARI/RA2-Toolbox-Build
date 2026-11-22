@@ -48,6 +48,8 @@ struct Control {
     std::vector<bool> optionEnabled;
     ActionRole actionRole = ActionRole::Secondary;
     std::vector<std::string> optionDescriptions;
+    int featureId = 0; // Stable presentation key, independent of action tokens.
+    std::string section;
 };
 struct Snapshot {
     unsigned module = 0;
@@ -419,6 +421,7 @@ inline std::string encodeSnapshot(const Snapshot& s) {
         out += "{\"id\":" + std::to_string(c.id) + ",\"nativeId\":" + std::to_string(c.nativeId) + ",\"type\":" + detail::quote(c.type) +
             ",\"label\":" + detail::quote(c.label) + ",\"text\":" + detail::quote(c.text) +
             ",\"group\":" + detail::quote(c.group) + ",\"hint\":" + detail::quote(c.hint) +
+            ",\"featureId\":" + std::to_string(c.featureId) + ",\"section\":" + detail::quote(c.section) +
             ",\"presentation\":" + detail::quote(c.presentation) +
             ",\"actionRole\":" + detail::quote(actionRoleName(c.actionRole)) +
             ",\"enabled\":" + detail::boolean(c.enabled) + ",\"visible\":" + detail::boolean(c.visible) +

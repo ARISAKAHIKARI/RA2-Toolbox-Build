@@ -11,7 +11,7 @@ generated=block(main,'struct PageControl {')+';\nstatic std::vector<PageControl>
 generated+='static void parameterStatus()'+block(main,'{const int p=shared?shared->techEnhanceParameterStatus:0;')+'\n'
 generated+='static void worldFallback()'+block(main,'if((shared&&shared->sidebarStatus==3)||(extra.sidebarEnabled&&extra.sidebarMode==1))').replace('if(', '{if(',1)+'++shown;}\n'
 inc=out/'console-metadata.inc';inc.write_text(generated,encoding='utf-8')
-files=['assist/source/main.cpp','suite/source/console_model.h','suite/source/console_adapter.h','suite/source/settings_categories.h','suite/frontend/app.js','suite/frontend/app.css','suite/tests/console_store_test.mjs','suite/tests/console_model_test.cpp','suite/tests/console_adapter_windows.cpp','suite/tests/console_metadata.cpp','suite/tests/console_ui_regression.py']
+files=['assist/source/main.cpp','suite/source/console_model.h','suite/source/console_adapter.h','suite/source/settings_categories.h','suite/source/tactical_console_layout.h','assist/source/tactical_controls.h','assist/source/feature_type_config.h','suite/frontend/app.js','suite/frontend/app.css','suite/tests/console_store_test.mjs','suite/tests/console_model_test.cpp','suite/tests/console_adapter_windows.cpp','suite/tests/console_metadata.cpp','suite/tests/console_ui_regression.py']
 def hashes():return {f:hashlib.sha256((root/f).read_bytes()).hexdigest() for f in files}
 before=hashes();results={}
 for arch in ('x86_64','x86'):

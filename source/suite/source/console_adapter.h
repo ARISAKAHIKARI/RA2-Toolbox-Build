@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <limits>
 #include "console_model.h"
+#include "../../assist/source/feature_type_config.h"
 #include "../../shared/source/modern_ui.h"
 #include "../../shared/source/disabled_choices.h"
 
@@ -149,6 +150,9 @@ class Host {
   // These are lifetime-stable metadata supplied on the owning module thread.
   // The compatibility tree's old folds/scroll offsets do not own DOM layout.
   if(auto group=reinterpret_cast<const wchar_t*>(GetPropW(w,L"RA2.Console.Group")))c.group=detail::utf8(group);
+  if(auto section=reinterpret_cast<const wchar_t*>(GetPropW(w,L"RA2.Console.Section")))c.section=detail::utf8(section);
+  if(auto label=reinterpret_cast<const wchar_t*>(GetPropW(w,L"RA2.Console.Label")))c.label=detail::utf8(label);
+  c.featureId=int(reinterpret_cast<INT_PTR>(GetPropW(w,L"RA2.Console.Feature")));
   if(auto debug=reinterpret_cast<const consolemodel::DebugEntry*>(GetPropW(w,L"RA2.Console.DebugEntry")))c.debug=*debug;
    c.runtimeError=GetPropW(w,L"RA2.Console.RuntimeError")!=nullptr;
    c.groupHeader=GetPropW(w,L"RA2.Console.GroupHeader")!=nullptr;
@@ -196,7 +200,7 @@ class Host {
   std::sort(controls.begin(),controls.end(),[](const NativeControl&a,const NativeControl&b){if(a.rect.top!=b.rect.top)return a.rect.top<b.rect.top;if(a.rect.left!=b.rect.left)return a.rect.left<b.rect.left;return a.control.id<b.control.id;});
   std::vector<uint32_t> usedLabels;std::string group;
   for(auto& item:controls){auto& c=item.control;if(c.type=="heading"){group=c.group.empty()?c.text:c.group;if(c.group.empty())c.group=group;continue;}if(c.group.empty())c.group=group;
-   if(c.type=="label"||c.type=="button"||c.type=="toggle")continue;
+   if(c.type=="label"||c.type=="button"||c.type=="toggle"||GetPropW(item.window,L"RA2.Console.Label"))continue;
    const NativeControl* best=nullptr;long score=std::numeric_limits<long>::max();
    // A combo's native rectangle can include its dropdown height; use the
    // aligned row origin, not the centre of that tall rectangle, for labels.
@@ -235,7 +239,14 @@ class Host {
    if(c.type=="toggle"&&verb=="toggle"){SendMessageW(w,BM_SETCHECK,action.checked?BST_CHECKED:BST_UNCHECKED,0);notification=BN_CLICKED;}
    else if(c.type=="button"&&verb=="press")notification=BN_CLICKED;
    else if((c.type=="text"||c.type=="number")&&(verb=="text"||verb=="range")){
-    if(c.readonly)return "此字段只读";if(verb=="range")value=std::to_wstring(action.value);if(c.type=="number"&&!numericText(value))return "请输入整数";SetWindowTextW(w,value.c_str());notification=EN_CHANGE;
+    if(c.readonly)return "此字段只读";if(verb=="range")value=std::to_wstring(action.value);if(c.type=="number"&&!numericText(value))return "请输入整数";
+    if(p.module==2&&assist::featuretypes::isListEditor(nativeId)){
+     char parsed[assist::oreconfig::Limit][24]{};int entries=0;
+     if(value.size()>assist::featuretypes::TypeListTextLimit||!assist::oreconfig::parse(value,parsed,entries))
+      return "请填写英文、数字、下划线或短横线组成的类型 ID，用逗号分隔，最多 512 项，每项最多 23 字符。";
+    }
+    if(!SetWindowTextW(w,value.c_str()))return "无法写入设置文本";
+    notification=EN_CHANGE;
    }
    else if(c.type=="hotkey"&&verb=="hotkey"){
     const unsigned key=unsigned(action.value);if(action.value<0||key>65535||(key&~unsigned(keygesture::Stored)))return "无效的快捷键编码";

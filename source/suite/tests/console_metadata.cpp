@@ -12,6 +12,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include "../../assist/source/ui_layout.h"
+#include "../source/tactical_console_layout.h"
+#include "../../assist/source/settings_dependencies.h"
 using namespace assist;
 static int checks=0,layouts=0;static HWND ui=HWND(1);static std::set<int>openedSettingGroups;static std::map<HWND,int>ids;static std::map<std::pair<HWND,std::wstring>,HANDLE>props;static std::map<HWND,std::wstring>texts;static std::set<HWND>hidden;
 static BOOL setProp(HWND h,LPCWSTR key,HANDLE value){props[{h,key}]=value;return TRUE;}
@@ -27,13 +29,65 @@ static BOOL testText(HWND h,LPCWSTR s){texts[h]=s;return TRUE;}static void layou
 #define ShowWindow show
 #define GetDlgItem item
 #define SetWindowTextW testText
-struct Shared {int techEnhanceParameterStatus=0,sidebarStatus=0;unsigned techEnhanceParameterExceptions=0,techEnhanceParameterError=0,techEnhanceParameterSlots=0;}storage,*shared=&storage;
-static struct {bool sidebarEnabled=false;unsigned sidebarMode=0;}extra;static int hides=0,shown=0;static void hideWorldOverlay(){++hides;}
+struct Shared {int techEnhanceParameterStatus=0,sidebarStatus=0;unsigned techEnhanceParameterExceptions=0,techEnhanceParameterError=0,techEnhanceParameterSlots=0,techProductionEnhancePasses=0;}storage,*shared=&storage;
+static struct {bool sidebarEnabled=false,techProductionCompatibility=false;unsigned sidebarMode=0;}extra;static int hides=0,shown=0;static void hideWorldOverlay(){++hides;}
 #include CONSOLE_METADATA_ROUTES
-static void check(bool v){++checks;if(!v){std::fprintf(stderr,"metadata FAIL check %d\n",checks);std::abort();}}
+static void checkAt(bool v,int line){++checks;if(!v){std::fprintf(stderr,"metadata FAIL line %d, check %d\n",line,checks);std::abort();}}
+#define check(value) checkAt(bool(value),__LINE__)
 static HWND add(int n,int page,int y,int fold=0){auto h=HWND(INT_PTR(ids.size()+10));ids[h]=n;pageControls.push_back({h,page,{20,y,200,26},26,{},fold,{20,y,200,26}});return h;}
+static void tacticalCards(){
+ using namespace suite::consolelayout;
+ std::set<int> owners;
+ for(const auto&entry:Features){
+  check(entry.title&&entry.section&&entry.controls.size()>0&&feature(entry.key)==&entry);
+  for(int id:entry.controls){
+   check(owners.insert(id).second&&feature(id)==&entry);
+   if(!item(ui,id))add(id,entry.page,2800+id);
+  }
+ }
+ auto oldCaption=add(0,suite::categories::Experimental,3000);
+ auto oldHeading=add(904,suite::categories::Experimental,3030);
+ auto legacyTypesHeading=add(905,suite::categories::Automatic,3060);
+ for(int i=0;i<featuretypes::Count;++i){
+  if(i==featuretypes::BurstRefresh)continue;
+  for(int id:{9200+2*i,9201+2*i})if(!item(ui,id))add(id,suite::categories::Automatic,3200+id,9610);
+ }
+ prepareConsoleSettingsModel();
+ for(const auto&entry:Features)for(int id:entry.controls){
+  const auto h=item(ui,id);
+  check(getProp(h,L"RA2.Console.Feature")==reinterpret_cast<HANDLE>(INT_PTR(entry.key)));
+  check(std::wstring(static_cast<const wchar_t*>(getProp(h,L"RA2.Console.Group")))==entry.title);
+  check(std::wstring(static_cast<const wchar_t*>(getProp(h,L"RA2.Console.Section")))==entry.section);
+  check(bool(getProp(h,L"RA2.Console.GroupHeader"))==(entry.primary&&id==entry.key));
+  check(!getProp(h,L"RA2.Console.Skip"));
+ }
+ for(auto h:{oldCaption,oldHeading,legacyTypesHeading})check(getProp(h,L"RA2.Console.Skip"));
+ check(feature(9403)->page==suite::categories::Rules&&feature(9492)->page==suite::categories::Rules);
+ check(feature(761)->page==suite::categories::Experimental&&feature(9191)->page==suite::categories::Experimental);
+ std::set<int> scopeCards;
+ for(int i=0;i<featuretypes::Count;++i){
+  const auto*scope=typeScope(i);
+  if(i==featuretypes::BurstRefresh){check(!scope);continue;}
+  check(scope&&scope->toggle&&scope->editor);
+  const int id=9200+2*i;
+  const int key=i==featuretypes::SpiderDefense?9496:9200+2*scope->owner;
+  check(featuretypes::isListEditor(id+1)&&!featuretypes::isListEditor(id));
+  for(int field:{id,id+1}){
+   const auto h=item(ui,field);
+   check(getProp(h,L"RA2.Console.Feature")==reinterpret_cast<HANDLE>(INT_PTR(key)));
+   check(!getProp(h,L"RA2.Console.Skip")&&!getProp(h,L"RA2.Console.GroupHeader"));
+   check(std::wstring(static_cast<const wchar_t*>(getProp(h,L"RA2.Console.Label")))==label(field));
+  }
+  settingsdeps::State state;
+  check(!settingsdeps::decision(id+1,state).enabled());
+  state.set(settingsdeps::typeListNeed(i),true);
+  check(settingsdeps::decision(id+1,state).enabled());
+  scopeCards.insert(key);
+ }
+ check(scopeCards.size()==15);
+}
 int main(){
- std::set<int>groups;for(int group=9601;group<=9615;++group){int page=(group-9601)%5,y=(group-9601)*80;groups.insert(group);add(group,page,y);add(10000+group,page,y);add(20000+group,page,y+40,group);}add(9185,4,1800);add(9470,4,1840);auto status=add(9471,4,1880);for(int n:{989,990,991})add(n,4,1900+n);
+ std::set<int>groups;for(int group:{9601,9602,9603,9604,9605,9606,9607,9608,9610,9611,9612,9613,9614,9615}){int page=(group-9601)%5,y=(group-9601)*80;groups.insert(group);add(group,page,y);add(10000+group,page,y);add(20000+group,page,y+40,group);}add(9185,4,1800);add(9470,4,1840);auto status=add(9471,4,1880);for(int n:{989,990,991})add(n,4,1900+n);
  add(896,1,2000);for(int id:{9400,9401,9402,9440,9441,9442,9443,9444,9445,9460,9461})add(id,4,2100+id);
  for(int id:{108,423,426,443,449,453,814,9176})add(id,4,2500+id);
  openedSettingGroups={9602,9614};const auto before=openedSettingGroups;prepareConsoleSettingsModel();check(openedSettingGroups==before);check(layouts==1);
@@ -42,10 +96,12 @@ int main(){
  for(int id:{423,449,453})check(getProp(item(ui,id),L"RA2.Console.ActionRole")==HANDLE(1));
  for(int id:{108,426,443,814,9185})check(getProp(item(ui,id),L"RA2.Console.ActionRole")==HANDLE(2));
  check(!getProp(item(ui,9176),L"RA2.Console.ActionRole")&&getProp(item(ui,9176),L"RA2.Console.Immediate"));
- for(int id:{896,9400,9401,9402,9440,9441,9442,9443,9444,9445,9460,9461}){auto h=item(ui,id);check(getProp(h,L"RA2.Console.Group")==getProp(item(ui,id==896?9607:9615),L"RA2.Console.Group"));check(bool(getProp(h,L"RA2.Console.GroupHeader"))==(id>=9400&&id<=9402));check(getProp(h,L"RA2.Console.Collapsible")&&getProp(h,L"RA2.Console.CollapsedDefault"));check(!getProp(h,L"RA2.Console.Skip"));}
+ for(int id:{9400,9401,9402,9440,9441,9442,9443,9444,9445,9460,9461}){auto h=item(ui,id);check(getProp(h,L"RA2.Console.Group")==getProp(item(ui,9615),L"RA2.Console.Group"));check(bool(getProp(h,L"RA2.Console.GroupHeader"))==(id>=9400&&id<=9402));check(getProp(h,L"RA2.Console.Collapsible")&&getProp(h,L"RA2.Console.CollapsedDefault"));check(!getProp(h,L"RA2.Console.Skip"));}
  for(int state=-7;state<=2;++state){storage.techEnhanceParameterStatus=state;storage.techEnhanceParameterError=123;storage.techEnhanceParameterExceptions=5;storage.techEnhanceParameterSlots=3;parameterStatus();check(bool(getProp(status,L"RA2.Console.RuntimeError"))==(state<0));check(texts[status].find(L"命中 5")!=std::wstring::npos);check(texts[status].find(L"占用 3 槽")!=std::wstring::npos);check((texts[status].find(L"错误 123")!=std::wstring::npos)==(state<0));}
+ extra.techProductionCompatibility=true;storage.techProductionEnhancePasses=42;parameterStatus();check(texts[status].find(L"放行 42")!=std::wstring::npos);
  shared=nullptr;parameterStatus();check(!getProp(status,L"RA2.Console.RuntimeError")&&texts[status].find(L"关闭")!=std::wstring::npos);setConsoleRuntimeError(nullptr,true);check(!getProp(nullptr,L"RA2.Console.RuntimeError"));
  shared=&storage;storage={};for(int status:{0,1,2,3})for(bool enabled:{false,true})for(unsigned mode:{0u,1u,2u}){storage.sidebarStatus=status;extra.sidebarEnabled=enabled;extra.sidebarMode=mode;hides=shown=0;worldFallback();const bool masked=status==3||(enabled&&mode==1);check(hides==int(masked)&&shown==int(!masked));}
  shared=nullptr;extra={};hides=shown=0;worldFallback();check(!hides&&shown==1);
- std::printf("{\"checks\":%d,\"groups\":15,\"assertions_enabled\":true}\n",checks);
+ tacticalCards();
+ std::printf("{\"checks\":%d,\"groups\":14,\"assertions_enabled\":true}\n",checks);
 }

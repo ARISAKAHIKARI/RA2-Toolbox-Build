@@ -650,12 +650,12 @@ if (!failed && process.argv.includes('--browser')) {
       await page.setViewportSize({width,height:880});
       const bounds=await pairedRow.evaluate(element=>{
         const box=selector=>element.querySelector(selector).getBoundingClientRect();
-        return {line:element.getBoundingClientRect(),toggle:box('.toggle'),label:box('[data-type="hotkey"] .setting-label'),editor:box('.hotkey-editor')};
+        return {line:element.getBoundingClientRect(),toggle:box('.toggle'),editor:box('.hotkey-editor'),button:box('.hotkey-capture')};
       });
       assert.ok(Math.abs(bounds.line.right-bounds.editor.right)<2,'two-control shortcuts use the full row right edge');
       if (width>=720) {
         assert.ok(Math.abs(bounds.toggle.top-bounds.editor.top)<8,'an unbound shortcut stays beside its switch when there is room');
-        assert.ok(Math.abs(bounds.label.top+bounds.label.height/2-bounds.editor.top-bounds.editor.height/2)<4,'the shortcut caption stays beside its editor');
+        assert.ok(bounds.editor.width<120 && bounds.button.height<=29,'the unbound shortcut uses a compact button and options trigger');
       }
       await assertFits();
     }
@@ -708,6 +708,69 @@ if (!failed && process.argv.includes('--browser')) {
       await page.screenshot({path:diagnosticsPrefix+'-hierarchy-'+viewport.width+'.png',fullPage:false});
     }
     await page.setViewportSize({width:1240,height:880});
+    const cardField=(nativeId,featureId,group,section,attrs)=>({id:60000+nativeId,nativeId,featureId,group,section,...attrs});
+    const tacticalCardPage=(category,generation,controls)=>({kind:'state',protocol:1,module:2,generation,revision:1,page:'tactical/'+category,controls});
+    const tech=(id,attrs)=>cardField(id,420,'科技全开','科技与建造',attrs);
+    const rules=[
+      tech(420,{type:'toggle',label:'科技全开',groupHeader:true}),
+      cardField(9494,9494,'单机游戏速度','单机速度与暂停',{type:'number',label:'目标游戏帧率（0 = 原版）',groupHeader:true,text:'60'}),
+      tech(896,{type:'choice',label:'科技全开实现',selected:0,options:['受控模式','参数拦截'],readonly:true}),
+      tech(422,{type:'choice',label:'科技许可清单',selected:0,options:['E1','E2'],readonly:true,presentation:'list'}),
+      tech(815,{type:'label',label:'生产进度：等待游戏',text:'生产进度：等待游戏'})
+    ];
+    await page.getByRole('button',{name:'游戏规则',exact:true}).click();
+    await receive(tacticalCardPage(3,10,rules));
+    const ruleSwitch=page.getByLabel('科技全开',{exact:true});await ruleSwitch.waitFor();
+    assert.deepEqual(await page.locator('.group-title').allTextContents(),['单机速度与暂停','科技与建造']);
+    const ruleFold=page.getByRole('button',{name:'展开 科技全开 的设置',exact:true});
+    const ruleMode=page.getByLabel('科技全开实现',{exact:true});
+    assert.equal(await ruleMode.isVisible(),false);
+    await ruleFold.click();await ruleMode.waitFor();await assertFits();
+    const indent=await ruleMode.evaluate(element=>{
+      const card=element.closest('.feature-card');
+      return card.querySelector('.feature-details').getBoundingClientRect().left-card.querySelector('.feature-header').getBoundingClientRect().left;
+    });
+    assert.ok(indent>=18,'parameters are visibly indented under the main control');
+    await page.screenshot({path:diagnosticsPrefix+'-rules.png',fullPage:false});
+
+    const zoom=(id,attrs)=>cardField(id,9090,'视角缩放','视角与界面',attrs);
+    await page.getByRole('button',{name:'实验功能',exact:true}).click();
+    await receive(tacticalCardPage(4,11,[
+      zoom(9090,{type:'toggle',label:'高危：视角缩放',groupHeader:true}),
+      zoom(9091,{type:'choice',label:'视角倍率',selected:0,options:['100%','125%'],readonly:true}),
+      zoom(9450,{type:'hotkey',label:'缩小视野快捷键',selected:0x12bd,options:['press','release','keyboardOnly']})
+    ]));
+    await page.getByRole('button',{name:'展开 视角缩放 的设置',exact:true}).click();
+    const zoomMenu=page.getByLabel('快捷键选项 · 缩小视野快捷键',{exact:true});
+    const zoomCard=page.locator('.feature-card').filter({hasText:'视角缩放'});
+    const trigger=zoomCard.getByLabel('触发方式',{exact:true});
+    assert.equal(await trigger.isVisible(),false,'shortcut options start outside the visible row');
+    await zoomMenu.click();await trigger.waitFor();
+    await trigger.selectOption('8192');action=await page.evaluate(()=>window.__sent.at(-1));
+    assert.equal(action.id,69450);assert.equal(action.value,0x22bd);
+    await receive({kind:'ack',protocol:1,module:2,generation:11,id:69450,seq:action.seq,ok:true});
+    await page.keyboard.press('Escape');assert.equal(await trigger.isVisible(),false);
+    await page.screenshot({path:diagnosticsPrefix+'-experimental.png',fullPage:false});
+
+    const types=(id,attrs)=>cardField(id,9208,'自动装车','适用单位清单',attrs);
+    await page.getByRole('button',{name:'自动功能',exact:true}).click();
+    await receive(tacticalCardPage(2,12,[
+      types(9208,{type:'toggle',label:'限定乘员类型',checked:true}),
+      types(9209,{type:'text',label:'乘员类型 ID',text:'E1,E2'}),
+      types(9210,{type:'toggle',label:'限定载具类型',checked:true}),
+      types(9211,{type:'text',label:'载具类型 ID',text:'HTK'}),
+      cardField(9216,9216,'智能卸载','适用单位清单',{type:'toggle',label:'限定卸载载具'})
+    ]));
+    await page.getByRole('heading',{name:'适用单位清单',exact:true}).waitFor();
+    const typeFold=page.getByRole('button',{name:'展开 自动装车 的设置',exact:true});
+    assert.equal(await page.getByLabel('乘员类型 ID',{exact:true}).isVisible(),false);
+    await typeFold.click();await page.getByLabel('乘员类型 ID',{exact:true}).waitFor();
+    assert.equal(await page.getByLabel('载具类型 ID',{exact:true}).inputValue(),'HTK');
+    assert.equal(await page.getByLabel('限定卸载载具',{exact:true}).isVisible(),false);
+    for(const viewport of [{width:1240,height:880},{width:390,height:720}]){
+      await page.setViewportSize(viewport);await assertFits();
+      await page.screenshot({path:diagnosticsPrefix+'-type-filters-'+viewport.width+'.png',fullPage:false});
+    }
     assert.deepEqual(errors,[],'browser must not emit uncaught JS errors');
     console.log('PASS browser fixture: all control types, drafts, gestures, module navigation, error/persistence status, 3000-row virtualization, responsive layout');
   } finally {
