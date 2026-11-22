@@ -22,7 +22,7 @@ static Snapshot snap{};
 static Snapshot*externalData=&snap;
 static uint32_t pid=fixture::GamePid,match=7,serial=0,optionFlags=0;
 static bool enabled=true,unitPanelEnabled=false; // follows host display-demand toggle
-static struct {bool passengerBubbles=true,dangerPassengers=false,passengerOwn=false,passengerAlways=false;}extra;
+static struct {bool passengerBubbles=true,dangerPassengers=false,passengerOwn=false,passengerAlways=false,enemyMarkers=false,enemySpecialOnly=false;}extra;
 static uint32_t flags(){return optionFlags;}
 namespace nativeviewhost {
 struct Transform {bool active=false;uint32_t generation=1;struct {int w=0,h=0;}logical;};
