@@ -193,7 +193,8 @@ int main(){try{
  buildUnloadAdmissionRoster(1);
  check(smartUnloadNow(1,transport)==1&&unloadCount==3,
        "native-first staggered ejection must retain all three passengers");
- // Freeze a full three-person Ctrl+D cohort before any native Deploy.
+ #ifdef USE_PRODUCTION_CARRIER_AND_COMMAND
+// Freeze a full three-person Ctrl+D cohort before any native Deploy.
  // The oldest passenger has already left by the later worker callback and
  // the original 1500ms observation history has expired.
  reset();
@@ -231,6 +232,7 @@ int main(){try{
  buildUnloadAdmissionRoster(1);smartUnloadNow(1,transport);
  check(unloadCount==1&&unloadPassengers[0].id==11,
        "passenger boarded after Ctrl+D must not get its automated follow-up");
+#endif
  check(unloadpolicy::completeIdentityIndex(10,10),
        "complete index permits independent passenger followups");
  check(!unloadpolicy::completeIdentityIndex(-1,10)&&

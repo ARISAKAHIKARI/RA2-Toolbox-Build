@@ -40,8 +40,10 @@ production = production.replace(conversion, 'std::wstring line;for(uint16_t c:gr
 call = 'passengerView(now,transform,token,confirmed)' if 'const worldframe::Token&source' in production else 'passengerView(now,transform)'
 production += '\nstatic auto passengerSample(uint32_t now,const worldframe::Token&token,bool confirmed=true){nativeviewhost::Transform transform;auto result=' + call + ';CHECK(!externalReader.worldFrameActive());return result;}\n'
 main = (SRC / 'main.cpp').read_text()
-demand = re.search(r'const bool passengerOverlay=[^;]+;', main).group()
-demand += '\n' + re.search(r'externalReader\.setWorldDemand\([^;]+;', main).group()
+demand_start = main.index('const bool passengerOverlay=')
+demand_end_marker = 'externalReader.setWorldDemand(displayDemand);'
+demand_end = main.index(demand_end_marker, demand_start) + len(demand_end_marker)
+demand = main[demand_start:demand_end]
 fragments = {'windows.h': windows, 'host_platform.h': memory + '}\n' + platform,
              'passenger_production.h': production, 'passenger_demand.h': 'static void configureDemand(){' + demand + '}\n'}
 for name, text in fragments.items():

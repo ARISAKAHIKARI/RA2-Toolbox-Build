@@ -33,6 +33,7 @@ def main():
    'static worldframe::DemandLeases runtimeDemandLeases;\n'
    'static bool worldFrameBoundaryOnly=false;\n'
    'static worldframe::Snapshot worldFrameCandidate;\n'
+   'static worldframe::CommandRoster worldFrameCandidateRoster,worldFrameCommandRoster;\n'
    'static const worldframe::Snapshot*sampleWorldSource=nullptr;\n'
    'static uint32_t sampleScopeTick=0;\n'
    'static uint32_t GetTickCount(){return uint32_t(currentFrame*16);}\n'
