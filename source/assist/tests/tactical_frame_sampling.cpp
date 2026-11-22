@@ -165,9 +165,11 @@ static int admitCooperative(const cooperative::Assignment&o,int,uint32_t house,i
 }
 static int loadingSubmitResult=1;
 static bool loadingCandidatePath=false,candidateCapacityReady=false;
+static uint32_t onlyCandidateActor=0;
 static unsigned candidateCapacityChecks=0;
-static bool candidateLoadAdmission(uint32_t,uint32_t,uint32_t,uint32_t,int){
- assert(!sampleReadDepth);++candidateCapacityChecks;return candidateCapacityReady;
+static bool candidateLoadAdmission(uint32_t,uint32_t,uint32_t id,uint32_t,int){
+ assert(!sampleReadDepth);++candidateCapacityChecks;
+ return candidateCapacityReady&&(!onlyCandidateActor||onlyCandidateActor==id);
 }
 static bool enterEvent(uint32_t,uint32_t,uint32_t,const executionproof::Ticket&,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
 static loading::Ledger<> loadLedger;
@@ -384,6 +386,16 @@ static void testLoad(){
  autoLoadTick(lastHouse,snap.frame,true);autoLoadTick(lastHouse,snap.frame,true);
  check(candidateCapacityChecks==2&&loadingResends==1&&snap.loadIssued==1&&loadLedger.count==1,
        "proved candidate seats did not release the staged load exactly once");
+ loadLedger.clear();loadLedger.add(waiting);
+ for(int n=1;n<4;++n){
+  auto next=waiting;next.object=get<uint32_t>(0x800008+4*n);
+  next.id=get<uint32_t>(next.object+0x10);next.kind=kind(next.object);
+  next.initial=loadingObservation(next.object);check(loadLedger.add(next),"candidate rotation setup");
+ }
+ onlyCandidateActor=uid;candidateCapacityChecks=loadingResends=0;
+ for(int n=0;n<4;++n){++snap.frame;set<int>(0xA8ED84,snap.frame);refreshWorldIndex(snap.frame);autoLoadTick(lastHouse,snap.frame,true);}
+ check(candidateCapacityChecks==4&&loadingResends==1,"a denied carrier starved the next candidate in the ledger");
+ onlyCandidateActor=0;
  std::puts("PASS 32 load assignment variants, frozen candidate click, bounded seat proof and single retry");
 }
 static void testBoardingLedgerUnknown(){

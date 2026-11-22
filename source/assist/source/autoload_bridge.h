@@ -320,9 +320,8 @@ static void autoLoadTick(uint32_t house,int frame,bool candidateOnly=false){
   bool due=r.lastSent<0||(frame-r.lastSent>=30&&(!incoming||frame-r.progress>=120));
   if(due&&frame>=r.retryAfter&&budget>0&&outgoingRoom()>0&&loadingObject(r.object,house,r.kind)&&loadingObject(r.vehicle,house,2)){
    if(candidateOnly){
-    if(candidateProbed){++i;continue;}
     candidateProbed=true;
-    if(!candidateLoadAdmission(r.object,r.vehicle,r.id,house,r.slots)){++i;continue;}
+    if(!candidateLoadAdmission(r.object,r.vehicle,r.id,house,r.slots)){++i;break;}
    }
    if(canEnter(r.object,r.vehicle)){
     r.lastAttempt=frame;
@@ -343,9 +342,12 @@ static void autoLoadTick(uint32_t house,int frame,bool candidateOnly=false){
   if(loadQueryFailed){
    // No retry loop on a throwing predicate. Retire the affected reservation;
    // any previously accepted original event remains owned by the game.
-   finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);loadQueryFailed=false;continue;
+   finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);loadQueryFailed=false;
+   if(candidateProbed)break;
+   continue;
   }
   ++i;
+  if(candidateProbed)break;
  }
  if(candidateOnly)candidateCursor=i;
  snap.loadWaiting=loadLedger.count;
