@@ -106,29 +106,30 @@ static int createDodge(const dodgecompute::Source&s){
 }
 // A missing sealed page is not evidence that a live dodge owner disappeared.
 // Return -1 only after a complete same-frame source observation; 0 is unknown.
-static int dodgeSourceKnowledge(uint32_t p,uint32_t house){
+static int dodgeSourceKnowledge(uint32_t p,uint32_t house,bool candidateOnly=false){
  if(!p)return -1;
- SampleReadScope sample;if(!sample)return 0;
+ SampleReadScope sample(candidateOnly);if(!sample)return 0;
  const bool eligible=dodgeSource(p,house);
  return sample.complete()?(eligible?1:-1):0;
 }
-static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
+static void updateDodgeJobs(uint32_t house,int frame,DWORD now,bool candidateOnly=false){
  // An unavailable/stale worker roster is UNKNOWN, not proof that every
  // active dodge owner disappeared. Only a complete same-frame index can
  // authorize membership-based retirement.
- if(indexedFrame!=frame||!commandRosterReady())return;
+ if(indexedFrame!=frame||(!commandRosterReady()&&!candidateOnly))return;
  for(int n=0;n<dodgeCount;){auto&j=dodgeJobs[n];
   // A complete index can prove absence. worldByID adds another fallible
   // live UID read; its failure cannot retire an otherwise owned job.
   const uint32_t p=worldObjects.byId(j.id);
-  if(p!=j.pointer||manualVersions.get(j.id)!=j.token||(!j.active&&(!sh->dodgeEnabled||frame-j.lastSeen>300))){
+  if((p!=j.pointer&&(!candidateOnly||p))||manualVersions.get(j.id)!=j.token||(!j.active&&(!sh->dodgeEnabled||frame-j.lastSeen>300))){
    cancelDodge(j.id);continue;
   }
+  if(!p){++n;continue;}
   uint32_t uid=0;if(!read(p+0x10,&uid,sizeof uid)){++n;continue;}
   if(uid!=j.id){cancelDodge(j.id);continue;}
-  const int eligible=dodgeSourceKnowledge(p,house);
-  if(eligible<0){cancelDodge(j.id);continue;}
-  if(!eligible){++n;continue;} // Missing fields: preserve ownership and progress.
+  const int eligible=dodgeSourceKnowledge(p,house,candidateOnly);
+  if(eligible<0&&!candidateOnly){cancelDodge(j.id);continue;}
+  if(eligible<=0||(candidateOnly&&!dodgeSource(p,house))){++n;continue;}
   if(j.active){
    int x=0,y=0,queued=0,rotatingStart=0,rotatingDuration=0;uint32_t destination=0;
    short rotatingFlag=0;uint8_t marker=0;
@@ -153,23 +154,22 @@ static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
   ++n;
  }
 }
-static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int frame,DWORD now,const dodgecompute::Input*source=nullptr){
- // A delayed compute result cannot retire owners while the canonical index is
- // unavailable. Re-admit only after the same-frame worker roster is ready.
- if(indexedFrame!=frame||!commandRosterReady())return;
+static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int frame,DWORD now,const dodgecompute::Input*source=nullptr,bool candidateOnly=false){
+ if(indexedFrame!=frame||(!commandRosterReady()&&!candidateOnly))return;
  const auto&input=source?*source:dodgeInput;
  if(r.match!=input.match||r.tick!=input.tick||r.frame!=input.frame||r.count!=input.count||r.count<0||r.count>dodgecompute::MaxSources)return;
  for(int n=0;n<r.count;++n){if(!freshness::valid(r.match,match,r.tick,r.frame,now,frame,freshness::Tactical)||snap.chat)break;
   const auto&old=input.sources[n];uint32_t p=worldObjects.byId(old.id);int j=dodgeIndex(old.id);
-  if(p!=old.pointer||manualVersions.get(old.id)!=old.token){cancelDodge(old.id);continue;}
+  if(manualVersions.get(old.id)!=old.token||(p!=old.pointer&&(!candidateOnly||p))){cancelDodge(old.id);continue;}
+  if(!p)continue;
   uint32_t uid=0;if(!read(p+0x10,&uid,sizeof uid))continue;
   if(uid!=old.id){cancelDodge(old.id);continue;}
-  const int eligible=dodgeSourceKnowledge(p,house);
-  if(eligible<0){cancelDodge(old.id);continue;}
-  if(!eligible)continue; // Failed read cannot authorize cancel or new Scatter.
+  const int eligible=dodgeSourceKnowledge(p,house,candidateOnly);
+  if(eligible<0&&!candidateOnly){cancelDodge(old.id);continue;}
+  if(eligible<=0||(candidateOnly&&!dodgeSource(p,house)))continue;
   if((old.job&&(j<0||dodgeJobs[j].serial!=old.job))||(!old.job&&j>=0))continue;
   dodgecompute::Source s{};dodgeObserve(p,house,s);auto liveDecision=dodgecompute::decide(s);auto d=r.decisions[n];
-  if(d.scatter!=liveDecision.scatter||d.release!=liveDecision.release)continue;
+  if(s.token!=old.token||d.scatter!=liveDecision.scatter||d.release!=liveDecision.release)continue;
   if(d.scatter){
    if(!planningRoom(4)||!outgoingRoom())break;
    j=createDodge(s);if(j<0)continue;
@@ -184,10 +184,10 @@ static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int fra
 }
 // Both dodge modes use the same Host calculation/publication path. The third
 // retained cursor records the mode so an old async result cannot cross modes.
-static void dispatchDodgeCalculation(uint32_t house,int frame,DWORD now,int nextCursor,int nextJobCursor,int mode){
+static void dispatchDodgeCalculation(uint32_t house,int frame,DWORD now,int nextCursor,int nextJobCursor,int mode,bool candidateOnly=false){
  const auto&i=dodgeInput;if(!i.count)return;
- if(compute::inside(sh->computeApplied,compute::Dodge)){applyDodgeResult(dodgecompute::calculate(i),house,frame,now);return;}
- if(!externalInputFrame)return;
+ if(compute::inside(sh->computeApplied,compute::Dodge)){applyDodgeResult(dodgecompute::calculate(i),house,frame,now,nullptr,candidateOnly);return;}
+ if(!externalInputFrame&&!candidateOnly)return;
  InterlockedIncrement(&sh->dodgeInputSeq);MemoryBarrier();sh->dodgeInput=i;
  dodgeTask=compute::nextTask(sh->dodgeTask);dodgeFrames.retain(dodgeTask,i,{nextCursor,nextJobCursor,mode});
  sh->dodgeTask=dodgeTask;MemoryBarrier();InterlockedIncrement(&sh->dodgeInputSeq);dodgePending=true;notifyHost();
@@ -200,7 +200,7 @@ static bool collectDodgeInput(uint32_t house,int frame,DWORD now,int&nextCursor,
  auto&i=dodgeCapture;memset(&i,0,sizeof i);i.match=match;
  // Preserve the real acquisition age of an off-thread observation.
  i.tick=sampleWorldSource&&sampleWorldSource->key.tick?sampleWorldSource->key.tick:now;
- i.frame=frame;
+ i.frame=sampleWorldSource?sampleWorldSource->key.frame:frame;
  int checkedJobs=0;
  for(;checkedJobs<dodgeCount&&i.count<dodgecompute::MaxSources/2;++checkedJobs){const auto&j=dodgeJobs[(dodgeJobCursor+checkedJobs)%dodgeCount];
   if(j.active&&get<uint32_t>(j.pointer+0x10)==j.id)dodgeObserve(j.pointer,house,i.sources[i.count++]);
@@ -214,27 +214,27 @@ static bool collectDodgeInput(uint32_t house,int frame,DWORD now,int&nextCursor,
  if(!frameRead.complete())return false;
  dodgeInput=i;return true;
 }
-static bool dodgeControlTick(uint32_t house,int frame,DWORD now){
+static bool dodgeControlTick(uint32_t house,int frame,DWORD now,bool candidateOnly=false){
  if(!sh->dodgeEnabled&&!dodgeCount){dodgePending=false;return false;}if(snap.chat||!simulationReady())return false;
  const bool outside=!compute::inside(sh->computeApplied,compute::Dodge);
  bool threatsCollected=false;auto collect=[&]{if(!threatsCollected)threatsCollected=collectDodgeThreats();return threatsCollected;};
  // Effect/lease maintenance is live even when no complete raw frame is ready.
- updateDodgeJobs(house,frame,now);
+ updateDodgeJobs(house,frame,now,candidateOnly);
  if(outside&&compute::newer(sh->dodgeComputed,dodgeApplied)){
   const uint32_t completed=sh->dodgeComputed;long seq=sh->dodgeResultSeq;
   if(!(seq&1)){MemoryBarrier();dodgeResult=sh->dodgeResult;MemoryBarrier();if(seq==sh->dodgeResultSeq&&completed==sh->dodgeComputed){
    const auto*source=dodgeFrames.find(completed);
    const auto*c=dodgeFrames.cursors(completed);const int mode=sh->dodgeEnabled&&sh->dodgeMode==0?0:1;
    if(!source||!c||(*c)[2]!=mode)dodgeApplied=completed;
-   else if(collect()){dodgeApplied=completed;applyDodgeResult(dodgeResult,house,frame,now,source);if(mode){dodgeCursor=(*c)[0];dodgeJobCursor=(*c)[1];}}
+   else if(collect()){dodgeApplied=completed;applyDodgeResult(dodgeResult,house,frame,now,source,candidateOnly);if(mode){dodgeCursor=(*c)[0];dodgeJobCursor=(*c)[1];}}
   }}
  }
- if(sh->dodgeEnabled&&sh->dodgeMode==0){if(!collect())return false;return reverseDodgeTick(house,frame,now);}
+ if(sh->dodgeEnabled&&sh->dodgeMode==0){if(!collect())return false;return reverseDodgeTick(house,frame,now,candidateOnly);}
  reverseWasEnabled=false;
- if(outside&&!externalInputFrame)return false;
+ if(outside&&!externalInputFrame&&!candidateOnly)return false;
  int nextCursor=0,nextJobCursor=0;
  if(!collect()||!collectDodgeInput(house,frame,now,nextCursor,nextJobCursor))return false;
  if(!outside){dodgeCursor=nextCursor;dodgeJobCursor=nextJobCursor;}
  sh->dodgeActive=0;for(int n=0;n<dodgeCount;++n)if(dodgeJobs[n].active)++sh->dodgeActive;
- dispatchDodgeCalculation(house,frame,now,nextCursor,nextJobCursor,1);return true;
+ dispatchDodgeCalculation(house,frame,now,nextCursor,nextJobCursor,1,candidateOnly);return true;
 }

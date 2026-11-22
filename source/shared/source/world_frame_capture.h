@@ -252,6 +252,17 @@ public:
      type(value<uint32_t>(product+0x520));
     }
    }
+   // Record same-sample unit production evidence, including products that
+   // have yet to enter the Techno roster. Queued entries are type pointers.
+   for(uint32_t offset:{0x53B0u,0x53B4u,0x53B8u,0x53ACu}){
+    const uint32_t factory=value<uint32_t>(frame_.key.house+offset);
+    if(!range(factory,0x70))continue;
+    block(factory,0x70);
+    if(value<uint32_t>(factory+0x6C)!=frame_.key.house)continue;
+    const int count=value<int>(factory+0x50);
+    if(count>0&&count<=128)block(value<uint32_t>(factory+0x44),size_t(count)*4);
+    block(value<uint32_t>(factory+0x58),0x6C8);
+   }
   }
   auxiliary(value<uint32_t>(0x887324),0xD0);auxiliary(value<uint32_t>(0x8871E0),0x1000);
   if(!working())return false;auto&list=scratch_->list;

@@ -43,17 +43,20 @@ static bool hasCameo(int,int){return cameo;}
 static bool techFactory(uint32_t,uint32_t){return factoryFound;}
 static bool nativeProduceEvent(uint32_t,const Type&,bool){++events;return append;}
 static void watchReservedSidebar(uint32_t,int,int,uint32_t,int){}
-static uint32_t worldByID(uint32_t){return 0x800000;}
+static uint32_t origin=0x800000;
+static uint32_t worldByID(uint32_t){return origin;}
 static bool own(uint32_t,uint32_t){return true;}
 static int kind(uint32_t){return 3;}
 static int now=10;
-static int run(int category,uint32_t offset,int waiting,uint32_t product=0x700000,bool naval=false,bool owner=true,int command=ProduceDeferred){
+static int run(int category,uint32_t offset,int waiting,uint32_t product=0x700000,bool naval=false,bool owner=true,int command=ProduceDeferred,bool candidateOnly=false){
  c=command;
  snap.types[0]={category,0,int(naval)};mem[house+offset]=0x710000;
  mem[0x710000+0x6C]=owner?house:house+4;mem[0x710000+0x50]=waiting;mem[0x710000+0x58]=product;
  mem[0x800000+0x90]=1;result=n=0;
+ const auto dispatch=[&]{
 '''+branch+r'''
- return result;
+ };
+ dispatch();return result;
 }
 int main(){
  sh->flags=ReserveConstruction;
@@ -76,6 +79,10 @@ int main(){
  assert(run(7,0x53BC,0,0,false,true,ProduceReserved)==0&&n==1);
  nativeLimit=0;assert(run(16,0x53B0,0)==-9);nativeLimit=1;
  fullPermission=false;assert(run(16,0x53B0,0)==-9);canBuild=1;
+ const int before=events;origin=0;
+ assert(run(7,0x53BC,0,0,false,true,ProduceReserved,true)==0&&n==0&&events==before);
+ assert(run(16,0x53B0,0,0,false,true,ProduceDeferred,true)==0&&n==1&&events==before+1);
+ assert(run(7,0x53BC,0,0,false,true,ProduceReserved)==-4&&n==0);origin=0x800000;
  sh->flags=0;assert(run(16,0x53B0,0)==-4);
  std::cout<<"PASS: shipped ProduceDeferred branch accepts busy native unit factories; buildings still require empty factory; native eligibility gates remain\n";
 }

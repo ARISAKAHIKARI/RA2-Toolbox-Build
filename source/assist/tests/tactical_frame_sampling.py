@@ -61,7 +61,7 @@ def production():
     add(function(coop, "static void captureCooperativeFrame("))
     add(function(coop, "static void serviceCooperativePlan("))
     load = source["autoload_bridge.h"]
-    add(load[load.index("static bool loadCalculationPending,"):load.index("static int submitLoading(")])
+    add(load[load.index("static bool loadCalculationPending;"):load.index("static int submitLoading(")])
     for signature in ("static bool loadingObject(", "static uint32_t incomingVehicle(",
                       "static loading::Observation loadingObservation(", "static int loadingFilterStatus(",
                       "static loading::ReservationView loadingReservationView(", "static int passengerSlots("):
@@ -70,7 +70,7 @@ def production():
     add(function(load, "static bool queryEnterAction("))
     add(function(load, "static bool canEnter("))
     for signature in ("static bool captureLoadSelection(", "static bool collectLoadFacts(",
-                      "static int autoLoad(uint32_t house,const compute::LoadInput*cohort){",
+                      "static int autoLoad(uint32_t house,const compute::LoadInput*cohort,bool candidateOnly){",
                       "static void autoLoadTick(", "static void loadingCalculationTick("):
         add(function(load, signature))
     unload = source["unload_compute_bridge.h"]

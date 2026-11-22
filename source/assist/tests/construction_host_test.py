@@ -225,15 +225,20 @@ int main(){
  snap.typeCount=3;setup();reserve(choice(1));w(T+0x4000+0xE08,5);
  selectedTab=activeTab=1;refreshChoices();assert(choice(2)>=0);reserve(choice(2));assert(!books[1].source);
  removeItem(0,0,true);tick();tick(600);assert(books[1].items.empty());
- // Unit production waits for native cameo; consumes exactly once at ACK.
+ // Unit production waits for the native cameo and a matching factory observation.
  snap.typeCount=3;setup();reserve(choice(1));w(T+0x2000+0xEB8,16);
  list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{1});list(I+0x654,{});
  snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
  selectedTab=activeTab=2;refreshChoices();reserve(choice(encode(16,0)));tick();assert(commandQueue.size==0);
  uint32_t infantryStrip=0x87F7E8+0x1544+2*3988;w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);
  tick(1);assert(commandQueue.size==1&&commandQueue.slots[0].command==ProduceDeferred);
- auto deferredToken=books[2].token;result(1,1,0,deferredToken);assert(books[2].items.empty());result(1,1,0,deferredToken);assert(books[2].items.empty());
- std::cout<<"PASS: missing-barracks infantry, cross-tab defense, canceled prerequisite cascade, native-cameo wait and exactly-once unit ACK\n";
+ auto deferredToken=books[2].token;commandQueue.clear();result(1,1,0,deferredToken);
+ assert(books[2].stage==2&&books[2].items.size()==1);
+ tick(20);assert(books[2].items.size()==1&&!commandQueue.size);
+ w(H+0x53B0,F+0x1000);w(F+0x1000+0x6C,H);w(F+0x1000+0x58,P);w(F+0x1000+0x50,0);w(P+0x6C0,I);
+ tick(20);assert(books[2].items.empty());
+ result(1,1,0,deferredToken);assert(books[2].items.empty());
+ std::cout<<"PASS: missing-barracks infantry, cross-tab defense, canceled prerequisite cascade, native-cameo wait and unit factory confirmation\n";
  // The first native cameo may open an empty panel when no building is
  // producing. It appears only in the native sidebar until explicitly queued.
  setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
@@ -256,55 +261,95 @@ int main(){
  assert(choice(encode(16,0))<0);for(int i=0;i<construction::UnitReservationCapacity;++i)reserveNativeInfantry();
  assert(books[2].items.size()==construction::UnitReservationCapacity&&books[2].visibleStart()==construction::UnitReservationCapacity-construction::VisibleCapacity&&layout.queueCount==5);
  int sounds=soundRequests;reserveNativeInfantry();assert(books[2].items.size()==construction::UnitReservationCapacity&&sounds==soundRequests);
- for(int accepted=0;accepted<construction::UnitCapacity;++accepted){tick(accepted?20:110);assert(commandQueue.size==1&&books[2].stage==1&&commandQueue.slots[0].arg==3);
-  uint32_t token=books[2].token;commandQueue.clear();result(1,1,0,token);result(1,1,0,token);w(F+0x58,P);w(F+0x50,accepted);
+ // The raw factory fixture contains the actual queued type pointer array.
+ auto unitFactory=[&](uint32_t f,uint32_t productType,int queued,uint32_t queuedType=0){
+  w(f+0x6C,H);w(f+0x50,queued);w(f+0x44,0x910000);
+  for(int i=0;i<queued;++i)w(0x910000+i*4,queuedType?queuedType:I);
+  w(f+0x58,productType?P:0);
+  if(productType){w(P+0x6C0,productType);w(P+0x6C4,productType);}
+ };
+ auto ackHead=[&]{
+  assert(commandQueue.size==1);
+  const auto token=books[2].token;
+  commandQueue.clear();result(1,1,0,token);result(1,1,0,token);
+  assert(books[2].stage==2&&books[2].token==token);
+ };
+ for(int accepted=0;accepted<construction::UnitCapacity;++accepted){
+  tick();assert(books[2].stage==1&&commandQueue.slots[0].arg==3);
+  ackHead();
+  assert(books[2].items.size()==size_t(construction::UnitReservationCapacity-accepted));
+  unitFactory(F,I,accepted);tick(20);
+  assert(books[2].items.size()==size_t(construction::UnitReservationCapacity-accepted-1));
  }
  tick();assert(commandQueue.size==0&&books[2].items.size()==construction::UnitReservationCapacity-construction::UnitCapacity);
  for(int accepted=construction::UnitCapacity;accepted<construction::UnitReservationCapacity;++accepted){
-  w(F+0x58,0);w(F+0x50,0);tick();assert(commandQueue.size==1&&books[2].stage==1);
-  uint32_t token=books[2].token;commandQueue.clear();result(1,1,0,token);w(F+0x58,P);w(F+0x50,0);
-  if(accepted+1<construction::UnitReservationCapacity)unitRoom(0);
+  unitFactory(F,0,0);tick();assert(commandQueue.size==1&&books[2].stage==1);
+  ackHead();unitFactory(F,I,0);tick(20);
  }
- assert(books[2].items.empty()&&commandQueue.size==0&&unitBudgets[0].pending==1);
- uint32_t replacement=F+0x400;w(H+0x53B0,replacement);w(replacement+0x6C,H);w(replacement+0x58,0);w(replacement+0x50,29);
- reserveNativeInfantry();tick();assert(commandQueue.size==0&&books[2].items.size()==1); // unobserved ACK survives factory replacement
- w(replacement+0x50,28);tick();assert(commandQueue.size==1);commandQueue.clear();result(-13,0,0,books[2].token);
- // First native Produce can allocate a new FactoryClass. Its first product
- // reconciles the ACK shadow instead of consuming two slots in the budget.
- setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
- list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{});list(I+0x654,{});
- w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
- reserveNativeInfantry();reserveNativeInfantry();tick();assert(commandQueue.size==1);
- deferredToken=books[2].token;commandQueue.clear();result(1,1,0,deferredToken);assert(unitBudgets[0].pending==1);
- w(H+0x53B0,F);w(F+0x6C,H);w(F+0x58,P);w(F+0x50,0);tick(20);assert(commandQueue.size==1&&unitBudgets[0].pending==0);
- commandQueue.clear();result(-13,0,0,books[2].token);
- // At 29 native waiting plus one active, keep the tail. ACKed events count
- // against capacity until FactoryClass's vector reflects them.
- setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
- list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{});list(I+0x654,{});
- w(H+0x53B0,F);w(F+0x6C,H);w(F+0x58,P);w(F+0x50,29);
- w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
- reserveNativeInfantry();reserveNativeInfantry();tick();assert(commandQueue.size==0&&books[2].items.size()==2);
- w(F+0x50,28);tick();assert(commandQueue.size==1);deferredToken=books[2].token;commandQueue.clear();result(1,1,0,deferredToken);
- tick(20);assert(commandQueue.size==0&&books[2].items.size()==1);w(F+0x50,29);tick();assert(commandQueue.size==0);
- w(F+0x50,28);tick();assert(commandQueue.size==1);commandQueue.clear();result(-9,0,0,books[2].token);assert(books[2].items.size()==1);
+ assert(books[2].items.empty()&&commandQueue.size==0);
+
+ // An ACK, a wrong native type, and movement of a previously queued copy
+ // into the active slot must not consume or resubmit an unconfirmed order.
+ auto setupInfantry=[&]{
+  setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
+  list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{});list(I+0x654,{});
+  w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
+ };
+ setupInfantry();
+ const uint32_t infantryFactory=F+0x1000,otherType=I+0x4000;
+ reserveNativeInfantry();reserveNativeInfantry();tick();ackHead();
+ w(H+0x53B0,infantryFactory);unitFactory(infantryFactory,otherType,0);
+ tick(20,false);tick(20);
+ assert(books[2].stage==2&&books[2].items.size()==2&&!commandQueue.size);
+ // An unrelated building factory page can go missing without stalling the
+ // unit line. The expected infantry first appears in the native queue.
+ externalReader.fail=F+0x58;unitFactory(infantryFactory,otherType,1);
+ tick(20);assert(books[2].stage==0&&books[2].items.size()==1);
+ externalReader.fail=0;
+
+ setupInfantry();
+ w(H+0x53B0,infantryFactory);unitFactory(infantryFactory,otherType,1);
+ reserveNativeInfantry();reserveNativeInfantry();tick();ackHead();
+ unitFactory(infantryFactory,I,0);w(P+0x10,101);tick(20);
+ assert(books[2].stage==2&&books[2].items.size()==2&&!commandQueue.size);
+ tick(6000);
+ assert(books[2].confirmationWarned&&books[2].items.size()==2&&!commandQueue.size);
+ removeItem(2,0);assert(books[2].stage==0&&books[2].items.size()==1);
  removeTop(true);assert(books[2].items.empty());
- // A ground vehicle, plane and ship have distinct factory slots. A busy
- // vehicle factory must not block an aircraft or ship in the same tab.
+ setupInfantry();
+ w(H+0x53B0,infantryFactory);unitFactory(infantryFactory,I,29);
+ reserveNativeInfantry();reserveNativeInfantry();tick();assert(!commandQueue.size&&books[2].items.size()==2);
+ unitFactory(infantryFactory,I,28);tick();ackHead();
+ // A missing native queue page is not execution evidence.
+ unitFactory(infantryFactory,I,29);externalReader.fail=0x910000;tick(20);
+ assert(books[2].stage==2&&books[2].items.size()==2&&!commandQueue.size);
+ externalReader.fail=0;tick(20);assert(books[2].stage==0&&books[2].items.size()==1);
+ tick();assert(!commandQueue.size);unitFactory(infantryFactory,I,28);tick();
+ assert(commandQueue.size==1);commandQueue.clear();result(-9,0,0,books[2].token);assert(books[2].items.size()==1);
+ removeTop(true);assert(books[2].items.empty());
+
+ // One tab carries three independent native factories.
  setup();uint32_t V=T+0x8000,N=T+0xA000,A=T+0xC000;
  list(0xA83CE0,{int(V),int(N)});list(0xA8B218,{int(A)});byte(N+0xCCE,1);
  for(uint32_t p:{V,N,A}){w(p+0x634,1);w(p+0x6CC,1);w(p+0xDA0,-1);w(p+0xDA4,-1);list(p+0x638,{});list(p+0x654,{});}
  snap.typeCount=6;snap.types[3].kind=40;snap.types[3].index=0;snap.types[4].kind=3;snap.types[4].index=0;snap.types[5].kind=40;snap.types[5].index=1;snap.types[5].naval=1;
  uint32_t vehicleStrip=0x87F7E8+0x1544+3*3988;w(vehicleStrip+84,3);w(vehicleStrip+88,0);w(vehicleStrip+92,40);w(vehicleStrip+88+52,0);w(vehicleStrip+92+52,3);w(vehicleStrip+88+104,1);w(vehicleStrip+92+104,40);
- uint32_t groundF=F,airF=F+0x100,seaF=F+0x200;w(H+0x53B4,groundF);w(H+0x53AC,airF);w(H+0x53B8,seaF);
- for(uint32_t f:{groundF,airF,seaF}){w(f+0x6C,H);w(f+0x58,P);w(f+0x50,0);}
+ const uint32_t vehicleFactories[]={F+0x1000,F+0x2000,F+0x3000},vehicleTypes[]={V,A,N};
+ w(H+0x53B4,vehicleFactories[0]);w(H+0x53AC,vehicleFactories[1]);w(H+0x53B8,vehicleFactories[2]);
+ for(auto f:vehicleFactories)unitFactory(f,0,0);
  selectedTab=activeTab=3;refreshChoices();
  for(const auto&c:{Choice{3,encode(40,0),3,V,false},Choice{4,encode(3,0),3,A,false},Choice{5,encode(40,1),3,N,false}}){
   assert(choice(c.index)<0);reserveChoice(c,true,true);assert(choice(c.index)>=0);
  }
- assert(books[3].items.size()==3);for(int slot:{3,4,5}){tick();assert(commandQueue.size==1&&commandQueue.slots[0].arg==slot);
-  uint32_t token=books[3].token;commandQueue.clear();result(1,1,0,token);assert(books[3].items.size()==size_t(5-slot));}
- std::cout<<"PASS: filtered native cameos, visible queued entries, 128-item FIFO with a native 30-item window, native full queue and ACK shadow, separate ground/air/naval factories\n";
+ assert(books[3].items.size()==3);
+ for(int slot:{3,4,5}){
+  tick();assert(commandQueue.size==1&&commandQueue.slots[0].arg==slot);
+  const auto token=books[3].token;commandQueue.clear();result(1,1,0,token);
+  assert(books[3].stage==2&&books[3].items.size()==size_t(6-slot));
+  unitFactory(vehicleFactories[slot-3],vehicleTypes[slot-3],0);tick(20);
+  assert(books[3].items.size()==size_t(5-slot));
+ }
+ std::cout<<"PASS: 128-item FIFO with a native 30-item window, typed factory confirmation, missing pages, manual cancellation, separate ground/air/naval factories\n";
 
  // Exact enhancement previews the same two signed level tests as Runtime.
  // It must never turn into full technology or authorize a same-name impostor.

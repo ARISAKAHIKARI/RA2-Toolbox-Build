@@ -55,16 +55,17 @@ static bool reverseDodgeActor(uint32_t p,uint32_t q,uint32_t house,int frame,DWO
  job.x=get<int>(p+0x9C);job.y=get<int>(p+0xA0);job.marker=get<bool>(p+0x6B2);job.receipt=receipt;
  dodgeRemember(job,s);++sh->dodgeIssued;cancelBurst(s.id);return true;
 }
-struct ReverseTarget {uint32_t pointer,id;};
+struct ReverseTarget {uint32_t pointer,id,token;};
 static ReverseTarget reverseTargets[16384];static int reverseTargetCount;
 static reversedodge::TargetIndex reverseTargetIndex;
 struct ReverseTargetStamp {uint32_t epoch=0,serial=0,house=0,config=0,requested=0;bool ready=false,attempted=false;
- bool same(uint32_t h)const{return attempted&&epoch==match&&serial==worldFrame.key.serial&&house==h&&config==uint32_t(featureConfigRevision)&&requested==uint32_t(sh->featureConfigSeq);}
+ bool same(uint32_t h,uint32_t source)const{return attempted&&epoch==match&&serial==source&&house==h&&config==uint32_t(featureConfigRevision)&&requested==uint32_t(sh->featureConfigSeq);}
 };
 static ReverseTargetStamp reverseTargetStamp;
 static bool captureReverseTargetIndex(uint32_t house){
- if(reverseTargetStamp.same(house))return reverseTargetStamp.ready;
- reverseTargetStamp={match,worldFrame.key.serial,house,uint32_t(featureConfigRevision),uint32_t(sh->featureConfigSeq),false,true};reverseTargetIndex.clear();
+ const auto&key=sampleWorldSource?sampleWorldSource->key:worldFrame.key;
+ if(reverseTargetStamp.same(house,key.serial))return reverseTargetStamp.ready;
+ reverseTargetStamp={match,key.serial,house,uint32_t(featureConfigRevision),uint32_t(sh->featureConfigSeq),false,true};reverseTargetIndex.clear();
  if(reverseTargetStamp.requested&1u)return false;
  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
  for(int n=0;n<all.count;++n){uint32_t p=item(all,n);if(!dodgeSource(p,house))continue;
@@ -73,19 +74,24 @@ static bool captureReverseTargetIndex(uint32_t house){
  }
  reverseTargetStamp.ready=sampleReadComplete&&reverseTargetStamp.config==uint32_t(featureConfigRevision)&&reverseTargetStamp.requested==uint32_t(sh->featureConfigSeq);return reverseTargetStamp.ready;
 }
-static bool collectReverseTargets(const DodgeThreatRef&ref,uint32_t house,reversedodge::Point&delta){
- SampleReadScope frameRead;if(!frameRead)return false;
+static bool collectReverseTargets(const DodgeThreatRef&ref,uint32_t house,reversedodge::Point&delta,bool candidateOnly=false){
+ SampleReadScope frameRead(candidateOnly);if(!frameRead)return false;
  reverseTargetCount=0;
  if(!dodgeThreatCurrent(ref)||!reverseVector(ref.pointer,delta))return frameRead.complete();
- if(worldObjects.contains(ref.target))reverseTargets[reverseTargetCount++]={ref.target,get<uint32_t>(ref.target+0x10)};
+ if(worldObjects.contains(ref.target)){
+  const uint32_t id=get<uint32_t>(ref.target+0x10);
+  reverseTargets[reverseTargetCount++]={ref.target,id,manualVersions.get(id)};
+ }
  else {if(!captureReverseTargetIndex(house))return false;
-  reverseTargetIndex.visit(ref.target,[&](uint32_t p,uint32_t id){if(dodgeSource(p,house))reverseTargets[reverseTargetCount++]={p,id};});
+  reverseTargetIndex.visit(ref.target,[&](uint32_t p,uint32_t id){if(dodgeSource(p,house))reverseTargets[reverseTargetCount++]={p,id,manualVersions.get(id)};});
  }
  return frameRead.complete();
 }
-static bool collectReverseDodgeInput(uint32_t house,int frame,DWORD now){
- SampleReadScope frameRead;if(!frameRead)return false;
- auto&i=dodgeCapture;memset(&i,0,sizeof i);i.match=match;i.tick=now;i.frame=frame;
+static bool collectReverseDodgeInput(uint32_t house,int frame,DWORD now,bool candidateOnly=false){
+ SampleReadScope frameRead(candidateOnly);if(!frameRead)return false;
+ auto&i=dodgeCapture;memset(&i,0,sizeof i);i.match=match;
+ i.tick=sampleWorldSource?sampleWorldSource->key.tick:now;
+ i.frame=sampleWorldSource?sampleWorldSource->key.frame:frame;
  for(int n=0;n<dodgeCount&&i.count<dodgecompute::MaxSources;++n)if(dodgeJobs[n].active&&get<uint32_t>(dodgeJobs[n].pointer+0x10)==dodgeJobs[n].id)dodgeObserve(dodgeJobs[n].pointer,house,i.sources[i.count++]);
  for(int n=0;n<dodgeThreatCount&&i.count<dodgecompute::MaxSources;++n){const auto&ref=dodgeThreatRefs[n];if(ref.projectile||!dodgeSource(ref.target,house))continue;
   bool found=false;for(int k=0;k<i.count;++k)if(i.sources[k].pointer==ref.target)found=true;
@@ -96,7 +102,7 @@ static bool collectReverseDodgeInput(uint32_t house,int frame,DWORD now){
  if(!frameRead.complete())return false;
  dodgeInput=i;return true;
 }
-static bool reverseDodgeTick(uint32_t house,int frame,DWORD now){
+static bool reverseDodgeTick(uint32_t house,int frame,DWORD now,bool candidateOnly=false){
  if(reverseMatch!=match||!reverseWasEnabled){memset(reverseShots,0,sizeof reverseShots);reverseMatch=match;}
  reverseWasEnabled=true;
  // Eligibility also includes Runtime-owned Sticky state. Share a successful
@@ -104,7 +110,7 @@ static bool reverseDodgeTick(uint32_t house,int frame,DWORD now){
  // A failed immutable observation remains deferred until its source changes.
  if(reverseTargetStamp.ready)reverseTargetStamp.attempted=false;
  for(int n=0;n<dodgeThreatCount;++n){const auto&ref=dodgeThreatRefs[n];if(!ref.projectile||reverseShotHandled(ref,frame))continue;
-  reversedodge::Point delta{};if(!collectReverseTargets(ref,house,delta))continue;
+  reversedodge::Point delta{};if(!collectReverseTargets(ref,house,delta,candidateOnly))continue;
   // The sample chose candidates; native path legality and submission retain
   // live identity/target checks after the scope. No roster is reacquired here.
   if(!dodgeThreatCurrent(ref))continue;
@@ -117,14 +123,14 @@ static bool reverseDodgeTick(uint32_t house,int frame,DWORD now){
   // queries when the common sender has no room to accept a movement event.
   if(reverseTargetCount&&!outgoingRoom())continue;
   for(int k=0;k<reverseTargetCount;++k){const auto&candidate=reverseTargets[k];
-   if(worldByID(candidate.id)!=candidate.pointer)continue;
+   if(worldByID(candidate.id)!=candidate.pointer||manualVersions.get(candidate.id)!=candidate.token)continue;
    if(!worldObjects.contains(target)&&target!=readMapCell(get<int>(candidate.pointer+0x9C)/256,get<int>(candidate.pointer+0xA0)/256))continue;
    done=reverseDodgeActor(candidate.pointer,ref.pointer,house,frame,now,delta)&&done;
   }
   shot->handled=done;
  }
- if(!collectReverseDodgeInput(house,frame,now))return false;
- dispatchDodgeCalculation(house,frame,now,-1,-1,0);
+ if(!collectReverseDodgeInput(house,frame,now,candidateOnly))return false;
+ dispatchDodgeCalculation(house,frame,now,-1,-1,0,candidateOnly);
  sh->dodgeActive=0;for(int n=0;n<dodgeCount;++n)if(dodgeJobs[n].active)++sh->dodgeActive;
  return true;
 }

@@ -168,8 +168,14 @@ autoload = (root / "autoload_bridge.h").read_text()
 unload = (root / "unload_compute_bridge.h").read_text()
 external = (root / "external_orders_bridge.h").read_text()
 local_fallback = between(dispatcher, "else{\n  uiSoundCommand(now);", "nativePlacementTick(now);")
-assert "eventdelivery::isSingleplayer(sessionMode)" in local_fallback
-assert "candidateRosterReady()" in local_fallback
+assert "const bool localDeferred=deferIndexedWork&&eventdelivery::isSingleplayer(sessionMode);" in dispatcher
+assert "const bool localCandidate=localDeferred&&candidateRosterReady();" in dispatcher
+assert "if(localDeferred)command(house,now,true);" in local_fallback
+assert "if(localCandidate)" in local_fallback
+assert "(!deferIndexedWork||candidateInputFrame)&&dodgeControlTick(house,frame,now,deferIndexedWork)" in dispatcher
+assert "if(result==-30){result=AutoBoardStaged;n=0;}" in bridge
+assert "loadAckPending" not in bridge+autoload
+assert "if(candidateOnly&&!origin)return;" in bridge
 assert "externalOrdersTick(house,frame,now,true);" in local_fallback
 assert "if(sh->pointer.request!=sh->pointer.ack)pointerTick(true);" in local_fallback
 assert "serviceCooperativePlan(house,frame,now,true,preciseNow);" in local_fallback
@@ -182,7 +188,7 @@ assert "!proof||!candidateEntryCapacity(t,p,o.id,house,c,slots,reserved)" in coo
 assert "preciseNow-cooperativeCandidateAt<CooperativeCandidateIntervalUs" in coop_plan
 assert "identities->attack(order.id,order.target)" in coop_plan
 assert "mode==cooperative::AirSingle,false,proof" in coop
-assert "if(result==-30)return;\n     loadTaskSeen=completed;finish(result);" in autoload
+assert "if(result==-30)return;\n     loadTaskSeen=completed;finish();" in autoload
 candidate = between(external, "else if(crossFrame){", "else {\n  while")
 assert "candidateRosterReady()||sampleReadDepth||!simulationReady()" in candidate
 assert "planBatch.candidatePass(count,4,preciseclock::micros(),worldFrameCandidateVersion" in candidate

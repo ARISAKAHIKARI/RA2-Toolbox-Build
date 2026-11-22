@@ -24,9 +24,11 @@ static std::vector<uint32_t> units;
 static std::unordered_set<uint32_t> members;
 static struct {bool contains(uint32_t p)const{return members.count(p)!=0;}}worldObjects;
 static int currentFrame=100;
-static struct {struct {uint32_t serial=1;}key;}worldFrame;static uint32_t featureConfigRevision=1;
+static struct Frame {struct {uint32_t serial=1,tick=0;int frame=100;}key;}worldFrame,*sampleWorldSource=nullptr;static uint32_t featureConfigRevision=1;
 static bool sampleReady=true,sampleComplete=true,actorAccept=true,sourceEnabled=true,queueReady=true;
 static bool&sampleReadComplete=sampleComplete;
+static bool candidateAvailable=false;
+static struct {uint32_t get(uint32_t)const{return 0;}}manualVersions;
 static uint32_t actorAttempts=0,continuations=0,observations=0;
 static uint64_t rosterVisits=0,readCount=0;
 static uint32_t checks=0,cases=0,semanticDigest=2166136261u;
@@ -38,7 +40,12 @@ static int kind(uint32_t p){return worldObjects.contains(p)?2:-1;}
 struct Vec{int count;};
 static bool sampleRoster(uint32_t,Vec&v){v.count=int(units.size());return sampleReady;}
 static uint32_t item(Vec,int i){++rosterVisits;return units[size_t(i)];}
-class SampleReadScope {public:explicit operator bool()const{return sampleReady;}bool complete()const{return sampleReady&&sampleComplete;}};
+class SampleReadScope {
+ bool ready_;
+public:
+ explicit SampleReadScope(bool allowCandidate=false):ready_(sampleReady||(allowCandidate&&candidateAvailable)){}
+ explicit operator bool()const{return ready_;}bool complete()const{return ready_&&sampleComplete;}
+};
 static uint32_t readMapCell(int x,int y){return x==40&&y==40?Cell:0;}
 static uint32_t worldByID(uint32_t id){for(auto p:units)if(get<uint32_t>(p+0x10)==id)return p;return 0;}
 static bool dodgeSource(uint32_t p,uint32_t){return sourceEnabled&&worldObjects.contains(p);}
@@ -47,7 +54,7 @@ static void dodgeObserve(uint32_t p,uint32_t,dodgecompute::Source&s){++observati
 static bool outgoingRoom(){return queueReady;}
 static bool reverseDodgeActor(uint32_t,uint32_t,uint32_t,int,DWORD,reversedodge::Point){++actorAttempts;return actorAccept&&queueReady;}
 static void applyDodgeResult(const dodgecompute::Result&,uint32_t,int,DWORD){++continuations;}
-static void dispatchDodgeCalculation(uint32_t h,int f,DWORD n,int,int,int){applyDodgeResult(dodgecompute::calculate(dodgeInput),h,f,n);}
+static void dispatchDodgeCalculation(uint32_t h,int f,DWORD n,int,int,int,bool=false){applyDodgeResult(dodgecompute::calculate(dodgeInput),h,f,n);}
 #include "reverse_hotpath_production.h"
 static void check(bool ok,const char*message){++checks;if(!ok){std::fprintf(stderr,"FAIL: %s\n",message);std::exit(1);}}
 static void seal(uint32_t extra=0){++cases;for(uint32_t v:{actorAttempts,continuations,observations,sh->dodgeActive,extra})semanticDigest=(semanticDigest^v)*16777619u;}
@@ -94,6 +101,12 @@ int main(){
 #ifdef REVERSE_QUERY_BUDGET_GUARD
  reset();addBullet(0);queueReady=false;tick();check(!actorAttempts&&!reverseShot(Bullet,100)->handled&&reverseShot(Bullet,100)->frame==100,"full queue ran native placement or changed deadline");queueReady=true;tick(101);check(actorAttempts==1&&reverseShot(Bullet,101)->handled,"pending movement did not recover after room returned");
  reset();addBullet(0);queueReady=false;tick();queueReady=true;tick(109);check(!actorAttempts&&reverseShot(Bullet,109)->handled,"queue wait renewed original pending deadline");
+ reset();addBullet(0);sampleReady=false;candidateAvailable=true;sampleWorldSource=&worldFrame;
+ worldFrame.key.frame=100;worldFrame.key.tick=1100;currentFrame=107;
+ check(reverseDodgeTick(0x600000,107,1212,true)&&actorAttempts==1&&dodgeInput.frame==100,
+       "sealed previous-frame data did not discover the current reverse-dodge target");
+ check(reverseDodgeTick(0x600000,107,1212,true)&&actorAttempts==1,"candidate result repeated the same shot");
+ sampleWorldSource=nullptr;
 #endif
  std::printf("{\"pass\":true,\"checks\":%u,\"cases\":%u,\"semantic_digest\":%u,\"first_roster_visits\":%llu,\"repeated_roster_visits\":%llu,\"first_reads\":%llu,\"repeated_reads\":%llu,\"stress_actor_attempts\":%u,\"continuation_passes\":%u}\n",checks,cases,semanticDigest,(unsigned long long)firstVisits,(unsigned long long)repeatVisits,(unsigned long long)firstReads,(unsigned long long)repeatReads,stressActors,stressContinuations);
 }

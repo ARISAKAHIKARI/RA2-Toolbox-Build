@@ -67,8 +67,15 @@ static uint32_t worldFrameCandidateVersion=0;
 static bool candidateReadyForCooperative=false;
 static bool candidateRosterReady(){return candidateReadyForCooperative;}
 static bool candidateEntryCohortReady(){return candidateRosterReady()&&worldFrameCandidateRoster.count>0&&worldFrameCandidateRoster.count<=64;}
-static bool verifyCandidateID(uint32_t,uint32_t){return false;}
-static bool verifyCandidatePointer(uint32_t){return false;}
+static bool verifyCandidateID(uint32_t id,uint32_t pointer){
+ if(sampleReadDepth)return worldFrameCandidateRoster.objects->byId(id)==pointer;
+ uint32_t liveID=0;std::memcpy(&liveID,memory.data()+pointer+0x10,4);return liveID==id;
+}
+static bool verifyCandidatePointer(uint32_t pointer){
+ uint32_t id=0;
+ if(sampleReadDepth)return worldFrameCandidateRoster.objects->contains(pointer);
+ std::memcpy(&id,memory.data()+pointer+0x10,4);return worldFrameCandidateRoster.objects->byId(id)==pointer;
+}
 static bool commandRosterReady(){
  return worldFrameReady&&worldFrameCommandWorker.enabled()&&
         worldFrameCommandRoster.current(worldFrame.key)&&
@@ -156,9 +163,12 @@ static int admitCooperative(const cooperative::Assignment&o,int,uint32_t house,i
  if(result!=executionproof::Failure::None)return -1;
  ++cooperativeSubmitted;return 1;
 }
-static bool pendingAckReady=false;
-static uint32_t pendingAck=0;
 static int loadingSubmitResult=1;
+static bool loadingCandidatePath=false,candidateCapacityReady=false;
+static unsigned candidateCapacityChecks=0;
+static bool candidateLoadAdmission(uint32_t,uint32_t,uint32_t,uint32_t,int){
+ assert(!sampleReadDepth);++candidateCapacityChecks;return candidateCapacityReady;
+}
 static bool enterEvent(uint32_t,uint32_t,uint32_t,const executionproof::Ticket&,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
 static loading::Ledger<> loadLedger;
 // This fixture intentionally isolates AutoLoad sampling; cooperative pending
@@ -170,7 +180,8 @@ static compute::FrameHistory<compute::RepairInput> repairFrames;
 static uint32_t repairIDs[8192],repairTaskSeen;static int repairCount,repairAt,repairDone;
 static bool repairCalculationPending;static DWORD repairCalculationStarted;
 static void finishLoadingReservation(const loading::Reservation&,uint32_t,int,bool boarded){assert(!sampleReadDepth);++loadingFinished;if(boarded)++loadingBoarded;}
-static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens){
+static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens,bool candidateOnly=false){
+ loadingCandidatePath=candidateOnly;
  if(loadingSubmitResult==-30)return -30;
  assert(!sampleReadDepth);++submissions;assignments.clear();
  for(int n=0;n<ns;++n){const int target=assignment[n];if(target>=0&&target<nv&&worldByID(soldiers[n].id)==soldiers[n].object&&manualVersions.get(soldiers[n].id)==tokens[n])assignments.emplace_back(soldiers[n].id,vehicles[target].id);}
@@ -184,6 +195,7 @@ static void cancelDodge(uint32_t id){for(int i=0;i<dodgeCount;++i)if(dodgeJobs[i
 static void recordReceipt(const gateway::Receipt&){++dodgeObserved;}
 #include "fixtures/tactical_frame/missile_edge_pre1513.h"
 static compute::FrameHistory<compute::LoadInput>legacyLoadFrames;
+static DWORD loadCalculationStarted; // Used only by the frozen pre-migration controls.
 #define loadFrames legacyLoadFrames
 #include "fixtures/tactical_frame/autoload_before.h"
 #include "fixtures/tactical_frame/autoload_pre1513.h"
@@ -219,7 +231,7 @@ static void reset(){
  check(!sampleReadDepth,"scope leaked between tests");memory.assign(memory.size(),0);::new(static_cast<void*>(sh)) Shared{};std::memset(&snap,0,sizeof snap);
  leaseChecks=0;leaseAllowed=true;worldObjects.unbind();worldObjects.clear();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;indexedFrame=indexedCount=-1;indexedItems=0;globalVehicleCandidateCount=0;indexedGlobalVehicles=false;indexedVehicleHouse=0;manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
  worldFrameReady=false;worldFrameCaptureScratch.reset();nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
- loadCalculationPending=loadCaptureWaiting=loadAckPending=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
+ loadCalculationPending=loadCaptureWaiting=false;candidateReadyForCooperative=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
  dodgeThreatCount=dodgeCursor=dodgeJobCursor=0;unloadSampleTargetFrame=-1;unloadSampleTargetCount=0;planningFrame=-1;planningWorld.count=planningWorld.intentCount=0;planningSerial=inputSerial=0;std::memset(weaponCache,0,sizeof weaponCache);oreHarvestReset();harvestEvents=0;
  repairFrames.clear();pendingRepairs.clear();repairCount=repairAt=repairDone=0;repairTaskSeen=repairCalculationStarted=0;repairCalculationPending=false;
@@ -339,14 +351,40 @@ static void testLoad(){
  check(autoLoad(lastHouse)==-30&&loadCalculationPending,"load did not stage the external calculation");
  static loading::Workspace workspace;
  sh->loadResult=compute::load(sh->loadInput,workspace);sh->loadComputed=sh->loadTask;
- loadAckPending=true;loadAckRequest=19;pendingAckReady=false;loadingSubmitResult=-30;
+ loadingSubmitResult=-30;
  loadingCalculationTick(lastHouse,clockNow);
- check(loadCalculationPending&&loadAckPending&&!pendingAckReady&&loadTaskSeen!=sh->loadComputed,
+ check(loadCalculationPending&&loadTaskSeen!=sh->loadComputed,
        "load consumed a result before capacity pages were complete");
  loadingSubmitResult=1;advance();loadingCalculationTick(lastHouse,clockNow);
- check(!loadCalculationPending&&pendingAckReady&&pendingAck==19&&submissions==1,
+ check(!loadCalculationPending&&submissions==1,
        "load did not resume the same result after capacity pages became available");
- std::puts("PASS 32 load assignment variants, shared roster, native matrix boundary and frozen-cohort retry");
+
+ setupLoad(0);passenger=get<uint32_t>(0x820000);carrier=get<uint32_t>(0x800000);
+ const uint32_t uid=get<uint32_t>(passenger+0x10),carrierID=get<uint32_t>(carrier+0x10);
+ check(autoLoad(lastHouse,nullptr,true)==-30&&loadCalculationPending&&loadSelectionCount>0&&
+       !submissions,"candidate input did not retain the saved click");
+ const uint32_t other=get<uint32_t>(0x820004);
+ vectorAt(0xA8ECB8,0x820000,{other});
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=candidateReadyForCooperative=true;
+ check(worldFrameCandidateRoster.build(worldFrameCandidate,false,worldFrameCaptureScratch.list),
+       "candidate load roster could not be assembled");
+ worldFrameReady=false;++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ check(refreshWorldIndex(snap.frame)&&!commandRosterReady(),"candidate load did not bind");
+ liveRosterReads=0;
+ loadingCalculationTick(lastHouse,clockNow,true);
+ check(!loadCalculationPending&&loadingCandidatePath&&submissions==1&&!assignments.empty()&&
+       assignments[0].first==uid&&!liveRosterReads,"delayed load lost the original selection or scanned the live roster");
+ loading::Reservation waiting{passenger,uid,carrier,carrierID,1,snap.frame};
+ waiting.kind=kind(passenger);waiting.manualToken=manualVersions.get(uid);waiting.initial=loadingObservation(passenger);
+ check(loadLedger.add(waiting),"fixture could not reserve candidate passenger");
+ candidateCapacityReady=false;candidateCapacityChecks=loadingResends=0;
+ autoLoadTick(lastHouse,snap.frame,true);
+ check(candidateCapacityChecks==1&&!loadingResends&&loadLedger.count==1,"unknown seats issued or retired a candidate load");
+ candidateCapacityReady=true;++snap.frame;set<int>(0xA8ED84,snap.frame);refreshWorldIndex(snap.frame);
+ autoLoadTick(lastHouse,snap.frame,true);autoLoadTick(lastHouse,snap.frame,true);
+ check(candidateCapacityChecks==2&&loadingResends==1&&snap.loadIssued==1&&loadLedger.count==1,
+       "proved candidate seats did not release the staged load exactly once");
+ std::puts("PASS 32 load assignment variants, frozen candidate click, bounded seat proof and single retry");
 }
 static void testBoardingLedgerUnknown(){
  setupLoad(0);const uint32_t passenger=get<uint32_t>(0x820000),carrier=get<uint32_t>(0x800000),passengerID=get<uint32_t>(passenger+0x10),carrierID=get<uint32_t>(carrier+0x10);

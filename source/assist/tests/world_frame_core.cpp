@@ -204,13 +204,20 @@ void graphs(){
  const auto base=graph(worldframe::Base),combat=graph(worldframe::Combat),passengers=graph(worldframe::Passengers),ore=graph(worldframe::Ore),visual=graph(worldframe::Visual);
  CHECK(base.calls<combat.calls&&base.calls<visual.calls&&passengers.calls<combat.calls&&base.rosters<ore.rosters);
  {Memory m;setup(m);constexpr uint32_t factory=0x606100,product=0x212100,type=0x302100;
+  constexpr uint32_t unitFactory=0x608100,unitProduct=0x214100,unitQueue=0x72C100;
   m.put(House+0x53BC,factory);m.put(factory+0x6C,House);m.put(factory+0x58,product);
   m.put(product+0x10,61u);m.put(product+0x520,type);m.put(type+0xDF8,11);
+  m.put(House+0x53B0,unitFactory);m.put(unitFactory+0x6C,House);m.put(unitFactory+0x58,unitProduct);
+  m.vector(unitFactory+0x40,unitQueue,{type});m.put(unitProduct+0x10,62u);m.put(unitProduct+0x6C0,type);
   worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});
   CHECK(g.capture(worldframe::Resources,{}));CHECK(s.seal());
-  uint32_t uid=0;int index=-1;
+  m.put(unitQueue,0u);m.put(unitProduct+0x6C0,0u);
+  uint32_t uid=0,unitType=0;int index=-1;
   CHECK(s.read(product+0x10,&uid,4)&&uid==61);
   CHECK(s.read(type+0xDF8,&index,4)&&index==11);
+  CHECK(s.read(unitProduct+0x10,&uid,4)&&uid==62);
+  CHECK(s.read(unitProduct+0x6C0,&unitType,4)&&unitType==type);
+  CHECK(s.read(unitQueue,&unitType,4)&&unitType==type);
  }
  {Memory m;setup(m);
   constexpr uint32_t type=0x721100,counts=0x725100,factory=0x727100,product=0x729100,queue=0x72C100;

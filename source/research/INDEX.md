@@ -8,6 +8,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| pre.19 预定、装车与躲弹恢复 | [单机候选样本、独立装车回执与工厂确认](2026-11-22-pre19-command-recovery.md) | AutoBoard Staged Dodge Resources Produce confirmed factory FIFO |
 | pre.18 功能采样清单与原生操作边界 | [控制、自动化、预定、显示与原生执行](2026-11-22-sampling-feature-inventory.md) | worker catalogue gesture targets source FIFO switch UI native execution |
 | PR #71 逐功能采样审计 | [控制、自动化、显示及独立单位监控](2026-11-20-pr71-feature-sampling-audit.md) | unified sampling live reads feature audit Ctrl+D harvester monitor catalogue command admission |
 | 命令全图后台采样实验 | [默认关闭的 CommandCaptureWorker、同帧准入与失败延后](2026-11-17-async-command-capture-pilot.md) | async-command-sampling exact-frame UID House ownership latest-ticket no-native-roster fallback |

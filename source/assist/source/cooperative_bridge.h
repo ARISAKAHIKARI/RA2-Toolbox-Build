@@ -281,6 +281,11 @@ static bool candidateEntryCapacity(uint32_t target,uint32_t actor,uint32_t ignor
  }
  return complete&&withinBudget()&&targetID&&current.get<int>(0xA8ED84,-1)==snap.frame;
 }
+static bool candidateLoadAdmission(uint32_t actor,uint32_t carrier,uint32_t id,uint32_t house,int slots){
+ external::EntryCapacity capacity{};int currentSlots=0,reserved=0;
+ return candidateEntryCapacity(carrier,actor,id,house,capacity,currentSlots,reserved)&&
+  !capacity.singleVehicle&&slots>0&&slots==currentSlots&&capacity.maximum-capacity.used-reserved>=slots;
+}
 static int admitCooperative(const cooperative::Assignment&o,int mode,uint32_t house,int frame,DWORD now,
  const executionproof::Ticket*proof=nullptr,bool candidateEntry=false){
  const bool enter=mode==cooperative::Enter;

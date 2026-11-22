@@ -3,6 +3,7 @@
 // Implemented by cooperative_bridge.h later in this translation unit.
 static int cooperativePendingSlots(uint32_t targetID,uint32_t targetPointer);
 static bool cooperativePendingActor(uint32_t actorID);
+static bool candidateLoadAdmission(uint32_t actor,uint32_t carrier,uint32_t id,uint32_t house,int slots);
 // Runs on the game's message thread. Only the normal outgoing event queue
 // receives writes: no direct passenger insertion or mission mutation.
 static bool loadInterfaces(){
@@ -75,8 +76,7 @@ static void finishLoadingReservation(const loading::Reservation&r,uint32_t sessi
  missionObserver.dismissTicket(session,r.ticket);
  recordReceipt(outcome);actorLeaseArbiter.release(session,r.id,r.ticket);
 }
-static bool loadCalculationPending,loadAckPending;static uint32_t loadAckRequest,loadTaskSeen;
-static DWORD loadCalculationStarted;
+static bool loadCalculationPending;static uint32_t loadTaskSeen;
 static bool loadCaptureWaiting;
 struct LoadSelectedIdentity {uint32_t pointer,id,token;};
 static LoadSelectedIdentity loadSelection[4096],loadCarrierSelection[loading::MaxVehicles];
@@ -86,8 +86,8 @@ static LoadSelectionFact loadSelectionFacts[4096];
 static compute::LoadInput loadSample;
 static int loadAcceptRoom[loading::MaxVehicles];
 static compute::FrameHistory<compute::LoadObservation> loadFrames;static compute::LoadObservation loadObservation;static compute::LoadResult loadResultCopy;static compute::LoadInput loadCaptureCohort;
-static int autoLoad(uint32_t house,const compute::LoadInput*cohort=nullptr);
-static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens){
+static int autoLoad(uint32_t house,const compute::LoadInput*cohort=nullptr,bool candidateOnly=false);
+static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens,bool candidateOnly=false){
  using namespace loading;int frame=get<int>(0xA8ED84);loadQueryFailed=false;
  faultContext.phase=runtimefault::LoadSubmit;
  int room[MaxVehicles]{};for(int j=0;j<nv;++j){const auto&v=vehicles[j];if(worldByID(v.id)!=v.object||!loadingObject(v.object,house,2))continue;
@@ -97,7 +97,7 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
  {
   // Capacity reservations are derived from the canonical sealed Runtime
   // graph. Never enumerate the live Techno vector during a delayed load submit.
-  SampleReadScope frameRead;if(!frameRead)return -30;
+  SampleReadScope frameRead(candidateOnly);if(!frameRead)return -30;
   Vec all{};if(!sampleRoster(0xA8EC78,all))return -30;
   for(int n=0;n<all.count;++n){uint32_t other=item(all,n);int k=other?kind(other):-1;if((k!=1&&k!=2)||!own(other,house))continue;uint32_t target=incomingVehicle(other);if(!target)continue;
    for(int j=0;j<nv;++j)if(vehicles[j].object==target){int size=passengerSlots(other);room[j]-=size?size:1024;break;}
@@ -121,33 +121,33 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
   const executionproof::Ticket proof{match,house,sampleClock(sh),
    {p.id,p.object,tokens[i]}, {},{v.id,v.object}};
   cancelUnloadPassenger(p.object);uint32_t ticket=0;
-  bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,proof,&ticket);
+  // A delayed observation can plan and reserve an assignment. The retry
+  // service proves up-to-date shared seat capacity before emitting Enter.
+  bool sent=!candidateOnly&&outgoingRoom()>0&&enterEvent(house,p.id,v.id,proof,&ticket);
   Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;job.retryAfter=sent?frame+30:frame+8;job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.manualToken=tokens[i];job.ticket=ticket;job.queuedAt=sent?sampleClock(sh):0;loadLedger.add(job);
   if(sent)++snap.loadIssued;else ++snap.loadWaiting;
  }
  return snap.loadWaiting?2:1;
 }
-static void loadingCalculationTick(uint32_t house,DWORD now){
+static void loadingCalculationTick(uint32_t house,DWORD now,bool candidateOnly=false){
  if(!loadCalculationPending)return;
- auto finish=[&](int result){loadCalculationPending=false;loadCaptureWaiting=false;if(loadAckPending){sh->result=result;sh->count=snap.loadIssued;pendingAck=loadAckRequest;pendingAckReady=true;loadAckPending=false;}};
- // The watchdog re-arms collection/retry; it must not kill the click cohort.
- if(DWORD(now-loadCalculationStarted)>1000)loadCalculationStarted=now;
+ auto finish=[&](){loadCalculationPending=false;loadCaptureWaiting=false;};
  const uint32_t completed=sh->loadComputed;
  if(compute::newer(completed,loadTaskSeen)){
   long seq=sh->loadResultSeq;if(!(seq&1)){MemoryBarrier();loadResultCopy=sh->loadResult;MemoryBarrier();
    if(seq==sh->loadResultSeq&&completed==sh->loadComputed){const auto*source=loadFrames.find(completed);const auto&r=loadResultCopy;
     if(source&&compute::valid(*source)&&source->mode==int(sh->loadMode==1)&&source->radius==std::clamp(sh->loadRadius,1,512)&&r.count==source->ns&&r.match==source->match&&r.tick==source->tick&&r.frame==source->frame&&
        freshness::valid(source->match,match,source->tick,source->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&!get<bool>(0xA8BC60+25)){
-     const int result=submitLoading(house,source->soldiers,source->ns,source->vehicles,source->nv,r.assignment,source->tokens);
+     const int result=submitLoading(house,source->soldiers,source->ns,source->vehicles,source->nv,r.assignment,source->tokens,candidateOnly);
      // A partial capacity sample leaves the same assignment and click pending.
      if(result==-30)return;
-     loadTaskSeen=completed;finish(result);return;
+     loadTaskSeen=completed;finish();return;
     }
     loadTaskSeen=completed;
    }
   }
  }
- if(externalInputFrame&&!get<bool>(0xA8BC60+25)){compute::copyInput(loadCaptureCohort,sh->loadInput);int result=autoLoad(house,&loadCaptureCohort);if(result!=-30&&result!=-6)finish(result);}
+ if((externalInputFrame||candidateOnly)&&!get<bool>(0xA8BC60+25)){compute::copyInput(loadCaptureCohort,sh->loadInput);int result=autoLoad(house,&loadCaptureCohort,candidateOnly);if(result!=-30&&result!=-6)finish();}
 }
 // Capture the user's selection as a separate input generation. Repeated world
 // captures keep this exact cohort and its manual tokens even if selection moves.
@@ -221,14 +221,13 @@ static bool collectLoadFacts(uint32_t house,int frame){
  }
  return frameRead.complete();
 }
-static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
- if(!cohort&&loadCalculationPending)return -6;
+static int autoLoad(uint32_t house,const compute::LoadInput*cohort,bool candidateOnly){
  using namespace loading;
  FaultPhase phase(runtimefault::LoadCollect);loadQueryFailed=false;
  if(!loadInterfaces())return -12;const int frame=get<int>(0xA8ED84);
  // The native input cohort can be sampled again after an incomplete world.
  // Only a complete live reservation observation is allowed to retire a ticket.
- for(int n=0;n<loadLedger.count;){auto&r=loadLedger.records[n];
+ for(int n=0;!candidateOnly&&n<loadLedger.count;){auto&r=loadLedger.records[n];
   const auto view=loadingReservationView(r,house,frame);
   if(view.state==loading::ReservationState::Unknown){++n;continue;}
   const bool boarded=view.state==loading::ReservationState::Boarded;
@@ -236,8 +235,16 @@ static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
     (view.state==loading::ReservationState::Active&&takenOver(r,view.mission,view.incoming));
   if(remove){finishLoadingReservation(r,match,frame,boarded);loadLedger.erase(n);}else ++n;
  }
- if(!cohort){loadFrames.clear();loadTaskSeen=sh->loadComputed;loadCalculationStarted=sampleClock(sh);loadCaptureWaiting=false;snap.loadIssued=0;}
+ // A new physical press can replace an unresolved selection. Already queued
+ // actors keep their own original seat reservation and manual version.
+ if(!cohort){loadFrames.clear();loadTaskSeen=sh->loadComputed;loadCalculationPending=loadCaptureWaiting=false;
+  snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;
+ }
  if(!loadCaptureWaiting&&!captureLoadSelection(cohort))return -4;
+ if(!loadSelectionCount)return 1;
+ // Freeze the actual press even when neither strict nor observation pages
+ // have arrived. The load job outlives its receipt in the command mailbox.
+ if(candidateOnly&&!cohort){loadCaptureWaiting=true;loadCalculationPending=true;return -30;}
  if(!collectLoadFacts(house,frame)){loadCaptureWaiting=true;loadCalculationPending=true;return -30;}
  loadCaptureWaiting=false;auto&in=loadSample;
  snap.loadUnits=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;snap.loadVehicles=in.nv;
@@ -269,7 +276,7 @@ static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
  }
  static int assignment[MaxInfantry];static Workspace workspace;
  assign(in.soldiers,in.ns,in.vehicles,in.nv,in.mode,in.radius,in.composition,workspace,assignment,[&](const Infantry&p,const Vehicle&v){return in.compatible[&p-in.soldiers][&v-in.vehicles]!=0;});
- const int result=submitLoading(house,in.soldiers,in.ns,in.vehicles,in.nv,assignment,in.tokens);
+ const int result=submitLoading(house,in.soldiers,in.ns,in.vehicles,in.nv,assignment,in.tokens,candidateOnly);
  if(result==-30){loadCaptureWaiting=true;loadCalculationPending=true;}
  return result;
 }
@@ -292,6 +299,7 @@ static void autoLoadTick(uint32_t house,int frame,bool candidateOnly=false){
   snap.loadWaiting=loadLedger.count;return;
  }
  int budget=outgoingRoom()?recurringBudget(EventLane::Boarding):0;
+ bool candidateProbed=false;
  static int candidateCursor=0;
  int i=candidateOnly?candidateCursor:0;
  int budgeted=candidateOnly?std::min(loadLedger.count,4):loadLedger.count;
@@ -310,20 +318,26 @@ static void autoLoadTick(uint32_t house,int frame,bool candidateOnly=false){
   const uint32_t incoming=view.incoming;
   if(view.x!=r.x||view.y!=r.y){r.x=view.x;r.y=view.y;r.progress=frame;}
   bool due=r.lastSent<0||(frame-r.lastSent>=30&&(!incoming||frame-r.progress>=120));
-  if(due&&frame>=r.retryAfter&&budget>0&&outgoingRoom()>0&&loadingObject(r.object,house,r.kind)&&loadingObject(r.vehicle,house,2)&&canEnter(r.object,r.vehicle)){
-   r.lastAttempt=frame;
-   uint32_t ticket=0;
-   // Reissue the SAME job, not a newer permission after a player order.
-   // Live identity and the original manual token control retry lifetime.
-   const executionproof::Ticket proof{match,house,0,
-      {r.id,r.object,r.manualToken}, {},{r.vehicleID,r.vehicle}};
-   if(enterEvent(house,r.id,r.vehicleID,proof,&ticket)){
-    // End the superseded Enter receipt before recording the replacement.
-    finishLoadingReservation(r,match,frame,false);
-    r.ticket=ticket;r.queuedAt=sampleClock(sh);r.lastSent=frame;r.progress=frame;r.retryAfter=frame+30;r.attempts=0;--budget;
-   }else{
-    if(r.attempts<10)++r.attempts;
-    r.retryAfter=frame+6*r.attempts;
+  if(due&&frame>=r.retryAfter&&budget>0&&outgoingRoom()>0&&loadingObject(r.object,house,r.kind)&&loadingObject(r.vehicle,house,2)){
+   if(candidateOnly){
+    if(candidateProbed){++i;continue;}
+    candidateProbed=true;
+    if(!candidateLoadAdmission(r.object,r.vehicle,r.id,house,r.slots)){++i;continue;}
+   }
+   if(canEnter(r.object,r.vehicle)){
+    r.lastAttempt=frame;
+    uint32_t ticket=0;
+    // Reissue the same job under its original manual token.
+    const executionproof::Ticket proof{match,house,0,
+       {r.id,r.object,r.manualToken}, {},{r.vehicleID,r.vehicle}};
+    if(enterEvent(house,r.id,r.vehicleID,proof,&ticket)){
+     if(r.lastSent<0)++snap.loadIssued;
+     finishLoadingReservation(r,match,frame,false);
+     r.ticket=ticket;r.queuedAt=sampleClock(sh);r.lastSent=frame;r.progress=frame;r.retryAfter=frame+30;r.attempts=0;--budget;
+    }else{
+     if(r.attempts<10)++r.attempts;
+     r.retryAfter=frame+6*r.attempts;
+    }
    }
   }
   if(loadQueryFailed){
@@ -337,4 +351,4 @@ static void autoLoadTick(uint32_t house,int frame,bool candidateOnly=false){
  snap.loadWaiting=loadLedger.count;
 }
 
-static void resetLoadCalculation(){loadCalculationPending=loadAckPending=loadCaptureWaiting=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;}
+static void resetLoadCalculation(){loadCalculationPending=loadCaptureWaiting=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;}

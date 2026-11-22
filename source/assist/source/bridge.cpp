@@ -1309,8 +1309,9 @@ static int namedSuper(uint32_t house,int command){const char* id=command==Select
 #include "native_placement_bridge.h"
 #include "superweapon_sidebar_bridge.h"
 #include "superweapon_grant_bridge.h"
-static void command(uint32_t house,DWORD now,bool candidateOnly=false){uint32_t req=sh->request;if(req==sh->ack||(pendingAckReady&&req==pendingAck)||(repairAckPending&&req==repairAckRequest)||(loadAckPending&&req==loadAckRequest)||(ownground::job.pending&&req==ownground::job.request))return;MemoryBarrier();int c=sh->command,arg=sh->arg;int result=1,n=0;
- if(candidateOnly&&c!=SmartUnload)return;
+static void command(uint32_t house,DWORD now,bool candidateOnly=false){uint32_t req=sh->request;if(req==sh->ack||(pendingAckReady&&req==pendingAck)||(repairAckPending&&req==repairAckRequest)||(ownground::job.pending&&req==ownground::job.request))return;MemoryBarrier();int c=sh->command,arg=sh->arg;int result=1,n=0;
+ if(candidateOnly&&c!=AutoBoard&&c!=ProduceDeferred&&
+    ((c!=SmartUnload&&c!=ProduceReserved)||!candidateRosterReady()))return;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
  else if(c==AttackOwnGround&&DWORD(now-sh->requestTick)>150){result=-7;}
  else if((enhancementChangedCatalogue||sh->requestTypeHash)&&typeIndexedCommand(c,arg)&&sh->requestTypeHash!=typeListHash(snap.types,snap.typeCount)){result=-7;}
@@ -1333,7 +1334,9 @@ static void command(uint32_t house,DWORD now,bool candidateOnly=false){uint32_t 
  else if(c==AttackOwnGround){attackOwnGroundCommand(house,now,req);return;}
  else if(selectedmode::index(c)>=0){n=selectedModeCommand(house,selectedmode::mission(selectedmode::index(c)));if(n==-30)return;if(n<0){result=n;n=0;}}
  else if(c==CancelAdvanced){Vec v=vec(0xA8ECB8);for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(p&&own(p,house)){cancelAutomatic(p);++n;}}}
- else if(c==AutoBoard){result=autoLoad(house);n=snap.loadIssued;if(result==-30){loadAckRequest=req;loadAckPending=true;return;}}
+ else if(c==AutoBoard){result=autoLoad(house,nullptr,candidateOnly);n=snap.loadIssued;
+  if(result==-30){result=AutoBoardStaged;n=0;}
+ }
  else if(c>=CombatSelection&&c<=DamagedSelection){n=selectFilter(house,c);if(n<0){result=n;n=0;}}
  else if(c>=IdleHarvester&&c<=IdleTransport){n=findIdle(house,c);if(n<0){result=n;n=0;}}
  else if(c==ClearBeacons){if(!startupSignature(Signatures[8]))result=-12;else {call<void>(0x431410,0x89C3B0,get<int>(house+0x30));n=1;}}
@@ -1368,6 +1371,7 @@ static void command(uint32_t house,DWORD now,bool candidateOnly=false){uint32_t 
  }
  else if(c==ProduceReserved){
   uint32_t origin=worldByID(uint32_t(sh->arg2));
+  if(candidateOnly&&!origin)return; // Candidate absence cannot disprove the original parent.
   if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||snap.types[arg].kind!=7||!origin||!own(origin,house)||kind(origin)!=3||get<bool>(origin+0x81)||!get<bool>(origin+0x90))result=-4;
   else if(!nativeDependenciesReady(0x6ABC60,0x4F7870,0x5F7900))result=-12;
   else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t f=tab==0||tab==1?get<uint32_t>(house+(tab?0x53CC:0x53BC)):0;
@@ -1880,6 +1884,15 @@ static void tick(){
  const bool deferIndexedWork=needsIndex&&(!refreshWorldIndex(frame)||!commandRosterReady());
  indexedWorkDeferred=deferIndexedWork;
  if(deferIndexedWork){++sh->worldSampleFailures;++sh->sampling.indexUnavailable;}
+ const bool localDeferred=deferIndexedWork&&eventdelivery::isSingleplayer(sessionMode);
+ const bool localCandidate=localDeferred&&candidateRosterReady();
+ // Service delayed planning once per current frame, with a wall-clock floor
+ // when an uncapped local match advances multiple frames per callback burst.
+ static uint32_t candidateWorkMatch=0,candidateWorkVersion=0;static int candidateWorkFrame=-1;
+ static uint64_t candidateWorkAt=0;
+ const bool candidateInputFrame=localCandidate&&
+  (candidateWorkMatch!=match||(candidateWorkFrame!=frame&&candidateWorkVersion!=worldFrameCandidateVersion&&preciseNow-candidateWorkAt>=4000));
+ if(candidateInputFrame){candidateWorkMatch=match;candidateWorkFrame=frame;candidateWorkVersion=worldFrameCandidateVersion;candidateWorkAt=preciseNow;}
  // The first strict pass may follow an observation in the same game frame.
  // Keep the frame-driven command inputs pending until that pass can run.
  externalInputFrame=!deferIndexedWork&&(indexedInputMatch!=match||indexedInputFrame!=frame);
@@ -1899,13 +1912,15 @@ static void tick(){
   // Missing the exact frame at high FPS only delays work that needs a
   // complete current view. An already proposed local attack can be proved
   // against the two live objects, with the original manual revision.
-  if(eventdelivery::isSingleplayer(sessionMode)&&candidateRosterReady()){
-   command(house,now,true);
+  // New input and unit production use their own narrow validation even
+  // before a candidate arrives. Commands that need a parent UID still wait.
+  if(localDeferred)command(house,now,true);
+  if(localCandidate){
    if(queuedUnload.count||unloadCount){
     int budget=recurringBudget(EventLane::Unload);
     smartUnloadAdmissionTick(house,frame,budget,true);smartUnloadTick(house,frame,budget,true);
    }
-   if(loadLedger.count)autoLoadTick(house,frame,true);
+   if(candidateInputFrame&&loadLedger.count)autoLoadTick(house,frame,true);
    if(sh->planRequest!=sh->planAck){
     if(snap.nativeHookStatus!=1)nativeHooksTick(sh->flags);
     externalOrdersTick(house,frame,now,true);
@@ -1919,9 +1934,10 @@ static void tick(){
  QueryPerformanceCounter(&controlEnd);snap.controlMicros=micros(start,controlEnd,frequency);
  // Release receipts before any recurring work or overlay projection. In a busy
  // scene the next user command can now be staged while rendering catches up.
- if(cmd&&!deferIndexedWork){snap.scanMicros=snap.controlMicros;publishSnapshot(now);}
+ if(cmd&&(!deferIndexedWork||pendingAckReady)){snap.scanMicros=snap.controlMicros;publishSnapshot(now);}
  formationTick(house,frame,now,!deferIndexedWork);moOrdersTick(house,frame,now,!deferIndexedWork);
- if(!deferIndexedWork){directair::tick(house,frame,now);bombboard::tick(house,frame);loadingCalculationTick(house,now);}
+ if(!deferIndexedWork){directair::tick(house,frame,now);bombboard::tick(house,frame);}
+ if(!deferIndexedWork||candidateInputFrame)loadingCalculationTick(house,now,deferIndexedWork);
  repairTick(house,now);
  if(!deferIndexedWork){autoLoadTick(house,frame);nativeOrdersTick(house,frame);}
  // Terminal receipts also release ownership. Observe only with a strict roster.
@@ -1933,7 +1949,7 @@ static void tick(){
   if(receipt.phase==gateway::Phase::Cancelled)++snap.receiptCancelled;
   else if(receipt.phase==gateway::Phase::Expired)++snap.receiptExpired;
  });
- const bool dodgeChanged=!deferIndexedWork&&dodgeControlTick(house,frame,now);
+ const bool dodgeChanged=(!deferIndexedWork||candidateInputFrame)&&dodgeControlTick(house,frame,now,deferIndexedWork);
  resetBurstControl(); // Removed feature: old shared flags never produce commands.
  const bool burstChanged=false;
  captureCooperativeFrame(now,!deferIndexedWork);

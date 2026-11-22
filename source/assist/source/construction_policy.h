@@ -32,13 +32,24 @@ inline bool countryAllowed(uint32_t owner,uint32_t required,uint32_t forbidden,i
   (required==UINT32_MAX||(required&(1u<<country)))&&
   (forbidden==UINT32_MAX||!(forbidden&(1u<<country)));
 }
+struct UnitProduction {
+ uint32_t active=0,activeType=0;
+ int queued=0,matching=0;
+ int occupancy()const{return queued+(active?1:0);}
+ bool confirms(uint32_t type,const UnitProduction&before)const{
+  const bool activeMatches=active&&activeType==type;
+  return matching+int(activeMatches)>before.matching+int(before.active&&before.activeType==type)||
+   (activeMatches&&active!=before.active&&!before.matching);
+ }
+};
 struct Book {
  uint32_t match=0,house=0,source=0,id=0,token=0,sent=0,retry=0,missing=0;
- int stage=0,attempts=0,placedFrame=-1,unitLane=-1;bool streaming=false;std::vector<int> items;
+ int stage=0,attempts=0,placedFrame=-1,unitLane=-1;bool streaming=false,confirmationWarned=false;
+ uint32_t unitType=0;UnitProduction unitBefore{};std::vector<int> items;
  bool add(int index,int limit=Capacity){if(index<0||limit<1||items.size()>=size_t(limit))return false;items.push_back(index);return true;}
  int visibleStart()const{return std::max(0,int(items.size())-VisibleCapacity);}
  int head()const{return items.empty()?-1:items.front();}
- void consume(uint32_t p,uint32_t identity){items.erase(items.begin());source=p;id=identity;stage=attempts=0;sent=retry=missing=token=0;placedFrame=unitLane=-1;}
+ void consume(uint32_t p,uint32_t identity){items.erase(items.begin());source=p;id=identity;stage=attempts=0;sent=retry=missing=token=unitType=0;placedFrame=unitLane=-1;confirmationWarned=false;unitBefore={};}
  bool afterPlacement(int frame,bool ready){if(!ready||frame<0){placedFrame=-1;return false;}if(placedFrame<0||frame<placedFrame){placedFrame=frame;return false;}return frame>placedFrame;}
 };
 // All geometry is in game pixels. Convert both painting AND hit testing with

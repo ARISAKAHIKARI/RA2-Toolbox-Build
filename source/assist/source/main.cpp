@@ -2219,6 +2219,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  }
  if(c==SelectSuper&&shared->arg==-1){if(r>0)notify(L"已取消超级武器目标选择。");return;}
  if(c==AirPathMove){airPathResult(r,n,uint32_t(shared->arg),shared->requestToken);return;}
+ if(c==AutoBoard&&r==AutoBoardStaged){notify(L"已保存本次装车选区，正在等待采样和分配。");return;}
  if(c==StickyGuard&&r==-40){notify(L"当前会话不支持 Sticky 指令。");return;}
  if(selectedmode::index(c)>=0&&r==-40){notify(L"当前会话不支持任务模式指令。");return;}
  if(selectedmode::index(c)>=0&&r==-41){notify(L"所选单位仍处于 Sticky，普通任务模式不能保证解除。");return;}
