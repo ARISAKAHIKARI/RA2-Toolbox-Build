@@ -179,6 +179,8 @@ static bool hookAdvanced=true,hookSmartUnload=false,hookEject=false,hookAutoCS=f
 static std::wstring bridgeFailure;static bool gameWindowFromYrpp=false;
 static HWND hookChecks[4];static DWORD attachAt=0;static uint32_t paintRevision;static bool keysRegistered;static int scrollY;
 static assist::delivery::Queue commandQueue;
+static delivery::Item inFlightIntent;
+static DWORD lastTechSampleWait;
 static uint32_t inFlightMatch=0;static int inFlightRetries=0;static DWORD sentAt=0,lastStallLog=0;
 static DWORD commandLatency,selectionLatency,plannerMicros,lastProcessCheck;
 static external::ReadSession externalReader;
@@ -1002,8 +1004,9 @@ static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWO
  if(c==RevealMap&&(!extra.experimentalReveal||extra.renderReveal))return false;
  DWORD now=GetTickCount();
  if(!game||!pid||!IsWindow(game)||(shared&&lastData&&incoming.status<0))return false;
- delivery::Item intent{c,arg,arg2,pid,match,retained?retained->created:now,retries,now+delayMs,token,typeHash?typeHash:typeListHash(snap.types,snap.typeCount)};
- bool queued=commandQueue.add(intent);
+ delivery::Item intent{c,arg,arg2,pid,match,retained?retained->created:now,retries,now+delayMs,token,
+                       typeHash?typeHash:typeListHash(snap.types,snap.typeCount),retained&&retained->awaitingSample};
+ bool queued=intent.awaitingSample?commandQueue.park(intent,now,token):commandQueue.add(intent);
  if(queued){diag(L"staged command="+std::to_wstring(c)+L" pid="+std::to_wstring(pid)+L" match="+std::to_wstring(match)+L" backlog="+std::to_wstring(commandQueue.size));wakeGame();}
  return queued;
 }
@@ -1025,7 +1028,7 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
     shared->selectRequest!=shared->selectAck||shared->pointer.request!=shared->pointer.ack||shared->viewZoomBusy)){
   notify(L"自毁请求未提交：请先开启功能，并等待当前对局及命令连接就绪后重新执行。");return;
  }
- // A consumed reservation keeps its original world and catalogue identity.
+ // A consumed request keeps its original world and catalogue identity.
  // readSnapshot/ensureBridge below may observe another match or mapping.
  const bool reservation=command==ProduceReserved||command==ProduceDeferred;
  const uint32_t intentPID=queuedIntent?queuedIntent->pid:inputPID;
@@ -1052,8 +1055,12 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  }
  if(snap.status<0){notify(L"游戏操作暂不可用，本次指令未执行。");return;}
  readSnapshot();now=GetTickCount();
- if(reservation&&(pid!=intentPID||commandMatch()!=intentMatch||shared!=inputConnection||(queuedIntent&&uint32_t(now-queuedIntent->created)>delivery::MaxAgeMs))){
-  constructionResult(-13,0,uint32_t(arg2),requestToken);return;
+ if((reservation||queuedIntent)&&(pid!=intentPID||commandMatch()!=intentMatch||shared!=inputConnection||
+    (queuedIntent&&delivery::expired(*queuedIntent,now,pid,commandMatch(),true)))){
+  if(reservation)constructionResult(-13,0,uint32_t(arg2),requestToken);
+  else if(command==AirPathMove)airPathResult(-4,0,uint32_t(arg),requestToken);
+  else notify(L"等待期间对局或命令连接已改变，本次指令已取消。");
+  return;
  }
  if(command==AttackOwnGround&&(pid!=inputPID||!inputMatch||commandMatch()!=inputMatch||shared!=inputConnection||DWORD(now-inputAt)>150)){
   notify(L"攻击脚下未提交：输入已过期或对局已改变，请重新执行。");return;
@@ -1068,28 +1075,33 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
   else notify(L"单位清单已改变，请重新选择后提交。");return;
  }
  if(shared&&lastData&&incoming.status<0){notify(commandWaitReason());return;}
- bool connected=shared&&delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,shared->request==shared->ack);
+ bool connected=shared&&delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,
+                                               shared->request==ack&&shared->ack==ack);
  // Mode syncing must not enqueue automatically every 50ms.
  // Explicit gameplay commands are staged while the match is loading or bridge is busy.
- if(!connected||(!fromQueue&&commandQueue.size&&userCommand(command))){
+ if(!connected||(!fromQueue&&userCommand(command)&&
+                 (commandQueue.nextReadyIndex(now)>=0||commandQueue.has(command)))){
   if(command==AttackOwnGround){notify(L"攻击脚下未提交：连接正忙，请重新执行。");return;}
   if(command==DestructPlayer){notify(L"自毁请求未提交：游戏状态已改变，请重新选择所属方后点击。");return;}
-  if(userCommand(command)&&queueCommand(command,arg,arg2,reservation?intentMatch:commandMatch(),retries,0,requestToken,reservation?intentTypes:0,reservation?queuedIntent:nullptr)){
-   logCommandWait();notify(L"指令已排队，尚未提交。"+commandWaitReason());return;
+  if(userCommand(command)&&queueCommand(command,arg,arg2,(reservation||queuedIntent)?intentMatch:commandMatch(),
+                                       retries,0,requestToken,intentTypes,queuedIntent)){
+   if(!queuedIntent||!queuedIntent->awaitingSample){logCommandWait();notify(L"指令已排队，尚未提交。"+commandWaitReason());}
+   return;
   }
   if(userCommand(command)&&commandQueue.size>=delivery::Capacity){notify(L"待处理命令已满，本次未加入，请稍后再试。");return;}
   notify(commandWaitReason());
   return;
  }
- if(userCommand(command))critical(L"command-submit command="+std::to_wstring(command)+L" match="+std::to_wstring(commandMatch())+
+ if(userCommand(command)&&(!queuedIntent||!queuedIntent->awaitingSample))critical(L"command-submit command="+std::to_wstring(command)+L" match="+std::to_wstring(commandMatch())+
   L" request="+std::to_wstring(shared->request+1)+L" source="+(fromQueue?std::wstring(L"queue"):std::wstring(L"input")));
  else diag(L"send command="+std::to_wstring(command)+L" match="+std::to_wstring(snap.match)+L" req="+std::to_wstring(shared->request+1));
  if(command==OpenTech){int requested=0;
   for(int i=0;i<MaxTypes;++i){shared->techAllowed[i]=i<snap.typeCount&&techAllowed(snap.types[i]);requested+=shared->techAllowed[i]!=0;}
   diag(L"Tech request implementation="+std::to_wstring(techImplementation)+L" profile="+std::to_wstring(techProfile)+L" selected="+std::to_wstring(requested)+L" match="+std::to_wstring(snap.match));
  }
- inFlightMatch=reservation?intentMatch:commandMatch();inFlightRetries=retries;sentAt=now;
- shared->requestTypeHash=reservation?intentTypes:typeListHash(snap.types,snap.typeCount);
+ inFlightMatch=(reservation||queuedIntent)?intentMatch:commandMatch();inFlightRetries=retries;sentAt=now;
+ inFlightIntent=queuedIntent?*queuedIntent:delivery::Item{command,arg,arg2,pid,inFlightMatch,now,retries,0,requestToken,intentTypes};
+ shared->requestTypeHash=intentTypes;
  shared->requestToken=requestToken;shared->command=command;shared->arg=arg;shared->arg2=arg2;
  shared->requestTick=now;shared->requestMatch=reservation?intentMatch:commandMatch();
  MemoryBarrier();
@@ -2187,11 +2199,26 @@ static std::wstring submitDiagnostic(){
   L"，满="+std::to_wstring(snap.queueFull)+L"，计时失败="+std::to_wstring(snap.queueTimingFailure);
 }
 static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;MemoryBarrier();ack=a;commandLatency=sentAt?DWORD(GetTickCount()-sentAt):0;int r=shared->result,n=shared->count,c=shared->command;
- if(!enabled||!readonly::commands(shared)){sentAt=0;inFlightMatch=0;inFlightRetries=0;return;}
- if(userCommand(c))critical(L"command-result command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
+ if(!enabled||!readonly::commands(shared)){sentAt=0;inFlightMatch=0;inFlightRetries=0;inFlightIntent={};return;}
+ if(userCommand(c)&&(r!=CommandAwaitingSample||!inFlightIntent.awaitingSample))critical(L"command-result command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
  else diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
+ if(r==CommandAwaitingSample){
+  const DWORD now=GetTickCount();
+  if(c==OpenTech){lastTechSampleWait=now;return;}
+  if(c==SelectType&&commandQueue.has(SelectType))return;
+  if(sentAt&&inFlightIntent.command==c&&inFlightIntent.pid==pid&&inFlightIntent.match==commandMatch()&&
+     inFlightIntent.match==shared->requestMatch&&commandQueue.park(inFlightIntent,now,uint32_t(n))){
+   if(!inFlightIntent.awaitingSample&&c!=ProduceReserved&&c!=ProduceDeferred&&c!=AirPathMove)
+    notify(L"指令已收到，正在等待所需样本。");
+   return;
+  }
+  if(c==ProduceReserved||c==ProduceDeferred){constructionResult(-7,0,uint32_t(shared->arg2),shared->requestToken);return;}
+  if(c==AirPathMove){airPathResult(-7,0,uint32_t(shared->arg),shared->requestToken);return;}
+  notify(L"当前样本不足，本次指令已取消。请重新执行。");return;
+ }
+ if(r==CommandSelectionChanged){notify(L"等待期间选区或单位命令已改变，请重新选择后执行。");return;}
  if(c==AttackOwnGround){
-  std::wstring message=r>0?(n?L"攻击脚下请求已入队："+std::to_wstring(n)+L" 个单位；开火仍遵循原生射程、冷却和弹药。":L"没有可下令的己方地面单位。"):
+  std::wstring message=r==SelectionBatchStaged?L"攻击脚下批次已接收，将继续核对剩余单位。":r>0?(n?L"攻击脚下请求已入队："+std::to_wstring(n)+L" 个单位；开火仍遵循原生射程、冷却和弹药。":L"没有可下令的己方地面单位。"):
    L"攻击脚下未全部提交（已入队 "+std::to_wstring(n)+L" 个）："+(r==-41?L"所选单位仍处于 Sticky。":r==-40?L"当前会话不支持此指令。":r==-42?L"所选单位超过 8192 个。":L"指令过期、单位状态改变或事件提交失败，请重新执行。");
   setConsoleFeedback(GetDlgItem(ui,9176),message);setConsoleRuntimeError(GetDlgItem(ui,9176),r<0);notify(message);return;
  }
@@ -2220,6 +2247,10 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if(c==SelectSuper&&shared->arg==-1){if(r>0)notify(L"已取消超级武器目标选择。");return;}
  if(c==AirPathMove){airPathResult(r,n,uint32_t(shared->arg),shared->requestToken);return;}
  if(c==AutoBoard&&r==AutoBoardStaged){notify(L"已保存本次装车选区，正在等待采样和分配。");return;}
+ if(c==Repair&&r==RepairStaged){notify(L"已接收一键维修，将检查并安排符合条件的建筑。");return;}
+ if(selectedmode::index(c)>=0&&r==SelectionBatchStaged){
+  notify(std::wstring(selectedmode::label(selectedmode::index(c)))+L"批次已接收，将继续核对剩余单位。");return;
+ }
  if(c==StickyGuard&&r==-40){notify(L"当前会话不支持 Sticky 指令。");return;}
  if(selectedmode::index(c)>=0&&r==-40){notify(L"当前会话不支持任务模式指令。");return;}
  if(selectedmode::index(c)>=0&&r==-41){notify(L"所选单位仍处于 Sticky，普通任务模式不能保证解除。");return;}
@@ -2233,7 +2264,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if(c==SelectType&&sameTypes&&snap.status==1&&
     delivery::retrySelection(r,inFlightRetries,GetTickCount(),sentAt,
       inFlightMatch,snap.match,foregroundGame(),snap.chat)){
-  if(queueCommand(c,shared->arg,shared->arg2,inFlightMatch,1,60)){
+  if(queueCommand(c,shared->arg,shared->arg2,inFlightMatch,1,60,shared->requestToken,shared->requestTypeHash,&inFlightIntent)){
    diag(L"retry transient selection after same-match stale ACK");return;
   }
  }
@@ -2242,7 +2273,8 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if((c==RevealMap||c==AutoBoard||c==Produce)&&(r==-7||r==-3||
     (c==Produce&&r==-6)||(c==RevealMap&&r==-14))&&inFlightRetries<(r==-14?20:c==Produce?6:2)&&
     sameTypes&&snap.status==1&&inFlightMatch==snap.match&&game&&pid){
-  if(queueCommand(c,shared->arg,shared->arg2,inFlightMatch,inFlightRetries+1,r==-14?300:c==Produce?50:100)){
+  if(queueCommand(c,shared->arg,shared->arg2,inFlightMatch,inFlightRetries+1,r==-14?300:c==Produce?50:100,
+                  shared->requestToken,shared->requestTypeHash,&inFlightIntent)){
    notify(L"游戏暂未接收指令，已安排有限重试，无需重复按键。");return;
   }
  }
@@ -2270,21 +2302,25 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
 static void serviceCommandQueue(DWORD now){
  if(!shared||!enabled)return;
  bool revealQueued=commandQueue.has(RevealMap);
- std::vector<delivery::Item> expiredReservations;
- for(int i=0;i<commandQueue.size;++i){const auto&it=commandQueue.slots[i];
-  if((it.command==ProduceReserved||it.command==ProduceDeferred)&&
-     (it.pid!=pid||uint32_t(now-it.created)>delivery::MaxAgeMs||
-      (commandMatch()!=0&&it.match!=delivery::UnknownMatch&&it.match!=commandMatch())))expiredReservations.push_back(it);
+ std::vector<delivery::Item> expiredJobs;
+ const uint32_t activeMatch=commandMatch();
+ for(int i=0;i<commandQueue.size;++i){
+  const auto&it=commandQueue.slots[i];
+  if((it.command==ProduceReserved||it.command==ProduceDeferred||it.command==AirPathMove)&&
+     delivery::expired(it,now,pid,activeMatch,activeMatch!=0))expiredJobs.push_back(it);
  }
- int expired=commandQueue.expire(now,pid,commandMatch(),commandMatch()!=0);
- for(const auto&it:expiredReservations)constructionResult(-13,0,uint32_t(it.arg2),it.token);
+ const int expired=commandQueue.expire(now,pid,activeMatch,activeMatch!=0);
+ for(const auto&it:expiredJobs){
+  if(it.command==AirPathMove)airPathResult(-4,0,uint32_t(it.arg),it.token);
+  else constructionResult(-13,0,uint32_t(it.arg2),it.token);
+ }
  if(revealQueued&&!commandQueue.has(RevealMap)&&extra.mapStrategy==3&&autoRevealDone!=commandMatch()&&
     (shared->request==shared->ack||shared->command!=RevealMap))autoRevealMatch=0;
  if(expired){diag(L"discarded stale queued commands="+std::to_wstring(expired));notify(L"等待的命令已过期或对局改变，已取消，避免误操作。");}
- delivery::Item queued{};
- if(commandQueue.peek(now,pid,commandMatch(),commandMatch()!=0,queued)&&commandFocus()&&
-    delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,shared->request==shared->ack)){
-  commandQueue.consume();
+ delivery::Item queued{};int index=0;
+ if(commandQueue.peek(now,pid,activeMatch,activeMatch!=0,queued,&index)&&commandFocus()&&
+    delivery::bridgeReady(incoming.status,commandFresh(now),incoming.chat,shared->request==ack&&shared->ack==ack)){
+  commandQueue.discard(index);
   if(typeIndexedCommand(queued.command,queued.arg)&&queued.typeHash!=typeListHash(snap.types,snap.typeCount)){
    if(queued.command==ProduceReserved||queued.command==ProduceDeferred)constructionResult(-13,0,uint32_t(queued.arg2),queued.token);
    else notify(L"单位清单已改变，旧的待处理指令已取消。");
@@ -2293,7 +2329,8 @@ static void serviceCommandQueue(DWORD now){
  }
  static DWORD waitLoggedAt=0;
  if(commandQueue.size&&DWORD(now-waitLoggedAt)>=2000){waitLoggedAt=now;logCommandWait();}
- if(commandFresh(now)&&shared->request==shared->ack&&(snap.techOpen!=(techMode?techImplementation+1:0)||(techMode&&techAcknowledgedHash!=typeListHash(snap.types,snap.typeCount)))&&!snap.techError)send(OpenTech,techMode);
+ if(DWORD(now-lastTechSampleWait)>=delivery::SampleRetryMs&&commandFresh(now)&&
+    shared->request==ack&&shared->ack==ack&&(snap.techOpen!=(techMode?techImplementation+1:0)||(techMode&&techAcknowledgedHash!=typeListHash(snap.types,snap.typeCount)))&&!snap.techError)send(OpenTech,techMode);
 }
 static void publishSuiteDisplay(){
  if(!ready)return;

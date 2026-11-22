@@ -85,6 +85,8 @@ def production():
     add('#include "planner_world_copy.h"\n#include "anti_theft_sample_bridge.h"')
     add("static planner::World planningWorld,planningCapture;static int planningFrame=-1;static uint32_t planningSerial,inputSerial;")
     add(function(orders, "static bool publishPlanningWorld("))
+    add(function(source["bridge.cpp"], "struct RepairCapture") + ";")
+    add("static compute::FrameHistory<RepairCapture> repairFrames;")
     add(function(source["bridge.cpp"], "static int collectRepairs("))
     add('#include "ore_harvest_bridge.h"')
     add("static std::unordered_map<uint32_t,uint32_t> minerDefenseLinkedRefinery;static uint32_t minerDefenseRefineries[planner::MaxRefineries];static int minerDefenseRefineryCount;static bool minerDefenseRefineryIncomplete;")

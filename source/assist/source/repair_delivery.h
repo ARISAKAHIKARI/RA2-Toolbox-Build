@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 namespace assist { namespace repairdelivery {
+struct Source {uint32_t id=0,pointer=0,manual=0;};
 struct Observation {bool valid=false,repairing=false,healthy=false,uncertain=false;};
 // Pending Repair toggles are identity tickets. An unreadable native observation
 // never retires one. Dense active slots eliminate a full 16K-slot game-thread

@@ -43,7 +43,7 @@ static uint32_t commandComputeEpoch=0,match=0,lastHouse=0,pendingAck=0;
 static int lastFrame=-1,sceneFrame=-1;static DWORD now=10000,slow=0,sceneTick=0;
 static unsigned snapshots=0,worldCaptures=0,worldRetires=0,offers=0,normalActions=0,holdReleases=0;
 static bool restoreReady=true,holdReleaseReady=true,activeFeatures=false,wanted=true,worldReady=false,entryActive=true;
-static bool pendingAckReady=false;static int repairAckPending=0;
+static bool pendingAckReady=false,manualRepairPending=true,manualRepairNeedsInput=true;
 static uint32_t capturedMatch=0,capturedHouse=0;static int capturedFrame=-1;
 static std::map<uint32_t,uint8_t>memory;
 template<class T>static void put(uint32_t at,T value){const auto*p=reinterpret_cast<const uint8_t*>(&value);for(size_t i=0;i<sizeof value;++i)memory[at+uint32_t(i)]=p[i];}
@@ -51,19 +51,19 @@ static bool readLiveWorld(uint32_t at,void*out,size_t size){auto*p=static_cast<u
 template<class T>static T get(uint32_t at){T value{};readLiveWorld(at,&value,sizeof value);return value;}
 static DWORD GetTickCount(){return now;}static DWORD sampleClock(const Shared*){return now;}
 static void MemoryBarrier(){}static void InterlockedIncrement(volatile long*p){++*p;}
-struct Clearable{void clear(){}};
-static Clearable runtimeKeys,missionObserver,actorFrameArbiter,actorLeaseArbiter,loadLedger,pendingRepairs,missileFrames;
-static int enhancementChangedCatalogue=1,stickyCount=3,catalogueReady=1,catalogueHash=9,catalogueAt=8,catalogueDirty=0,nativeMegaQueueCallDepth=0,nativeObjectQueueCallDepth=0,indexedFrame=3,indexedCount=4,outgoingFrame=5,outgoingBudget=64,repairCount=2,repairAt=1,repairDone=0,repairAckRequest=7,repairCalculationPending=1,productionBaseline=1,crateCount=2,cratesOn=1,autoWas=1,sceneResultSerial=1,lastIdle[3]{},techAllowed[8]{9};
+struct Clearable{void clear(){}void reset(){}};
+static Clearable runtimeKeys,missionObserver,actorFrameArbiter,actorLeaseArbiter,loadLedger,pendingRepairs,missileFrames,selectionReceipt,globalVehicleScan;
+static int enhancementChangedCatalogue=1,stickyCount=3,catalogueReady=1,catalogueHash=9,catalogueAt=8,catalogueDirty=0,nativeMegaQueueCallDepth=0,nativeObjectQueueCallDepth=0,indexedFrame=3,indexedCount=4,outgoingFrame=5,outgoingBudget=64,productionBaseline=1,crateCount=2,cratesOn=1,autoWas=1,sceneResultSerial=1,lastIdle[3]{},techAllowed[8]{9};
 static int missileHoldCount=0,missileFrame=-1,missileSourceCursor=0,missileTargetCursor=0,missileManagedCursor=0;
 static uint32_t missileApplied=0;static bool missilePending=false,missileScanned=false,missileCleanup=false;
 static void retireWorldFrame(){++worldRetires;worldReady=false;}
 static void resetMissileControl(){missileHoldCount=0;missilePending=missileScanned=false;sh->missileHeld=0;}
 static void stickyTick(bool){activeFeatures=false;}static void clearNativeOrders(bool){activeFeatures=false;}
 static void maintainTechParameters(){}static void restorePlayerContext(){}static bool featureRestorationComplete(){return restoreReady;}
-static bool simulationReady(bool allowNewerFrame);
+static bool simulationReady(bool allowNewerFrame,bool allowHidden);
 static bool releaseMissileHolds(uint32_t house,int frame,DWORD){
  ++holdReleases;
- if(activeFeatures||!missileCleanup||!simulationReady(false)||house!=lastHouse||frame!=snap.frame)return false;
+ if(activeFeatures||!missileCleanup||!simulationReady(false,false)||house!=lastHouse||frame!=snap.frame)return false;
  if(!holdReleaseReady)return false;missileHoldCount=0;return true;
 }
 namespace gameentry{enum class Client{Assist};static bool active(Client){return entryActive;}
@@ -71,7 +71,7 @@ namespace gameentry{enum class Client{Assist};static bool active(Client){return 
 namespace external{namespace display{struct State{bool visible()const{return true;}};template<class F>static State inspect(F){return {};}}}
 namespace eventdelivery{static bool mayQueue(int mode){return mode==0||mode==3||mode==4||mode==5;}}
 static struct{bool wanted(uint32_t,DWORD){return ::wanted;}uint32_t demandMask(){return 1;}}worldFrameServer;
-template<class Read>static bool captureWorldFrame(Read,const worldlife::Sample&world,uint32_t house,DWORD,uint32_t){++worldCaptures;capturedMatch=match;capturedFrame=world.frame;capturedHouse=house;worldReady=true;return true;}
+template<class Read>static bool captureWorldFrame(Read,const worldlife::Sample&world,uint32_t house,DWORD,uint32_t,bool=false){++worldCaptures;capturedMatch=match;capturedFrame=world.frame;capturedHouse=house;worldReady=true;return true;}
 static bool missileManualOverflowed(){return false;}static void publishDebugEntries(DWORD){}static void nativePlacementOffers(DWORD){++offers;}
 static void publishPlayers(){}static void notifyHost(){++snapshots;}
 '''
@@ -89,7 +89,7 @@ static void fresh(){
  commandComputeEpoch=match=lastHouse=0;lastFrame=-1;sceneFrame=-1;commandDormant=worldCleanupPending=fault=false;
  snapshots=worldCaptures=worldRetires=offers=normalActions=holdReleases=0;
  restoreReady=holdReleaseReady=entryActive=wanted=true;activeFeatures=worldReady=false;
- pendingAckReady=false;repairAckPending=0;pendingAck=0;missileHoldCount=0;missilePending=missileScanned=false;
+ pendingAckReady=false;manualRepairPending=manualRepairNeedsInput=false;pendingAck=0;missileHoldCount=0;missilePending=missileScanned=false;
  now+=1000;sh->owner=77;sh->heartbeat=now;sh->computeRequested=sh->computeApplied=0;
  memory.clear();world();snap.status=1;snap.commandStatus=1;snap.session=3;snap.frame=100;
 }
@@ -211,8 +211,12 @@ def host_code(boundary, current, selected):
     preamble=preamble.replace('static struct{unsigned size=0;}commandQueue;', 'static struct{unsigned size=0;void clear(){size=0;}}commandQueue;')
     preamble=preamble.replace('bool valid()const{return true;}', 'bool valid()const{return readerValid;}bool canRead()const{return readerValid&&readerReadable;}int connectionIdentity()const{return 1;}')
     preamble=preamble.replace('bound(shared!=nullptr)', 'bound(producerReady&&readerReadable)')
+    preamble=preamble.replace('uint32_t=0){\n  ++samplerCalls', 'uint32_t=0,bool=false,bool=false){\n  ++samplerCalls')
     mocks=HOST_MOCKS+'''
 static void MemoryBarrier(){}
+static bool unitPanelEnabled=false;
+namespace worldframe{static bool sameObservation(const Token&a,const Token&b){return a&&b&&a->key.sameFrame(b->key)&&a->key.serial==b->key.serial;}}
+namespace external{static void setMonitorWorldProducer(worldframe::Token){}}
 namespace nativeviewhost{static uint32_t capabilityRequest(Shared*){return 0;}}
 namespace gameinput{static void setPointerContext(uintptr_t,uint32_t,bool,uint32_t=0){}static void setFastTactical(uintptr_t,bool){}static void setFrameSampling(uintptr_t,bool){}}
 static void readSnapshot(){snap=incoming;mergeExternal();}static void result(){}

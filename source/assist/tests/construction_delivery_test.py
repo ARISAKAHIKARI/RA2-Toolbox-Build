@@ -14,7 +14,7 @@ src=repo/'source/assist/source'
 temporary=tempfile.TemporaryDirectory() if args.output is None else None
 out=args.output or Path(temporary.name)
 out.mkdir(parents=True,exist_ok=True)
-files=['main.cpp','protocol.h','command_delivery.h','control_link.h','additional_settings.h','construction_host.h','construction_policy.h']
+files=['main.cpp','protocol.h','command_sampling.h','command_delivery.h','control_link.h','additional_settings.h','construction_host.h','construction_policy.h']
 paths={n:(args.main_source if n=='main.cpp' and args.main_source else src/n) for n in files}
 texts={n:p.read_text() for n,p in paths.items()}
 hashes={n:hashlib.sha256(p.read_bytes()).hexdigest() for n,p in paths.items()}
@@ -28,6 +28,7 @@ parts={
  'identity.inc':'\n'.join(function(main,s) for s in ['static controllink::View commandLink(){','static uint32_t commandMatch(){','static bool commandChannelReady(){','static bool commandFresh(DWORD now){']),
  'snapshot.inc':function(main,'static void readSnapshot(){'),
  'send.inc':'\n'.join(function(main,s) for s in ['static bool userCommand(','static bool queueCommand(','static void send(int command']),
+ 'result.inc':function(main,'static void result(){'),
  'service.inc':function(main,'static void serviceCommandQueue(DWORD now){'),
  'cancel.inc':function(texts['construction_host.h'],'static void cancel(int tab){')}
 for n,s in parts.items():(out/n).write_text(s+'\n')
@@ -49,16 +50,20 @@ program=r'''
 #include "command_delivery.h"
 #include "control_link.h"
 #include "construction_policy.h"
+#include "read_only_lifecycle.h"
 using namespace assist;
 using DWORD=uint32_t;using LONG=int32_t;using HWND=void*;
 static std::unique_ptr<Shared> storage=std::make_unique<Shared>(),replacement=std::make_unique<Shared>();
 static Shared*shared=storage.get();static Snapshot snap{},incoming{};static AdditionalSettings extra;
-static delivery::Queue commandQueue;
+static delivery::Queue commandQueue;static delivery::Item inFlightIntent;
 static bool enabled=true,focus=true,window=true,hasSelection=false,hookSmartUnload=true,bridgeBlocked=false,techMode=false;
 static uint32_t pid=123,ack=0,inFlightMatch=0,snapshotSeq=2,autoRevealMatch=0,autoRevealDone=0;
-static DWORD fakeNow=1000,lastData=1000,lastFind=0,sentAt=0;
+static DWORD fakeNow=1000,lastData=1000,lastFind=0,sentAt=0,lastTechSampleWait=0;
 static int inFlightRetries=0,bridgeAttempts=0,techImplementation=0,techProfile=0,wakes=0,checks=0;
 static uint64_t techAcknowledgedHash=0;static HWND game=reinterpret_cast<HWND>(uintptr_t(2));
+static HWND ui=nullptr;static DWORD commandLatency=0,autoRevealRetry=0;static bool techEnabled=false;
+static std::wstring destructPendingTarget;static constexpr auto DestructForeignNotice=L"foreign";
+static struct {void clear(){}}pointerMatches;
 static std::function<void()> beforeSnapshot;static std::vector<std::tuple<int,int,uint32_t,uint32_t>> constructionReceipts;
 static DWORD GetTickCount(){return fakeNow;}static bool IsWindow(HWND h){return h&&window;}
 static void MemoryBarrier(){std::atomic_thread_fence(std::memory_order_seq_cst);}
@@ -67,6 +72,12 @@ static bool commandFocus(){return focus;}static bool foregroundGame(){return foc
 static DWORD discoverGamePid(){return pid;}static void ensureBridge(){assert(false&&"fixture retains same live mapping");}static void wakeGame(){++wakes;}
 static bool techAllowed(const Type&){return false;}
 static void constructionResult(int r,int n,uint32_t id,uint32_t token){constructionReceipts.emplace_back(r,n,id,token);}
+static void airPathResult(int,int,uint32_t,uint32_t){}
+static HWND GetDlgItem(HWND,int){return nullptr;}
+static void updatePlacementEventUI(){}static void logBridgeHealth(bool){}
+static void setConsoleFeedback(HWND,const std::wstring&){}static void setConsoleRuntimeError(HWND,bool){}
+static std::wstring submitDiagnostic(){return L"fixture";}
+namespace assist {namespace eventdelivery {static bool isMultiplayer(int){return false;}}}
 static void logCommandWait(){}static void diag(const std::wstring&){}static void critical(const std::wstring&){}static void notify(const std::wstring&){}
 static std::wstring commandWaitReason(){return L"fixture";}
 static void logCommandReceipts(const Snapshot&){}static void resetStartupProbeDiagnostics(){}static void logStartupProbeDifferences(bool){}static void logFeatureActivation(DWORD){}
@@ -82,6 +93,7 @@ namespace assist{namespace revealpermission{template<class F>void beforeRequest(
 #undef readSnapshot
 static void readSnapshot(){if(beforeSnapshot){auto callback=std::move(beforeSnapshot);beforeSnapshot={};callback();}readSnapshotCore();}
 #include "send.inc"
+#include "result.inc"
 #include "service.inc"
 namespace buildreserve{static construction::Book books[4];
 #include "cancel.inc"
@@ -112,7 +124,30 @@ static void publish(int mode){
  if(mode==2||mode==5)std::strcpy(shared->data.types[0].id,"DIFFERENT");
  MemoryBarrier();shared->seq=4;
 }
+static void receipt(int status,int count){shared->result=status;shared->count=count;shared->ack=shared->request;}
+static void sampleWaitDoesNotBlock(){
+ setup(ProduceReserved);commandQueue.clear();
+ send(Repair);check(shared->request==1&&shared->command==Repair);
+ receipt(RepairStaged,0);result();
+ send(SmartUnload);check(shared->request==2&&shared->command==SmartUnload);
+ receipt(CommandAwaitingSample,21);
+ check(queueCommand(AutoBoard,0,0,7));
+ serviceCommandQueue(fakeNow);check(shared->request==2&&commandQueue.size==1); // unread receipt owns the slot
+ result();
+ check(commandQueue.size==2&&commandQueue.slots[0].token==21&&commandQueue.slots[0].awaitingSample);
+ serviceCommandQueue(fakeNow);check(shared->request==3&&shared->command==AutoBoard&&commandQueue.size==1);
+ receipt(AutoBoardStaged,0);result();
+ send(ProduceDeferred,0,0,0,false,51);
+ check(shared->request==4&&shared->command==ProduceDeferred&&shared->requestToken==51);
+ receipt(1,1);result();
+ fakeNow+=delivery::SampleRetryMs;
+ serviceCommandQueue(fakeNow);check(shared->request==5&&shared->command==SmartUnload&&shared->requestToken==21);
+ check(inFlightIntent.created==1000&&commandQueue.size==0);
+ receipt(CommandSelectionChanged,0);result();serviceCommandQueue(fakeNow);
+ check(shared->request==5&&commandQueue.size==0);
+}
 int main(){
+ if(!EXPECT_REGRESSION)sampleWaitDoesNotBlock();
  bool comma=false;int rejected=0,unsafe=0,controls=0;std::cout<<"{\"cases\":[";
  const char*names[]={"new_match_ready","new_match_busy","new_match_changed_catalogue","same_match_ready","same_match_busy","same_match_changed_catalogue","same_match_pid_changed","same_match_connection_changed","same_match_expired_during_snapshot"};
  for(int command:{ProduceDeferred,ProduceReserved})for(int mode=0;mode<9;++mode){

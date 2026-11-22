@@ -3,11 +3,11 @@
 namespace ownground {
 constexpr int Capacity=8192;
 struct Source{uint32_t pointer=0,id=0,token=0,cell=0;bool self=false;};
-struct Job{Source sources[Capacity]{};int count=0,next=0,sent=0;uint32_t request=0,epoch=0,started=0;int frame=-1,mission=1;bool pending=false,voiced=false;};
+struct Job{Source sources[Capacity]{};int count=0,next=0,sent=0;uint32_t request=0,epoch=0,started=0;int frame=-1,mission=1;bool pending=false,voiced=false,detached=false;};
 static Job job;
 static void finish(int result){
- if(job.pending&&sh&&sh->request==job.request){sh->result=result;sh->count=job.sent;pendingAck=job.request;pendingAckReady=true;}
- job.pending=false;job.count=job.next=0;
+ if(job.pending&&!job.detached&&sh&&sh->request==job.request){sh->result=result;sh->count=job.sent;pendingAck=job.request;pendingAckReady=true;}
+ job.pending=false;job.detached=false;job.count=job.next=0;
 }
 }
 static void resetOwnGround(){ownground::finish(-7);}
@@ -16,11 +16,11 @@ static bool ownGroundEligible(uint32_t p,uint32_t house){
  return worldObjects.contains(p)&&own(p,house)&&live(p)&&(k==1||k==2)&&
   !get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&!get<bool>(p+0x1C8);
 }
-static void ownGroundTick(uint32_t house,int frame,DWORD now){
+static void ownGroundTick(uint32_t house,int frame,DWORD now,bool rosterReady=true){
  auto&j=ownground::job;if(!j.pending)return;
- if(!sh||sh->stop||fault||j.epoch!=match||sh->request!=j.request||DWORD(now-j.started)>3500||
+ if(!sh||sh->stop||fault||j.epoch!=match||(!j.detached&&sh->request!=j.request)||DWORD(now-j.started)>3500||
     !simulationReady()||get<bool>(0xA8BC60+25)){ownground::finish(-7);return;}
- if(j.frame==frame)return;j.frame=frame;
+ if(!rosterReady||j.frame==frame)return;j.frame=frame;
  unsigned examined=0;
  while(j.next<j.count&&examined++<64){
   const auto&s=j.sources[j.next];
@@ -42,7 +42,7 @@ static void ownGroundTick(uint32_t house,int frame,DWORD now){
 }
 static void attackOwnGroundCommand(uint32_t house,DWORD now,uint32_t request){
  auto&j=ownground::job;
- j.count=j.next=j.sent=0;j.mission=1;j.request=request;j.epoch=match;j.started=now;j.frame=-1;j.pending=true;j.voiced=false;
+ j.count=j.next=j.sent=0;j.mission=1;j.request=request;j.epoch=match;j.started=now;j.frame=-1;j.pending=true;j.voiced=false;j.detached=false;
  if(!eventdelivery::mayQueue(get<int>(0xA8B238))){ownground::finish(-40);return;}
  if(!simulationReady()||get<bool>(0xA8BC60+25)){ownground::finish(-11);return;}
  Vec selected=vec(0xA8ECB8);int sticky=0;

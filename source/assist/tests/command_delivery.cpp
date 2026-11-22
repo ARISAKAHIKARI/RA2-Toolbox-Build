@@ -56,4 +56,41 @@ int main(){
  assert(q.add(Item{SelectType,1,1,123,7,3000,0}));
  assert(!q.peek(3010,123,8,true,out)); // never carry a selection into next match
  assert(q.size==0);
+
+ // Only an explicit no-execution receipt may park a request. Keep its original
+ // deadline and preserve its own lane while later unrelated input proceeds.
+ Item unload{assist::SmartUnload,0,0,123,7,4000};
+ assert(!q.park(unload,4001,0));
+ assert(q.park(unload,4001,27));
+ assert(q.add(unload));
+ assert(q.add(Item{assist::AutoBoard,0,0,123,7,4002}));
+ assert(q.add(Item{assist::ProduceDeferred,5,0,123,7,4003,0,0,11,995}));
+ int index=-1;
+ assert(q.peek(4004,123,7,true,out,&index)&&out.command==assist::AutoBoard&&index==2);
+ q.discard(index);
+ assert(q.peek(4005,123,7,true,out,&index)&&out.command==assist::ProduceDeferred&&index==2);
+ q.discard(index);
+ assert(!q.peek(4006,123,7,true,out));
+ assert(q.peek(4081,123,7,true,out,&index)&&index==0&&out.created==4000&&out.token==27&&out.awaitingSample);
+ q.discard(index);
+ assert(!q.park(out,4082,28)&&q.park(out,4082,27));
+ assert(!q.peek(6501,123,7,true,out)&&q.size==0);
+ assert(!q.park(Item{assist::AttackOwnGround,0,0,123,7,7000},7001,0));
+ assert(q.park(Item{assist::ProduceReserved,3,42,123,7,7000,0,0,71,996},7001,0));
+ assert(!q.peek(7081,123,8,true,out)&&q.size==0);
+
+ using namespace assist::commandsampling;
+ SelectionReceipt receipt;
+ SelectionMember live[]={{0x40000,31,4},{0x50000,32,0}};
+ const auto first=receipt.capture(live,2);
+ assert(first&&receipt.matches(live,2)&&receipt.capture(live,2)==first);
+ ++live[1].manual;assert(!receipt.matches(live,2));
+ assert(receipt.capture(live,2)!=first);
+ live[1].pointer+=32;assert(!receipt.matches(live,2));
+ receipt.clear();assert(!receipt.matches(live,2));
+ assert(canAttempt(assist::Repair,Sample::Missing)&&canAttempt(assist::AutoBoard,Sample::Missing));
+ assert(canAttempt(assist::ProduceDeferred,Sample::Missing)&&canAttempt(assist::ClearBeacons,Sample::Missing));
+ assert(canAttempt(assist::SmartUnload,Sample::LocalCandidate)&&!canAttempt(assist::SmartUnload,Sample::Missing));
+ assert(canAttempt(assist::ProduceReserved,Sample::LocalCandidate)&&!canAttempt(assist::ProduceReserved,Sample::Missing));
+ assert(!canAttempt(SelectType,Sample::LocalCandidate)&&canAttempt(SelectType,Sample::Exact));
 }

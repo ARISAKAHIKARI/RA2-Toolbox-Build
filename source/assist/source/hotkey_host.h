@@ -89,7 +89,8 @@ static void serviceHotkeyBatch(){
  for(unsigned n=0;n<hotkeyroute::Pending::Capacity;++n){
   const DWORD now=GetTickCount();
   if(!commandHotkeyContext()||!shared||!commandFresh(now)){hotkeyPending.clear();hotkeyRegistry.cancel(now);return;}
-  const bool commandReady=!hasSelection&&!commandQueue.size&&shared->request==shared->ack&&shared->selectRequest==shared->selectAck;
+  const bool commandReady=!hasSelection&&commandQueue.nextReadyIndex(now)<0&&
+   shared->request==ack&&shared->ack==ack&&shared->selectRequest==shared->selectAck;
   hotkeyroute::Action action;if(!hotkeyPending.popReady(now,commandMatch(),action,[&](int id){return commandReady||localHotkeyAction(id);}))return;
   executeHotkey(action.id,extra.allHotkeys);
  }

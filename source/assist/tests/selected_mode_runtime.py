@@ -72,23 +72,23 @@ for session in (0,5,3,4):
         def mutate(s):
             if case=='stale_match':s.requestMatch+=1
             elif case=='expired':s.requestTick=m.clock-3501
-        s=command(m,31,mutate,allow_pending=case in ('unsupported','full_queue'))
+        s=command(m,31,mutate,allow_pending=case=='unsupported')
         if case=='unsupported':
             assert s.ack!=s.request and s.data.commandStatus==0 and count(m)==0
         elif case=='full_queue':
-            assert s.ack!=s.request and count(m)==prior
+            assert s.ack==s.request and s.result==4 and s.count==0 and count(m)==prior
             m.clock+=3501;s=tick(m)
-            assert s.ack==s.request and s.count==0 and C.c_int32(s.result).value==-7
+            assert s.ack==s.request and s.result==4 and s.count==0 and count(m)==prior
         else:
             assert s.count==0 and count(m)==prior and C.c_int32(s.result).value<0,(session,case,s.result,s.count,count(m))
         assert not m.codeWrites
         rows.append({'session':session,'case':case,'status':'PASS'})
     m=fixture(session);queue=0x8b41f8 if session in (0,5) else 0xa802c8
     prior=0x3fff if session in (0,5) else 111;m.w(queue,prior)
-    s=command(m,30,allow_pending=True)
-    assert s.ack!=s.request and count(m)==prior+1
+    s=command(m,30)
+    assert s.ack==s.request and s.result==4 and s.count==1 and count(m)==prior+1
     m.w(queue,0);s=tick(m)
-    assert s.ack==s.request and s.result==1 and s.count==2 and count(m)==1
+    assert s.ack==s.request and s.result==4 and s.count==1 and count(m)==1
     assert not m.codeWrites
     rows.append({'session':session,'case':'last_queue_slot_retains_unsent_tail','status':'PASS'})
     # A Sticky owned by the SP helper must never be released by cancelNative.

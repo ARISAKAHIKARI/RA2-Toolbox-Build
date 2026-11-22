@@ -19,7 +19,7 @@ int main(){
   const bool complete=proof.step(unsigned(source.size()),unsigned(results.size()),
    [&](unsigned i){return source[i];},
    [&](unsigned i){return results[i];},
-   [&](uint32_t id){accepted.push_back(id);});
+   [&](uint32_t id,unsigned index){assert(source[index]==id);accepted.push_back(id);});
   ++calls;assert(calls<=5&&!proof.failed);
   if(calls<=2)assert(accepted.empty()); // build entire input before result membership
   if(complete)assert(!proof.running);
@@ -35,7 +35,7 @@ int main(){
  assert(proof.begin(int(source.size()),int(results.size())));
  assert(!proof.step(unsigned(source.size()),unsigned(results.size()),
   [&](unsigned i){return source[i];},[&](unsigned i){return results[i];},
-  [&](uint32_t){assert(false);}));
+  [&](uint32_t,unsigned){assert(false);}));
  proof.reset();assert(!proof.running);
  assert(!proof.begin(8193,1));
  assert(!proof.begin(1,-1));
@@ -44,7 +44,7 @@ int main(){
  int matched=0;
  assert(proof.step(1,2,[&](unsigned){return 11u;},
    [&](unsigned i){return i?12u:11u;},
-   [&](uint32_t id){assert(id==11);++matched;}));
+   [&](uint32_t id,unsigned index){assert(id==11&&index==0);++matched;}));
  assert(matched==1);
  // Degenerate IDs: 33 colliding live records cannot make a worker result
  // authoritative if hash lookup would exceed its 32-probe budget.
@@ -55,7 +55,7 @@ int main(){
   if(Filter::hash(id)==target)collisions.push_back(id);
  assert(collisions.size()==33);
  assert(!proof.step(33,1,[&](unsigned i){return collisions[i];},
-  [&](unsigned){return collisions[0];},[&](uint32_t){assert(false);}));
+  [&](unsigned){return collisions[0];},[&](uint32_t,unsigned){assert(false);}));
  assert(proof.failed&&!proof.running);
  std::puts("PASS bounded incremental repair validation, Host order/duplicates, no partial result, collision failure and safe reuse");
 }

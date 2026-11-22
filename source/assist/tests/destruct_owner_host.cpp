@@ -23,7 +23,7 @@
 #include "../../suite/source/settings_categories.h"
 using namespace assist;
 static HWND ui=HWND(1),game=HWND(2);static Shared storage,*shared=&storage;
-static Snapshot snap,incoming;static AdditionalSettings extra;static delivery::Queue commandQueue;
+static Snapshot snap,incoming;static AdditionalSettings extra;static delivery::Queue commandQueue;static delivery::Item inFlightIntent;
 static hotkeyroute::Pending hotkeyPending;static hotkeyroute::Registry hotkeyRegistry;
 static struct {void clear(){}}typeTap,variantTap;
 static bool enabled=true,fresh=true,focus=true,window=true,hasSelection=false,hookSmartUnload=false;
@@ -34,6 +34,7 @@ static std::wstring destructPendingTarget;static std::vector<std::wstring>notice
 static WORD hotkeys[12]{},idleAircraftKey=0,csKey=0,advancedKey=0,unloadKey=0,ejectKey=0,csHoldKey=0,magnetronKey=0,socialKeys[9]{};
 static struct Binding {WORD key=0;} binding;static std::vector<Binding>swBindings,typeBindings;
 static std::map<std::wstring,int>ini;static std::map<int,LRESULT>controlValues;static std::map<int,std::wstring>feedback;
+static void airPathResult(int,int,uint32_t,uint32_t){}
 static DWORD testTick(){return fakeNow;}static LONG testMessageTime(){return LONG(messageAt);}static BOOL testWindow(HWND){return window;}
 static HWND testItem(HWND,int id){return HWND(INT_PTR(id));}static LRESULT testMessage(HWND h,UINT msg,WPARAM wp,LPARAM){int id=int(INT_PTR(h));if(msg==HKM_SETHOTKEY){controlValues[id]=wp;return 0;}return controlValues[id];}
 #define GetTickCount testTick

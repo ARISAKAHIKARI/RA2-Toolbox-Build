@@ -16,6 +16,7 @@
 #include "../source/compute_policy.h"
 #include "../source/plan_freshness.h"
 #include "../source/repair_delivery.h"
+#include "../source/object_index.h"
 #include "../source/repair_result_filter.h"
 using namespace assist;
 using DWORD=uint32_t;
@@ -38,8 +39,12 @@ static uint32_t match=1,lastHouse=0x200000;
 static int currentFrame=0;static bool chat=false,externalInputFrame=false,queueAvailable=true;
 static unsigned buildingScans=0,notifications=0,queueAttempts=0;static int perFrameBudget=64;
 struct Queued{uint32_t id;int frame;};static std::vector<Queued> sent;
-static uint32_t repairIDs[8192];static int repairCount,repairAt,repairDone;
-static bool pendingAckReady,repairAckPending;static uint32_t pendingAck,repairAckRequest;static DWORD repairAckStarted;
+static repairdelivery::Source repairOrders[8192];
+static int repairCount,repairAt,repairCursor;
+static ManualVersions manualVersions;
+static bool pendingAckReady,manualRepairPending,manualRepairNeedsInput;
+static uint32_t pendingAck;static DWORD manualRepairStarted;
+static constexpr int RepairStaged=3;
 static bool repairCalculationPending;static DWORD repairCalculationStarted;static uint32_t repairTaskSeen;
 static bool autoWas;static DWORD lastAuto;
 static repairdelivery::Pending<> pendingRepairs;
@@ -80,9 +85,10 @@ static Vec vec(uint32_t at){Vec out{};read(at,&out,sizeof out);return out;}
 static uint32_t item(Vec v,int i){return get<uint32_t>(v.items+uint32_t(i)*4);}
 static Building* byPointer(uint32_t p){for(auto&b:buildings)if(b.pointer==p)return &b;return nullptr;}
 static int indexedFrame=-1;
+static uint32_t missingCandidateId=0;
 static worldframe::CommandRoster workerRoster;
 static std::vector<uint32_t> workerRosterScratch;
-struct BuildingIndex {uint32_t byId(uint32_t id)const{return worldFrameReady&&workerRoster.current(worldFrame.key)&&workerRoster.objects?workerRoster.objects->byId(id):0;}};
+struct BuildingIndex {uint32_t byId(uint32_t id)const{return id!=missingCandidateId&&worldFrameReady&&workerRoster.current(worldFrame.key)&&workerRoster.objects?workerRoster.objects->byId(id):0;}};
 static BuildingIndex worldObjects;
 static uint32_t worldByID(uint32_t id){
  const uint32_t p=worldObjects.byId(id);if(!p)return 0;
@@ -128,8 +134,8 @@ static bool nativeObjectEvent(int player,int event,uint32_t id){if(sampleReadDep
 #include REPAIR_OBSERVE
 #include REPAIR_ADMISSION
 #include REPAIR_TICK
-// Exactly the manual Repair branch and terminal publication from command().
-static void manualRepair(uint32_t req,DWORD now){prepareSample();uint32_t house=lastHouse;int result=1,n=0;
+// Exactly the manual Repair intake branch and publication from command().
+static void manualRepair(uint32_t req,DWORD now){int result=1,n=0;
 #include REPAIR_MANUAL
  sh->result=result;sh->count=n;pendingAck=req;pendingAckReady=true;
 }
@@ -142,10 +148,10 @@ static void setup(bool automatic=true,bool internal=true,unsigned count=1){
  shared={};snap={};sh=&shared;sh->flags=automatic?AutoRepair:0;sh->computeApplied=internal?compute::Default:0;
  ++match;lastHouse=0x200000;currentFrame=0;chat=externalInputFrame=false;queueAvailable=true;perFrameBudget=64;buildingScans=notifications=queueAttempts=0;sent.clear();buildings.clear();
  for(unsigned i=0;i<count;++i)buildings.push_back({0x300000+i*0x10000,0x800000+i*0x10000,100+i,lastHouse});
- repairCount=repairAt=repairDone=0;repairAckRequest=repairAckStarted=pendingAck=0;repairAckPending=pendingAckReady=false;repairCalculationPending=false;repairCalculationStarted=repairTaskSeen=0;autoWas=false;lastAuto=0;pendingRepairs.clear();repairFrames.clear();
+ resetRepairBatch();manualRepairPending=manualRepairNeedsInput=pendingAckReady=false;manualRepairStarted=pendingAck=0;autoWas=false;lastAuto=0;pendingRepairs.clear();manualVersions.clear();missingCandidateId=0;
  worldFrameReady=false;indexedFrame=-1;runtimeDemandOverflow=false;runtimeDemandBufferPrepared=false;workerRoster.invalidate();workerRosterScratch.clear();sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;indexedFrame=-1;featureConfig={};repairFilterKnown=true;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
 }
-static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;prepareSample();repairTick(lastHouse,now);}
+static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;prepareSample();repairTick(lastHouse,now,false);}
 struct WorkerResult{uint32_t task;compute::RepairResult value;};
 static WorkerResult calculate(){return {sh->repairTask,compute::repair(sh->repairInput)};}
 static void deliver(const WorkerResult&r){++sh->repairResultSeq;sh->repairResult=r.value;sh->repairComputed=r.task;++sh->repairResultSeq;}
@@ -237,9 +243,11 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
  });
  run("off_then_manual_in_same_dispatch",true,[]{
   setup(true,false);tick(1000,1);auto old=calculate();sh->flags=0;currentFrame=2;manualRepair(17,1008);
-  expect(repairAckPending&&repairAckRequest==17,"manual request must not be rejected by cancelled automatic work");auto manual=calculate();expect(manual.task!=old.task,"manual has new task serial");
-  deliver(old);tick(1016,3);expect(sent.empty()&&repairAckPending,"old automatic result does not satisfy manual request");
-  deliver(manual);tick(1024,4);expect(sent.size()==1&&sh->count==1&&sh->result==1,"manual repair completes with automation off");expect(pendingAckReady&&pendingAck==17&&!repairAckPending,"manual terminal ACK retained");
+  expect(manualRepairPending&&pendingAckReady&&pendingAck==17&&sh->result==RepairStaged,"manual receipt is released on intake");tick(1008,2);auto manual=calculate();expect(manual.task!=old.task,"manual has new task serial");
+  deliver(old);tick(1016,3);expect(sent.empty()&&manualRepairPending,"old automatic result does not satisfy manual request");
+  pendingAck=18;sh->result=81;sh->count=82;deliver(manual);tick(1024,4);
+  expect(sent.size()==1&&!manualRepairPending,"manual repair completes with automation off");
+  expect(pendingAck==18&&sh->result==81&&sh->count==82,"delayed completion leaves the next command receipt intact");
  });
  run("off_on_rejects_old_generation",true,[]{
   setup(true,false);tick(1000,1);auto old=calculate();sh->flags=0;tick(1008,2);sh->flags=AutoRepair;tick(1016,3);auto fresh=calculate();
@@ -251,14 +259,14 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   expect(sent.empty()&&!repairCalculationPending,"ready old result cancelled before polling");expect(notifications==1,"off does not publish replacement automatic jobs");
  });
  run("off_keeps_manual_async_work",false,[]{
-  setup(false,false);currentFrame=1;manualRepair(25,1000);auto manual=calculate();expect(repairAckPending,"manual pending");
-  sh->flags=AutoRepair;tick(1008,2);sh->flags=0;tick(1016,3);expect(repairAckPending&&repairCalculationPending,"automatic toggles do not cancel manual computation");
-  deliver(manual);tick(1024,4);expect(sent.size()==1&&pendingAck==25&&sh->count==1,"manual delivered once and acknowledged");
+  setup(false,false);currentFrame=1;manualRepair(25,1000);tick(1000,1);auto manual=calculate();expect(manualRepairPending,"manual pending");
+  sh->flags=AutoRepair;tick(1008,2);sh->flags=0;tick(1016,3);expect(manualRepairPending&&repairCalculationPending,"automatic toggles do not cancel manual computation");
+  deliver(manual);tick(1024,4);expect(sent.size()==1&&pendingAck==25&&sh->result==RepairStaged,"only the intake receipt belongs to the mailbox");
  });
  run("manual_internal_supersedes_unsent_auto_batch",false,[]{
   setup(true,true,3);perFrameBudget=1;tick(1000,1);expect(sent.size()==1&&repairAt<repairCount,"automatic partial batch");
-  sh->flags=0;currentFrame=2;manualRepair(31,1008);expect(repairAckPending&&repairCount==2,"manual retains only unsubmitted buildings");tick(1008,2);tick(1016,3);
-  expect(sent.size()==3&&sh->count==2&&pendingAck==31,"manual completion counts its own submissions");expect(pendingRepairs.count==3,"already queued identities retained");
+  sh->flags=0;currentFrame=2;manualRepair(31,1008);tick(1008,2);expect(manualRepairPending&&repairCount==2,"manual retains only unsubmitted buildings");tick(1016,3);
+  expect(sent.size()==3&&snap.repairTotal==3&&pendingAck==31,"manual sends only its original unsent targets");expect(pendingRepairs.count==3,"already queued identities retained");
  });
  run("off_discards_unsubmitted_batch",false,[]{
   setup(true,true,3);perFrameBudget=1;tick(1000,1);sh->flags=0;tick(1008,2);tick(1016,3);
@@ -295,7 +303,7 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
  });
  run("manual_native_repair_untouched",false,[]{
   setup(false,true,2);buildings[0].repairing=true;currentFrame=1;manualRepair(40,1000);tick(1000,1);expect(sent.size()==1&&sent[0].id==buildings[1].id,"already repairing building excluded");
-  expect(buildings[0].repairing&&sh->count==1&&pendingAck==40,"manual existing repair preserved");
+  expect(buildings[0].repairing&&sh->result==RepairStaged&&pendingAck==40,"manual existing repair preserved");
  });
  run("same_frame_submission_budget",false,[]{
   setup(true,true,3);perFrameBudget=1;tick(1000,1);tick(1001,1);expect(sent.size()==1,"duplicate callback shares frame budget");tick(1008,2);expect(sent.size()==2,"next frame resumes batch");tick(1016,3);expect(sent.size()==3,"batch completes");
@@ -305,14 +313,14 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   expect(sent.size()==1&&queueAttempts==1,"duplicate candidates never duplicate Repair event");
  });
  run("manual_timeout_retained_while_off",false,[]{
-  setup(false,false);currentFrame=1;manualRepair(50,1000);tick(2000,2);expect(repairAckPending&&repairCalculationPending,"manual stays pending through deadline");tick(2001,3);
-  expect(!repairAckPending&&!repairCalculationPending&&pendingAck==50&&sh->result==-7&&sent.empty(),"manual timeout follows existing terminal ACK");
+  setup(false,false);currentFrame=1;manualRepair(50,1000);tick(1000,1);tick(2000,2);expect(manualRepairPending&&repairCalculationPending,"manual stays pending through deadline");tick(2001,3);
+  expect(!manualRepairPending&&!repairCalculationPending&&pendingAck==50&&sh->result==RepairStaged&&sent.empty(),"manual timeout stays in the repair lane");
  });
  run("automatic_timeout_respects_scan_interval",false,[]{
   setup(true,false);tick(1000,1);tick(2001,2);expect(!repairCalculationPending&&notifications==1,"timeout does not scan each frame");tick(2999,3);expect(notifications==1,"retry waits interval");tick(3000,4);expect(repairCalculationPending&&notifications==2,"next scheduled attempt");
  });
  run("manual_timeout_clock_wrap",false,[]{
-  setup(false,false);const DWORD start=UINT32_MAX-499;currentFrame=1;manualRepair(60,start);tick(DWORD(start+1000),2);expect(repairAckPending,"timeout wrap not early");tick(DWORD(start+1001),3);expect(pendingAck==60&&sh->result==-7&&!repairCalculationPending,"timeout wrap terminal");
+  setup(false,false);const DWORD start=UINT32_MAX-499;currentFrame=1;manualRepair(60,start);tick(start,1);tick(DWORD(start+1000),2);expect(manualRepairPending,"timeout wrap not early");tick(DWORD(start+1001),3);expect(pendingAck==60&&!manualRepairPending&&!repairCalculationPending,"timeout wrap terminal");
  });
  run("new_world_resets_timer_and_receipts",false,[]{
   setup();sh->repairMs=30000;tick(1000,1);expect(sent.size()==1&&pendingRepairs.count==1,"old world receipt");productionWorldReset();++match;tick(1008,1);
@@ -326,13 +334,16 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   deliver(old);tick(1024,4);expect(sent.empty(),"cancelled task before wrap rejected");deliver(fresh);tick(1032,5);expect(sent.size()==1,"new wrapped task accepted");
  });
  run("manual_refresh_survives_auto_off",false,[]{
-  setup(false,false);currentFrame=1;manualRepair(70,1000);tick(1008,2,true);expect(notifications==2&&repairAckPending,"manual can refresh source even with automation off");auto fresh=calculate();deliver(fresh);tick(1016,3);expect(sent.size()==1&&pendingAck==70,"refreshed manual work completed");
+  setup(false,false);currentFrame=1;manualRepair(70,1000);tick(1000,1);tick(1008,2,true);expect(notifications==2&&manualRepairPending,"manual can refresh source even with automation off");auto fresh=calculate();deliver(fresh);tick(1016,3);expect(sent.size()==1&&pendingAck==70,"refreshed manual work completed");
  });
  run("retained_request_membership_full_capacity",false,[]{
-  setup(false,false,0);currentFrame=1;manualRepair(80,1000);
-  static compute::RepairInput input;input=sh->repairInput;input.count=8192;
-  for(int j=0;j<input.count;++j)input.items[j].id=uint32_t(j*2); // includes zero; membership must preserve old semantics
-  repairFrames.clear();repairFrames.retain(sh->repairTask,input);
+  setup(false,false,0);currentFrame=1;manualRepair(80,1000);tick(1000,1);
+  static RepairCapture proof;auto&input=proof.input;input=sh->repairInput;input.count=8192;
+  for(int j=0;j<input.count;++j){
+   const uint32_t id=uint32_t(j*2);
+   input.items[j].id=id;proof.identities[j]={id,0x200000u+id,9};
+  }
+  repairFrames.clear();repairFrames.retain(sh->repairTask,proof);
   WorkerResult result{sh->repairTask,{}};result.value.match=input.match;result.value.tick=input.tick;result.value.frame=input.frame;result.value.count=8192;
   std::vector<uint32_t> expected;
   for(int i=0;i<result.value.count;++i){uint32_t id=uint32_t((8191-i)*2);if(i%11==0)id+=1;if(i%37==0)id=2;
@@ -344,12 +355,37 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   for(unsigned step=1;repairCalculationPending&&step<128;++step)
    repairCalculationTick(1008+step);
   expect(!repairCalculationPending&&repairCount==int(expected.size()),"full-capacity results filter unknown IDs");
-  expect(std::equal(expected.begin(),expected.end(),repairIDs),"membership preserves result order, duplicates and edge IDs; zero is not an object");
+  expect(std::equal(expected.begin(),expected.end(),repairOrders,[](uint32_t id,const repairdelivery::Source& proof){
+   return proof.id==id&&proof.pointer==0x200000u+id&&proof.manual==9;
+  }),"membership preserves original identity and revision in Host result order");
   expect(sent.empty(),"membership acceptance does not itself issue game events");
  });
  run("retained_request_empty_membership",false,[]{
-  setup(false,false,0);currentFrame=1;manualRepair(81,1000);auto result=calculate();result.value.count=3;result.value.ids[0]=0;result.value.ids[1]=100;result.value.ids[2]=UINT32_MAX;
+  setup(false,false,0);currentFrame=1;manualRepair(81,1000);tick(1000,1);auto result=calculate();result.value.count=3;result.value.ids[0]=0;result.value.ids[1]=100;result.value.ids[2]=UINT32_MAX;
   deliver(result);repairCalculationTick(1008);expect(!repairCalculationPending&&repairCount==0,"empty captured request accepts no forged candidates");
+ });
+ run("manual_wait_without_sample_releases_mailbox",false,[]{
+  setup(false,true);sampleAvailable=false;manualRepair(90,1000);tick(1000,1);
+  expect(manualRepairNeedsInput&&sent.empty()&&pendingAck==90&&sh->result==RepairStaged,"receipt is available before any sample");
+  pendingAck=91;sh->result=82;sh->count=12;tick(1016,120);
+  sampleAvailable=true;tick(1032,240);
+  expect(sent.size()==1&&!manualRepairPending&&pendingAck==91&&sh->count==12&&sh->result==82,"repair succeeds without touching a later receipt");
+ });
+ run("candidate_missing_uid_rotates_and_manual_revision_wins",false,[]{
+  setup(false,false,3);manualRepair(92,1000);tick(1000,1);auto work=calculate();
+  missingCandidateId=100;manualVersions.change(101);deliver(work);
+  currentFrame=100;indexedFrame=-1;repairTick(lastHouse,1032,true);
+  expect(sent.size()==1&&sent[0].id==102&&manualRepairPending,"present unchanged building can progress despite a missing peer");
+  missingCandidateId=0;buildings[2].repairing=true;
+  currentFrame=160;repairTick(lastHouse,1048,true);
+  expect(sent.size()==2&&sent[1].id==100&&!manualRepairPending,"previously missing candidate is retried and newer manual revision is preserved");
+  expect(!pendingRepairs.contains(102,buildings[2].pointer),"live repair-in-progress retires the matching positive receipt");
+ });
+ run("pending_request_without_sample_expires_or_resets",false,[]{
+  setup(false,true);sampleAvailable=false;manualRepair(93,1000);tick(4001,40);
+  sampleAvailable=true;tick(4010,41);expect(sent.empty()&&!manualRepairPending,"expired intake cannot issue when samples recover");
+  sampleAvailable=false;manualRepair(94,4100);tick(4100,42);productionWorldReset();++match;
+  sampleAvailable=true;tick(4110,43);expect(sent.empty()&&!manualRepairPending,"new round cannot execute a previous manual intake");
  });
  std::printf("SUMMARY\t%u\t%u\t%u\n",cases,checks,failed);return failed?1:0;
 }

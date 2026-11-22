@@ -178,8 +178,7 @@ static loading::Ledger<> loadLedger;
 static bool cooperativePendingActor(uint32_t){return false;}
 static int cooperativePendingSlots(uint32_t,uint32_t){return 0;}
 static repairdelivery::Pending<> pendingRepairs;
-static compute::FrameHistory<compute::RepairInput> repairFrames;
-static uint32_t repairIDs[8192],repairTaskSeen;static int repairCount,repairAt,repairDone;
+static repairdelivery::Source repairOrders[8192];static uint32_t repairTaskSeen;static int repairCount,repairAt,repairCursor;
 static bool repairCalculationPending;static DWORD repairCalculationStarted;
 static void finishLoadingReservation(const loading::Reservation&,uint32_t,int,bool boarded){assert(!sampleReadDepth);++loadingFinished;if(boarded)++loadingBoarded;}
 static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens,bool candidateOnly=false){
@@ -236,7 +235,7 @@ static void reset(){
  loadCalculationPending=loadCaptureWaiting=false;candidateReadyForCooperative=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
  dodgeThreatCount=dodgeCursor=dodgeJobCursor=0;unloadSampleTargetFrame=-1;unloadSampleTargetCount=0;planningFrame=-1;planningWorld.count=planningWorld.intentCount=0;planningSerial=inputSerial=0;std::memset(weaponCache,0,sizeof weaponCache);oreHarvestReset();harvestEvents=0;
- repairFrames.clear();pendingRepairs.clear();repairCount=repairAt=repairDone=0;repairTaskSeen=repairCalculationStarted=0;repairCalculationPending=false;
+ repairFrames.clear();pendingRepairs.clear();repairCount=repairAt=repairCursor=0;repairTaskSeen=repairCalculationStarted=0;repairCalculationPending=false;
  minerDefenseLinkedRefinery.clear();minerDefenseRefineryCount=0;minerDefenseRefineryIncomplete=false;
  set<uint32_t>(0xA83D4C,lastHouse);set<uint32_t>(lastHouse+0x10,101);set<uint32_t>(lastHouse+0x34,0x40000);set<int>(lastHouse+0x30,0);set<int>(0x30000+0x30,1);set<uint32_t>(0x30000+0x34,0x50000);
  set<uint32_t>(0xA8B230,0x60000);set<int>(0xA8B238,3);set<int>(0xA8ED84,100);set<uint8_t>(0xA8E9A0,1);set<double>(0xB0CD48,0.0866025403784);
@@ -640,13 +639,13 @@ static void testRepair(){
  set<int>(type+0xA0,200);set<uint8_t>(type+0x157A,1);set<int>(other+0xA0,200);set<bool>(b+0x6E8,true);pendingRepairs.queued(22,c);
  vectorAt(0xA8EB40,0x840000,{a,b,c,d});sh->computeApplied=1u<<compute::Repair;seal();
  set<int>(a+0x6C,200);set<uint8_t>(type+0x157A,0);
- check(collectRepairs(lastHouse,clockNow)==1&&repairCount==1&&repairIDs[0]==20,"repair internal sealed candidates");check(!liveReads&&!hostNotifies,"repair internal collector escaped sample");
- repairAt=1;repairDone=3;advance(a);check(collectRepairs(lastHouse,clockNow)==-6&&repairCount==1&&repairAt==1&&repairDone==3&&repairIDs[0]==20,"repair missing sample cleared internal candidates");check(!missingLiveReads,"repair missing page fell back live");
+ check(collectRepairs(lastHouse,clockNow)==1&&repairCount==1&&repairOrders[0].id==20,"repair internal sealed candidates");check(!liveReads&&!hostNotifies,"repair internal collector escaped sample");
+ repairAt=1;repairCursor=3;advance(a);check(collectRepairs(lastHouse,clockNow)==-6&&repairCount==1&&repairAt==1&&repairCursor==3&&repairOrders[0].id==20,"repair missing sample cleared internal candidates");check(!missingLiveReads,"repair missing page fell back live");
  set<int>(a+0x6C,100);set<uint8_t>(type+0x157A,1);advance();sh->computeApplied=0;
  check(collectRepairs(lastHouse,clockNow)==-30&&repairCalculationPending&&sh->repairInput.count==3&&sh->repairInput.items[0].id==20&&sh->repairInput.items[1].view.alreadyRepairing&&sh->repairInput.items[2].view.issuedRecently,"repair Host publication facts");
  const auto task=sh->repairTask;const auto notices=hostNotifies;const auto started=repairCalculationStarted;const auto published=sh->repairInput;
- repairCount=2;repairAt=1;repairDone=5;repairIDs[0]=70;repairIDs[1]=71;advance(type);
- check(collectRepairs(lastHouse,clockNow,true)==-6&&repairCount==2&&repairAt==1&&repairDone==5&&repairIDs[0]==70&&repairIDs[1]==71,"repair missing refresh cleared candidate IDs");
+ repairCount=2;repairAt=1;repairCursor=5;repairOrders[0].id=70;repairOrders[1].id=71;advance(type);
+ check(collectRepairs(lastHouse,clockNow,true)==-6&&repairCount==2&&repairAt==1&&repairCursor==5&&repairOrders[0].id==70&&repairOrders[1].id==71,"repair missing refresh cleared candidate IDs");
  check(sh->repairTask==task&&hostNotifies==notices&&repairCalculationStarted==started&&repairCalculationPending&&!std::memcmp(&published,&sh->repairInput,sizeof published)&&repairFrames.find(task),"repair missing refresh replaced Host input or history");
  worldFrameReady=false;check(collectRepairs(lastHouse,clockNow,true)==-6&&sh->repairTask==task&&repairCount==2,"repair absent sample published empty work");
  std::puts("PASS repair internal/Host outputs, pending-toggle facts and failed refresh retention");

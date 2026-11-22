@@ -46,8 +46,10 @@ int retired=0,jobs=0,gameCalls=0;bool displayVisible=true,entryActive=true,fault
 struct Snapshot {FIELDS} snap;
 struct Shared {unsigned stop=0,heartbeat=0;int clickHookStatus=0;struct {int request=0,ack=0,result=0,accepted=0,rejected=0;struct {int count=0;}intent;}pointer;} state,*sh=&state;
 void MemoryBarrier(){}
-struct Local {void clear(){++jobs;}}runtimeKeys,missionObserver,actorFrameArbiter,actorLeaseArbiter,loadLedger,pendingRepairs;
-int enhancementChangedCatalogue=1,stickyCount=3,catalogueReady=1,catalogueHash=9,catalogueAt=8,catalogueDirty=0,nativeMegaQueueCallDepth=0,nativeObjectQueueCallDepth=0,indexedFrame=3,indexedCount=4,outgoingFrame=5,repairCount=2,repairAt=1,repairDone=0,repairAckRequest=7,repairAckPending=1,repairCalculationPending=1,productionBaseline=1,crateCount=2,cratesOn=1,autoWas=1,sceneResultSerial=1,lastIdle[3]{},techAllowed[8]{9};
+struct Local {void clear(){++jobs;}}runtimeKeys,missionObserver,actorFrameArbiter,actorLeaseArbiter,loadLedger,pendingRepairs,selectionReceipt;
+struct {void reset(){++jobs;}}globalVehicleScan;
+bool manualRepairPending=true,manualRepairNeedsInput=true;
+int enhancementChangedCatalogue=1,stickyCount=3,catalogueReady=1,catalogueHash=9,catalogueAt=8,catalogueDirty=0,nativeMegaQueueCallDepth=0,nativeObjectQueueCallDepth=0,indexedFrame=3,indexedCount=4,outgoingFrame=5,productionBaseline=1,crateCount=2,cratesOn=1,autoWas=1,sceneResultSerial=1,lastIdle[3]{},techAllowed[8]{9};
 RESTORE_STUBS
 RESET_STUBS
 void stickyTick(bool){++gameCalls;}
@@ -64,7 +66,7 @@ DWORD sampleClock(Shared*){return 1000;}
 GATES
 int main(){
  snap.techOpen=2;snap.nativeHookStatus=1;snap.csHookStatus=1;snap.inputPatchMask=17;state.clickHookStatus=1;
- reset(false);assert(retired==0&&gameCalls==0&&jobs>0&&stickyCount==0&&repairCount==0);
+ reset(false);assert(retired==0&&gameCalls==0&&jobs>0&&stickyCount==0&&!manualRepairPending&&!manualRepairNeedsInput);
  assert(snap.techOpen==2&&techAllowed[0]==9&&snap.nativeHookStatus==1&&snap.csHookStatus==1&&snap.inputPatchMask==17&&state.clickHookStatus==1);
  reset();assert(retired>10&&gameCalls==1&&snap.techOpen==0&&techAllowed[0]==0);
  worldlife::Sample world;world.readable=true;world.scenario=0x100000;world.cells=0x200000;world.count=4096;world.frame=100;world.session=3;world.running=1;hookWorld.observe(world);

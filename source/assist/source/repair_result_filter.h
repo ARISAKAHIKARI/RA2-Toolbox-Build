@@ -12,6 +12,7 @@ namespace assist { namespace repairfilter {
 struct Filter {
  static constexpr unsigned MaxItems=8192,Slots=32768,MaxOperationsPerTick=4096,MaxProbe=32;
  uint32_t values[Slots]{},generations[Slots]{},generation=1;
+ unsigned indices[Slots]{};
  unsigned built=0,filtered=0;
  bool running=false,failed=false;
  static unsigned hash(uint32_t id){
@@ -25,24 +26,25 @@ struct Filter {
   if(++generation==0){failed=true;return false;} // No 32K-slot reset in the game callback.
   running=true;return true;
  }
- bool add(uint32_t id){
+ bool add(uint32_t id,unsigned index){
   if(!id)return true;
   unsigned at=hash(id);
   for(unsigned i=0;i<MaxProbe;++i,at=(at+1)&(Slots-1)){
-   if(generations[at]!=generation||values[at]==id){
-    values[at]=id;generations[at]=generation;return true;
+   if(generations[at]!=generation){
+    values[at]=id;indices[at]=index;generations[at]=generation;return true;
    }
-  }
-  return false;
- }
- bool contains(uint32_t id)const{
-  if(!id)return false;
-  unsigned at=hash(id);
-  for(unsigned i=0;i<MaxProbe;++i,at=(at+1)&(Slots-1)){
-   if(generations[at]!=generation)return false;
    if(values[at]==id)return true;
   }
   return false;
+ }
+ int indexOf(uint32_t id)const{
+  if(!id)return -1;
+  unsigned at=hash(id);
+  for(unsigned i=0;i<MaxProbe;++i,at=(at+1)&(Slots-1)){
+   if(generations[at]!=generation)return -1;
+   if(values[at]==id)return int(indices[at]);
+  }
+  return -1;
  }
  // Returns true only after the ENTIRE retained input and result have been
  // verified. 'emit' retains Host result order and duplicates. Callers must
@@ -52,10 +54,12 @@ struct Filter {
   if(!running||failed||inputCount>MaxItems||resultCount>MaxItems){failed=true;return false;}
   for(unsigned ops=0;ops<MaxOperationsPerTick;++ops){
    if(built<inputCount){
-    if(!add(inputId(built++))){failed=true;running=false;return false;}
+    if(!add(inputId(built),built)){failed=true;running=false;return false;}
+    ++built;
    }else if(filtered<resultCount){
     const uint32_t id=resultId(filtered++);
-    if(contains(id))emit(id);
+    const int index=indexOf(id);
+    if(index>=0)emit(id,unsigned(index));
    }else{running=false;return true;}
   }
   if(built==inputCount&&filtered==resultCount){running=false;return true;}

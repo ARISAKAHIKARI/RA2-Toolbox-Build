@@ -72,8 +72,9 @@ enum Command {SelectSuper=1,SelectIron,SelectChrono,AttackOwnGround,
  ProduceReserved,ProduceDeferred,SelectType,RevealMap,AutoBoard,Produce,
  Repair,Cheer,Taunt,ClearBeacons,SwitchPlayer,RestorePlayer,
  CancelTechProduction,SmartUnload,CancelAdvanced};
+constexpr int AutoBoardStaged=3,RepairStaged=3,SelectionBatchStaged=4,CommandAwaitingSample=-46,CommandSelectionChanged=-47;
 struct Shared {uint32_t ack=1,request=1;int result=0,count=0,command=SelectSuper,
- arg=0,arg2=0;uint32_t requestToken=0;uint64_t requestTypeHash=0;
+ arg=0,arg2=0;uint32_t requestToken=0,requestMatch=1;uint64_t requestTypeHash=0;
  int techParameterStatus=0;bool stop=false;struct{bool active=false;}placementPreview;
  volatile uint32_t readOnly=0,readOnlyRequest=0,readOnlyAck=0;};
 static Shared storage;static Shared*shared=&storage,*sh=&storage;
@@ -81,14 +82,17 @@ static readonly::RuntimeState readOnlyState;
 struct Snapshot {int status=1,session=0,typeCount=0;uint32_t match=1;
  bool chat=false;int types[1]{};int loadUnits=0,loadVehicles=0,loadWaiting=0,
  loadUnassigned=0;}snap;
-static uint32_t ack=0,commandLatency=0,sentAt=0,match=1,inFlightMatch=1,
+static uint32_t ack=0,commandLatency=0,sentAt=0,match=1,inFlightMatch=1,lastTechSampleWait=0,
  autoRevealMatch=0,autoRevealDone=0,autoRevealRetry=0,pid=1;
 static unsigned inFlightRetries=0;static uint64_t techAcknowledgedHash=0;
 static bool fault=false,missileCleanup=false,techEnabled=false,enabled=true;
 static int game=1,ui=1;static std::wstring destructPendingTarget=L"selected";
 static constexpr auto DestructForeignNotice=L"foreign";
 static struct{int mapStrategy=0;}extra;
-static struct {bool has(int)const{return false;}void clear(){}}commandQueue,pointerMatches;
+struct Intent{int command=0;uint32_t pid=0,match=0;bool awaitingSample=false;};
+static Intent inFlightIntent;
+static struct {bool has(int)const{return false;}void clear(){}bool park(Intent,uint32_t,uint32_t){return true;}}commandQueue,pointerMatches;
+static uint32_t commandMatch(){return inFlightMatch;}
 static std::map<uint32_t,uint32_t> memory;
 static std::map<uint32_t,std::string> names;
 static std::vector<std::wstring> notices;

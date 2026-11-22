@@ -13,7 +13,7 @@ static int selectedModeCommand(uint32_t house,int mission){
  if(job.pending)return -6;
  Vec selected=vec(0xA8ECB8);if(selected.count<0||selected.count>ownground::Capacity)return -42;
  job.count=job.next=job.sent=0;job.mission=mission;job.request=sh->request;
- job.epoch=match;job.started=sampleClock(sh);job.frame=-1;job.voiced=false;
+ job.epoch=match;job.started=sampleClock(sh);job.frame=-1;job.voiced=false;job.detached=false;
  int sticky=0;
  for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);int k=kind(p);
   if(!worldObjects.contains(p)||!own(p,house)||!live(p)||(k!=1&&k!=2)||

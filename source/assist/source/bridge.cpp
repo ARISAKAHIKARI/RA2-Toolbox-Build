@@ -8,6 +8,7 @@
 #include <utility>
 #include "protocol.h"
 #include "command_intent.h"
+#include "command_sampling.h"
 #include "runtime_allocation.h"
 #include "external_planner.h"
 #include "../../external_reader/source/catalogue_stamp.h"
@@ -107,10 +108,14 @@ static void restoreViewZoom();static void restorePauseView();static void pauseVi
 static bool restoreSidebarView();static bool sidebarViewRendering();static void sidebarViewTick();
 static void superweaponGrantReset();
 static void nativePlacementReset();static void nativePlacementTick(DWORD);static void nativePlacementCompletionReset();
-static uint32_t repairIDs[8192];static int repairCount,repairAt,repairDone;
+static repairdelivery::Source repairOrders[8192];
+static int repairCount,repairAt,repairCursor;
+static bool manualRepairPending,manualRepairNeedsInput;
+static DWORD manualRepairStarted;
+static void resetRepairBatch();
+static commandsampling::SelectionReceipt selectionReceipt;
 // Request serial zero is valid after wrap; pending state is explicit.
-static bool pendingAckReady,repairAckPending;
-static uint32_t repairAckRequest;static DWORD repairAckStarted;
+static bool pendingAckReady;
 static bool releaseSticky(uint32_t);static bool stickyOwns(uint32_t);static void stickyTick(bool);static int stickyCount;
 static int formationJobCount;static void resetFormation();static bool formationOwns(uint32_t);
 static void pauseMissileForManual(uint32_t,uint32_t);static bool missileManualOverflowed();
@@ -335,7 +340,7 @@ static bool prepareWorldIndex(int frame){
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
 static void reset(bool retireHooks=true,bool preserveMissile=false){retireWorldFrame();restorePrivateOut();minerDefenseReset();restoreTriggerInput();restoreSinglePlayerFPS();resetOwnGround();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();nativePlacementReset();if(retireHooks)nativePlacementCompletionReset();restorePauseView();resetMoOrders();resetDirectAir();resetDirectSell();resetBombBoard();if(retireHooks){restoreSidebarView();resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restorePrivateOut();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
- snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();if(!preserveMissile)resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;globalVehicleScan.reset();outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks){snap.techVisible=snap.techUnavailable=0;snap.techError=techDataPending()?-44:0;}snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
+ snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();if(!preserveMissile)resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;globalVehicleScan.reset();outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;resetRepairBatch();manualRepairPending=manualRepairNeedsInput=false;selectionReceipt.clear();for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks){snap.techVisible=snap.techUnavailable=0;snap.techError=techDataPending()?-44:0;}snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
 static void mapName(wchar_t*out,DWORD p){mappingName(out,p);}
 static HANDLE controllerProcess;static DWORD controllerPID,controllerCheckAt;
 static void disconnect(){
@@ -1186,51 +1191,78 @@ static void uiSoundCommand(DWORD now){
 static DWORD clampedRepairInterval(uint32_t ms){
  return ms<500?500:ms>30000?30000:ms;
 }
-static compute::FrameHistory<compute::RepairInput> repairFrames;static compute::RepairResult repairResultCopy;
+struct RepairCapture {
+ compute::RepairInput input;
+ repairdelivery::Source identities[8192];
+ uint32_t sourceSerial=0;
+};
+static compute::FrameHistory<RepairCapture> repairFrames;
+static compute::RepairResult repairResultCopy;
 // Input membership proof is staged across callbacks, never 8K-sort on Game.
 static repairfilter::Filter repairResultGate;
 static uint32_t repairValidatedSerial=0;static unsigned repairStagedCount=0;
-static void cancelAutomaticRepairWork(){
- // A manual Repair request owns its pending calculation and candidate list.
- // Keep queued toggle receipts: disabling automation cannot retract an event
- // already handed to the engine, nor make its next scan toggle it twice.
- if(repairAckPending||(!repairCalculationPending&&repairAt>=repairCount))return;
+static void resetRepairBatch(){
+ repairCount=repairAt=repairCursor=0;
  repairCalculationPending=false;repairCalculationStarted=0;
  repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
- repairCount=repairAt=repairDone=0;repairFrames.clear();
- repairTaskSeen=sh->repairComputed;
+ repairFrames.clear();
+ if(sh)repairTaskSeen=sh->repairComputed;
+}
+static void cancelAutomaticRepairWork(){
+ // Disabling automation cannot retract an already queued toggle, and a
+ // manual request owns its own pending input and candidates.
+ if(!manualRepairPending&&(repairCalculationPending||repairAt<repairCount))resetRepairBatch();
+}
+static void stageManualRepair(DWORD now){
+ // New explicit input supersedes only the unsubmitted work.
+ resetRepairBatch();
+ manualRepairPending=manualRepairNeedsInput=true;manualRepairStarted=now;
 }
 static int collectRepairs(uint32_t house,DWORD now,bool refresh=false){
  if(repairCalculationPending&&!refresh)return -6;
- bool internal=compute::inside(sh->computeApplied,compute::Repair);
- static compute::RepairInput candidate;static std::array<uint32_t,8192> candidates;int count=0;
- // Pure repair candidate collection can use an already sealed background
- // observation; the later checkedRepairAdmission still verifies native UID,
- // owner, health, repairability and repair mission in the game thread.
+ const bool internal=compute::inside(sh->computeApplied,compute::Repair);
+ static RepairCapture candidate;int count=0;
+ // Candidate facts come from the sealed background observation. Native
+ // eligibility and the captured building identity are checked at submission.
  ObservationReadScope source;if(!source)return -6;
+ const auto& key=(sampleWorldSource?sampleWorldSource:&worldFrame)->key;
+ if(refresh){
+  const auto*last=repairFrames.find(sh->repairTask);
+  if(last&&last->sourceSerial==key.serial&&last->input.frame==key.frame)return -6;
+ }
  Vec v{};if(!sampleRoster(0xA8EB40,v))return -6;
- candidate.match=match;candidate.tick=now;candidate.frame=(sampleWorldSource?sampleWorldSource:&worldFrame)->key.frame;candidate.count=0;
- for(int i=0;i<v.count&&count<8192;++i){uint32_t p=item(v,i);if(!p||!own(p,house))continue;uint32_t t=typeOf(p,3),id=get<uint32_t>(p+0x10);
-  if(!t||!featureTypeAllowed(featuretypes::RepairBuilding,t)||(!(sh->flags&RepairUnrepairable)&&!get<uint8_t>(t+0x157A)))continue;
-  decisions::RepairView view{get<int>(p+0x6C),get<int>(t+0xA0),true,get<bool>(p+0x6E8),pendingRepairs.contains(id,p)};
-  if(internal){if(decisions::shouldRepair(view))candidates[count++]=id;}
-  else if(candidate.count<8192)candidate.items[candidate.count++]={id,view};
+ candidate.sourceSerial=key.serial;
+ auto& in=candidate.input;
+ in.match=match;in.tick=now;in.frame=key.frame;in.count=0;
+ for(int i=0;i<v.count&&count<8192;++i){
+  const uint32_t p=item(v,i);if(!p||!own(p,house))continue;
+  const uint32_t t=typeOf(p,3),id=get<uint32_t>(p+0x10);
+  if(!id||!t||!featureTypeAllowed(featuretypes::RepairBuilding,t)||
+     (!(sh->flags&RepairUnrepairable)&&!get<uint8_t>(t+0x157A)))continue;
+  const decisions::RepairView view{get<int>(p+0x6C),get<int>(t+0xA0),true,get<bool>(p+0x6E8),pendingRepairs.contains(id,p)};
+  if(internal){
+   if(decisions::shouldRepair(view))candidate.identities[count++]={id,p,manualVersions.get(id)};
+  }else if(in.count<8192){
+   in.items[in.count]={id,view};
+   candidate.identities[in.count++]={id,p,manualVersions.get(id)};
+  }
  }
  if(!source.complete())return -6;source.finish();
- repairCount=repairAt=repairDone=0;
- if(internal){repairCount=count;std::copy_n(candidates.begin(),count,repairIDs);return count;}
+ repairCount=repairAt=repairCursor=0;
+ if(internal){
+  repairCalculationPending=false;
+  repairCount=count;std::copy_n(candidate.identities,count,repairOrders);return count;
+ }
  if(!refresh){repairFrames.clear();repairTaskSeen=sh->repairComputed;}
- auto&in=sh->repairInput;in=candidate;
- repairCalculationPending=true;if(!refresh)repairCalculationStarted=now;const uint32_t serial=compute::nextTask(sh->repairTask);repairFrames.retain(serial,in);MemoryBarrier();sh->repairTask=serial;notifyHost();return -30;
+ sh->repairInput=in;
+ repairCalculationPending=true;if(!refresh)repairCalculationStarted=now;
+ const uint32_t serial=compute::nextTask(sh->repairTask);
+ repairFrames.retain(serial,candidate);MemoryBarrier();sh->repairTask=serial;notifyHost();
+ return -30;
 }
 static void repairCalculationTick(DWORD now){
  if(!repairCalculationPending)return;
- if(DWORD(now-repairCalculationStarted)>1000){
-  repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
-  repairCount=repairAt=repairDone=0;repairCalculationPending=false;
-  if(repairAckPending){sh->result=-7;sh->count=0;pendingAck=repairAckRequest;pendingAckReady=true;repairAckPending=false;}
-  return;
- }
+ if(DWORD(now-repairCalculationStarted)>1000){resetRepairBatch();return;}
  const uint32_t completed=sh->repairComputed;
  if(!repairResultGate.running&&compute::newer(completed,repairTaskSeen)){
   const long seq=sh->repairResultSeq;
@@ -1238,23 +1270,25 @@ static void repairCalculationTick(DWORD now){
    MemoryBarrier();repairResultCopy=sh->repairResult;MemoryBarrier();
    if(seq==sh->repairResultSeq&&completed==sh->repairComputed){
     repairTaskSeen=completed;
-    const auto*input=repairFrames.find(completed);const auto&r=repairResultCopy;
-    if(input&&input->count>=0&&input->count<=8192&&r.count>=0&&r.count<=8192&&
-       r.match==input->match&&r.tick==input->tick&&r.frame==input->frame&&
-       freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&
-       !get<bool>(0xA8BC60+25)){
-     repairCount=repairAt=repairDone=0;repairStagedCount=0;repairValidatedSerial=completed;
-     if(r.count==0){repairCalculationPending=false;return;}
-     // New proof epoch is O(1): no 8192-ID copy or sort.
-     if(!repairResultGate.begin(input->count,r.count))repairValidatedSerial=0;
+    const auto*capture=repairFrames.find(completed);const auto&r=repairResultCopy;
+    if(capture){
+     const auto&input=capture->input;
+     if(input.count>=0&&input.count<=8192&&r.count>=0&&r.count<=8192&&
+        r.match==input.match&&r.tick==input.tick&&r.frame==input.frame&&
+        freshness::valid(input.match,match,input.tick,input.frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&
+        !get<bool>(0xA8BC60+25)){
+      repairCount=repairAt=repairCursor=0;repairStagedCount=0;repairValidatedSerial=completed;
+      if(r.count==0){repairCalculationPending=false;return;}
+      if(!repairResultGate.begin(input.count,r.count))repairValidatedSerial=0;
+     }
     }
    }
   }
  }
  if(repairResultGate.running){
-  // A refreshed Host input or a world change cannot promote partial proof.
-  const auto*input=repairFrames.find(repairValidatedSerial);
+  const auto*capture=repairFrames.find(repairValidatedSerial);
   const auto&r=repairResultCopy;
+  const auto*input=capture?&capture->input:nullptr;
   if(!input||input->count<0||input->count>8192||r.count<0||r.count>8192||
      r.match!=input->match||r.tick!=input->tick||r.frame!=input->frame||
      !freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)||
@@ -1264,11 +1298,11 @@ static void repairCalculationTick(DWORD now){
    const bool finished=repairResultGate.step(unsigned(input->count),unsigned(r.count),
     [&](unsigned i){return input->items[i].id;},
     [&](unsigned i){return r.ids[i];},
-    [&](uint32_t id){repairIDs[repairStagedCount++]=id;});
+    [&](uint32_t,unsigned index){repairOrders[repairStagedCount++]=capture->identities[index];});
    if(repairResultGate.failed){
     repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
    }else if(finished){
-    repairCount=int(repairStagedCount);repairAt=repairDone=0;
+    repairCount=int(repairStagedCount);repairAt=repairCursor=0;
     repairResultGate.reset();repairValidatedSerial=0;repairCalculationPending=false;
     return;
    }else return;
@@ -1276,7 +1310,6 @@ static void repairCalculationTick(DWORD now){
  }
  if(externalInputFrame&&!get<bool>(0xA8BC60+25))collectRepairs(lastHouse,now,true);
 }
-
 static int superSelect(uint32_t house,int index){Vec v=vec(house+0x254,256);uint32_t p=item(v,index);if(!p||get<uint32_t>(p+0x2C)!=house||!get<bool>(p+0x6D))return -4;
  if(!nativeDependencyReady(0x6CC360))return -12;
  if(!call<char>(0x6CC360,p))return -5;uint32_t t=get<uint32_t>(p+0x28);if(!t)return -4;
@@ -1309,30 +1342,72 @@ static int namedSuper(uint32_t house,int command){const char* id=command==Select
 #include "native_placement_bridge.h"
 #include "superweapon_sidebar_bridge.h"
 #include "superweapon_grant_bridge.h"
-static void command(uint32_t house,DWORD now,bool candidateOnly=false){uint32_t req=sh->request;if(req==sh->ack||(pendingAckReady&&req==pendingAck)||(repairAckPending&&req==repairAckRequest)||(ownground::job.pending&&req==ownground::job.request))return;MemoryBarrier();int c=sh->command,arg=sh->arg;int result=1,n=0;
- if(candidateOnly&&c!=AutoBoard&&c!=ProduceDeferred&&
-    ((c!=SmartUnload&&c!=ProduceReserved)||!candidateRosterReady()))return;
+static int readSelectionReceipt(commandsampling::SelectionMember* selected){
+ Vec v{};
+ if(!read(0xA8ECB8,&v,sizeof v)||v.count<0||v.count>commandsampling::SelectionReceipt::Capacity||
+    v.count>v.capacity||(v.count&&v.items<0x10000))return -1;
+ for(int i=0;i<v.count;++i){
+  uint32_t pointer=0,id=0;
+  if(!read(v.items+uint32_t(i)*4,&pointer,4)||!pointer||
+     !read(pointer+0x10,&id,4)||!id||!manualVersions.trackable(id))return -1;
+  selected[i]={pointer,id,manualVersions.get(id)};
+ }
+ return v.count;
+}
+static bool selectionReceiptMatches(uint32_t receipt){
+ if(receipt!=selectionReceipt.serial)return false;
+ commandsampling::SelectionMember live[commandsampling::SelectionReceipt::Capacity]{};
+ return selectionReceipt.matches(live,readSelectionReceipt(live));
+}
+static int awaitCommandSample(int command,int& receipt){
+ if(commandsampling::selectionBound(command)){
+  if(sh->requestToken)receipt=int(sh->requestToken);
+  else {
+   commandsampling::SelectionMember live[commandsampling::SelectionReceipt::Capacity]{};
+   receipt=int(selectionReceipt.capture(live,readSelectionReceipt(live)));
+  }
+ }
+ return CommandAwaitingSample;
+}
+static void command(uint32_t house,DWORD now,commandsampling::Sample sample=commandsampling::Sample::Exact){
+ const uint32_t req=sh->request;
+ if(req==sh->ack||(pendingAckReady&&req==pendingAck))return;
+ MemoryBarrier();
+ const int c=sh->command,arg=sh->arg;
+ const bool candidateOnly=sample!=commandsampling::Sample::Exact;
+ int result=1,n=0;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
  else if(c==AttackOwnGround&&DWORD(now-sh->requestTick)>150){result=-7;}
  else if((enhancementChangedCatalogue||sh->requestTypeHash)&&typeIndexedCommand(c,arg)&&sh->requestTypeHash!=typeListHash(snap.types,snap.typeCount)){result=-7;}
  else if(get<bool>(0xA8BC60+25)){result=-8;}
- else if(c==Repair){
-  // The manual command runs before repairTick. Retire an automatic task that
-  // was disabled in this same message before admitting the manual request.
-  if(!(sh->flags&AutoRepair))cancelAutomaticRepairWork();
-  n=collectRepairs(house,now);if(n<0&&n!=-30){result=n;n=0;}
-  if(n>0||n==-30){repairAckRequest=req;repairAckPending=true;repairAckStarted=now;sh->result=1;sh->count=0;return;}
+ else if(commandsampling::selectionBound(c)&&sh->requestToken&&!selectionReceiptMatches(sh->requestToken)){
+  result=CommandSelectionChanged;
  }
+ else if(!commandsampling::canAttempt(c,sample)){result=awaitCommandSample(c,n);}
+ else if(c==Repair){stageManualRepair(now);result=RepairStaged;}
  else if(c==Cheer||c==Taunt){result=socialCommand(house,c,arg,now);n=result>0;}
  else if(c==DestructPlayer){result=destructPlayerCommand(uint32_t(arg),uint32_t(sh->arg2),sh->requestToken);n=result>0?1:0;}
  else if(c==PlaceCompletedBuilding){result=nativePlacementCommand(house,now);n=result>0?1:0;}
  else if(c==SwitchPlayer||c==RestorePlayer){result=-4;n=0;} // unavailable in this release, including stale commands
  else if(c==SelectType){n=selectType(house,arg,sh->arg2!=0);if(n<0){result=n;n=0;}}
  else if(c==SelectVariant){n=selectVariant(house,sh->arg2!=0);if(n<0){result=n;n=0;}}
- else if(c==SmartUnload){int sent=smartUnload(house,candidateOnly);if(sent==-30)return;if(sent<0)result=sent;else n=sent;}
+ else if(c==SmartUnload){
+  const int sent=smartUnload(house,candidateOnly);
+  if(sent==-30)result=awaitCommandSample(c,n);
+  else if(sent<0)result=sent;
+  else n=sent;
+ }
  else if(c==StickyGuard){n=stickyCommand(house);if(n<0){result=n;n=0;}}
- else if(c==AttackOwnGround){attackOwnGroundCommand(house,now,req);return;}
- else if(selectedmode::index(c)>=0){n=selectedModeCommand(house,selectedmode::mission(selectedmode::index(c)));if(n==-30)return;if(n<0){result=n;n=0;}}
+ else if(c==AttackOwnGround||selectedmode::index(c)>=0){
+  if(ownground::job.pending)result=-6;
+  else{
+   if(c==AttackOwnGround){attackOwnGroundCommand(house,now,req);if(!ownground::job.pending)return;}
+   else n=selectedModeCommand(house,selectedmode::mission(selectedmode::index(c)));
+   if(ownground::job.pending){
+    ownground::job.detached=true;result=SelectionBatchStaged;n=ownground::job.sent;
+   }else if(n<0){result=n;n=0;}
+  }
+ }
  else if(c==CancelAdvanced){Vec v=vec(0xA8ECB8);for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(p&&own(p,house)){cancelAutomatic(p);++n;}}}
  else if(c==AutoBoard){result=autoLoad(house,nullptr,candidateOnly);n=snap.loadIssued;
   if(result==-30){result=AutoBoardStaged;n=0;}
@@ -1366,13 +1441,14 @@ static void command(uint32_t house,DWORD now,bool candidateOnly=false){uint32_t 
  }
  else if(c==SelectIron||c==SelectChrono){result=namedSuper(house,c);n=result>0;}
  else if(c==AirPathMove){uint32_t id=uint32_t(arg),p=worldByID(id),cell=uint32_t(sh->arg2);
-  if(!airpathpolicy::events(get<int>(0xA8B238),(sh->flags&AirWaypoints)!=0,(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork)||!p||!own(p,house)||kind(p)!=0||manualVersions.get(id)!=sh->requestToken||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!readMapCell(int(cell%1000),int(cell/1000)))result=-4;
+  if(candidateOnly&&!p)result=CommandAwaitingSample;
+  else if(!airpathpolicy::events(get<int>(0xA8B238),(sh->flags&AirWaypoints)!=0,(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork)||!p||!own(p,house)||kind(p)!=0||manualVersions.get(id)!=sh->requestToken||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!readMapCell(int(cell%1000),int(cell/1000)))result=-4;
   else if(nativeMission(house,id,2,0,cell,11,0,0,taskarbiter::Owner::Generic))n=1;else result=-6;
  }
  else if(c==ProduceReserved){
   uint32_t origin=worldByID(uint32_t(sh->arg2));
-  if(candidateOnly&&!origin)return; // Candidate absence cannot disprove the original parent.
-  if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||snap.types[arg].kind!=7||!origin||!own(origin,house)||kind(origin)!=3||get<bool>(origin+0x81)||!get<bool>(origin+0x90))result=-4;
+  if(candidateOnly&&!origin)result=CommandAwaitingSample;
+  else if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||snap.types[arg].kind!=7||!origin||!own(origin,house)||kind(origin)!=3||get<bool>(origin+0x81)||!get<bool>(origin+0x90))result=-4;
   else if(!nativeDependenciesReady(0x6ABC60,0x4F7870,0x5F7900))result=-12;
   else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t f=tab==0||tab==1?get<uint32_t>(house+(tab?0x53CC:0x53BC)):0;
    if(tab<0||tab>1||!hasCameo(7,t.index)||!typePointers[arg]||!reservationCanBuild(typePointers[arg],house))result=-9;
@@ -1413,9 +1489,9 @@ static void command(uint32_t house,DWORD now,bool candidateOnly=false){uint32_t 
  else result=-4;
  sh->result=result;sh->count=n;pendingAck=req;pendingAckReady=true;
 }
-static repairdelivery::Observation observePendingRepair(uint32_t id,uint32_t pointer,uint32_t house){
+static repairdelivery::Observation observePendingRepair(uint32_t id,uint32_t pointer,uint32_t house,bool exact){
  const uint32_t p=worldObjects.byId(id);
- if(!p||p!=pointer)return {}; // Complete UID roster proves absence/replacement.
+ if(!p||p!=pointer)return {false,false,false,!exact}; // Candidate absence is unknown.
  uint32_t liveID=0,vt=0,owner=0,type=0;int hp=0,maxHP=0;
  uint8_t alive=0,onMap=0,limbo=1,repairing=0;
  // A failed live field does not prove that the toggle was consumed.
@@ -1432,9 +1508,10 @@ static repairdelivery::Observation observePendingRepair(uint32_t id,uint32_t poi
 // A second live UID or building field read can fail after indexWorld succeeds;
 // treating the default-zero result as a rejected building silently loses Repair.
 enum class RepairAdmission { Unknown, Skip, Issue };
-static RepairAdmission checkedRepairAdmission(uint32_t id,uint32_t house,uint32_t&pointer,bool&recent){
- pointer=worldObjects.byId(id);recent=false;
- if(!pointer)return RepairAdmission::Skip;
+static RepairAdmission checkedRepairAdmission(const repairdelivery::Source&source,uint32_t house,bool exact){
+ const uint32_t id=source.id,pointer=worldObjects.byId(id);
+ if(!pointer)return exact?RepairAdmission::Skip:RepairAdmission::Unknown;
+ if(pointer!=source.pointer||manualVersions.get(id)!=source.manual||!manualVersions.trackable(id))return RepairAdmission::Skip;
  uint32_t uid=0,vt=0,owner=0,type=0;int hp=0,maximum=0;
  uint8_t alive=0,onMap=0,limbo=1,repairing=0,repairable=0;
  if(!read(pointer+0x10,&uid,sizeof uid)||!read(pointer,&vt,sizeof vt)||
@@ -1454,47 +1531,57 @@ static RepairAdmission checkedRepairAdmission(uint32_t id,uint32_t house,uint32_
  }
  if(!featureTypeAllowed(featuretypes::RepairBuilding,type)||
     (!((sh->flags&RepairUnrepairable)!=0)&&!repairable))return RepairAdmission::Skip;
- recent=pendingRepairs.contains(id,pointer);
+ const bool recent=pendingRepairs.contains(id,pointer);
  return decisions::shouldRepair({hp,maximum,true,repairing!=0,recent})?
    RepairAdmission::Issue:RepairAdmission::Skip;
 }
-static void repairTick(uint32_t house,DWORD now){
+static void repairTick(uint32_t house,DWORD now,bool localCandidate){
  const int frame=get<int>(0xA8ED84);
  const bool currentRoster=indexedFrame==frame&&commandRosterReady();
  const bool automatic=(sh->flags&AutoRepair)!=0;
- // Cancel before polling: a late host result must not resurrect disabled work.
+ snap.autoRepair=automatic;
+ if(manualRepairPending&&DWORD(now-manualRepairStarted)>3000){
+  resetRepairBatch();manualRepairPending=manualRepairNeedsInput=false;
+ }
+ // Cancel before polling so a late Host result cannot revive disabled work.
  if(!automatic)cancelAutomaticRepairWork();
+ if(get<bool>(0xA8BC60+25))return;
+ if(manualRepairNeedsInput&&collectRepairs(house,now)!=-6)manualRepairNeedsInput=false;
  repairCalculationTick(now);
- if(currentRoster)pendingRepairs.observeBudgeted([&](uint32_t id,uint32_t pointer){
-  return observePendingRepair(id,pointer,house);
+ if(currentRoster||localCandidate)pendingRepairs.observeBudgeted([&](uint32_t id,uint32_t pointer){
+  return observePendingRepair(id,pointer,house,currentRoster);
  });
  const DWORD interval=clampedRepairInterval(sh->repairMs);
  bool deferred=false;
- if(!repairCalculationPending&&!repairAckPending&&automatic&&(!autoWas||(DWORD(now-lastAuto)>=interval&&repairAt>=repairCount))){const int captured=collectRepairs(house,now);deferred=captured==-6;if(!deferred)lastAuto=now;}
- autoWas=automatic&&!deferred;snap.autoRepair=automatic;
+ if(!repairCalculationPending&&!manualRepairPending&&automatic&&
+    (!autoWas||(DWORD(now-lastAuto)>=interval&&repairAt>=repairCount))){
+  deferred=collectRepairs(house,now)==-6;if(!deferred)lastAuto=now;
+ }
+ autoWas=automatic&&!deferred;
  static int budgetFrame=-1,budget;static uint32_t budgetMatch;
  if(budgetFrame!=frame||budgetMatch!=match){budgetFrame=frame;budgetMatch=match;budget=recurringBudget(EventLane::Repair);}
- if(repairAt<repairCount&&budget>0&&currentRoster){
-  // Pre14's tri-state repair eligibility stays in place. A missing worker
-  // index leaves the repair candidates pending; never scan the live roster. 
-  while(repairAt<repairCount&&budget>0){
-   const uint32_t id=repairIDs[repairAt];uint32_t p=0;bool recent=false;
-   const RepairAdmission status=checkedRepairAdmission(id,house,p,recent);
-   if(status==RepairAdmission::Unknown)break;
-   if(status==RepairAdmission::Issue){
-    if(!pendingRepairs.room(id)||!repairEvent(house,id))break;
-    pendingRepairs.queued(id,p);--budget;++repairDone;++snap.repairTotal;
+ if(repairAt<repairCount&&budget>0&&(currentRoster||localCandidate)){
+  // In a cross-frame candidate a single missing UID need not hold the rest
+  // of the batch. Keep that UID pending. Bound the number of checks per pass.
+  unsigned remaining=unsigned(repairCount-repairAt);
+  if(!currentRoster)remaining=std::min(remaining,64u);
+  while(repairAt<repairCount&&budget>0&&remaining--){
+   if(repairCursor<repairAt||repairCursor>=repairCount)repairCursor=repairAt;
+   const auto& source=repairOrders[repairCursor];
+   const RepairAdmission status=checkedRepairAdmission(source,house,currentRoster);
+   if(status==RepairAdmission::Unknown){
+    if(currentRoster)break;
+    ++repairCursor;continue;
    }
-   ++repairAt;
+   if(status==RepairAdmission::Issue){
+    if(!pendingRepairs.room(source.id)||!repairEvent(house,source.id))break;
+    pendingRepairs.queued(source.id,source.pointer);--budget;++snap.repairTotal;
+   }
+   if(repairCursor!=repairAt)repairOrders[repairCursor]=repairOrders[repairAt];
+   ++repairAt;++repairCursor;
   }
  }
- // Completion reports events actually queued, not the number of candidates.
- // A congested native queue must also produce a terminal ACK, not wait forever.
- if(currentRoster&&repairAckPending&&!repairCalculationPending&&(repairAt>=repairCount||DWORD(now-repairAckStarted)>3000)){
-  sh->result=repairDone?1:-6;sh->count=repairDone;
-  pendingAck=repairAckRequest;pendingAckReady=true;repairAckPending=false;repairAckRequest=0;
-  repairAt=repairCount; // Drop unsent candidates on timeout; no surprise later repair.
- }
+ if(manualRepairPending&&!manualRepairNeedsInput&&!repairCalculationPending&&repairAt>=repairCount)manualRepairPending=false;
 }
 static void scanCrates(uint32_t tactical,int frame,DWORD now,uint32_t flags){
  snap.crateCount=0;if(!(flags&Crates)){cratesOn=false;crateCount=0;return;}
@@ -1671,7 +1758,7 @@ template<class Fn>static void withInputPublication(Shared*value,uint32_t session
 static void cancelReadOnlyMailboxes(){
  if(!sh)return;
  // A delayed internal ACK must not overwrite the terminal pause receipt.
- pendingAckReady=false;pendingAck=sh->request;repairAckPending=false;
+ pendingAckReady=false;pendingAck=sh->request;
  readonly::cancelMailboxes(*sh,[]{MemoryBarrier();});
 }
 static bool retireForReadOnly(){
@@ -1772,7 +1859,7 @@ static void tick(){
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=worldSample.frame!=lastFrame&&
-   (sharedWorldWanted||(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->keepInputUnlocked||sh->blockTriggerCamera||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||hostFrameCaptureWanted(now)||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||queuedUnload.count||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||loadLedger.count||repairAt<repairCount||repairAckPending||pendingRepairs.count||entryReservationCount||cooperativeEffectCount||missionObserver.pending()||actorLeaseArbiter.count||ownground::job.pending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
+   (sharedWorldWanted||(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->keepInputUnlocked||sh->blockTriggerCamera||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||hostFrameCaptureWanted(now)||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||queuedUnload.count||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||loadLedger.count||repairAt<repairCount||manualRepairPending||pendingRepairs.count||entryReservationCount||cooperativeEffectCount||missionObserver.pending()||actorLeaseArbiter.count||ownground::job.pending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
     (sh->plannerTracking&&(sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn)))||
     sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
  bool resultsDue=(loadCalculationPending&&compute::newer(sh->loadComputed,loadTaskSeen))||(repairCalculationPending&&compute::newer(sh->repairComputed,repairTaskSeen))||((sh->missileEnabled||missileHoldCount)&&compute::newer(sh->missileComputed,missileApplied))||((sh->dodgeEnabled||dodgeCount)&&compute::newer(sh->dodgeComputed,dodgeApplied))||(unloadCount&&compute::newer(sh->unloadComputed,unloadApplied));
@@ -1844,7 +1931,7 @@ static void tick(){
   !sh->burstHoldEnabled&&!sh->burstHeld&&!sh->missileEnabled&&!sh->scrollRefreshHz&&
   !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&!dodgeCount&&
   !burstCount&&!missileHoldCount&&!nativeCount&&!unloadCount&&!queuedUnload.count&&
-  !loadLedger.count&&!loadCalculationPending&&!repairCalculationPending&&
+  !loadLedger.count&&!loadCalculationPending&&!repairCalculationPending&&!manualRepairPending&&
   !(repairAt<repairCount)&&!pendingRepairs.count&&!entryReservationCount&&
   !cooperativeEffectCount&&!actorLeaseArbiter.count&&!missionObserver.pending()&&
   !ownground::job.pending&&!nativePlacementCompletionPending()&&!scrollRefreshActive&&
@@ -1879,7 +1966,7 @@ static void tick(){
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;pauseViewTick();buildTimeTooltipTick();
  snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();inputLockTick();
  if(worldChange==worldlife::Change::Same&&lastHouse)oreHarvestObserve(lastHouse,frame,now);
- bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
+ bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||manualRepairPending||ownground::job.pending||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
   sh->flags|sh->plannerTracking|((sh->cooperativePlan!=sh->cooperativeAck)?AutoOreReturn:0),(sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)));
  const bool deferIndexedWork=needsIndex&&(!refreshWorldIndex(frame)||!commandRosterReady());
  indexedWorkDeferred=deferIndexedWork;
@@ -1914,7 +2001,8 @@ static void tick(){
   // against the two live objects, with the original manual revision.
   // New input and unit production use their own narrow validation even
   // before a candidate arrives. Commands that need a parent UID still wait.
-  if(localDeferred)command(house,now,true);
+  ownGroundTick(house,frame,now,false);
+  command(house,now,localCandidate?commandsampling::Sample::LocalCandidate:commandsampling::Sample::Missing);
   if(localCandidate){
    if(queuedUnload.count||unloadCount){
     int budget=recurringBudget(EventLane::Unload);
@@ -1938,7 +2026,7 @@ static void tick(){
  formationTick(house,frame,now,!deferIndexedWork);moOrdersTick(house,frame,now,!deferIndexedWork);
  if(!deferIndexedWork){directair::tick(house,frame,now);bombboard::tick(house,frame);}
  if(!deferIndexedWork||candidateInputFrame)loadingCalculationTick(house,now,deferIndexedWork);
- repairTick(house,now);
+ repairTick(house,now,candidateInputFrame);
  if(!deferIndexedWork){autoLoadTick(house,frame);nativeOrdersTick(house,frame);}
  // Terminal receipts also release ownership. Observe only with a strict roster.
  if(!deferIndexedWork&&missionObserver.pending())snap.observedEvents+=missionObserver.pollWithReceipts(match,frame,now,[](uint32_t id){

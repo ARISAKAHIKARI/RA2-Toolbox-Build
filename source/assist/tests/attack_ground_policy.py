@@ -22,7 +22,7 @@ code=r'''
 #include <unordered_map>
 #include <set>
 using DWORD=uint32_t;using std::size_t;
-'''+commands+r'''
+'''+commands+f'\n#define CHECK_DETACHED_BATCH {int(not a.baseline)}\n'+r'''
 static_assert(AttackOwnGround==34&&PlaceCompletedBuilding==33&&SetSleep==29);
 static_assert(selectedmode::Count==4&&selectedmode::command(3)==AttackOwnGround&&selectedmode::index(AttackOwnGround)==3);
 struct Shared{uint32_t request=1,stop=0;int result=0,count=0;}shared,*sh=&shared;
@@ -131,6 +131,18 @@ int main(){unsigned checks=0;auto check=[&](bool x){++checks;if(!x){std::fprintf
   budget=24;ownGroundTick(0x90000,11,3601);check(events.empty()&&shared.result==-7);
   fresh();actor(0);attackOwnGroundCommand(0x90000,100,1);check(events.size()==1&&events[0].mission==1);
  }
+#if CHECK_DETACHED_BATCH
+ fresh();actor(0);actor(1);budget=1;check(selectedModeCommand(0x90000,5)==-30&&events.size()==1);
+ ownground::job.detached=true;shared.request=2;shared.result=42;shared.count=19;
+ budget=24;ownGroundTick(0x90000,11,116,false);
+ check(ownground::job.pending&&events.size()==1&&!pendingAckReady);
+ ownGroundTick(0x90000,12,132,true);
+ check(!ownground::job.pending&&events.size()==2&&!pendingAckReady&&shared.result==42&&shared.count==19);
+ fresh();actor(0);budget=0;attackOwnGroundCommand(0x90000,100,1);
+ ownground::job.detached=true;shared.request=2;shared.result=43;shared.count=20;
+ budget=24;ownGroundTick(0x90000,90,3601,false);
+ check(!ownground::job.pending&&events.empty()&&!pendingAckReady&&shared.result==43&&shared.count==20);
+#endif
  std::printf("PASS %u production own-ground batching/input checks\n",checks);
 }
 '''

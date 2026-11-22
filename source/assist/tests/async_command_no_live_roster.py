@@ -170,12 +170,13 @@ external = (root / "external_orders_bridge.h").read_text()
 local_fallback = between(dispatcher, "else{\n  uiSoundCommand(now);", "nativePlacementTick(now);")
 assert "const bool localDeferred=deferIndexedWork&&eventdelivery::isSingleplayer(sessionMode);" in dispatcher
 assert "const bool localCandidate=localDeferred&&candidateRosterReady();" in dispatcher
-assert "if(localDeferred)command(house,now,true);" in local_fallback
+assert "command(house,now,localCandidate?commandsampling::Sample::LocalCandidate:commandsampling::Sample::Missing);" in local_fallback
+assert "command(house,now" in local_fallback and "ownGroundTick(house,frame,now,false);" in local_fallback
 assert "if(localCandidate)" in local_fallback
 assert "(!deferIndexedWork||candidateInputFrame)&&dodgeControlTick(house,frame,now,deferIndexedWork)" in dispatcher
 assert "if(result==-30){result=AutoBoardStaged;n=0;}" in bridge
 assert "loadAckPending" not in bridge+autoload
-assert "if(candidateOnly&&!origin)return;" in bridge
+assert "if(candidateOnly&&!origin)result=CommandAwaitingSample;" in bridge
 assert "externalOrdersTick(house,frame,now,true);" in local_fallback
 assert "if(sh->pointer.request!=sh->pointer.ack)pointerTick(true);" in local_fallback
 assert "serviceCooperativePlan(house,frame,now,true,preciseNow);" in local_fallback
