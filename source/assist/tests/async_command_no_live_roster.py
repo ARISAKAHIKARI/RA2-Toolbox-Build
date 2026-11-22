@@ -237,4 +237,15 @@ assert 'ManualTakeover' in proof and 'TargetChanged' in proof and 'WrongMatch' i
 assert 'THREAD_PRIORITY_BELOW_NORMAL' in worker
 assert 'WaitForSingleObject(thread_,0)' in worker
 assert 'latestTicket_.fetch_add(1' in worker
+
+# Host-only page demand may refresh the worker's read-only publication without
+# revoking an already sealed, same-frame Runtime command sample.
+capture = runtime.split("template<class Live>static bool captureWorldFrame", 1)[1].split(
+    "#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)", 1
+)[0]
+assert "worldframe::commandSampleReusable(" in capture
+assert "worldFrameReady&&!worldFrameBoundaryOnly&&!runtimeDemandOverflow" in capture
+assert "if(!strictReusable){worldFrameReady=false;worldFrameBoundaryOnly=false;}" in capture
+assert "return strictReusable;" in capture
+
 print("PASS async command graph and four native Hook paths never sync-scan the full live roster; worker expiration is nonblocking")

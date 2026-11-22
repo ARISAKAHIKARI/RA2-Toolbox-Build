@@ -15,6 +15,7 @@ int main(int argc,char**argv){
  const Fn wrongGlobal=fn("PollWrongGlobal"),rejected=fn("RejectedCount");
  const Fn startExpired=fn("StartExpired"),workerReads=fn("WorkerReadCount");
  const Fn startCrossFrame=fn("StartCrossFrame"),pollCrossFrame=fn("PollCrossFrame");
+ const Fn startHostRevisionChange=fn("StartHostRevisionChange"),pollHostRevisionChange=fn("PollHostRevisionChange");
  const Fn stop=fn("Stop"),reads=fn("GameReadCount");
  const Fn restart=fn("RestartAfterStop");
  const Fn asyncEnabled=fn("AsyncEnabled");
@@ -38,6 +39,12 @@ int main(int argc,char**argv){
  // This is an external test harness polling in a separate process.
  int result=0;
  for(int attempt=0;attempt<150&&!result;++attempt){Sleep(10);result=poll();}
+ assert(result==1&&reads()==0);
+ // A new Host-only demand revision must not revoke an otherwise exact
+ // same-frame Runtime command sample. The Runtime lease revision is unchanged.
+ assert(startHostRevisionChange()==1);
+ result=0;
+ for(int attempt=0;attempt<150&&!result;++attempt){Sleep(10);result=pollHostRevisionChange();}
  assert(result==1&&reads()==0);
  // The producer must reclaim the previous worker vector before building its
  // next page list; after warm-up this keeps the 16K-page capacity reusable.

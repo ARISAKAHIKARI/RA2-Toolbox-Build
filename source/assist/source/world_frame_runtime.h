@@ -307,12 +307,21 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(!++worldFrameCandidateVersion)++worldFrameCandidateVersion;
  }
  const uint64_t requestRevision=(uint64_t(worldFrameServer.requestedRevision())<<32)|runtimeDemandRevision;
+ // Host page discovery is independent from Runtime command completeness. Keep
+ // a valid same-frame strict sample live while the worker refreshes Host-only
+ // pages; only a new Runtime lease, graph requirement, world/frame or roster
+ // configuration can invalidate it.
+ const bool strictReusable=asyncCommand&&worldFrameReady&&!worldFrameBoundaryOnly&&!runtimeDemandOverflow&&
+  worldframe::commandSampleReusable(worldFrame.key,key,worldFrameCapturedDemand,graphDemand,
+   worldFrameCapturedRevision,requestRevision,worldFrameCommandRoster.current(worldFrame.key),
+   worldFrameCommandRoster.global,globalVehicles);
  if(haveCaptureAttempt&&lastCaptureAttempt.sameFrame(key)){
   // A paused frame still needs a new worker request when a display is opened,
   // a dependency is missing, or the previous Host publication was retired.
-  const bool reuseAsync=asyncCommand&&worldFrameServer.hasPublication()&&
-      (graphDemand&~worldFrameCapturedDemand)==0&&requestRevision==worldFrameCapturedRevision&&
-      worldFrameCommandRoster.global==globalVehicles;
+  // Host-only revision changes refresh that publication without revoking the
+  // already sealed Runtime command sample.
+  const bool reuseAsync=strictReusable&&worldFrameServer.hasPublication()&&
+      requestRevision==worldFrameCapturedRevision;
   if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)&&(!asyncCommand||reuseAsync)){
    // The async worker owns Host-only transport, including same-frame
    // republishing; never interleave the older strict publisher in its slot.
@@ -377,14 +386,17 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    if(sh)++sh->sampling.candidateAdopted;
 #endif
   }
-  worldFrameReady=false;worldFrameBoundaryOnly=false;
+  // A candidate refresh may arrive while a still-current strict Runtime
+  // sample is in use. Never discard that sample merely because Host-only
+  // page demand changed; candidate bytes remain observation-only.
+  if(!strictReusable){worldFrameReady=false;worldFrameBoundaryOnly=false;}
   // Always poll take() first. An identical pending request skips expensive
   // page-list assembly, but paused-frame recovery retries after 16ms.
   if(commandRequestGate.defer(key,graphDemand,requestRevision,globalVehicles,key.tick)){
 #if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
    if(sh)++sh->sampling.gateDeferred;
 #endif
-   return false;
+   return strictReusable;
   }
   // A matching in-flight worker already owns this request; avoid rebuilding
   // even the 16K-page dependency list on the Game callback.
@@ -393,7 +405,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
 #if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
    if(sh)++sh->sampling.workerDeferred;
 #endif
-   return false;
+   return strictReusable;
   }
   // Only a deduplicated, bounded address list is assembled on the game
   // thread. Overflow invalidates the whole request; the vector is ownership-
@@ -432,11 +444,14 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(complete)for(uint32_t page:runtimeWorldDemands)if(!appendPage(page)){complete=false;break;}
   if(complete)complete=runtimeDemandLeases.visit(key.tick,appendPage);
   if(!complete||requestOverflow){
-   // This sample is not complete. Keep the bounded lease set for retry, but
-   // discard the transient list so expired/removed demands can be reconsidered.
-   runtimeWorldDemands.clear();runtimeDemandBits.fill(0);requests.clear();
-   if(!++runtimeDemandRevision)++runtimeDemandRevision;
-   ++sh->worldSampleFailures;return false;
+   // Host-only demand overflow must not revoke an already complete Runtime
+   // command sample. If Runtime demand changed, strictReusable is false and
+   // the old sample is retired before retrying the bounded request list.
+   if(!strictReusable){
+    runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+    if(!++runtimeDemandRevision)++runtimeDemandRevision;
+   }
+   requests.clear();++sh->worldSampleFailures;return strictReusable;
   }
   // Server::requests() may publish a newer Host demandRevision than the
   // version sampled before assembling the request list. Stamp the exact
@@ -451,7 +466,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    if(sh)++sh->sampling.requestsQueued;
 #endif
   }
-  return false;
+  return strictReusable;
  }
 #if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
  if(!worldFramePublication.begin(worldFrame))return false;

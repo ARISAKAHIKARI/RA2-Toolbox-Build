@@ -2,9 +2,29 @@
 #include "world_frame.h"
 
 namespace worldframe {
-// Only the original game dispatcher may consume a completed capture. This
-// identity/age/revision check intentionally disallows even one frame of slack:
-// worker data from a later or earlier simulation tick is not command authority.
+// The upper 32 bits are the Host's read-only page-demand revision. A Host
+// reader discovering another display page must not revoke a same-frame
+// Runtime command sample. The lower 32 bits track Runtime-owned page leases;
+// changing those DOES invalidate command authority.
+inline bool sameRuntimeRevision(uint64_t capturedRevision,uint64_t currentRevision){
+ return uint32_t(capturedRevision)==uint32_t(currentRevision);
+}
+// A strict sample may remain in use while the Host worker refreshes its
+// separate read-only publication. It is reusable only in the same live
+// simulation frame, with every Runtime demand already captured and the same
+// native UID roster/configuration.
+inline bool commandSampleReusable(const Key&captured,const Key&current,
+ uint32_t capturedDemand,uint32_t requiredDemand,
+ uint64_t capturedRevision,uint64_t currentRevision,
+ bool rosterCurrent,bool capturedGlobal,bool requiredGlobal){
+ return captured.pid&&captured.owner&&captured.match&&captured.sameFrame(current)&&
+        (requiredDemand&~capturedDemand)==0&&
+        sameRuntimeRevision(capturedRevision,currentRevision)&&
+        rosterCurrent&&capturedGlobal==requiredGlobal;
+}
+// Only the original game dispatcher may consume a completed capture. The
+// Host page revision is intentionally independent; exact frame, Runtime
+// demand revision, required graph bits and handoff age remain strict.
 inline bool acceptCommandCapture(const Key&captured,const Key&current,
  uint32_t capturedDemand,uint32_t requiredDemand,
  uint64_t capturedRevision,uint64_t currentRevision,
@@ -12,7 +32,7 @@ inline bool acceptCommandCapture(const Key&captured,const Key&current,
  return captured.pid&&captured.owner&&captured.match&&
         captured.sameFrame(current)&&
         (requiredDemand&~capturedDemand)==0&&
-        capturedRevision==currentRevision&&
+        sameRuntimeRevision(capturedRevision,currentRevision)&&
         uint32_t(now-captured.tick)<=maxAgeMs;
 }
 // OBSERVATION ONLY. A completed background graph may span more than one

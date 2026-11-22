@@ -73,6 +73,17 @@ extern "C" __declspec(dllexport) int PollGlobal(){
     onThreadReads.load()!=0||offThreadReads.load()==0)return -1;
  return 1;
 }
+extern "C" __declspec(dllexport) int StartHostRevisionChange(){
+ gameThread=GetCurrentThreadId();fixture::setup(memory);offThreadReads=0;onThreadReads=0;
+ job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
+ return worker.request(job,worldframe::Base,(uint64_t(54)<<32)|17u,emptyPages)?1:0;
+}
+extern "C" __declspec(dllexport) int PollHostRevisionChange(){
+ if(!worker.take(job,worldframe::Base,(uint64_t(55)<<32)|17u,accepted,&acceptedRoster,false))return 0;
+ if(!accepted.sealed()||!acceptedRoster.current(accepted.key)||
+    onThreadReads.load()!=0||offThreadReads.load()==0)return -1;
+ return 1;
+}
 extern "C" __declspec(dllexport) int StartCrossFrame(){
  gameThread=GetCurrentThreadId();fixture::setup(memory);offThreadReads=0;onThreadReads=0;
  job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
