@@ -618,11 +618,11 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await line.locator('.setting-label').filter({hasText:/^高级进驻$/}).count(),1);
     assert.equal(await line.locator('[data-setting-level="primary"]').count(),1);
     assert.equal(await line.locator('[data-setting-level="secondary"]').count(),3);
-    const hierarchy=await line.evaluate(element=>{const labels=[...element.querySelectorAll('.setting-label')],main=getComputedStyle(labels[0]),sub=getComputedStyle(labels[1]),name=labels[0].getBoundingClientRect(),toggle=element.querySelector('.toggle').getBoundingClientRect();return{mainSize:parseFloat(main.fontSize),subSize:parseFloat(sub.fontSize),mainWeight:Number(main.fontWeight),subWeight:Number(sub.fontWeight),mainColor:main.color,subColor:sub.color,switchGap:toggle.left-name.right};});
+    const hierarchy=await line.evaluate(element=>{const labels=[...element.querySelectorAll('.setting-label')],main=getComputedStyle(labels[0]),sub=getComputedStyle(labels[1]),name=labels[0].getBoundingClientRect(),toggle=element.querySelector('.toggle').getBoundingClientRect();return{mainSize:parseFloat(main.fontSize),subSize:parseFloat(sub.fontSize),mainWeight:Number(main.fontWeight),subWeight:Number(sub.fontWeight),mainColor:main.color,subColor:sub.color,switchOffset:element.getBoundingClientRect().right-toggle.right,switchCenterDelta:(toggle.top+toggle.height/2)-(name.top+name.height/2)};});
     assert.ok(hierarchy.mainSize>hierarchy.subSize && hierarchy.mainWeight>hierarchy.subWeight,'feature names must read above their smaller subsettings');
     assert.notEqual(hierarchy.mainColor,hierarchy.subColor,'secondary captions must use their quieter color');
     console.log('COMPOUND_HIERARCHY',JSON.stringify(hierarchy));
-    assert.ok(hierarchy.switchGap>=0 && hierarchy.switchGap<=16,'the feature switch must stay beside its name');
+    assert.ok(Math.abs(hierarchy.switchOffset)<2 && Math.abs(hierarchy.switchCenterDelta)<3,'the feature name and fixed right switch share one line');
     assert.ok((await line.boundingBox()).height<=96,'the complete feature must fit in at most two compact lines on desktop');
     await page.getByLabel('高级进驻 · 鼠标',{exact:true}).selectOption('1');
     action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,740);assert.equal(action.action,'select');assert.equal(action.value,1);
