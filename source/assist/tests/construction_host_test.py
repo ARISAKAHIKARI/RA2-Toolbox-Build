@@ -167,7 +167,9 @@ int main(){
  techWhitelist=false;w(F+0x58,0);byte(P+0x81,0);byte(P+0x90,1);w(H+0x5550,0);tick();tick(700);assert(books[0].items.empty());
  // Same game frame: wall-clock ticks cannot release next Produce.
  setup();reserve(choice(1));byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,2);w(0x87F7E8+0x1544+88+52,1);w(0x87F7E8+0x1544+92+52,7);
- tick(110,false);for(int i=0;i<20;++i)tick(110,false);assert(commandQueue.size==0);tick();assert(commandQueue.size==1);
+ tick(110,false);for(int i=0;i<20;++i)tick(110,false);assert(commandQueue.size==0);
+ tick();assert(commandQueue.size==0); // First sealed observation of the placement.
+ tick();assert(commandQueue.size==1);
  // Old placed building can be sold/freed before observing the accepted new
  // product. Adopt new parent first, retain remaining queue and visible panel.
  setup();reserve(choice(1));reserve(choice(2));place();token=books[0].token;result(1,1,100,token);commandQueue.clear();

@@ -50,6 +50,14 @@ jobs:
           node source/suite/tests/choice_help_test.mjs
           node source/suite/tests/console_composition_test.mjs
           python3 source/assist/tests/miner_defense_settings.py --out diagnostics/console-ui/type-settings
+      - name: Verify sampled gesture, factory and technology routes
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/async_command_no_live_roster.py
+          python3 source/assist/tests/automation_no_deadline_contract.py
+          python3 source/assist/tests/mo_orders_bridge_test.py
+          python3 source/assist/tests/construction_host_test.py
+          python3 source/assist/tests/tech_enhancement_midgame.py --after-only --build-dir diagnostics/console-ui/tech --output diagnostics/console-ui/tech/result.json
           python3 source/suite/tests/console_review_fixture.py --out diagnostics/console-ui/review
       - name: Verify responsive layout and capture actual Chromium screenshots
         env:

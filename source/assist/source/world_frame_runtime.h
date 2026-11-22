@@ -210,6 +210,10 @@ public:
 class ObservationReadScope:public SampleReadScope {
 public: ObservationReadScope():SampleReadScope(true){}
 };
+static const ::assist::ObjectIndex* sampledObjectIndex(){
+ const auto& roster=sampleWorldSource==&worldFrameCandidate?worldFrameCandidateRoster:worldFrameCommandRoster;
+ return sampleWorldSource&&roster.current(sampleWorldSource->key)?roster.objects.get():nullptr;
+}
 // Copy worker atomics to fixed-size IPC at 4 Hz. No native memory reads,
  // allocations, locks, file I/O or world traversal occur here.
 #if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)

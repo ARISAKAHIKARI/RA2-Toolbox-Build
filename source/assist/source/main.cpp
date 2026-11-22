@@ -1585,14 +1585,11 @@ static void sampleExternal(DWORD now){
   }
   const auto source=externalReader.worldFrameToken();
   if(externalWorldSource&&(!externalWorldSource->key.sameWorld(source->key)||source->key.frame<externalWorldSource->key.frame))discardExternalWorld();
-  struct UIKey {uint32_t selected=0,flags=0,status=0,viewport=0,specialMode=0;bool enemies=false,specialOnly=false;};static UIKey previousUI;
-  UIKey ui{2166136261u,flags(),statusOptions(),viewportTransform.generation,uint32_t(extra.enemySpecialMode),extra.enemyMarkers,extra.enemySpecialOnly};
-  struct Selected {uint32_t vt,items;int capacity;uint32_t flags;int count,step;}selected{};
-  std::array<uint32_t,4096>selectedItems{};
-  if(externalReader.readLive(0xA8ECB8,&selected,sizeof selected)&&selected.count>=0&&selected.count<=4096&&selected.capacity>=selected.count&&(!selected.count||externalReader.readLive(selected.items,selectedItems.data(),size_t(selected.count)*4))){
-   for(int i=0;i<selected.count;++i)ui.selected=(ui.selected^selectedItems[i])*16777619u;
-  }else ui.selected=0;
-  const bool sameUI=ui.selected==previousUI.selected&&ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies&&ui.specialOnly==previousUI.specialOnly&&ui.specialMode==previousUI.specialMode;
+  // Selection is part of the immutable publication. A live fingerprint
+  // cannot change an already bound sample or justify projecting it twice.
+  struct UIKey {uint32_t flags=0,status=0,viewport=0,specialMode=0;bool enemies=false,specialOnly=false;};static UIKey previousUI;
+  UIKey ui{flags(),statusOptions(),viewportTransform.generation,uint32_t(extra.enemySpecialMode),extra.enemyMarkers,extra.enemySpecialOnly};
+  const bool sameUI=ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies&&ui.specialOnly==previousUI.specialOnly&&ui.specialMode==previousUI.specialMode;
   externalSampler.worldEpoch(source->key.match);
   if(worldframe::sameObservation(externalWorldSource,source)&&sameUI){
    // The 100ms aircraft scan can precede the publication where play paused.
@@ -2418,6 +2415,7 @@ static void updateModeStatus(DWORD now){
   else if(!(extra.moFeatures&7u))text+=L"关闭";
   else if(state==1)text+=L"正在提交";
   else if(state==2)text+=L"指令提交完成";
+  else if(state==3)text+=L"等待目标区域的统一样本";
   else text+=L"等待操作";
   if(shared&&(shared->moOrderAccepted||shared->moOrderRejected))text+=L" · 已提交 "+std::to_wstring(shared->moOrderAccepted)+L" / 已跳过 "+std::to_wstring(shared->moOrderRejected);
   SetWindowTextW(GetDlgItem(ui,9461),text.c_str());}

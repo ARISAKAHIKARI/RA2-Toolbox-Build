@@ -105,6 +105,10 @@ template<class Read>class CaptureGraph {
   for(uint32_t p:list){
    if(!range(p,0xD55))continue;
    block(p+0x24,24);block(p+0x232,1);block(p+0x634,0xBA);block(p+0xD54,1);
+   if(demand_&TypeCatalogue){
+    block(p,4);block(p+0x610,4);block(p+0xCCE,1);
+    auxiliary(value<uint32_t>(p+0x60),80);
+   }
   }
   return true;
  }

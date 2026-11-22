@@ -9,7 +9,18 @@ def source():
     text=next(ast.literal_eval(n.value) for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='fixture' for t in n.targets))
     text=text[:text.index('int main(){')]
     text=text.replace('using namespace assist;', '#include "constructor_adapter.h"\nusing namespace assist;\nstatic bool validateMoSubmission(const intent::EventOrder&);')
-    text=text.replace('static bool read(uint32_t p,void*out,size_t n){if(size_t(p)+n>memory.size())return false;', 'static uint32_t failAt=0;static bool read(uint32_t p,void*out,size_t n){if(p<0x10000||size_t(p)+n>memory.size()||(failAt>=p&&failAt<uint64_t(p)+n))return false;')
+    text=text.replace('static bool read(uint32_t p,void*out,size_t n){if(size_t(p)+n>memory.size())return false;',r'''
+static uint32_t failAt=0,sampleMissing=0,sampleAddress=0,sampleValue=0;
+static bool sampleAvailable=true,sampleActive=false,sampleComplete=true;
+static bool read(uint32_t p,void*out,size_t n){
+ const uint32_t missing=sampleActive&&sampleMissing?sampleMissing:failAt;
+ if(p<0x10000||size_t(p)+n>memory.size()||(missing>=p&&missing<uint64_t(p)+n)){if(sampleActive)sampleComplete=false;return false;}
+ if(sampleActive&&p==sampleAddress&&n==sizeof sampleValue){memcpy(out,&sampleValue,n);return true;}
+''')
+    text=text.replace('template<class T>static T get(uint32_t p){assert(size_t(p)+sizeof(T)<=memory.size());T value{};std::memcpy(&value,memory.data()+p,sizeof value);return value;}',
+                      'static bool read(uint32_t,void*,size_t);template<class T>static T get(uint32_t p){T value{};read(p,&value,sizeof value);return value;}')
+    text=text.replace('struct Vec{int count=0;};static Vec vec(uint32_t p){assert(p==0xA8ECB8);return {int(selected.size())};}',
+                      'struct Vec{int count=0;uint32_t items=0;};static Vec vec(uint32_t p){assert(p==0xA8ECB8);constexpr uint32_t items=0x110000;for(size_t i=0;i<selected.size();++i)put(items+uint32_t(i)*4,selected[i]);return {int(selected.size()),items};}')
     text=text.replace('uint32_t get(uint32_t id){return tokens[id];}', 'bool trackable(uint32_t id){return id!=0;}uint32_t get(uint32_t id){return tokens[id];}')
     text=text.replace('static void cancelNative(uint32_t p)', 'static void cancelNative(uint32_t p,bool=false)')
     text=text.replace('uint32_t moFeatures=0;', 'volatile long moOrdersPreviewSeq=0;moorders::Preview moOrdersPreview;uint32_t moOrderStatus=0,moOrderAccepted=0,moOrderRejected=0;uint32_t moFeatures=0;')
@@ -41,6 +52,13 @@ struct EnterReservation{uint32_t id,target,type,token;int frame,slots;};
 static EnterReservation entryReservations[cooperative::MaxSources];static int entryReservationCount=0;
 static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}
 static bool IsWindow(HWND h){return h==1;}static int posted=0;static bool PostMessageW(HWND,UINT,WPARAM,LPARAM){++posted;return true;}
+struct ObservationReadScope {
+ ObservationReadScope(){assert(!sampleActive);sampleActive=sampleAvailable;sampleComplete=sampleActive;}
+ ~ObservationReadScope(){sampleActive=false;}
+ explicit operator bool()const{return sampleActive;}
+ bool complete()const{return sampleComplete;}
+};
+static const auto* sampledObjectIndex(){return &worldObjects;}
 #include "mo_orders_bridge.h"
 static int checks=0;static void check(bool b){++checks;assert(b);}
 static void begin(){setup();resetMoOrders();events.clear();commands.clear();failAt=0;posted=0;actors.resize(1);selected=actors;sh->moFeatures=4;held['Z']=true;actorFrameArbiter.frame=-1;actorLeaseArbiter.allowed=true;moEpoch=match;moHouse=lastHouse;moWaypointSubmitted=false;}
@@ -90,6 +108,18 @@ int main(){
  begin();submitRoute();graph();actorLeaseArbiter.allowed=false;step();check(moStage==3&&events.size()==4);actorLeaseArbiter.allowed=true;step();check(moStage==4&&events.size()==5);
  // Both fuzzy and area attacks use the same existing native mission gateway.
  for(int mode:{1,2}){begin();held.fill(false);held[mode==1?17:16]=true;sh->moFeatures=mode;uint32_t target=0x180000;actors.push_back(target);put(target+0x10,900u);put(target+0x21C,lastHouse+0x1000u);put(target+0x6C,100);put(target+0x6C4,0x190000u);put(readMapCell(30,30)+0xE4,target);check(messageMo(WM_MBUTTONDOWN)&&moHolding);check(messageMo(WM_MBUTTONUP)&&moQueueCount==1);step();check(events.size()==1&&events[0].mission==1&&events[0].b==900&&sh->moOrderAccepted==1&&!moOrdersPending());}
+ // A sealed target is distinct from the live cell contents, and a missing
+ // sampled page leaves the released gesture pending across fast frames.
+ begin();held.fill(false);held[17]=true;sh->moFeatures=1;sampleAvailable=false;
+ const uint32_t target=0x180000;actors.push_back(target);put(target+0x10,900u);put(target+0x21C,lastHouse+0x1000u);put(target+0x6C,100);put(target+0x6C4,0x190000u);
+ sampleAddress=readMapCell(30,30)+0xE4;put(sampleAddress,0u);sampleValue=target;
+ check(messageMo(WM_MBUTTONDOWN)&&moHolding);
+ check(messageMo(WM_MBUTTONUP)&&moWaitingForTargets&&sh->moOrderStatus==3&&events.empty());
+ sampleAvailable=true;sampleMissing=sampleAddress;step();check(moWaitingForTargets&&events.empty());
+ snap.frame+=1900;sampleMissing=0;step();
+ check(!moWaitingForTargets&&events.size()==1&&events[0].b==900);
+ step();check(events.size()==1);
+ sampleAddress=0;sampleValue=0;
  begin();held.fill(false);held[17]=true;sh->moFeatures=3;sh->moGestures.keys[1]=17;check(messageMo(WM_MBUTTONDOWN)&&!moHolding&&int32_t(sh->moOrderStatus)==-14&&events.empty());
  // A lost height function affects only the optional outline of an already
  // captured order. It must not manufacture a zero-height contour or discard

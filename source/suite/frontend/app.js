@@ -350,7 +350,7 @@
     const lines=[];
     for (const control of controls) {
       const previous=lines.at(-1), positioned=control.row>0 && control.column>0;
-      if (!control.layoutBreak && positioned && previous && previous[0].row===control.row &&
+      if (control.type!=='toggle' && !control.layoutBreak && positioned && previous && previous[0].row===control.row &&
           previous[0].column>0 && previous[0].featureId===control.featureId) previous.push(control);
       else lines.push([control]);
     }
@@ -563,6 +563,9 @@
         feature.activeScopes.hidden=!scopes;
         feature.activeScopes.textContent=scopes===1?'已限定范围':scopes>1?`${scopes} 项限制已启用`:'';
       }
+      const master=feature.mainRows.get(block.headers.find(control=>control.type==='toggle')?.id);
+      const actionParent=master?.element||feature.header;
+      if(feature.actions.parentNode!==actionParent)actionParent.insertBefore(feature.actions,master?.editor||null);
       const hasConfig=hasFeatureConfig(block);
       const expanded=!hasConfig||featureExpanded(group,key);
       feature.button.hidden=!hasConfig;
@@ -604,13 +607,13 @@
     for(const [id,row] of rows)if(!ids.has(id)){row.element.remove();rows.delete(id);}
     const lines=container._settingLines || (container._settingLines=new Map()), wanted=new Set();let after=null;
     for(const members of settingLines(controls)) {
-      const first=members[0],key=first.row>0 && first.column>0?`row:${first.row}`:`id:${first.id}`;
+      const first=members[0],key=first.id;
       wanted.add(key);let line=lines.get(key);
       if(!line){line=document.createElement('div');line.className='settings-line';lines.set(key,line);}
       const compound=members.length>1,name=first.label || first.text;
       line.classList.toggle('compound-row',compound);line.classList.toggle('subsettings-line',subsettings);
       const hasPreset=members.some(control=>control.type==='choice' && control.options.includes('仅鼠标') && control.options.includes('自定义'));
-      let previous=null;
+      let previous=null,parent=line;
       for(const [index,control] of members.entries()) {
         let row=rows.get(control.id);
         if(!row || row.type!==control.type || row.presentation!==control.presentation || Boolean(row.textInput)!==(control.type==='choice' && !control.readonly && control.presentation!=='list')) {
@@ -622,7 +625,10 @@
         row.element.classList.toggle('inline-hotkey',control.type==='hotkey'&&Boolean(row.inlineLabel));
         // A pushbutton already carries its action name. Do not print it twice.
         if(control.type==='button' && control.label===control.text)row.inlineLabel='';
-        patchRow(row);placeAfter(line,row.element,previous);previous=row.element;
+        patchRow(row);
+        placeAfter(parent,row.element,previous);
+        if(index===0&&row.companions){parent=row.companions;previous=null;}
+        else previous=row.element;
       }
       placeAfter(container,line,after);after=line;
     }
@@ -663,7 +669,17 @@
     element.dataset.type=control.type;
     const row = { element, copy, label, description, editor, control, type: control.type, presentation: control.presentation, input: null };
     const send = (action,value) => { if (!store.act(row.control.id,action,value)) notify('此操作目前不可用，请等待设置同步。'); };
-    if (control.type === 'toggle') { const toggle = document.createElement('label'), input = document.createElement('input'), track = document.createElement('span'), state = document.createElement('span'); toggle.className = 'toggle'; input.type = 'checkbox'; input.setAttribute('role','switch'); track.className = 'switch-track';track.setAttribute('aria-hidden','true');state.className='toggle-state';state.setAttribute('aria-hidden','true'); input.addEventListener('change',event => send('toggle',event.target.checked)); toggle.append(input,state,track); editor.append(toggle); row.input = input;row.toggleState=state; }
+    if (control.type === 'toggle') {
+      const toggle=document.createElement('label'),input=document.createElement('input'),track=document.createElement('span'),state=document.createElement('span');
+      const companions=document.createElement('div');
+      companions.className='switch-companions';element.insertBefore(companions,editor);
+      toggle.className='toggle';input.type='checkbox';input.setAttribute('role','switch');
+      track.className='switch-track';track.setAttribute('aria-hidden','true');
+      state.className='toggle-state';state.setAttribute('aria-hidden','true');
+      input.addEventListener('change',event=>send('toggle',event.target.checked));
+      toggle.append(input,state,track);editor.append(toggle);
+      row.input=input;row.toggleState=state;row.companions=companions;
+    }
     else if (control.type === 'button') { const button = document.createElement('button'); button.className = 'setting-button'; button.type = 'button'; button.addEventListener('click',event => {if(row.control.immediate&&event.detail>1)return;send('press');}); button.addEventListener('keydown',event=>{if(row.control.immediate&&event.repeat&&['Enter',' '].includes(event.key)){event.preventDefault();event.stopPropagation();}}); editor.append(button); row.input = button; }
     else if (control.type === 'choice') {
       const select = document.createElement('select'); select.addEventListener('change',event => { if (Number(event.target.value) >= 0) send('select',Number(event.target.value)); patchChoiceHelp(row,Number(store.value(row.control,'select'))); });

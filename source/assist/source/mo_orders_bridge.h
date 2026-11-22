@@ -1,10 +1,11 @@
+#include <bitset>
 // Explicit middle-button orders captured by the existing Runtime message
 // boundary. All native events use nativeMission / submitConstructed; no queue
 // copies, mission setters, native RNG, or private receiver hooks live here.
 #include "mo_orders.h"
 #include "mo_patrol_graph.h"
-struct MoActor {uint32_t pointer=0,id=0,token=0;};
-struct MoTarget {uint32_t pointer=0,id=0,type=0;int assigned=0,reserved=0,pending=0;};
+struct MoActor {uint32_t pointer=0,id=0,token=0;moorders::Point position{};int category=-1;bool engineer=false;};
+struct MoTarget {uint32_t pointer=0,id=0,type=0;moorders::Point position{};bool civilian=false,absorber=false;int assigned=0,reserved=0,pending=0;};
 struct MoQueued {MoActor actor;uint32_t target=0,targetPointer=0,targetType=0;int mission=0,entrySlots=0;};
 static MoActor moActors[moorders::Actors];static int moActorCount=0;
 static MoTarget moTargets[moorders::Targets];static int moTargetCount=0;
@@ -14,7 +15,7 @@ static moorders::Point moCurrent;
 static int moStrokeCount=0,moRouteCount=0,moMode=0,moStage=0,moNodeAt=0,moActorAt=0;
 static uint32_t moEpoch=0,moHouse=0,moStarted=0,moPreviewAt=0,moOutlineAt=0,moHover=0;
 static bool moOutlineDirty=false;
-static int moStageFrame=0,moStartFrame=0;static bool moHolding=false,moFeedback=false;
+static int moStageFrame=0,moStartFrame=0;static bool moHolding=false,moFeedback=false,moWaitingForTargets=false;
 static inputownership::ReleaseWatch moReleaseWatch;
 static bool moWaypointSubmitted=false;static mopatrol::Path moPaths[moorders::Actors];
 static int moSubmitting=0,moSubmittingActor=-1;
@@ -27,7 +28,7 @@ static moorders::Options moCapturedOptions;
 static bool moCapturedPolicy(bool captured=false);
 #include "mo_patrol_planning_bridge.h"
 static moorders::Preview moPreview;
-static bool moOrdersPending(){return moHolding||moStage||moQueueAt<moQueueCount||moPlanningUI.draining;}
+static bool moOrdersPending(){return moHolding||moStage||moWaitingForTargets||moQueueAt<moQueueCount||moPlanningUI.draining;}
 static void moOrdersPublish(){
  if(!sh)return;moPreview.match=match;moPreview.tick=sampleClock(sh);double scale=0;if(read(0xB0CD48,&scale,8)&&std::isfinite(scale)&&scale>0&&scale<=1)moPreview.zScale=scale;
  InterlockedIncrement(&sh->moOrdersPreviewSeq);MemoryBarrier();sh->moOrdersPreview=moPreview;MemoryBarrier();InterlockedIncrement(&sh->moOrdersPreviewSeq);notifyHost();
@@ -35,7 +36,7 @@ static void moOrdersPublish(){
 static void resetMoOrders(){
  moReleaseWatch.clear();
  if(moWaypointSubmitted&&sh)sh->moOrderStatus=uint32_t(-16);moWaypointSubmitted=false;
- moHolding=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;moPreview={};moCurrent={};moOutlineDirty=false;moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
+ moHolding=moWaitingForTargets=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;moPreview={};moCurrent={};moOutlineDirty=false;moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
 }
 static bool moOrdersContext(bool preview=false){
  // A brief host render stall must not destroy a read-only captured preview.
@@ -43,14 +44,16 @@ static bool moOrdersContext(bool preview=false){
  if(!sh||fault||sh->stop||!(preview?simulationReady(true):nativeReady())||!sh->foreground||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u)||get<bool>(0x87F7E8+0x11B1))return false;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);return foreground==GetCurrentProcessId();
 }
-static bool moActorValid(const MoActor&a){
- uint32_t p=worldByID(a.id);int k=p?kind(p):-1;
- return p==a.pointer&&p&&own(p,lastHouse)&&k>=0&&k<3&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&manualVersions.get(a.id)==a.token;
+static bool moInputActorValid(const MoActor&a){
+ uint32_t p=a.pointer;int k=p?kind(p):-1;
+ return k>=0&&k<3&&get<uint32_t>(p+0x10)==a.id&&own(p,lastHouse)&&
+  !get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&manualVersions.get(a.id)==a.token;
 }
+static bool moActorValid(const MoActor&a){return worldByID(a.id)==a.pointer&&moInputActorValid(a);}
 static bool moCapture(){
  moActorCount=0;Vec selected=vec(0xA8ECB8);
  if(selected.count<=0||selected.count>moorders::Actors)return false;
- for(int n=0;n<selected.count;++n){uint32_t p=item(selected,n);int k=p&&worldObjects.contains(p)?kind(p):-1;
+ for(int n=0;n<selected.count;++n){uint32_t p=item(selected,n);int k=p?kind(p):-1;
   if(k<0||k>=3||!own(p,lastHouse)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x2B0)||stickyOwns(p)||get<int>(p+0xAC)==6||get<int>(p+0xB4)==6)return false;
   uint32_t id=get<uint32_t>(p+0x10);if(!manualVersions.trackable(id))return false;
   for(int j=0;j<moActorCount;++j)if(moActors[j].id==id)return false;
@@ -58,8 +61,12 @@ static bool moCapture(){
  }return moActorCount>0;
 }
 static bool moSameSelection(){
- Vec selected=vec(0xA8ECB8);if(selected.count!=moActorCount)return false;
- for(int i=0;i<moActorCount;++i){if(!moActorValid(moActors[i]))return false;bool found=false;for(int j=0;j<selected.count;++j)found|=item(selected,j)==moActors[i].pointer;if(!found)return false;}return true;
+ const Vec selected=vec(0xA8ECB8);if(selected.count!=moActorCount||!moActorCount)return false;
+ uint32_t current[moorders::Actors],expected[moorders::Actors];
+ if(!read(selected.items,current,size_t(moActorCount)*sizeof(*current)))return false;
+ for(int i=0;i<moActorCount;++i){if(!moInputActorValid(moActors[i]))return false;expected[i]=moActors[i].pointer;}
+ std::sort(current,current+moActorCount);std::sort(expected,expected+moActorCount);
+ return std::equal(current,current+moActorCount,expected);
 }
 static bool moPoint(MSG*msg,moorders::Point&cell,uint32_t*hover=nullptr){
  int x=0,y=0,px=0,py=0;if(!formationPoint(msg,x,y,px,py,nullptr,hover))return false;cell={x/256,y/256,0};return true;
@@ -111,29 +118,46 @@ static int moActionMission(uint32_t p,uint32_t q){
     (get<uint32_t>(q+0x21C)==lastHouse||moCivilBuilding(q))&&!moDamaged(q))return -1;
  return mission;
 }
-static void moAddTarget(uint32_t p){
- if(!p||!worldObjects.contains(p)||!live(p)||kind(p)<0||get<uint32_t>(p+0x11C)||get<int>(p+0x220)!=0)return;
+static moorders::Point moCoords(uint32_t p){return {get<int>(p+0x9C),get<int>(p+0xA0),get<int>(p+0xA4)};}
+template<class Index>static void moAddTarget(const Index& roster,uint32_t p){
+ if(!p||!roster.contains(p)||!live(p)||kind(p)<0||get<uint32_t>(p+0x11C)||get<int>(p+0x220)!=0)return;
  if(moMode==int(moorders::Fuzzy)&&!nativeEnemy(p,lastHouse))return;
  uint32_t id=get<uint32_t>(p+0x10);for(int i=0;i<moTargetCount;++i)if(moTargets[i].id==id)return;
- if(moTargetCount<moorders::Targets)moTargets[moTargetCount++]={p,id,typeOf(p,kind(p)),0,0};
+ if(moTargetCount<moorders::Targets)moTargets[moTargetCount++]={p,id,typeOf(p,kind(p)),moCoords(p),moCivilBuilding(p),moOwnInfantryAbsorb(p)};
 }
-static void moFindTargets(){
- moTargetCount=0;moAddTarget(moHover);
- // Same cell-content chains used by native clicking. Walking the whole chain
- // keeps all three infantry subcells and multi-cell buildings discoverable.
+static bool moFindTargets(){
+ moTargetCount=0;
+ ObservationReadScope sample;
+ const auto* roster=sample?sampledObjectIndex():nullptr;
+ if(!roster)return false;
+ for(int i=0;i<moActorCount;++i){
+  auto& actor=moActors[i];
+  if(!roster->contains(actor.pointer)||get<uint32_t>(actor.pointer+0x10)!=actor.id)return false;
+  actor.position=moCoords(actor.pointer);actor.category=kind(actor.pointer);actor.engineer=moEngineer(actor.pointer);
+ }
+ moAddTarget(*roster,moHover);
+ // Discover cells and their occupants in one immutable sample. Missing
+ // pages register demand with the canonical worker; they never mean empty.
+ // The same cell chains preserve all infantry subcells and building footprints.
+ static std::bitset<512*512> visited;visited.reset();
  for(int node=moStrokeCount;node>=0&&moTargetCount<moorders::Targets;--node){
   if(moMode==int(moorders::Fuzzy)&&node!=moStrokeCount)break;
   if(node<moStrokeCount&&moStroke[node].x==moCurrent.x&&moStroke[node].y==moCurrent.y)continue;
   auto center=node==moStrokeCount?moCurrent:moStroke[node];
   const int half=int(moCapturedOptions.range/2),end=int(moCapturedOptions.range)-half;
-  for(int radius=0;radius<=std::max(half,end-1);++radius)for(int y=-half;y<end;++y)for(int x=-half;x<end;++x){if(std::max(std::abs(x),std::abs(y))!=radius)continue;uint32_t cell=readMapCell(center.x+x,center.y+y);if(!cell)continue;
-   uint32_t p=get<uint32_t>(cell+0xE4);for(int steps=0;p>=0x10000&&steps<256;++steps){
-    uint32_t next=0;if(!read(p+0x30,&next,sizeof next))break;moAddTarget(p);if(next==p)break;p=next;
+  for(int radius=0;radius<=std::max(half,end-1);++radius)for(int y=-half;y<end;++y)for(int x=-half;x<end;++x){if(std::max(std::abs(x),std::abs(y))!=radius)continue;
+   const int cx=center.x+x,cy=center.y+y;
+   if(cx<=0||cy<=0||cx>=512||cy>=512||visited.test(size_t(cy*512+cx)))continue;
+   visited.set(size_t(cy*512+cx));
+   const uint32_t cell=readMapCell(cx,cy);if(!cell)continue;
+   uint32_t p=get<uint32_t>(cell+0xE4);for(int steps=0;p>=0x10000&&steps<256&&moTargetCount<moorders::Targets;++steps){
+    uint32_t next=0;if(!read(p+0x30,&next,sizeof next))break;moAddTarget(*roster,p);if(next==p)break;p=next;
    }
   }
  }
+ if(!sample.complete()){moTargetCount=0;return false;}
+ return true;
 }
-static moorders::Point moCoords(uint32_t p){return {get<int>(p+0x9C),get<int>(p+0xA0),get<int>(p+0xA4)};}
 static moorders::Point moGround(moorders::Point p){bool valid=readMapCell(p.x,p.y)!=0;p.x=p.x*256+128;p.y=p.y*256+128;p.z=valid?call<int>(0x578080,0x87F7E8,&p):0;return p;}
 static void moLine(moorders::Point a,moorders::Point b){if(moPreview.count<moorders::Lines)moPreview.lines[moPreview.count++]={a,b};}
 static int moPendingEntry(const MoActor&a,const MoTarget&t){
@@ -145,7 +169,7 @@ static int moPendingEntry(const MoActor&a,const MoTarget&t){
  return t.pending;
 }
 static bool moAssign(int actor,int target,bool commit,int*missionOut=nullptr){
- auto&a=moActors[actor];auto&t=moTargets[target];if(!moActorValid(a)||worldByID(t.id)!=t.pointer||!live(t.pointer))return false;
+ auto&a=moActors[actor];auto&t=moTargets[target];if(!moActorValid(a)||worldByID(t.id)!=t.pointer||!live(t.pointer)||typeOf(t.pointer,kind(t.pointer))!=t.type)return false;
  int mission=moActionMission(a.pointer,t.pointer);if(moMode==int(moorders::Fuzzy)&&mission!=1)return false;if(mission<0)return false;
  bool entry=mission==7||mission==8||mission==17;bool engineer=moEngineer(a.pointer);int tk=kind(t.pointer),slots=0;
  bool single=entry&&((engineer&&tk==3&&(get<uint32_t>(t.pointer+0x21C)==lastHouse||moNeutral(t.pointer)))||
@@ -153,11 +177,12 @@ static bool moAssign(int actor,int target,bool commit,int*missionOut=nullptr){
  if(single&&t.assigned)return false;
  if(entry&&!engineer){auto capacity=clickView.capacity(t.pointer);if(capacity.maximum>0){slots=clickView.entrySlots(a.pointer,t.pointer);int pending=moPendingEntry(a,t);if(slots<=0||int64_t(capacity.used)+pending+t.reserved+slots>capacity.maximum)return false;}else if(moOwnInfantryAbsorb(t.pointer))return false;}
  if(missionOut)*missionOut=mission;if(!commit)return true;
- ++t.assigned;t.reserved+=slots;moLine(moCoords(a.pointer),moCoords(t.pointer));
+ ++t.assigned;t.reserved+=slots;moLine(a.position,t.position);
  if(!moHolding&&moQueueCount<moorders::Actors)moQueue[moQueueCount++]={a,t.id,t.pointer,t.type,mission,slots};return true;
 }
-static void moAssignments(bool preview){
- moFindTargets();moPreview.count=0;if(!preview)moQueueCount=moQueueAt=0;
+static bool moAssignments(bool preview){
+ if(!moFindTargets())return false;
+ moPreview.count=0;if(!preview)moQueueCount=moQueueAt=0;
  const int count=std::min(moActorCount,preview?64:moorders::Actors),targets=std::min(moTargetCount,preview?96:moorders::Targets);
  for(int j=0;j<targets;++j){auto&t=moTargets[j];t.pending=moMode==int(moorders::Area)&&clickView.capacity(t.pointer).maximum>0?entryReserved(t.pointer,0,lastHouse):0;}
  bool assigned[moorders::Actors]{};
@@ -167,7 +192,7 @@ static void moAssignments(bool preview){
   }
  }else{
   // Civilian garrisons get a round-robin prepass before attack/capture squads.
-  for(int pass=0;pass<count;++pass){bool progress=false;for(int j=0;j<targets;++j)if(moCivilBuilding(moTargets[j].pointer))for(int i=0;i<count;++i){if(assigned[i]||moEngineer(moActors[i].pointer))continue;int mission=-1;
+  for(int pass=0;pass<count;++pass){bool progress=false;for(int j=0;j<targets;++j)if(moTargets[j].civilian)for(int i=0;i<count;++i){if(assigned[i]||moActors[i].engineer)continue;int mission=-1;
     if(moAssign(i,j,false,&mission)&&(mission==8||mission==17)&&moAssign(i,j,true)){assigned[i]=true;progress=true;break;}}
    if(!progress)break;
   }
@@ -175,8 +200,8 @@ static void moAssignments(bool preview){
   // infantry over our absorbers one per building per round. A nearer building
   // must not consume the remainder before its equally available neighbour.
   for(int pass=0;pass<count;++pass){bool progress=false;
-   for(int j=0;j<targets;++j)if(moOwnInfantryAbsorb(moTargets[j].pointer)){
-    for(int i=0;i<count;++i)if(!assigned[i]&&kind(moActors[i].pointer)==1&&!moEngineer(moActors[i].pointer)){
+   for(int j=0;j<targets;++j)if(moTargets[j].absorber){
+    for(int i=0;i<count;++i)if(!assigned[i]&&moActors[i].category==1&&!moActors[i].engineer){
      int mission=-1;if(moAssign(i,j,false,&mission)&&mission==7&&moAssign(i,j,true)){assigned[i]=true;progress=true;break;}
     }
    }if(!progress)break;
@@ -184,12 +209,13 @@ static void moAssignments(bool preview){
   for(int j=0;j<targets;++j)for(int i=0;i<count&&moTargets[j].assigned<int(moCapturedOptions.squad);++i){if(!assigned[i]&&moAssign(i,j,true))assigned[i]=true;}
   for(int i=0;i<count;++i)if(!assigned[i]){
    // Remaining units select the closest compatible target, preserving quotas.
-   int best=-1;int64_t nearest=INT64_MAX;auto a=moCoords(moActors[i].pointer);
-   for(int j=0;j<targets;++j)if(moAssign(i,j,false)){auto b=moCoords(moTargets[j].pointer);int64_t dx=int64_t(a.x)-b.x,dy=int64_t(a.y)-b.y,d=dx*dx+dy*dy;if(d<nearest){nearest=d;best=j;}}
+   int best=-1;int64_t nearest=INT64_MAX;const auto a=moActors[i].position;
+   for(int j=0;j<targets;++j)if(moAssign(i,j,false)){const auto b=moTargets[j].position;int64_t dx=int64_t(a.x)-b.x,dy=int64_t(a.y)-b.y,d=dx*dx+dy*dy;if(d<nearest){nearest=d;best=j;}}
    if(best>=0&&moAssign(i,best,true))assigned[i]=true;
   }
  }
  if(!preview)for(int i=0;i<count;++i)if(!assigned[i])++sh->moOrderRejected;
+ return true;
 }
 static bool moGraphEmpty(){
  mopatrol::Actor actors[moorders::Actors];for(int i=0;i<moActorCount;++i)actors[i]={moActors[i].pointer,moActors[i].id};
@@ -283,8 +309,8 @@ static void moCommit(){
  if(moMode==int(moorders::Patrol)){
   for(int i=0;i<moActorCount;++i)moPaths[i]={};
   moStage=1;moNodeAt=moActorAt=0;
- }else moAssignments(false);
- moPreview.active=0;moOrdersPublish();sh->moOrderStatus=1;
+ }else moWaitingForTargets=indexedFrame!=moStartFrame||!commandRosterReady()||!moAssignments(false);
+ moPreview.active=0;moOrdersPublish();sh->moOrderStatus=moWaitingForTargets?3:1;
 }
 static bool moCapturedPolicy(bool captured){return moReadGestures(captured)&&moorders::sameGestures(moCapturedGestures,moRuntimeGestures)&&moorders::sameOptions(moCapturedOptions,moRuntimeOptions)&&(moGestureEnabled()&uint32_t(moMode))&&!(moorders::gestureConflicts(moRuntimeGestures,moGestureEnabled())&uint32_t(moMode));}
 static bool moCapturedHold(){
@@ -298,7 +324,7 @@ static bool moOrdersMessage(MSG*msg){
  const auto edge=moorders::gestureMouseEdge(msg->message,uintptr_t(msg->wParam));
  if(edge.up&&edge.button==moSuppressedButton&&!moHolding){moSuppressedButton=0;return swallow();}
  const bool keyDown=msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN;
- if(moStage&&keyDown&&msg->wParam==VK_ESCAPE){resetMoOrders();return swallow();}
+ if((moStage||moWaitingForTargets)&&keyDown&&msg->wParam==VK_ESCAPE){resetMoOrders();return swallow();}
  if(moHolding&&((keyDown&&msg->wParam==VK_ESCAPE)||(edge.down&&edge.button!=moGestureButton))){bool escape=keyDown&&msg->wParam==VK_ESCAPE;resetMoOrders();return escape?swallow():false;}
  if(edge.up&&edge.button==moGestureButton&&moHolding){
   moSuppressedButton=0;moorders::Point p;if(moOrdersContext()&&moCapturedHold()&&moPoint(msg,p,&moHover)){moCurrent=p;moorders::sample(moStroke,moStrokeCount,p,true);moCommit();}else resetMoOrders();return swallow();
@@ -307,7 +333,7 @@ static bool moOrdersMessage(MSG*msg){
  if(msg->message==WM_MOUSEMOVE&&moHolding){
   moorders::Point p;if(moPoint(msg,p,&moHover))moSamplePreview(p);return swallow();
  }
- if(!edge.down||!moOrdersContext()||moStage||!moReadGestures())return false;
+ if(!edge.down||!moOrdersContext()||moStage||moWaitingForTargets||!moReadGestures())return false;
  if(formationView.active&&(!formationHolding||formationModal||formationButton))return false;
  uint8_t keys[256]{};moGestureKeyboard(keys);const auto resolved=moGestureResolve(edge.button,keys);
  if(!resolved.matched)return false;
@@ -315,7 +341,9 @@ static bool moOrdersMessage(MSG*msg){
  if(resolved.mode==moorders::QuickFormation)return false;
  if(formationView.active)formationCancel();
  moorders::Point point;uint32_t hover=0;if(!moPoint(msg,point,&hover))return false;
- if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}if(!moCapture()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}
+ // The physical selection is an input fact. Only discovery and order
+ // admission wait for a worker sample.
+ if(!moCapture()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}
  // The configured keyboard authorizes this capture, but never substitutes for
  // the game's own PlanningMode binding or mutates its local editor state.
  moPlanningReset();moEpoch=match;moHouse=lastHouse;
@@ -326,7 +354,7 @@ static bool moOrdersMessage(MSG*msg){
 }
 static void moOrdersTick(uint32_t house,int frame,DWORD now,bool indexedWorkReady=true){
  if(moReleaseWatch.expired(moHolding,moGestureButton&&(GetAsyncKeyState(moorders::gestureVK(moGestureButton))&0x8000),now)){resetMoOrders();moReleaseWatch.clear();return;}
- if(!moOrdersPending()||(!indexedWorkReady&&!moHolding))return;
+ if(!moOrdersPending())return;
  if(moPlanningUI.draining){moPlanningReset();return;}
  if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext(moHolding)||!moCapturedPolicy(true)){resetMoOrders();return;}
  if(moHolding){
@@ -335,8 +363,18 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now,bool indexedWorkRead
   else if((moOutlineDirty&&DWORD(now-moOutlineAt)>=16)||DWORD(now-moPreview.tick)>=400){moUpdateOutline();moOrdersPublish();}
   return;
  }
- if(frame<moStartFrame||frame-moStartFrame>1800||DWORD(now-moStarted)>30000){sh->moOrderStatus=uint32_t(-7);resetMoOrders();return;}
+ if(frame<moStartFrame||DWORD(now-moStarted)>30000){sh->moOrderStatus=uint32_t(-7);resetMoOrders();return;}
+ if(!indexedWorkReady){
+  // Seed the missing page requests even when the worker only has an
+  // observation candidate. Native acceptance still waits for strict proof.
+  if(moWaitingForTargets&&DWORD(now-moPreviewAt)>=80){moPreviewAt=now;moFindTargets();}
+  return;
+ }
  if(!moReadGestures())return; // Retry an incomplete policy read; never submit from its cache.
+ if(moWaitingForTargets){
+  if(!moAssignments(false))return;
+  moWaitingForTargets=false;sh->moOrderStatus=1;
+ }
  // Standard-object commands each get one final native capability/identity
  // check immediately before submission. Accepted commands are never retried.
  int visited=0;

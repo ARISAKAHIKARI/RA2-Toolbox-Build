@@ -652,7 +652,7 @@ if (!failed && process.argv.includes('--browser')) {
         const box=selector=>element.querySelector(selector).getBoundingClientRect();
         return {line:element.getBoundingClientRect(),toggle:box('.toggle'),editor:box('.hotkey-editor'),button:box('.hotkey-capture')};
       });
-      assert.ok(Math.abs(bounds.line.right-bounds.editor.right)<2,'two-control shortcuts use the full row right edge');
+      assert.ok(Math.abs(bounds.line.right-bounds.toggle.right)<2,'the switch occupies the same right column with a companion hotkey');
       if (width>=720) {
         assert.ok(Math.abs(bounds.toggle.top-bounds.editor.top)<8,'an unbound shortcut stays beside its switch when there is room');
         assert.ok(bounds.editor.width<120 && bounds.button.height<=29,'the unbound shortcut uses a compact button and options trigger');
@@ -660,15 +660,30 @@ if (!failed && process.argv.includes('--browser')) {
       await assertFits();
     }
     await page.setViewportSize({width:1240,height:880});
-    const pinned=[{id:880,type:'toggle',label:'科技设置',group:'科技设置',groupHeader:true,collapsible:true,collapsedDefault:true},{id:881,type:'number',label:'科技等级',text:'1',group:'科技设置',collapsible:true,collapsedDefault:true}];
+    const pinned=[
+      {id:880,type:'toggle',label:'科技设置',group:'科技设置',groupHeader:true,collapsible:true,collapsedDefault:true},
+      {id:881,type:'number',label:'科技等级',text:'1',group:'科技设置',collapsible:true},
+      {id:882,type:'toggle',label:'启用参数检查',group:'科技设置',collapsible:true},
+      {id:883,type:'toggle',label:'原生日志设置',group:'调试工具'}
+    ];
     await receive(compactState({generation:7,controls:pinned}));await page.getByLabel('科技设置',{exact:true}).waitFor();
     assert.equal(await page.getByRole('heading',{name:'科技设置',exact:true}).count(),0,'a feature carries its own visible name');
-    const pinnedGap=await page.locator('.feature-header').evaluate(element=>element.querySelector('.toggle').getBoundingClientRect().left-element.querySelector('.setting-label').getBoundingClientRect().right);
-    assert.ok(pinnedGap>=0 && pinnedGap<=16,'the master switch stays beside the feature label');
+    const master=await page.locator('#control-0-880').evaluate(input=>{
+      const row=input.closest('.setting-row'),box=el=>el.getBoundingClientRect();
+      return {label:box(row.querySelector('.setting-label')),fold:box(row.querySelector('.feature-config-toggle')),track:box(row.querySelector('.switch-track'))};
+    });
+    assert.ok(master.label.right<=master.fold.left && master.fold.right<master.track.left,'label, fold and switch share one ordered line');
     await page.locator('.feature-config-toggle').click();
     const techLevel=page.getByLabel('科技等级',{exact:true});await techLevel.waitFor();
     assert.equal(await techLevel.evaluate(element=>element.closest('.setting-row').dataset.settingLevel),'secondary');
-    await assertFits();
+    for(const width of [1240,720,390]){
+      await page.setViewportSize({width,height:880});
+      const offsets=await page.locator('.settings-group .switch-track:visible').evaluateAll(tracks=>tracks.map(track=>track.getBoundingClientRect().right));
+      assert.equal(offsets.length,3);
+      assert.ok(Math.max(...offsets)-Math.min(...offsets)<2,'main, nested and independent switches share a column');
+      await assertFits();
+    }
+    await page.setViewportSize({width:1240,height:880});
     await page.getByLabel('科技设置',{exact:true}).click();action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,880);
     await receive({kind:'ack',protocol:1,module:0,generation:7,id:880,seq:action.seq,ok:true});
     await receive(compactState({generation:7,controls:pinned.map(control=>control.id===880?{...control,checked:action.value}:control)}));

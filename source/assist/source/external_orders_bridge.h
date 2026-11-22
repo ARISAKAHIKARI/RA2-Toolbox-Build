@@ -26,12 +26,19 @@ static void clearOreOrders(){oreHarvestReset();oreConfigRevision=-1;oreConfig={}
 static void cancelOreJob(uint32_t pointer){if(worldObjects.contains(pointer)){int k=kind(pointer);uint32_t type=typeOf(pointer,k);bool miner=k==2&&type&&(minerDefenseMiner(type)||(refreshOreConfig()&&oreMiner(type)));uint32_t id=get<uint32_t>(pointer+0x10);
   manualVersions.change(id,miner?pointer:0,miner);pauseMissileForManual(id,pointer);releaseAutoOwner(id);minerDefenseForget(id);++inputSerial;}}
 static void observePausedOre(uint32_t house,int frame){
- if(frame==pausedOreFrame)return;pausedOreFrame=frame;
- // Follow only the miners that were manually suspended. This remains a small
- // read-only observation while automation is off; no world scan or order send.
+ if(frame==pausedOreFrame||!manualVersions.pausedCount)return;
+ SampleReadScope sample;
+ const auto* roster=sample?sampledObjectIndex():nullptr;
+ if(!roster)return;
+ pausedOreFrame=frame;
+ // Follow manually suspended miners in the sealed roster. Missing bytes
+ // cannot mean that the old manual order ended or that the miner disappeared.
  for(unsigned n=0;n<manualVersions.pausedCount;){unsigned slot=manualVersions.pausedSlots[n];uint32_t id=manualVersions.ids[slot],p=manualVersions.orePointers[slot];uint32_t raw[0x220/4];
-  if(!read(p,raw,sizeof raw)||raw[0x10/4]!=id||int(raw[0x6C/4])<=0||raw[0x21C/4]!=house)manualVersions.resumeOre(id);
-  else manualVersions.observeOre(id,int(raw[0xAC/4]),int(raw[0xB4/4]));
+  if(roster->byId(id)!=p)manualVersions.resumeOre(id);
+  else if(read(p,raw,sizeof raw)){
+   if(raw[0x10/4]!=id||int(raw[0x6C/4])<=0||raw[0x21C/4]!=house)manualVersions.resumeOre(id);
+   else manualVersions.observeOre(id,int(raw[0xAC/4]),int(raw[0xB4/4]));
+  }
   if(n<manualVersions.pausedCount&&manualVersions.pausedSlots[n]==slot)++n;
  }
  snap.oreManual=int(manualVersions.pausedCount);

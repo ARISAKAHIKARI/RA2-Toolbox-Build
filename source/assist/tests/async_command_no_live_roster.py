@@ -118,7 +118,11 @@ assert "memcpy(globalVehicleCandidates" not in bridge
 # Unknown catalogue stamps cannot trigger an unbounded main-thread rescan.
 assert "catalogueReady=false;scanTypes();" not in bridge
 assert "external::catalogue::capture(" not in bridge
-assert "if(observed.complete)" in bridge
+assert "if(sample&&sampleWorldSource->catalogue.complete)" in bridge
+catalogue = bridge.split("static bool scanTypes(){",1)[1].split('#include "sidebar.h"',1)[0]
+assert "if(!sampleReadDepth||!sampleReadComplete)return false;" in catalogue
+assert "readLiveWorld(" not in catalogue and "memcpy(d.id" not in catalogue
+assert catalogue.index("if(!sampleReadComplete)return false;") < catalogue.index("std::copy_n(next.types,count,snap.types)")
 assert "stampTypeCatalogue(self->staging_)" in worker
 assert "now-worldFrameCatalogueProbeAt" in bridge
 assert "if(graphDemand&worldframe::TypeCatalogue)worldFrameCatalogueProbeAt=key.tick;" in runtime

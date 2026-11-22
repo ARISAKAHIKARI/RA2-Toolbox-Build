@@ -8,6 +8,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| pre.18 功能采样清单与原生操作边界 | [控制、自动化、预定、显示与原生执行](2026-11-22-sampling-feature-inventory.md) | worker catalogue gesture targets source FIFO switch UI native execution |
 | PR #71 逐功能采样审计 | [控制、自动化、显示及独立单位监控](2026-11-20-pr71-feature-sampling-audit.md) | unified sampling live reads feature audit Ctrl+D harvester monitor catalogue command admission |
 | 命令全图后台采样实验 | [默认关闭的 CommandCaptureWorker、同帧准入与失败延后](2026-11-17-async-command-capture-pilot.md) | async-command-sampling exact-frame UID House ownership latest-ticket no-native-roster fallback |
 | 显示图零页边界与后台采样 | [纯显示不再触发主线程全图采集](2026-11-17-display-capture-offthread.md) | HostDisplayOnly VisualCache zero-page stamp same-frame command-escalation |

@@ -93,7 +93,7 @@ static bool controlCommandOwnerReady(uint32_t);
 static void controlCommandOwnerTick();static void restoreControlCommandOwner();static void controlObjectOwnerTick();static void restoreControlObjectOwner();
 static void nativeSellCursorTick();static void restoreNativeSellCursor();static void nativeMegaGatewayTick();static void restoreNativeMegaGateway();
 static void resetRuntimePlanner();static void resetLoadCalculation();
-static uint64_t catalogueHash;static DWORD catalogueAt;static bool catalogueReady,catalogueDirty;
+static uint64_t catalogueHash;static DWORD catalogueAt,catalogueRequestedAt;static bool catalogueReady,catalogueDirty;
 static void restoreFrameDriver();
 static void resetDirectSell();static bool directSellPending();
 static bool privateOutActive();static bool privateOutPending();static int privateOutRoom();
@@ -1030,14 +1030,37 @@ static int findIdle(uint32_t house,int mode){
  unselect();if(!selection(next))return 0;lastIdle[slot]=nextid;
  if(tactical)call<void>(0x6D2420,tactical,(void*)(next+0x9C),0);return 1;
 }
-static void scanTypes(){catalogueDirty=true;
- uint32_t oldPointers[MaxTypes];uint8_t oldAllowed[MaxTypes];int oldCount=snap.typeCount;memcpy(oldPointers,typePointers,sizeof oldPointers);memcpy(oldAllowed,techAllowed,sizeof oldAllowed);memset(techAllowed,0,sizeof techAllowed);snap.typeCount=0;const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};const int kinds[]={3,16,40,7};
- for(int k=0;k<4;++k){Vec v=vec(arrays[k],4096);for(int i=0;i<v.count&&snap.typeCount<MaxTypes;++i){uint32_t t=item(v,i);if(!t)continue;const int level=get<int>(t+0x634);
- const bool insignificant=get<bool>(t+0x232)&&!techEnhancementCatalogueIncludesInsignificant(t,arrays[k],i,level);
- if(!validType(techEnhancementCatalogueLevel(t,level),insignificant,get<bool>(t+0xD54),get<uint32_t>(t+0x6CC)))continue;
- for(int prior=0;prior<oldCount;++prior)if(oldPointers[prior]==t){techAllowed[snap.typeCount]=oldAllowed[prior];break;}
- typePointers[snap.typeCount]=t;auto&d=snap.types[snap.typeCount++];memset(&d,0,sizeof d);memcpy(d.id,(void*)(t+0x24),23);name(t,d.name,40);d.kind=kinds[k];d.index=i;d.naval=get<bool>(t+0xCCE);d.cost=get<int>(t+0x610);
- }}
+static void requestTypeCatalogue(){
+ catalogueReady=false;catalogueRequestedAt=GetTickCount();worldFrameCatalogueProbeAt=0;
+}
+static bool scanTypes(){
+ if(!sampleReadDepth||!sampleReadComplete)return false;
+ struct Projection {Type types[MaxTypes];uint32_t pointers[MaxTypes];uint8_t allowed[MaxTypes];};
+ static Projection next;
+ int count=0;
+ const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};
+ const int kinds[]={3,16,40,7};
+ for(int k=0;k<4;++k){
+  const Vec types=vec(arrays[k],4096);
+  for(int i=0;i<types.count&&count<MaxTypes;++i){
+   const uint32_t type=item(types,i);
+   const int level=get<int>(type+0x634);
+   const bool insignificant=get<bool>(type+0x232)&&!techEnhancementCatalogueIncludesInsignificant(type,arrays[k],i,level);
+   if(!validType(techEnhancementCatalogueLevel(type,level),insignificant,get<bool>(type+0xD54),get<uint32_t>(type+0x6CC)))continue;
+   Type& out=next.types[count];out={};
+   if(!read(type+0x24,out.id,23))return false;
+   if(get<uint32_t>(type+0x60)>=0x10000)name(type,out.name,40);
+   else for(int n=0;n<23&&out.id[n];++n)out.name[n]=uint8_t(out.id[n]);
+   out.kind=kinds[k];out.index=i;out.naval=get<bool>(type+0xCCE);out.cost=get<int>(type+0x610);
+   next.pointers[count]=type;next.allowed[count]=0;
+   for(int prior=0;prior<snap.typeCount;++prior)if(typePointers[prior]==type){next.allowed[count]=techAllowed[prior];break;}
+   ++count;
+  }
+ }
+ if(!sampleReadComplete)return false;
+ std::copy_n(next.types,count,snap.types);std::copy_n(next.pointers,count,typePointers);
+ std::fill(std::begin(techAllowed),std::end(techAllowed),0);std::copy_n(next.allowed,count,techAllowed);
+ snap.typeCount=count;catalogueDirty=true;return true;
 }
 #include "sidebar.h"
 #include "tech_enhancement_bridge.h"
@@ -1773,7 +1796,7 @@ static void tick(){
  auto matchTransition=sessionTracker.update(true,house,sessionMode,frame);
  const bool houseChanged=!replaced&&matchTransition==sessionepoch::Transition::HouseChanged;
  bool newMatch=replaced||matchTransition!=sessionepoch::Transition::None;
- if(newMatch){if(houseChanged){cancelCooperativePlan(-3);reset(false);}match=sessionTracker.epoch;lastHouse=house;sh->inputUnlockCount=0;sh->triggerInputBlocked=sh->triggerCameraBlocked=0;sh->sellDirectSent=sh->sellDirectRejected=0;sh->inputUnlockStatus=sh->keepInputUnlocked?inputlock::Waiting:inputlock::Off;scanTypes();slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
+ if(newMatch){if(houseChanged){cancelCooperativePlan(-3);reset(false);}match=sessionTracker.epoch;lastHouse=house;sh->inputUnlockCount=0;sh->triggerInputBlocked=sh->triggerCameraBlocked=0;sh->sellDirectSent=sh->sellDirectRejected=0;sh->inputUnlockStatus=sh->keepInputUnlocked?inputlock::Waiting:inputlock::Off;snap.typeCount=0;catalogueDirty=true;requestTypeCatalogue();slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
  // A read-only world can predate the first command entry of this epoch.
  // Same-match pause/resume must retain its already latched placement.
  applyCommandComputeEpoch();
@@ -1832,15 +1855,14 @@ static void tick(){
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
  if(worldFrame.catalogue.attempted||worldFrameCandidate.catalogue.attempted){
   ObservationReadScope sample;
-  if(sample&&sampleWorldSource->catalogue.attempted){
+  if(sample&&sampleWorldSource->catalogue.complete){
    const auto sourceTick=sampleWorldSource->key.tick;
    const auto observed=sampleWorldSource->catalogue;
-   sample.finish();
-   if(!catalogueAt||int32_t(sourceTick-catalogueAt)>0){
-    catalogueAt=sourceTick;
-    if(observed.complete){
-     if(!catalogueReady||catalogueHash!=observed.hash)scanTypes();
-     catalogueHash=observed.hash;catalogueReady=true;
+   if((!catalogueRequestedAt||int32_t(sourceTick-catalogueRequestedAt)>0)&&
+      (!catalogueAt||int32_t(sourceTick-catalogueAt)>0)){
+    if((catalogueReady&&catalogueHash==observed.hash)||scanTypes()){
+     catalogueAt=sourceTick;catalogueHash=observed.hash;catalogueReady=true;
+     catalogueRequestedAt=0;
     }
    }
   }
