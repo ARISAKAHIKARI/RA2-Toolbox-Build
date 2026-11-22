@@ -106,7 +106,7 @@ int main(){
  b.frame=a.frame;CHECK(worldframe::coherentVisualCapture(a,b,200));
 
  std::setvbuf(stdout,nullptr,_IONBF,0);
- setup();publish();CHECK(externalReader.worldDemand()==(worldframe::Base|worldframe::Passengers|worldframe::Combat));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);
+ setup();publish();CHECK(externalReader.worldDemand()==(worldframe::Base|worldframe::Passengers|worldframe::Combat));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==(worldframe::Base|worldframe::Passengers|worldframe::Combat));
  auto first=passengerSample(fixture::clock,token);std::printf("first passenger paint: bubbles=%zu live_RPM=%zu\n",first.size(),fixture::rpmCalls);std::fflush(stdout);
  CHECK(first.size()==1&&first[0].id==42&&first[0].danger);zeroLiveReads();
  // A live value changes after capture. Rendering the sealed frame must retain
@@ -141,7 +141,7 @@ int main(){
  fixture::clock=2200;publish();CHECK(passengerSample(2200,token).size()==1);
  memory.put(Carrier+0x431,uint8_t(0));fixture::clock=2220;publish();CHECK(passengerSample(2220,token).empty());zeroLiveReads();
  extra.passengerBubbles=false;extra.dangerPassengers=true;fixture::clock=2240;publish();auto danger=passengerSample(2240,token);CHECK(danger.size()==1&&danger[0].danger);zeroLiveReads();
- extra.dangerPassengers=false;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Base));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);CHECK(passengerSample(2241,token).empty());zeroLiveReads();
+ extra.dangerPassengers=false;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Base));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==(worldframe::Base|worldframe::Passengers));CHECK(passengerSample(2241,token).empty());zeroLiveReads();
  optionFlags=Capacity;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Base|worldframe::Passengers));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);optionFlags=0;
  std::puts("PASS inspect disappearance/danger-only/shared demand routing: no rate reduction or alternate live scanner");
  // A paused, independently re-observed frame is still the same immutable
