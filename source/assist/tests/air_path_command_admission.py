@@ -32,7 +32,7 @@ using namespace assist;
 constexpr uint32_t AirWaypoints=0x20000000u, NativeAirWaypoints=0x80000000u;
 struct Shared {uint32_t flags=NativeAirWaypoints, nativeAirNetwork=0, requestToken=7; int arg2=1001;} state;
 Shared* sh=&state;
-int session=3, missionCalls=0;
+int session=3, missionCalls=0; bool candidateOnly=false; constexpr int CommandAwaitingSample=-21;
 template<class T> T get(uint32_t address){return address==0xA8B238?T(session):T(0);}
 uint32_t worldByID(uint32_t id){return id==42?0x10000:0;}
 bool own(uint32_t p,uint32_t house){return p==0x10000&&house==0x20000;}
