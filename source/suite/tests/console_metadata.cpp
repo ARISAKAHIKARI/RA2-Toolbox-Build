@@ -96,7 +96,18 @@ int main(){
  for(int id:{423,449,453})check(getProp(item(ui,id),L"RA2.Console.ActionRole")==HANDLE(1));
  for(int id:{108,426,443,814,9185})check(getProp(item(ui,id),L"RA2.Console.ActionRole")==HANDLE(2));
  check(!getProp(item(ui,9176),L"RA2.Console.ActionRole")&&getProp(item(ui,9176),L"RA2.Console.Immediate"));
- for(int id:{9400,9401,9402,9440,9441,9442,9443,9444,9445,9460,9461}){auto h=item(ui,id);check(getProp(h,L"RA2.Console.Group")==getProp(item(ui,9615),L"RA2.Console.Group"));check(bool(getProp(h,L"RA2.Console.GroupHeader"))==(id>=9400&&id<=9402));check(getProp(h,L"RA2.Console.Collapsible")&&getProp(h,L"RA2.Console.CollapsedDefault"));check(!getProp(h,L"RA2.Console.Skip"));}
+ // Named patrol commands own their own settings, not the old 9615 fold.
+ // The remaining dynamic status labels retain the native shared group.
+ for(int id:{9400,9401,9402,9440,9441,9442,9443,9444,9445,9460,9461}){
+  auto h=item(ui,id);const auto*entry=suite::consolelayout::feature(id);
+  if(entry){
+   check(std::wstring(static_cast<const wchar_t*>(getProp(h,L"RA2.Console.Group")))==entry->title);
+   check(getProp(h,L"RA2.Console.Feature")==reinterpret_cast<HANDLE>(INT_PTR(entry->key)));
+   check(bool(getProp(h,L"RA2.Console.GroupHeader"))==(entry->primary&&id==entry->key));
+  }else check(getProp(h,L"RA2.Console.Group")==getProp(item(ui,9615),L"RA2.Console.Group"));
+  check(getProp(h,L"RA2.Console.Collapsible")&&getProp(h,L"RA2.Console.CollapsedDefault"));
+  check(!getProp(h,L"RA2.Console.Skip"));
+ }
  for(int state=-7;state<=2;++state){storage.techEnhanceParameterStatus=state;storage.techEnhanceParameterError=123;storage.techEnhanceParameterExceptions=5;storage.techEnhanceParameterSlots=3;parameterStatus();check(bool(getProp(status,L"RA2.Console.RuntimeError"))==(state<0));check(texts[status].find(L"命中 5")!=std::wstring::npos);check(texts[status].find(L"占用 3 槽")!=std::wstring::npos);check((texts[status].find(L"错误 123")!=std::wstring::npos)==(state<0));}
  extra.techProductionCompatibility=true;storage.techProductionEnhancePasses=42;parameterStatus();check(texts[status].find(L"放行 42")!=std::wstring::npos);
  shared=nullptr;parameterStatus();check(!getProp(status,L"RA2.Console.RuntimeError")&&texts[status].find(L"关闭")!=std::wstring::npos);setConsoleRuntimeError(nullptr,true);check(!getProp(nullptr,L"RA2.Console.RuntimeError"));
