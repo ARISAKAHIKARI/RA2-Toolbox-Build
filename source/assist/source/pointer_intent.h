@@ -11,9 +11,11 @@ inline bool entryClick(int operation,uint32_t bindings){
 }
 inline bool clickFresh(int operation,uint32_t bindings,bool local,bool extended,
                        uint32_t created,uint32_t now,int sourceFrame,int frame){
- const bool localEntry=local&&entryClick(operation,bindings);
- return sourceFrame>=0&&frame>=sourceFrame&&uint32_t(now-created)<=(extended?1500u:150u)&&
-  (localEntry||frame-sourceFrame<=(extended?90:8));
+ // Native click admission uses wall time, not a fixed number of game
+ // frames. At 240 FPS eight frames elapse in ~33 ms before one IPC hop.
+ // The caller still validates match, input serial, House, viewport and UID.
+ (void)operation;(void)bindings;(void)local;
+ return sourceFrame>=0&&frame>=sourceFrame&&uint32_t(now-created)<=(extended?1500u:150u);
 }
 inline int entryMission(uint32_t bindings){return bindings&EntrySabotage?17:8;}
 inline const wchar_t* entryLabel(uint32_t mode){return mode==1?L"爆破任务＋建筑格":L"占领任务＋建筑格";}
