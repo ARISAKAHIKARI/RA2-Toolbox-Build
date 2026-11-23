@@ -36,7 +36,7 @@ assert "worldframe::Passengers" in display_demand
 assert "worldframe::Combat" in display_demand
 # Host VisualCache is production display sampling, not a test-only branch.
 assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in process_reader
-assert "worldClient_->visual(frame,worldDemand_" in process_reader
+assert "if(frame)frame=worldClient_->visual(frame,worldDemand_" in process_reader
 assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in process_reader
 assert "if(worldframe::visualDemand(worldDemand_))" in process_reader
 assert "else worldClient_->request(worldDemands_,!worldComplete_);" in process_reader
