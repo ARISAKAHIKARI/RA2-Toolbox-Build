@@ -1,8 +1,6 @@
 #pragma once
 #include "../../shared/source/world_frame_capture.h"
-#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
 #include "../../shared/source/world_frame_recovery.h"
-#endif
 #include "../../shared/source/world_frame_transport.h"
 #include "world_capture_requests.h"
 #if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
@@ -22,27 +20,17 @@ struct WorldFramePublication {
  bool requestRecovery(const worldframe::Key&,const worldframe::RequestedSpan*,size_t){return false;}
  size_t recovered(const worldframe::Key&,worldframe::RequestedSpan*,size_t){return 0;}
 };
-#elif defined(WORLD_FRAME_TEST_SYNC_CAPTURE)
-// The former independent publisher/recovery worker exists only in the
-// isolated synchronous regression DLL. Product Runtime never compiles it.
+#else
+// Runtime owns sampling and command authority. This worker only publishes
+// sealed immutable bytes and performs bounded missing-page probes; it never
+// captures the world graph or decides whether an action is admissible.
 #include "../../shared/source/world_frame_async_win.h"
 using WorldFramePublication=worldframe::AsyncPublisher<>;
-#else
-// Production has exactly one world-capture worker: CommandCaptureWorker.
-// The old AsyncPublisher is not a dormant compatibility path in the product.
-struct WorldFramePublication {
- bool begin(worldframe::Snapshot&){return false;}
- void invalidate(){}
- bool stop(){return true;}
- bool publish(const worldframe::Snapshot&,const worldframe::Server&){return false;}
- template<class...Args>bool requestRecovery(Args&&...){return false;}
- template<class...Args>size_t recovered(Args&&...){return 0;}
-};
 #endif
 static WorldFramePublication worldFramePublication;
-// The game frame keeps execution authority. The worker is the only production
-// CaptureGraph owner; a strict same-frame handoff is required before native
-// command use. No production synchronous fallback is compiled.
+// The game frame owns full command sampling, indexing and final admission.
+// AsyncPublisher only transports sealed bytes; CommandCaptureWorker remains
+// an explicit benchmark opt-in, never the product default.
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 struct WorldFrameCommandFixture {
  static bool enabled(){return false;}
@@ -91,16 +79,13 @@ static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;st
 static std::array<uint64_t,8192>runtimeDemandBits{},worldFrameRequestBits{};
 static std::vector<uint32_t>runtimeWorldDemands;
 static bool runtimeDemandOverflow=false,runtimeDemandBufferPrepared=false,worldFrameRequestBufferPrepared=false;
-// The legacy targeted-recovery ring exists only in the synchronous test
-// fixture. Production retries missing pages through the next complete graph.
-#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
+// Bounded hints only select which missing fields the game thread retries;
+// recovered background bytes are never used as command observations.
 static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
 static uint32_t lastRecoverySubmitAt=0;
-#endif
 static bool worldFrameReady=false;
-// Boundary-only sources are retained for isolated regression fixtures only.
-// Product builds suspend HostDisplayOnly until its fields join the canonical
-// complete Runtime snapshot.
+// Display-only subscribers receive a zero-page boundary. The Host VisualCache
+// performs their independent read-only graph capture outside the game thread.
 static bool worldFrameBoundaryOnly=false;
 static worldframe::DemandLeases runtimeDemandLeases;
 static worldframe::CaptureScratch worldFrameCaptureScratch{};static std::vector<uint32_t>worldFrameCaptureRequests;
@@ -248,9 +233,7 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
 }
 #endif
 static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
-#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
  runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;
-#endif
 }
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
  const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
@@ -280,12 +263,6 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   }
  }
  worldFrameServer.observe(key);
-#if !defined(WORLD_FRAME_TEST_SYNC_CAPTURE) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
- // Host VisualCache used a second independent CaptureGraph and a zero-page
- // boundary source. Both are quarantined until display data is part of the
- // same Runtime-owned immutable publication as command/automatic data.
- if(boundaryOnly){worldFrameReady=false;worldFrameBoundaryOnly=false;return false;}
-#endif
  // A successful strict sample becomes a read-only candidate on the NEXT
  // simulation frame. Its hash can be reused without any 16K-game-roster scan;
  // the native admission path still requires live per-object validation.
@@ -447,7 +424,6 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   }
   return false;
  }
-#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
  if(!worldFramePublication.begin(worldFrame))return false;
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
  // A Host-only display acquisition never consumes or sorts the command
@@ -552,10 +528,4 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
-#else
- // No production synchronous full-graph path exists. If the worker did not
- // adopt or queue a sample, consumers remain unavailable until it can.
- worldFrameReady=false;worldFrameBoundaryOnly=false;
- return false;
-#endif
 }
