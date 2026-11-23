@@ -16,6 +16,8 @@ assert "capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)" in
 assert "!cmd&&!resultsDue&&!newMatch&&!sh->flags" not in bridge
 assert "worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)" in bridge
 assert "sharedWorldWanted&&noCommandWork" in bridge
+assert "if(hostDisplayOnly)" in bridge
+assert "captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);" in bridge
 
 assert '#include "world_capture_requests.h"' in runtime
 assert "if(boundaryOnly)requests.clear(); // Do not even EVALUATE Server::requests()." in runtime
