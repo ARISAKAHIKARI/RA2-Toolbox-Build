@@ -30,7 +30,7 @@ assert "static void indexWorld(int frame)" in bridge
 assert "readLiveWorld(pointer+0x10,&observed,sizeof observed)" in bridge
 assert "indexedFrame!=frame||!commandRosterReady()" in planner
 assert "runtimeActionDemand" in bridge
-assert "runtimeActionDemand||sh->planRequest!=sh->planAck" in bridge
+assert "runtimeFrameDemand||sh->planRequest!=sh->planAck" in bridge
 
 # Command capture is synchronous in Runtime by default; the optional worker is
 # a benchmark seam only. The publisher thread transports immutable bytes only.
