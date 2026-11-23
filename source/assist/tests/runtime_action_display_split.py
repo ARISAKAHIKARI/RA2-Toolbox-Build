@@ -39,7 +39,7 @@ assert "No production synchronous full-graph path exists" not in runtime
 assert "WORLD_FRAME_TEST_SYNC_CAPTURE" not in runtime
 
 # Display sampling is independent, read-only and may reuse a recent same-world frame.
-assert "worldClient_->visual(frame,worldDemand_" in reader
+assert "if(frame)frame=worldClient_->visual(frame,worldDemand_" in reader
 assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in reader
 assert "VisualCache visuals_" in transport
 assert "Token visual(" in transport
