@@ -141,15 +141,9 @@ public:
   if(frame&&!worldframe::visualDemand(worldDemand_)&&
      worldframe::boundaryOnlySource(worldframe::authoritative(frame)->key))return false;
   if(worldframe::visualDemand(worldDemand_)){
-#ifdef WORLD_FRAME_TEST_VISUAL_CACHE
    // Legacy display-cache behavior is retained only by isolated regression
    // fixtures. Product Host never performs a second game-memory world read.
    if(frame&&!frame->controlSource)frame=worldClient_->visual(frame,worldDemand_,[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);});
-#else
-   // Observational display tokens come straight from the Runtime publisher.
-   // A scene reader waits for a publication that includes its graph demand.
-   if(!frame||frame->controlSource||!worldframe::canonicalDisplaySource(frame->key,worldDemand_))return false;
-#endif
   }else{
    frame=worldframe::authoritative(frame);
    // A producer scene boundary is never a command input.
@@ -168,14 +162,8 @@ public:
  std::shared_ptr<void> worldPublicationSignal(){return worldClient_?worldClient_->publicationSignal():std::shared_ptr<void>{};}
  void endWorldFrame(){
   if(worldClient_&&!worldDemands_.empty()){
-#ifdef WORLD_FRAME_TEST_VISUAL_CACHE
-   if(worldframe::visualDemand(worldDemand_)){
-    if(worldFrame_&&worldFrame_->controlSource)worldClient_->requestVisual(worldDemands_,!worldComplete_);
-    else worldClient_->request(worldDemands_,!worldComplete_);
-   }else worldClient_->request(worldDemands_,!worldComplete_);
-#else
-   worldClient_->request(worldDemands_,!worldComplete_);
-#endif
+   if(worldframe::visualDemand(worldDemand_))worldClient_->requestVisual(worldDemands_,!worldComplete_);
+  else worldClient_->request(worldDemands_,!worldComplete_);
   }
   for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}
   worldDemands_.clear();worldFrame_.reset();worldComplete_=true;
