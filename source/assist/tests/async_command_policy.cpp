@@ -44,15 +44,21 @@ int main(){
  view.unbind();
  
  // A cold Host demand read can move its revision from 54 to 55 while
- // assembling the requested pages. The worker ticket must carry 55, and
- // subsequent exact-frame admission rejects the obsolete pre-read 54.
+ // assembling read-only pages. This must trigger a Host refresh, but must not
+ // revoke a same-frame Runtime command sample whose lower Runtime lease
+ // revision is unchanged.
  const uint64_t priorHostRevision=(uint64_t(54)<<32)|17u;
+ const uint64_t changedRuntimeRevision=(uint64_t(55)<<32)|18u;
  CommandRequestGate assembledGate;
  assembledGate.submitted(a,demand,revision,false);
  assert(assembledGate.defer(a,demand,revision,false,110));
  assert(!assembledGate.defer(a,demand,priorHostRevision,false,110));
- assert(!acceptCommandCapture(a,a,demand,demand,priorHostRevision,revision,110));
- assert(acceptCommandCapture(a,a,demand,demand,revision,revision,110));
+ assert(acceptCommandCapture(a,a,demand,demand,priorHostRevision,revision,110));
+ assert(!acceptCommandCapture(a,a,demand,demand,revision,changedRuntimeRevision,110));
+ assert(commandSampleReusable(a,a,demand,Base,revision,priorHostRevision,true,false,false));
+ assert(!commandSampleReusable(a,a,demand,Base,revision,changedRuntimeRevision,true,false,false));
+ assert(!commandSampleReusable(a,candidateNext,demand,Base,revision,priorHostRevision,true,false,false));
+ assert(!commandSampleReusable(a,a,demand,Base,revision,priorHostRevision,false,false,false));
  // Runtime request admission: no repeated 16K-page merge for the same
  // worker job, but never throttle a new frame, requirement or config.
  CommandRequestGate gate;

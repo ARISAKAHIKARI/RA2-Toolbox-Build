@@ -59,7 +59,7 @@ static std::shared_ptr<const um::SampleResult> appliedSample;
 static HWND game;static DWORD pid,threadId;static bool enabled=true,demo=false,showOthers=true,buildings=false,hidden=false,manualVisible=false;
 static int topMargin=20,leftMargin=6,scalePercent=100;static bool controlsReady=false;
 static int secondaryX=0,secondaryY=0;
-static int page=0;static DWORD lastSearch=0,lastGood=0;static std::wstring root,status;static FILE* logfile;
+static int page=0;static DWORD lastSearch=0,lastGood=0,lastSample=0;static std::wstring root,status;static FILE* logfile;
 static uint32_t demoStart,oldMatch=0;static DWORD lastData=0;
 static void statsVisible(bool value){
 #ifdef RA2_UNIFIED
@@ -168,7 +168,7 @@ static void detach(){
  overlayRecovery.suspend();
  statsVisible(false);resetSecondary();
  ++samplingGeneration;samplingWorker.invalidate();appliedSample.reset();samplingWorker.submit({samplingGeneration,0});reader.close();resetPrimaryRender();
- game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=secondaryDirty=true;paintedAlpha=-1;surface.clear();snap=std::make_shared<const um::Snapshot>();hidePrimaryStats();
+ game=nullptr;pid=0;threadId=0;lastGood=lastSample=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=secondaryDirty=true;paintedAlpha=-1;surface.clear();snap=std::make_shared<const um::Snapshot>();hidePrimaryStats();
 }
 static bool selectedReaderMatches(const external::targetselection::Policy& choice,const external::ReadSession& reader){
  const auto connection=reader.connectionIdentity();
@@ -436,7 +436,9 @@ static void syncTargetSelection(DWORD now){
 static void consumeSample(DWORD now){
  if(demo||!pid||(!enabled&&!secondaryEnabled))return;
  auto result=samplingWorker.get();
- if(!result||result==appliedSample||result->request.generation!=samplingGeneration||result->request.pid!=pid||result->request.connection!=reader.generation()||!result->snapshot)return;
+ if(!result||result==appliedSample||result->request.generation!=samplingGeneration||result->request.pid!=pid||result->request.connection!=reader.generation()||
+    result->sharedWorld!=external::hasMonitorWorldProducer(pid,reader.generation()))return;
+ if(!result->snapshot){appliedSample=std::move(result);return;}
  const auto&incoming=result->snapshot;
  if(incoming->status==1&&DWORD(now-incoming->tick)>=2000)return;
  appliedSample=std::move(result);
@@ -480,8 +482,9 @@ static void tick(bool displayFrame=false){
     if(found.best.window&&found.best.pid==pid){game=found.best.window;threadId=found.best.thread;}
    }
    if(!pid&&now-lastSearch>=1500){lastSearch=now;attach();}
-   if(pid){samplingWorker.submit({samplingGeneration,pid,reader.generation()});
-    if(snap->status<0)setStatus(L"此 EXE 的数据布局不受支持，已停止采集");
+   if(pid){
+    if(appliedSample&&appliedSample->waitingForWorld&&(snap->status!=1||now-lastGood>=3000))setStatus(L"等待单位统计样本…");
+    else if(snap->status<0)setStatus(L"此 EXE 的数据布局不受支持，已停止采集");
     else if(snap->status==0){
      const auto p=appliedSample?appliedSample->probe:external::layout::Result{};
      setStatus(std::wstring(L"只读采集：")+external::layout::description(p.stage)+
@@ -492,6 +495,14 @@ static void tick(bool displayFrame=false){
     else {std::wstring msg=L"已连接 · 真人 "+std::to_wstring(snap->playerCount)+L" · 类型 "+std::to_wstring(snap->typeCount);
      if(!snap->paletteReady)msg+=L" · 等待图标色盘";if(snap->missingIcons)msg+=L" · 图标待载入 "+std::to_wstring(snap->missingIcons);if(iconCache.loaded)msg+=L" · 已载入缓存 "+std::to_wstring(iconCache.loaded.load());if(iconCache.writeFailed)msg+=L" · 图标缓存写入失败";if(snap->readErrors)msg+=L" · 读取异常 "+std::to_wstring(snap->readErrors);setStatus(msg);}
    }
+  }
+ }
+ if(!demo&&pid&&(enabled||secondaryEnabled)){
+  // Renew sealed page leases well within the transport's 250 ms expiry.
+  const DWORD interval=external::hasMonitorWorldProducer(pid,reader.generation())?125:250;
+  if(!lastSample||now-lastSample>=interval){
+   lastSample=now;
+   samplingWorker.submit({samplingGeneration,pid,reader.generation()});
   }
  }
  bool battlefield=false;external::display::State displayState;

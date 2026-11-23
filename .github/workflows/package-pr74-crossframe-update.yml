@@ -1,4 +1,4 @@
-name: Package PR74 Update candidate (paired Windows build)
+name: Package PR75 shared-seats and UI Update candidate (paired Windows build)
 on:
   pull_request:
     paths:
@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: package-pr74-${{ github.event.pull_request.number || github.ref }}
+  group: package-pr75-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   paired-windows-update:
@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 40
     env:
       PYTHONUTF8: "1"
+      UPDATE_FILENAME: RA2Toolbox-PR75-UI-Cleanup-Update-Candidate.zip
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -44,16 +45,16 @@ jobs:
         run: |
           set -euo pipefail
           python source/tools/package_automation_no_deadlines.py --root update-candidate --sha "$GITHUB_SHA" \
-            --output-name RA2Toolbox-PR74-CrossFrame-Update-Candidate.zip \
-            --label "PR74 cross-frame boarding and Ctrl+D passenger cohort" | tee checks/package.log
+            --output-name "$UPDATE_FILENAME" \
+            --label "PR75 shared cross-frame seat reservations and compact consistent settings UI" | tee checks/package.log
       - uses: actions/upload-artifact@v4
         with:
-          name: RA2Toolbox-PR74-Update-Candidate
+          name: RA2Toolbox-PR75-UI-Cleanup-Update-Candidate
           retention-days: 30
           if-no-files-found: error
-          path: update-candidate/RA2Toolbox-PR74-CrossFrame-Update-Candidate.zip
+          path: update-candidate/${{ env.UPDATE_FILENAME }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PR74-Update-Compile-Evidence
+          name: PR75-Update-Compile-Evidence
           path: checks/

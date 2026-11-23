@@ -14,7 +14,7 @@ static void building(uint32_t p,uint32_t id,int cap,int present=0,int flag=0x16A
  uint32_t t=p==targetA?0x1A0000u:0x1B0000u;put(p,0x7E3EBCu);put(p+0x10,id);put(p+0x21C,lastHouse);put(p+0x520,t);put(p+0x6C,100);put<uint8_t>(p+0x74,1);put<uint8_t>(p+0x90,1);put(t+0xA0,100);put(t+0x634,1);put<uint8_t>(t+flag,1);put(t+0x5E0,cap);put(t+0x388,128.0);put(p+0x9C,(p==targetA?30:45)*256+128);put(p+0xA0,30*256+128);used(p,present);
 }
 static void start(int n=10,int a=10,int b=10,int au=0,int bu=0){
- moPlanningUI={};setup();resetMoOrders();posted=0;actors.clear();selected.clear();entryReservationCount=0;actorLeaseArbiter.clear();actorFrameArbiter.frame=-1;missionObserver.clear();events.clear();commands.clear();beforeQueue={};highLevelCalls=constructCalls=0;highBackend=false;actionValue=3;actionOK=true;failAt=0;
+ moPlanningUI={};setup();resetMoOrders();posted=0;actors.clear();selected.clear();entryReservationCount=0;loadLedger.clear();actorLeaseArbiter.clear();actorFrameArbiter.frame=-1;missionObserver.clear();events.clear();commands.clear();beforeQueue={};highLevelCalls=constructCalls=0;highBackend=false;actionValue=3;actionOK=true;failAt=0;
  for(int i=0;i<n;++i){uint32_t p=actorAt(i);actor(p,100+i);actors.push_back(p);selected.push_back(p);}
  building(targetA,900,a,au);building(targetB,901,b,bu);actors.push_back(targetA);actors.push_back(targetB);put(targetA+0x30,targetB);put(readMapCell(30,30)+0xE4,targetA);
  sh->moFeatures=moorders::Area;moEpoch=match;moHouse=lastHouse;moMode=moorders::Area;moHover=targetA;moCurrent={30,30};moStrokeCount=0;moHolding=false;moCapturedGestures=sh->moGestures;moStarted=clockValue;moStartFrame=snap.frame;moStage=0;
@@ -61,6 +61,38 @@ int main(){
  // A native reservation and its pending record refer to one actor, not two.
  start(4,4,0);uint32_t prior=0x70000;actor(prior,50,1,2);actors.push_back(prior);put(prior+0xAC,7);put(prior+0x500,targetA);entryReservations[entryReservationCount++]={50,900,typeOf(targetA,3),0,100,2};allocate();check(moQueueCount==2&&count(targetA)==2);
  tick();check(events.size()==2&&entryReservationCount==3);selected={actorAt(2),actorAt(3)};check(moCapture());allocate();check(moQueueCount==0); // already queued entrants still consume room
+ // Cross-feature ledger: an AutoLoad Enter not reflected by the engine
+ // must occupy the same physical seats as a cooperative Enter event.
+ start(2,2,0);uint32_t loadingActor=0x70000;
+ actor(loadingActor,50,1,1);actors.push_back(loadingActor);
+ loading::Reservation inflight{loadingActor,50,targetA,900,1,snap.frame};
+ inflight.manualToken=0;check(loadLedger.add(inflight));
+ allocate();check(moQueueCount==1&&count(targetA)==1);
+ // Once native Enter becomes observable, the same reservation is counted
+ // only once; it is not an additional phantom passenger.
+ put(loadingActor+0xAC,7);put(loadingActor+0x500,targetA);
+ selected={actorAt(0),actorAt(1)};check(moCapture());allocate();
+ check(moQueueCount==1&&count(targetA)==1);
+ // Once native cargo is confirmed, the same unretired AutoLoad ticket
+ // must NOT consume a second seat while the observer catches up.
+ start(2,2,0);actor(loadingActor,50,1,1);actors.push_back(loadingActor);
+ loading::Reservation boarded{loadingActor,50,targetA,900,1,snap.frame};
+ boarded.manualToken=0;check(loadLedger.add(boarded));
+ used(targetA,1);put(loadingActor+0x11C,targetA);
+ allocate();check(moQueueCount==1&&count(targetA)==1);
+ // A duplicate cooperative reservation for that UID still consumes one seat.
+ start(2,2,0);actor(loadingActor,50,1,1);actors.push_back(loadingActor);
+ loading::Reservation duplicate{loadingActor,50,targetA,900,1,snap.frame};
+ duplicate.manualToken=0;check(loadLedger.add(duplicate));
+ entryReservations[entryReservationCount++]={50,900,typeOf(targetA,3),0,clockValue,1};
+ allocate();check(moQueueCount==1&&count(targetA)==1);
+ // Reverse direction: a cooperative queued Enter consumes AutoLoad's
+ // pending capacity until the engine's destination is visible.
+ start(1,2,0);actor(loadingActor,50,1,1);actors.push_back(loadingActor);
+ entryReservations[entryReservationCount++]={50,900,typeOf(targetA,3),0,clockValue,1};
+ check(cooperativePendingActor(50)&&cooperativePendingSlots(900,targetA)==1);
+ put(loadingActor+0xAC,7);put(loadingActor+0x500,targetA);
+ check(cooperativePendingSlots(900,targetA)==0);
  // Capacity changed before dispatch: discard the stale tail, never overbook.
  start(2,2,0);allocate();used(targetA,2);tick();check(events.empty()&&entryReservationCount==0&&sh->moOrderRejected==2);
  // Post-clock changes are rechecked by the real router's forced constructed

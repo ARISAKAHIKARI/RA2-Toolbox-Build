@@ -24,6 +24,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Test source-extracted cross-feature capacity and identity conservation
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/shared_enter_capacity.py --out /tmp/ra2-shared-enter
       - name: Check sealed world pages and consumer recovery
         run: |
           set -euo pipefail
@@ -50,6 +54,8 @@ jobs:
           g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-misleading-indentation -Wno-class-memaccess -Wno-parentheses -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/display_capture_offthread.cpp -o /tmp/ra2-display-admission
           /tmp/ra2-display-admission
           python3 source/assist/tests/display_capture_runtime_wiring.py
+          python3 source/assist/tests/async_command_no_live_roster.py
+          python3 source/assist/tests/runtime_action_display_split.py
           g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/world_frame_page_sort.cpp -o /tmp/ra2-page-sort
           /tmp/ra2-page-sort
       - name: Verify demand lease expiry deadline and bounded maintenance at 16K capacity
@@ -127,6 +133,12 @@ jobs:
           Expand-Archive zig.zip zig
           Add-Content $env:GITHUB_ENV ('ZIG_EXE='+(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)
           New-Item -ItemType Directory -Force diagnostics,artifacts/console | Out-Null
+      - name: Test actual cross-feature Enter seat accounting (x86/x64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/shared_enter_capacity.py --zig "$ZIG" --out diagnostics/entry-capacity
       - name: Compile paired Windows x86 Runtime and x64 Host
         shell: bash
         run: |
@@ -142,6 +154,12 @@ jobs:
           set -euo pipefail
           export ZIG="$(cygpath -u "$ZIG_EXE")"
           python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out diagnostics/async-recovery
+      - name: Verify opt-in command worker; synchronous Runtime is the product default
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/world_frame_command_worker_windows.py --zig "$ZIG" --out diagnostics/command-worker
       - uses: actions/upload-artifact@v4
         if: always()
         with:

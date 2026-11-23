@@ -354,10 +354,9 @@ static void serviceCooperative(){
    if(i<size_t(std::max(0,shared->cooperativeProcessed)))processedCooperative.push_back(submittedCooperative[i]);
   }
   if(cooperative::damageMode(cooperativePending.mode))retryCooperative=(shared->cooperativeResult==-7||(shared->cooperativeResult==1&&shared->cooperativeRejected>0))&&
-   cooperative::retrySourcePool(cooperativePending,cooperativeSourcePool,processedCooperative)&&freshness::intentAlive(cooperativePending.tick,now);
+   cooperative::retrySourcePool(cooperativePending,cooperativeSourcePool,processedCooperative);
   else retryCooperative=shared->cooperativeResult==-7&&
-   cooperative::retryRemaining(cooperativePending,submittedCooperative.data(),int(submittedCooperative.size()),shared->cooperativeProcessed)&&
-   freshness::intentAlive(cooperativePending.tick,now);
+   cooperative::retryRemaining(cooperativePending,submittedCooperative.data(),int(submittedCooperative.size()),shared->cooperativeProcessed);
   submittedCooperative.clear();
   if(!retryCooperative)notify(L"协同指令本批已提交 "+std::to_wstring(shared->cooperativeAccepted)+L" 个"+(shared->cooperativeRejected?L"；失效或已被手动接管 "+std::to_wstring(shared->cooperativeRejected)+L" 个。":L"。"));
  }
@@ -370,7 +369,7 @@ static void serviceCooperative(){
  bool retry=retryCooperative&&request.serial==cooperativePending.serial&&request.match==cooperativePending.match;
  if(retry)request=cooperativePending;else {retryCooperative=false;acceptedCooperative.clear();processedCooperative.clear();cooperativeSourcePool=request;}
  if(!cooperative::valid(request)||(!retry&&request.serial==cooperativeDelivered)||request.match!=snap.match||DWORD(now-request.tick)<8)return;
- if(!freshness::intentAlive(request.tick,now)){
+ if(!retry&&!freshness::intentAlive(request.tick,now)){
   cooperativeDelivered=request.serial;retryCooperative=false;notify(L"协同请求已超时，请重新下令。");return;
  }
  // Read the immutable game-thread frame capture; never independently scan
@@ -390,7 +389,7 @@ static void serviceCooperative(){
  if(retry)cooperative::reserveAccepted(input,acceptedCooperative);
  auto assignments=cooperative::allocate(input);
  if(!freshness::valid(request.match,shared->computeFrameMatch,acquired,frameBefore,GetTickCount(),shared->computeFrame,freshness::Cooperative)||
-    !freshness::intentAlive(request.tick,GetTickCount())||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeSeq!=seq){wakeGame();return;}
+    (!retry&&!freshness::intentAlive(request.tick,GetTickCount()))||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeSeq!=seq){wakeGame();return;}
  // An older sample can propose a target, but cannot prove there are none now.
  if(candidate&&assignments.empty()){wakeGame();return;}
  shared->cooperativeFrameWanted=0;

@@ -24,7 +24,7 @@ static struct {struct Capacity{int occupants=0,maximum=0,used=0;};
  int entrySlots(uint32_t,uint32_t){return 1;}uint32_t entryDestination(uint32_t p){return get<uint32_t>(p+0x5A4);}
 }clickView;
 ''' + text[end:]
-    text=text.replace('static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}', 'static int entryReserved(uint32_t target,uint32_t ignore,uint32_t){int n=0;for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];if(r.id!=ignore&&r.target==get<uint32_t>(target+0x10))n+=r.slots;}return n;}')
+    text=text.replace('static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}', 'static int fixtureAutoPendingSeats(uint32_t,uint32_t);static int entryReserved(uint32_t target,uint32_t ignore,uint32_t){int n=0;for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];if(r.id!=ignore&&r.target==get<uint32_t>(target+0x10))n+=r.slots;}return n+fixtureAutoPendingSeats(target,ignore);}')
     text+=r'''
 constexpr uint32_t NativeAirWaypoints=0x80000000u;
 #include "air_path_events_bridge.h"
@@ -32,6 +32,7 @@ struct SampleReadScope{static bool available;explicit operator bool()const{retur
 static bool sampleRoster(uint32_t at,Vec&v){v=vec(at);return true;}
 static uint32_t incomingVehicle(uint32_t p){return get<uint32_t>(p+0x5A4);}
 static struct {struct Reservation{uint32_t id=0,vehicle=0,object=0;int slots=1;}records[16];int count=0;bool contains(uint32_t id){for(int i=0;i<count;++i)if(records[i].id==id)return true;return false;}}loadLedger;
+static int fixtureAutoPendingSeats(uint32_t target,uint32_t ignore){int n=0;for(int i=0;i<loadLedger.count;++i){auto&r=loadLedger.records[i];if(r.id!=ignore&&r.vehicle==target&&incomingVehicle(r.object)!=target)n+=r.slots;}return n;}
 static bool loadQueryFailed=false;static std::set<uint32_t> illegal;
 static bool canEnter(uint32_t,uint32_t target){return !illegal.count(target);}
 #include "bomb_board_bridge.h"

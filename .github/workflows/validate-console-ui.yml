@@ -1,0 +1,103 @@
+name: Validate console UI consistency
+on:
+  push:
+    branches: [work/latest-ra2-integration]
+    paths:
+      - 'source/suite/frontend/**'
+      - 'source/suite/source/console_adapter.h'
+      - 'source/suite/source/tactical_console_layout.h'
+      - 'source/suite/source/choice_descriptions.h'
+      - 'source/suite/tests/console_*'
+      - 'source/suite/tests/choice_help_test.mjs'
+      - '.github/workflows/validate-console-ui.yml'
+  pull_request:
+    paths:
+      - 'source/suite/frontend/**'
+      - 'source/suite/source/console_adapter.h'
+      - 'source/suite/source/tactical_console_layout.h'
+      - 'source/suite/source/choice_descriptions.h'
+      - 'source/suite/tests/console_*'
+      - 'source/suite/tests/choice_help_test.mjs'
+      - '.github/workflows/validate-console-ui.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Chromium fixture
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx --no-install playwright install --with-deps chromium
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Verify mode descriptions and UI composition
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics/console-ui
+          g++ -std=c++17 -O1 -UNDEBUG source/suite/tests/choice_descriptions.cpp -o diagnostics/console-ui/choice_descriptions
+          diagnostics/console-ui/choice_descriptions
+          node source/suite/tests/choice_help_test.mjs
+          node source/suite/tests/console_composition_test.mjs
+          python3 source/assist/tests/miner_defense_settings.py --out diagnostics/console-ui/type-settings
+      - name: Verify sampled gesture, factory and technology routes
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/async_command_no_live_roster.py
+          python3 source/assist/tests/automation_no_deadline_contract.py
+          python3 source/assist/tests/mo_orders_bridge_test.py
+          python3 source/assist/tests/construction_host_test.py
+          python3 source/assist/tests/tech_enhancement_midgame.py --after-only --build-dir diagnostics/console-ui/tech --output diagnostics/console-ui/tech/result.json
+          python3 source/suite/tests/console_review_fixture.py --out diagnostics/console-ui/review
+      - name: Verify responsive layout and capture actual Chromium screenshots
+        env:
+          CONSOLE_SCREENSHOT: diagnostics/console-ui/console-desktop.png
+        run: |
+          set -euo pipefail
+          node source/suite/tests/console_store_test.mjs --browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-Console-UI-Review
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/console-ui/
+  settings-migration:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the original Win32 setting owners and saves
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          python source/suite/tests/console_ui_regression.py --zig $zig --out diagnostics/console-migration
+          if($LASTEXITCODE -ne 0){throw 'Settings migration regression failed'}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-Console-Settings-Migration
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/console-migration/

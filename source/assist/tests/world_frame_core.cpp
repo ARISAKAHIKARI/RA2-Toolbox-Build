@@ -92,6 +92,12 @@ void hostVisual(){
  worldframe::VisualCache cache;std::vector<uint32_t>pages;
  for(unsigned i=0;i<512;++i){const uint32_t p=0xC00000+i*4096;pages.push_back(p);m.put(p,i+123u);}
  cache.request(pages,100,false);m.put(ActorA+0x6C,25);m.put(0xA8ED84,51);
+ worldframe::Snapshot publication;
+ CHECK(publication.copyForPublication(*raw));
+ CHECK(publication.sealed()&&publication.pages.size()==raw->pages.size());
+ CHECK(publication.key.sameFrame(raw->key)&&publication.counters.bytes==raw->counters.bytes);
+ CHECK(publication.pages.size()&&publication.pages[0].address==raw->pages[0].address);
+ int publicationOnlyValue=0;CHECK(!publication.read(ActorA+0x6C,&publicationOnlyValue,4));
  auto visual=cache.acquire(raw,worldframe::Resources,100,live);CHECK(visual&&visual->controlSource==raw&&visual->visualFrame==51&&visual->visualTick==100&&visual->visualSerial);
  CHECK(visual->key.serial==raw->key.serial&&visual->key.tick==raw->key.tick&&visual->key.frame==50);
  int hp=0;uint32_t value=0;CHECK(visual->read(ActorA+0x6C,&hp,4)&&hp==100);CHECK(!raw->read(0xC00000,&value,4));CHECK(visual->read(0xC00000,&value,4)&&value==123);
@@ -137,12 +143,12 @@ void hostVisual(){
  m.put(0xA8ED84,60);auto next=boundary(60,208);
  CHECK(fast.acquire(next,worldframe::Resources,208,live)==original&&fast.statistics.captures==1);
  CHECK(original->controlSource==first&&original->visualTick==200);
- auto refreshed=fast.acquire(next,worldframe::Resources,216,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
+ auto refreshed=fast.acquire(next,worldframe::Resources,232,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
  m.put(0xA8ED84,61);m.put(0x87F7E8+0x1240,64);
- auto resized=boundary(61,217);auto resizedCapture=fast.acquire(resized,worldframe::Resources,217,live);
+ auto resized=boundary(61,233);auto resizedCapture=fast.acquire(resized,worldframe::Resources,233,live);
  CHECK(resizedCapture&&resizedCapture->controlSource==resized&&fast.statistics.captures==3);
- m.put(0xA8ED84,59);auto rewound=boundary(59,218);
- auto rewindCapture=fast.acquire(rewound,worldframe::Resources,218,live);
+ m.put(0xA8ED84,59);auto rewound=boundary(59,234);
+ auto rewindCapture=fast.acquire(rewound,worldframe::Resources,234,live);
  CHECK(rewindCapture&&rewindCapture->controlSource==rewound&&fast.statistics.captures==4);
  std::printf("PASS Host visual isolation: control %u reads/%u bytes/%zu pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection\n",rawCalls,rawBytes,rawPages);
 }
@@ -211,6 +217,32 @@ void graphs(){
   uint32_t uid=0;int index=-1;
   CHECK(s.read(product+0x10,&uid,4)&&uid==61);
   CHECK(s.read(type+0xDF8,&index,4)&&index==11);
+ }
+ {Memory m;setup(m);
+  constexpr uint32_t type=0x721100,counts=0x725100,factory=0x727100,product=0x729100,queue=0x72C100;
+  m.vector(0xA8E348,0x720100,{type});
+  m.vector(0xA83E30,0x726100,{factory});
+  m.vector(factory+64,queue,{type});
+  m.put(House+0x5528+4,counts);m.put(House+0x5528+8,1);m.put(counts,7);
+  m.put(House+90154,char16_t(u'陈'));m.put(factory+88,product);m.put(product+0x6C0,type);
+  m.put(type+0x634,3);
+  const auto demand=worldframe::canonicalHostDemand(worldframe::Base|worldframe::MonitorStats);
+  CHECK(demand==(worldframe::Base|worldframe::MonitorStats));
+  CHECK(worldframe::visualDemand(demand)&&worldframe::runtimeDemand(demand)==worldframe::Base);
+  std::vector<uint32_t> noRequests;
+  worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});
+  CHECK(g.capture(demand,noRequests)&&s.seal());
+  m.put(counts,99);m.put(queue,0u);
+  int owned=0,level=0;uint32_t queued=0,activeType=0;char16_t houseName=0;
+  CHECK(s.read(counts,&owned,4)&&owned==7);
+  CHECK(s.read(queue,&queued,4)&&queued==type);
+  CHECK(s.read(product+0x6C0,&activeType,4)&&activeType==type);
+  CHECK(s.read(type+0x634,&level,4)&&level==3);
+  CHECK(s.read(House+90154,&houseName,2)&&houseName==u'陈');
+  worldframe::Snapshot baseOnly;baseOnly.reset(key());
+  worldframe::CaptureGraph<Read>ordinary(baseOnly,Read{&m});
+  CHECK(ordinary.capture(worldframe::Base,noRequests)&&baseOnly.seal());
+  CHECK(!baseOnly.read(counts,&owned,4)&&!baseOnly.read(queue,&queued,4));
  }
  std::printf("GRAPH Base %u reads/%u bytes/%u rosters; Combat %u/%u/%u; Passengers %u/%u/%u; Ore %u/%u/%u; Visual %u/%u/%u\n",base.calls,base.bytes,base.rosters,combat.calls,combat.bytes,combat.rosters,passengers.calls,passengers.bytes,passengers.rosters,ore.calls,ore.bytes,ore.rosters,visual.calls,visual.bytes,visual.rosters);
  for(int bad:{-1,16385}){Memory m;setup(m);m.put(0xA8EC78+16,bad);worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});CHECK(!g.capture(worldframe::Base,{}));}
@@ -800,7 +832,7 @@ void canonicalDisplayTransport(){
  external::ProcessReader reader;CHECK(reader.open(GamePid));
  const uint32_t sceneDemand=worldframe::Visual|worldframe::HostVisualPassengers;
  reader.setWorldDemand(sceneDemand);CHECK(!reader.beginWorldFrame(7));
- CHECK(channel()->demandMask==(worldframe::Base|worldframe::Visual|worldframe::Passengers));
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  currentPid=GamePid;worldframe::Server server;CHECK(server.wanted(HostPid,clock));
  auto k=key();k.tick=clock;k.generationLow=777;
  k.connectionLow=uint32_t(reader.generation());k.connectionHigh=uint32_t(reader.generation()>>32);
@@ -814,6 +846,8 @@ void canonicalDisplayTransport(){
  const auto oldReads=rpmCalls;
  publish(worldframe::BoundaryOnlyKeyBit);CHECK(!reader.beginWorldFrame(7));
  publish(worldframe::ObservationOnlyKeyBit);CHECK(!reader.beginWorldFrame(7));
+ reader.setWorldDemand(worldframe::MonitorStats);CHECK(reader.beginWorldFrame(7));
+ CHECK((channel()->demandMask&worldframe::MonitorStats)!=0&&rpmCalls==oldReads);
  reader.setWorldDemand(worldframe::Resources);CHECK(reader.beginWorldFrame(7));
  publish(worldframe::ObservationOnlyKeyBit|worldframe::SceneKeyBit);
  reader.setWorldDemand(sceneDemand);CHECK(reader.beginWorldFrame(7));

@@ -16,20 +16,21 @@ namespace worldframe {
 constexpr uint32_t Version=1,PageSize=4096,MaxPages=16384,IndexSize=32768;
 enum Demand:uint32_t {
  Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64,HostDisplayOnly=128,
- HostVisualPassengers=256,HostVisualCombat=512,HostVisualOre=1024
+ HostVisualPassengers=256,HostVisualCombat=512,HostVisualOre=1024,MonitorStats=2048,TypeCatalogue=4096
 };
 // Explicit Host-only visual requirements never grant command authority.
 // Unknown or mixed native demand remains on the full authoritative path.
 inline bool visualDemand(uint32_t demand){
- constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre);
- return (demand&uint32_t(Visual|Resources))!=0&&(demand&~displayFlags)==0;
+ constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre|MonitorStats);
+ return (demand&uint32_t(Visual|Resources|MonitorStats))!=0&&(demand&~displayFlags)==0;
 }
 inline uint32_t runtimeDemand(uint32_t demand){
  return visualDemand(demand)?uint32_t(Base):
- ((demand&~uint32_t(Visual|Resources|HostDisplayOnly|HostVisualPassengers|HostVisualCombat|HostVisualOre))|uint32_t(Base));
+ ((demand&~uint32_t(Visual|Resources|HostDisplayOnly|HostVisualPassengers|HostVisualCombat|HostVisualOre|MonitorStats))|uint32_t(Base));
 }
 inline uint32_t canonicalHostDemand(uint32_t demand){
  uint32_t capture=runtimeDemand(demand);
+ capture|=demand&MonitorStats;
  if(visualDemand(demand)){
   capture|=demand&uint32_t(Visual|Resources);
   if(demand&HostVisualPassengers)capture|=Passengers;
@@ -204,6 +205,7 @@ class Snapshot {
  }
 public:
  Key key{};Counters counters{};PageBuffer pages;
+ struct CatalogueObservation { uint64_t hash=0;bool attempted=false,complete=false; } catalogue;
  // Local provenance only; not part of Key/Page/Channel wire layouts. All
  // command consumers unwrap this owner and read only its authoritative bytes.
  std::shared_ptr<const Snapshot> controlSource;
@@ -218,16 +220,17 @@ public:
   swap(index_,other.index_);swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
   swap(indexFresh_,other.indexFresh_);
   swap(key,other.key);swap(counters,other.counters);pages.swap(other.pages);
+  swap(catalogue,other.catalogue);
   controlSource.swap(other.controlSource);
   swap(visualFrame,other.visualFrame);swap(visualTick,other.visualTick);
   swap(visualSerial,other.visualSerial);
  }
- void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);indexFresh_=true;sealed_=overflow_=false;}
+ void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};catalogue={};pages.clear();index_.fill(0);indexFresh_=true;sealed_=overflow_=false;}
  // No page buffer or key-index contents can become command authority on a
  // HostDisplayOnly Key. Defer clearing the large lookup until the next page add.
  void resetBoundary(const Key&next){
   controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;
-  key=next;counters={};pages.clear();indexFresh_=false;sealed_=overflow_=false;
+  key=next;counters={};catalogue={};pages.clear();indexFresh_=false;sealed_=overflow_=false;
  }
  bool sealed()const{return sealed_;}bool overflow()const{return overflow_;}
  bool seal(){sealed_=true;return !overflow_;}
@@ -354,6 +357,17 @@ public:
    uint32_t slot=bucket(p.address);while(index_[slot])slot=(slot+1)&(IndexSize-1);
    index_[slot]=uint32_t(pages.size());
   }counters=stats;return seal();
+ }
+ bool copyForPublication(const Snapshot&source){
+  // Publication-only copy: retain immutable wire pages without rebuilding the
+  // 128-KiB command lookup index. This snapshot is never used for Runtime reads.
+  if(&source==this||!source.sealed_||source.overflow_||source.controlSource)return false;
+  controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;
+  key=source.key;counters=source.counters;catalogue=source.catalogue;
+  pages.clear();indexFresh_=false;sealed_=overflow_=false;
+  if(source.pages.size()>MaxPages||!pages.reserve(source.pages.size()))return capacityFailure();
+  for(size_t i=0;i<source.pages.size();++i)if(!pages.append(source.pages[i]))return capacityFailure();
+  sealed_=true;return true;
  }
  bool extendVisual(const std::shared_ptr<const Snapshot>&source){
   if(!source||source.get()==this||source->controlSource||!source->sealed()||source->overflow())return false;

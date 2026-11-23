@@ -475,7 +475,7 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
   // midgame activation can reach the existing guarded cameo path. Readiness
   // and native CanBuild/FindFactory still gate every inserted icon below.
   catalogueRequested=requested;enhancementChangedCatalogue=true;
-  catalogueDirty=true;catalogueReady=false;catalogueAt=0;scanTypes();
+  requestTypeCatalogue();
   if(snap.techOpen)requestTechRefresh();
  }
  if(!requested){
@@ -497,26 +497,33 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
  if(!captureWorld(house)){InterlockedExchange(&policy.enhanced,0);enhancementFailure=techbp::Thread;publish();return;}
  enhancementFailure=0;enhancementDesired=true;
  if(!enhancementParameterScan||DWORD(now-enhancementParameterScan)>=500||!policy.enhanced||!policy.enhancementIndex.ready()){
-  enhancementParameterScan=now;InterlockedExchange(&policy.enhanced,0);policy.enhancementIndex.reset();for(auto&t:policy.enhancement)t={};
-  // All rules for one native array share this capture, not a long-lived
-  // authorization cache. Array order still determines each rule's first
-  // match, and the hot callback retains its live identity/membership guards.
-  for(unsigned first=0;first<techenhancement::Count;++first){const uint32_t array=techenhancement::Rules[first].array;
-   bool seen=false;for(unsigned prior=0;prior<first;++prior)if(techenhancement::Rules[prior].array==array){seen=true;break;}if(seen)continue;
-   unsigned remaining=0;for(unsigned i=first;i<techenhancement::Count;++i)if(techenhancement::Rules[i].array==array)++remaining;
-   const Vec types=vec(array,4096);
-   for(int index=0;index<types.count;++index){const uint32_t pointer=item(types,index);if(!pointer)continue;
-    const int level=get<int>(pointer+0x634);if(level!=-1&&(level<2||level>100))continue;
-    uint32_t table=0;char id[24]{};if(!read(pointer,&table,4)||!read(pointer+0x24,id,sizeof id)||!memchr(id,0,sizeof id))continue;
-    uint32_t uid=0;bool identified=false;
-    for(unsigned i=first;i<techenhancement::Count;++i){const auto&r=techenhancement::Rules[i];
-     if(r.array!=array||policy.enhancement[i].type.pointer||table!=r.vtable||!techenhancement::sameID(id,r.id)||!techenhancement::eligible(r,level))continue;
-     if(!identified){uid=get<uint32_t>(pointer+0x10);identified=true;}if(uid){policy.enhancement[i]={{pointer,uid,r.vtable},types.items,index,level};--remaining;}
+  EnhancedIdentity sampled[techenhancement::Count]{};
+  ObservationReadScope sample;
+  if(sample&&sampleWorldSource->catalogue.complete){
+   // All rules for one native array share this capture, not a long-lived
+   // authorization cache. Array order still determines each rule's first
+   // match, and the hot callback retains its live identity/membership guards.
+   for(unsigned first=0;first<techenhancement::Count;++first){const uint32_t array=techenhancement::Rules[first].array;
+    bool seen=false;for(unsigned prior=0;prior<first;++prior)if(techenhancement::Rules[prior].array==array){seen=true;break;}if(seen)continue;
+    unsigned remaining=0;for(unsigned i=first;i<techenhancement::Count;++i)if(techenhancement::Rules[i].array==array)++remaining;
+    const Vec types=vec(array,4096);
+    for(int index=0;index<types.count;++index){const uint32_t pointer=item(types,index);if(!pointer)continue;
+     const int level=get<int>(pointer+0x634);if(level!=-1&&(level<2||level>100))continue;
+     uint32_t table=0;char id[24]{};if(!read(pointer,&table,4)||!read(pointer+0x24,id,sizeof id)||!memchr(id,0,sizeof id))continue;
+     uint32_t uid=0;bool identified=false;
+     for(unsigned i=first;i<techenhancement::Count;++i){const auto&r=techenhancement::Rules[i];
+      if(r.array!=array||sampled[i].type.pointer||table!=r.vtable||!techenhancement::sameID(id,r.id)||!techenhancement::eligible(r,level))continue;
+      if(!identified){uid=get<uint32_t>(pointer+0x10);identified=true;}if(uid){sampled[i]={{pointer,uid,r.vtable},types.items,index,level};--remaining;}
+     }
+     if(!remaining)break;
     }
-    if(!remaining)break;
+   }
+   if(sample.complete()){
+    enhancementParameterScan=now;InterlockedExchange(&policy.enhanced,0);
+    std::copy(std::begin(sampled),std::end(sampled),std::begin(policy.enhancement));
+    policy.enhancementIndex.rebuild(policy.enhancement,[](const EnhancedIdentity&t){return t.type.pointer;});MemoryBarrier();
    }
   }
-  policy.enhancementIndex.rebuild(policy.enhancement,[](const EnhancedIdentity&t){return t.type.pointer;});MemoryBarrier();
  }
  configure();if(!enhancementReady())return;
  // Missing sidebar helpers stop this presentation pass before any icon or

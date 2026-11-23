@@ -66,6 +66,7 @@ static worldframe::CommandRoster worldFrameCandidateRoster;
 static uint32_t worldFrameCandidateVersion=0;
 static bool candidateReadyForCooperative=false;
 static bool candidateRosterReady(){return candidateReadyForCooperative;}
+static bool candidateEntryCohortReady(){return candidateRosterReady()&&worldFrameCandidateRoster.count>0&&worldFrameCandidateRoster.count<=64;}
 static bool verifyCandidateID(uint32_t,uint32_t){return false;}
 static bool verifyCandidatePointer(uint32_t){return false;}
 static bool commandRosterReady(){
@@ -145,7 +146,7 @@ static int planningRoom(int){return 64;}
 static bool nativeReady(){return true;}
 static int cooperativeSubmitted=0;
 static uint32_t cooperativeUnreadable=0;
-static int admitCooperative(const cooperative::Assignment&o,int,uint32_t house,int,DWORD now,const executionproof::Ticket*proof){
+static int admitCooperative(const cooperative::Assignment&o,int,uint32_t house,int,DWORD now,const executionproof::Ticket*proof,bool=false){
  assert(!sampleReadDepth&&proof&&proof->actor.id==o.id&&proof->target.id==o.target);
  if(o.id==cooperativeUnreadable)return -2;
  const auto result=executionproof::verify(*proof,{match,house,now},
@@ -160,6 +161,10 @@ static uint32_t pendingAck=0;
 static int loadingSubmitResult=1;
 static bool enterEvent(uint32_t,uint32_t,uint32_t,const executionproof::Ticket&,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
 static loading::Ledger<> loadLedger;
+// This fixture intentionally isolates AutoLoad sampling; cooperative pending
+// capacity is exercised separately against source-extracted production code.
+static bool cooperativePendingActor(uint32_t){return false;}
+static int cooperativePendingSlots(uint32_t,uint32_t){return 0;}
 static repairdelivery::Pending<> pendingRepairs;
 static compute::FrameHistory<compute::RepairInput> repairFrames;
 static uint32_t repairIDs[8192],repairTaskSeen;static int repairCount,repairAt,repairDone;

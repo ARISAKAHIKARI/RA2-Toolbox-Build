@@ -159,6 +159,9 @@ class CommandCaptureWorker {
     else if(!before.sameWorld(after))++self->worldChanged_;
     ++self->rejected_;continue;
    }
+   // The periodic type stamp is read from these sealed pages on this worker.
+   // Missing metadata stays independent of the actor roster and permissions.
+   if(job.demand&TypeCatalogue)stampTypeCatalogue(self->staging_);
    // Build the full identity hash on this SAME worker. A missing UID or
    // unreadable roster is UNKNOWN, not an empty world or an owned actor.
    const bool rosterBuilt=self->stagingRoster_.build(self->staging_,
@@ -269,7 +272,13 @@ public:
 #ifdef WORLD_FRAME_TEST_SYNC_CAPTURE
   return false;
 #else
-  return true;
+  // Async command capture is experimental and opt-in. Product builds keep
+  // time-critical sampling and command admission on the game thread.
+  static const bool value=[]{
+   char name[3]{};
+   return GetEnvironmentVariableA("RA2TOOLBOX_ASYNC_COMMAND_CAPTURE",name,sizeof name)==1&&name[0]=='1';
+  }();
+  return value;
 #endif
  }
  // The dispatcher calls this BEFORE assembling up to 16K page addresses.

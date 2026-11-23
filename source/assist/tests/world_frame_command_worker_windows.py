@@ -1,4 +1,4 @@
-"""Build and run actual x86/x64 pinned command CaptureGraph Win32 workers."""
+"""Verify synchronous Runtime default and opt-in x86/x64 command CaptureGraph workers."""
 from pathlib import Path
 import argparse
 import subprocess
@@ -31,15 +31,15 @@ for arch in ("x86", "x86_64"):
         if completed.returncode:
             print(completed.stdout + completed.stderr)
             raise SystemExit(completed.returncode)
-    # Production has no runtime sync opt-out. Verify the legacy environment
-    # variable is ignored, including an explicit zero.
+    # The product default is synchronous. Only explicit mode "1" enables
+    # this worker for isolated benchmarking and lifecycle regression.
     for mode in ("default", "0", "1"):
         for iteration in range(2):
             env = os.environ.copy()
             env.pop("RA2TOOLBOX_ASYNC_COMMAND_CAPTURE", None)
             if mode != "default":
                 env["RA2TOOLBOX_ASYNC_COMMAND_CAPTURE"] = mode
-            expected = "1"
+            expected = "1" if mode == "1" else "0"
             completed = subprocess.run([str(exe), str(dll), expected], env=env,
                                        text=True, capture_output=True, timeout=35)
             (dest / f"run-{mode}-{iteration}.log").write_text(

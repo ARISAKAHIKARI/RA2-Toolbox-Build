@@ -25,6 +25,9 @@ struct CapturedIdentities {
   const auto it=std::lower_bound(objects.begin(),objects.end(),id,[](const auto&object,uint32_t uid){return object.id<uid;});
   return it!=objects.end()&&it->id==id?*it:Identity{};
  }
+ executionproof::Ticket boarding(uint32_t actor,uint32_t destination)const{
+  return {stamp.match,house,stamp.tick,identity(actors,actor),{},identity(targets,destination)};
+ }
  executionproof::Ticket attack(uint32_t actor,uint32_t target)const{
   return {stamp.match,house,stamp.tick,identity(actors,actor),identity(targets,target),{}};
  }

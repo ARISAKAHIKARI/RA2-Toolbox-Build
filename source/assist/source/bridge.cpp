@@ -93,7 +93,7 @@ static bool controlCommandOwnerReady(uint32_t);
 static void controlCommandOwnerTick();static void restoreControlCommandOwner();static void controlObjectOwnerTick();static void restoreControlObjectOwner();
 static void nativeSellCursorTick();static void restoreNativeSellCursor();static void nativeMegaGatewayTick();static void restoreNativeMegaGateway();
 static void resetRuntimePlanner();static void resetLoadCalculation();
-static uint64_t catalogueHash;static DWORD catalogueAt;static bool catalogueReady,catalogueDirty;
+static uint64_t catalogueHash;static DWORD catalogueAt,catalogueRequestedAt;static bool catalogueReady,catalogueDirty;
 static void restoreFrameDriver();
 static void resetDirectSell();static bool directSellPending();
 static bool privateOutActive();static bool privateOutPending();static int privateOutRoom();
@@ -127,9 +127,8 @@ static uint32_t typePointers[MaxTypes];
 static ManualVersions manualVersions;static ObjectIndexView worldObjects;static int indexedFrame=-1,indexedCount=-1;static uint32_t indexedItems;
 // Reuse the mandatory world-index traversal for global magnetron discovery.
 // Input and planning still revalidate identities and native eligibility.
-static int globalVehicleCandidateCount=0;static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
-// The candidate list itself is worker-owned in async mode, not copied into
-// another 64 KiB main-thread array on every accepted command snapshot.
+static int globalVehicleCandidateCount=0;static uint32_t globalVehicleCandidates[16384]{};
+static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
 static globalvehicle::Cursor globalVehicleScan;
 static ObjectIndex advancedObjects;
 static int outgoingFrame=-1,outgoingBudget;
@@ -195,17 +194,24 @@ static void name(uint32_t t,uint16_t*out,int n){uint32_t p=get<uint32_t>(t+0x60)
 #include "build_time_tooltip.h"
 static bool sameid(const char*a,const char*b){for(int i=0;i<24;++i){if(a[i]!=b[i])return false;if(!a[i])return true;}return true;}
 static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21c)==house;}
-// An incomplete worker identity projection is UNKNOWN, not an empty world.
-// No execution guard may rebuild the full live roster as a fallback.
-// The worker-built identity projection is not a native EventClass grant.
+// In opt-in worker mode, an incomplete identity projection is UNKNOWN.
+// The default Runtime path builds one bounded same-frame live index instead.
+// Neither index is a native EventClass grant: final orders re-read live identity.
 // Its only lifetime is the currently sealed exact game logic frame. Every
 // native operation still verifies live UID, House, mission and eligibility.
 static bool commandRosterReady(){
- return worldFrameCommandWorker.enabled()&&worldFrameReady&&!worldFrameBoundaryOnly&&
-  worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
-  worldFrameCommandRoster.current(worldFrame.key)&&
-  worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal)&&
-  worldFrame.key.house==lastHouse;
+ if(worldFrameCommandWorker.enabled())
+  return worldFrameReady&&!worldFrameBoundaryOnly&&
+   worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
+   worldFrameCommandRoster.current(worldFrame.key)&&
+   worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal)&&
+   worldFrame.key.house==lastHouse;
+ // The synchronous Runtime index is built in this exact game callback.
+ // It proves membership only; every action still re-reads live UID, House,
+ // mission and current eligibility immediately before native execution.
+ return indexedFrame==snap.frame&&indexedCount>=0&&
+  indexedVehicleHouse==lastHouse&&
+  indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal);
 }
 // The production background worker builds a full world index off-thread.
 // Strict same-frame identity is still required for command SNAPSHOT authority,
@@ -255,7 +261,48 @@ static bool verifyCandidatePointer(uint32_t pointer){
         observed&&worldFrameCandidateRoster.objects&&
         worldFrameCandidateRoster.objects->byId(observed)==pointer;
 }
-static bool refreshWorldIndex(int frame){
+static void indexWorld(int frame){
+ Vec all{};
+ const auto unknown=[](){
+  worldObjects.clear();indexedFrame=indexedCount=-1;indexedItems=0;
+  globalVehicleCandidateCount=0;indexedGlobalVehicles=false;indexedVehicleHouse=0;
+ };
+ if(!read(0xA8EC78,&all,sizeof all)||all.count<0||all.count>16384||
+    all.capacity<all.count||all.capacity>262144||(all.count&&all.items<0x10000)){
+  unknown();return;
+ }
+ if(indexedFrame==frame&&indexedCount==all.count&&indexedItems==all.items&&
+    indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal)&&indexedVehicleHouse==lastHouse)return;
+ // One bounded roster read. A failed header, item span or UID read is UNKNOWN,
+ // never an empty world and never permission to use a partial index.
+ static uint32_t pointers[16384];
+ if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}
+ worldObjects.clear();globalVehicleCandidateCount=0;
+ indexedGlobalVehicles=bool(sh&&sh->magnetronGlobal);indexedVehicleHouse=lastHouse;
+ bool complete=true;
+ for(int i=0;i<all.count;++i){
+  const uint32_t p=pointers[i];if(p<0x10000)continue;
+  uint32_t id=0;if(!read(p+0x10,&id,4)){complete=false;continue;}
+  if(id)worldObjects.add(p,id);
+  if(id&&indexedGlobalVehicles&&kind(p)==2){
+   uint32_t owner=0;
+   if(!read(p+0x21C,&owner,4)){complete=false;continue;}
+   if(owner==lastHouse)globalVehicleCandidates[globalVehicleCandidateCount++]=p;
+  }
+ }
+ if(!complete||(sampleReadDepth&&!sampleReadComplete)){unknown();return;}
+ indexedFrame=frame;indexedCount=all.count;indexedItems=all.items;
+ static int prunedFrame=-100000;
+ if((!sampleReadDepth||sampleReadComplete)&&manualVersions.used>=ManualVersions::Size/2&&
+    (frame<prunedFrame||frame-prunedFrame>=300)){
+  static ManualVersions liveVersions;
+  liveVersions.copyLive(manualVersions,[](uint32_t id){return worldObjects.byId(id)!=0;});
+  minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
+ }
+}
+static bool refreshWorldIndex(int frame,bool executionGuards=true){
+ if(worldFrameCommandWorker.enabled()){
+
  const bool strict=commandRosterReady()&&frame==worldFrame.key.frame;
  const bool candidate=!strict&&candidateRosterReady();
  if(!strict&&!candidate){
@@ -288,6 +335,21 @@ static bool refreshWorldIndex(int frame){
   minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
  }
  return true;
+
+ }
+ static uint32_t failedMatch=0,failedAt=0;static int failedFrame=-1;
+ const uint32_t now=sampleClock(sh);
+ if(failedMatch==match&&failedFrame==frame&&uint32_t(now-failedAt)<16)return false;
+ if(worldFrameReady&&!worldFrameBoundaryOnly){
+  bool complete=false;
+  {SampleReadScope sample;indexWorld(frame);complete=sample.complete();}
+  if(complete&&indexedFrame==frame)return true;
+ }
+ worldObjects.clear();indexedFrame=indexedCount=-1;indexedItems=0;globalVehicleCandidateCount=0;
+ if(!executionGuards)return false;
+ indexWorld(frame);
+ if(indexedFrame==frame)return true;
+ failedMatch=match;failedFrame=frame;failedAt=now;return false;
 }
 // Identity-index publication already checked every UID. Avoid a second
 // fallible live UID read when deciding whether an automatic lease still exists.
@@ -316,6 +378,7 @@ static gateway::MissionState observeMissionReceipt(uint32_t id){
 // Never dereference an old/stale worker roster from a native command path.
 static uint32_t globalVehicleCandidateAt(int index){
  if(index<0||index>=globalVehicleCandidateCount)return 0;
+ if(!worldFrameCommandWorker.enabled())return indexedFrame==snap.frame?globalVehicleCandidates[index]:0;
  const bool strict=commandRosterReady();
  if(!strict&&!candidateRosterReady())return 0;
  const auto&roster=strict?worldFrameCommandRoster:worldFrameCandidateRoster;
@@ -329,8 +392,9 @@ static uint32_t globalVehicleCandidateAt(int index){
 // command capture worker owns all graph reads. A missing worker index is
 // UNKNOWN: caller skips this observation; native game events stay untouched.
 static bool prepareWorldIndex(int frame){
- // No production live-roster fallback. A missing worker index is UNKNOWN.
- return refreshWorldIndex(frame);
+ if(worldFrameCommandWorker.enabled())return refreshWorldIndex(frame,false);
+ indexWorld(frame);
+ return indexedFrame==frame;
 }
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
@@ -1030,14 +1094,37 @@ static int findIdle(uint32_t house,int mode){
  unselect();if(!selection(next))return 0;lastIdle[slot]=nextid;
  if(tactical)call<void>(0x6D2420,tactical,(void*)(next+0x9C),0);return 1;
 }
-static void scanTypes(){catalogueDirty=true;
- uint32_t oldPointers[MaxTypes];uint8_t oldAllowed[MaxTypes];int oldCount=snap.typeCount;memcpy(oldPointers,typePointers,sizeof oldPointers);memcpy(oldAllowed,techAllowed,sizeof oldAllowed);memset(techAllowed,0,sizeof techAllowed);snap.typeCount=0;const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};const int kinds[]={3,16,40,7};
- for(int k=0;k<4;++k){Vec v=vec(arrays[k],4096);for(int i=0;i<v.count&&snap.typeCount<MaxTypes;++i){uint32_t t=item(v,i);if(!t)continue;const int level=get<int>(t+0x634);
- const bool insignificant=get<bool>(t+0x232)&&!techEnhancementCatalogueIncludesInsignificant(t,arrays[k],i,level);
- if(!validType(techEnhancementCatalogueLevel(t,level),insignificant,get<bool>(t+0xD54),get<uint32_t>(t+0x6CC)))continue;
- for(int prior=0;prior<oldCount;++prior)if(oldPointers[prior]==t){techAllowed[snap.typeCount]=oldAllowed[prior];break;}
- typePointers[snap.typeCount]=t;auto&d=snap.types[snap.typeCount++];memset(&d,0,sizeof d);memcpy(d.id,(void*)(t+0x24),23);name(t,d.name,40);d.kind=kinds[k];d.index=i;d.naval=get<bool>(t+0xCCE);d.cost=get<int>(t+0x610);
- }}
+static void requestTypeCatalogue(){
+ catalogueReady=false;catalogueRequestedAt=GetTickCount();worldFrameCatalogueProbeAt=0;
+}
+static bool scanTypes(){
+ if(!sampleReadDepth||!sampleReadComplete)return false;
+ struct Projection {Type types[MaxTypes];uint32_t pointers[MaxTypes];uint8_t allowed[MaxTypes];};
+ static Projection next;
+ int count=0;
+ const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};
+ const int kinds[]={3,16,40,7};
+ for(int k=0;k<4;++k){
+  const Vec types=vec(arrays[k],4096);
+  for(int i=0;i<types.count&&count<MaxTypes;++i){
+   const uint32_t type=item(types,i);
+   const int level=get<int>(type+0x634);
+   const bool insignificant=get<bool>(type+0x232)&&!techEnhancementCatalogueIncludesInsignificant(type,arrays[k],i,level);
+   if(!validType(techEnhancementCatalogueLevel(type,level),insignificant,get<bool>(type+0xD54),get<uint32_t>(type+0x6CC)))continue;
+   Type& out=next.types[count];out={};
+   if(!read(type+0x24,out.id,23))return false;
+   if(get<uint32_t>(type+0x60)>=0x10000)name(type,out.name,40);
+   else for(int n=0;n<23&&out.id[n];++n)out.name[n]=uint8_t(out.id[n]);
+   out.kind=kinds[k];out.index=i;out.naval=get<bool>(type+0xCCE);out.cost=get<int>(type+0x610);
+   next.pointers[count]=type;next.allowed[count]=0;
+   for(int prior=0;prior<snap.typeCount;++prior)if(typePointers[prior]==type){next.allowed[count]=techAllowed[prior];break;}
+   ++count;
+  }
+ }
+ if(!sampleReadComplete)return false;
+ std::copy_n(next.types,count,snap.types);std::copy_n(next.pointers,count,typePointers);
+ std::fill(std::begin(techAllowed),std::end(techAllowed),0);std::copy_n(next.allowed,count,techAllowed);
+ snap.typeCount=count;catalogueDirty=true;return true;
 }
 #include "sidebar.h"
 #include "tech_enhancement_bridge.h"
@@ -1618,9 +1705,11 @@ static bool hostFrameCaptureWanted(DWORD now){
  if((sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)))return true;
  if(sh->flags&AutoOreReturn)return true;
  const auto&r=sh->cooperativeRequest;
+ const auto&captured=sh->cooperativeInputFrame;
+ const bool admitted=captured.frame>=0&&captured.request.serial==r.serial&&captured.match==r.match;
  if(compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)||
-    !cooperative::valid(r)||r.match!=match||!freshness::intentAlive(r.tick,now))return false;
- return sh->cooperativeInputFrame.request.serial!=r.serial||sh->cooperativeFrameWanted==r.serial;
+    !cooperative::valid(r)||r.match!=match||(!admitted&&!freshness::intentAlive(r.tick,now)))return false;
+ return !admitted||sh->cooperativeFrameWanted==r.serial;
 }
 template<class Fn>static void withInputPublication(Shared*value,uint32_t session,DWORD now,int frame,bool advanced,Fn&&tailWork){
  const unsigned priorReadDepth=sampleReadDepth;const bool priorReadComplete=sampleReadComplete;
@@ -1771,7 +1860,7 @@ static void tick(){
  auto matchTransition=sessionTracker.update(true,house,sessionMode,frame);
  const bool houseChanged=!replaced&&matchTransition==sessionepoch::Transition::HouseChanged;
  bool newMatch=replaced||matchTransition!=sessionepoch::Transition::None;
- if(newMatch){if(houseChanged){cancelCooperativePlan(-3);reset(false);}match=sessionTracker.epoch;lastHouse=house;sh->inputUnlockCount=0;sh->triggerInputBlocked=sh->triggerCameraBlocked=0;sh->sellDirectSent=sh->sellDirectRejected=0;sh->inputUnlockStatus=sh->keepInputUnlocked?inputlock::Waiting:inputlock::Off;scanTypes();slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
+ if(newMatch){if(houseChanged){cancelCooperativePlan(-3);reset(false);}match=sessionTracker.epoch;lastHouse=house;sh->inputUnlockCount=0;sh->triggerInputBlocked=sh->triggerCameraBlocked=0;sh->sellDirectSent=sh->sellDirectRejected=0;sh->inputUnlockStatus=sh->keepInputUnlocked?inputlock::Waiting:inputlock::Off;snap.typeCount=0;catalogueDirty=true;requestTypeCatalogue();slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
  // A read-only world can predate the first command entry of this epoch.
  // Same-match pause/resume must retain its already latched placement.
  applyCommandComputeEpoch();
@@ -1794,17 +1883,9 @@ static void tick(){
  }
  commandDormant=false;
  techEnhancementTick(now);techEnhanceParametersTick(house,now);mapVisibilityParametersTick(house);
- if(newMatch||DWORD(now-catalogueAt)>=DWORD(catalogueReady?500:100)){
-  external::catalogue::Stamp stamp;catalogueAt=now;
-  if(external::catalogue::capture([](uint32_t a,void*p,size_t n){return read(a,p,n);},stamp)){
-   if(!catalogueReady||catalogueHash!=stamp.hash)scanTypes();catalogueHash=stamp.hash;catalogueReady=true;
-  }else{
-   // A failed stamp read means UNKNOWN, not a changed type catalogue.
-   // Keep the last complete cache and retry the cheap stamp. Never trigger
-   // full type scanning every 100ms because of a transient missing page.
-  }
- }
+ const bool catalogueDue=newMatch||!worldFrameCatalogueProbeAt||DWORD(now-worldFrameCatalogueProbeAt)>=DWORD(catalogueReady?500:100);
  uint32_t worldDemand=worldframe::Base;
+ if(catalogueDue)worldDemand|=worldframe::TypeCatalogue;
  if(sharedWorldWanted)worldDemand|=worldFrameServer.demandMask();
  if(sh->dodgeEnabled||dodgeCount)worldDemand|=worldframe::Bullets|worldframe::Combat;
  if(sh->missileEnabled||missileHoldCount||sh->minerDefenseEnabled||minerDefensePending()||sh->magnetronGlobal||sh->magnetronDrop||(sh->flags&(AdvancedInput|MagnetronInput|AircraftSpread|AdvancedEnter|AntiTheft))||nativeCount||runtimeCoopPending||unloadCount||queuedUnload.count)worldDemand|=worldframe::Combat;
@@ -1836,6 +1917,20 @@ static void tick(){
  // carried by the canonical Runtime snapshot; do not spend a full graph read.
  if(!hostDisplayOnly&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
+ if(worldFrame.catalogue.attempted||worldFrameCandidate.catalogue.attempted){
+  ObservationReadScope sample;
+  if(sample&&sampleWorldSource->catalogue.complete){
+   const auto sourceTick=sampleWorldSource->key.tick;
+   const auto observed=sampleWorldSource->catalogue;
+   if((!catalogueRequestedAt||int32_t(sourceTick-catalogueRequestedAt)>0)&&
+      (!catalogueAt||int32_t(sourceTick-catalogueAt)>0)){
+    if((catalogueReady&&catalogueHash==observed.hash)||scanTypes()){
+     catalogueAt=sourceTick;catalogueHash=observed.hash;catalogueReady=true;
+     catalogueRequestedAt=0;
+    }
+   }
+  }
+ }
  const bool observationFrame=inputMatch!=match||inputFrame!=frame;
  if(observationFrame){inputMatch=match;inputFrame=frame;}
  bool finishSnapshot=false;
@@ -1879,6 +1974,7 @@ static void tick(){
     if(snap.nativeHookStatus!=1)nativeHooksTick(sh->flags);
     externalOrdersTick(house,frame,now,true);
    }
+   if(sh->pointer.request!=sh->pointer.ack)pointerTick(true);
    serviceCooperativePlan(house,frame,now,true,preciseNow);
   }
  }

@@ -134,6 +134,44 @@ void immediateRegression(Fixture& f){
  ResetEvent(f.nestedEntered);ResetEvent(f.nestedRelease);f.reentered=false;auto hold=make(4,nested->id);check(f.host.post(hold),"blocking operation admitted");check(pumpUntil([&]{return WaitForSingleObject(f.nestedEntered,0)==WAIT_OBJECT_0;}),"native modal holds service");
  auto queued=make(5,c->id);queued.inputTime=consoleadapter::detail::utcMilliseconds();check(f.host.post(queued),"immediate operation initially fresh behind modal");pumpUntil([]{return false;},180);check(f.immediatePresses==1,"queued immediate cannot run inside nested native pump");SetEvent(f.nestedRelease);receipt(5,false);check(f.immediatePresses==1&&!f.reentered,"expired operation never executes after modal returns");
 }
+LRESULT CALLBACK typeFilterProc(HWND w,UINT m,WPARAM a,LPARAM b){
+ if(m==WM_COMMAND&&LOWORD(a)==9209&&HIWORD(a)==EN_CHANGE){
+  auto* edits=static_cast<unsigned*>(GetPropW(w,L"Fixture.FilterEdits"));
+  if(edits)++*edits;
+  return 0;
+ }
+ return DefWindowProcW(w,m,a,b);
+}
+void typeFilterRegression(){
+ Fixture f;
+ const auto instance=GetModuleHandleW(nullptr);
+ const HWND pane=CreateWindowW(L"STATIC",L"类型过滤",WS_OVERLAPPEDWINDOW,0,0,400,170,nullptr,nullptr,instance,nullptr);
+ unsigned edits=0;
+ SetPropW(pane,L"Fixture.FilterEdits",&edits);
+ const HWND editor=CreateWindowW(L"EDIT",L"E1",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,0,0,200,26,pane,reinterpret_cast<HMENU>(9209),instance,nullptr);
+ CreateWindowW(L"STATIC",L"无效的旧标题",WS_CHILD|WS_VISIBLE,0,0,80,26,pane,nullptr,instance,nullptr);
+ SetPropW(editor,L"RA2.Console.Label",const_cast<wchar_t*>(L"乘员类型 ID"));
+ SetPropW(editor,L"RA2.Console.Group",const_cast<wchar_t*>(L"自动装车"));
+ SetPropW(editor,L"RA2.Console.Section",const_cast<wchar_t*>(L"适用单位清单"));
+ SetPropW(editor,L"RA2.Console.Feature",reinterpret_cast<HANDLE>(9208));
+ check(f.host.navigate(2,2)&&f.host.adopt(2,pane,typeFilterProc),"type filter owner adopted");
+ auto snapshot=awaitSnapshot(f,[](const consolemodel::Snapshot& s){return s.module==2&&s.page=="tactical/2";});
+ if(snapshot){
+  const auto* field=find(*snapshot,"text","乘员类型 ID");
+  check(field&&field->nativeId==9209&&field->featureId==9208&&field->group=="自动装车"&&field->section=="适用单位清单","explicit filter name and group reach the snapshot");
+  if(field){
+   action(f,*snapshot,field->id,"text",1,0,"BAD/ID",false,false);
+   check(edits==0&&consoleadapter::detail::text(editor)==L"E1","invalid filter preserves the old value without dispatch");
+   action(f,*snapshot,field->id,"text",2,0,std::string(assist::featuretypes::TypeListTextLimit+1,' '),false,false);
+   check(edits==0&&consoleadapter::detail::text(editor)==L"E1","oversize filter preserves the old value without dispatch");
+   action(f,*snapshot,field->id,"text",3,0,"E1，E2");
+   check(edits==1&&consoleadapter::detail::text(editor)==L"E1，E2","valid filter dispatches to its original editor once");
+   action(f,*snapshot,field->id,"text",4,0,"");
+   check(edits==2&&consoleadapter::detail::text(editor).empty(),"empty filter is an intentional saved value");
+  }
+ }
+ DestroyWindow(pane);
+}
 void closePreparationRegression(Fixture& f){
  f.host.navigate(0,-1,"video/shutdown");
  auto snapshot=awaitSnapshot(f,[](const consolemodel::Snapshot& s){return s.page=="video/shutdown";});
@@ -219,6 +257,7 @@ int main(){
  f.host.navigate(1,-1,"monitor");check(!f.host.latestSnapshot(),"navigation never reuses previous module snapshot");
  disabledChoiceRegression(f);
  immediateRegression(f);
+ typeFilterRegression();
  closePreparationRegression(f);
  PostMessageW(f.pane,WM_CLOSE,0,0);check(WaitForSingleObject(thread,4000)==WAIT_OBJECT_0,"owner exits");CloseHandle(thread);DestroyWindow(shell);
  std::printf("console adapter Win32 fixture: %d checks, %d failures\n",checks,failures);return failures?1:0;

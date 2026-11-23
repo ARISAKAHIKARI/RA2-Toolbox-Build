@@ -87,9 +87,17 @@ static void techEnhancementTick(DWORD now){
    // Replaced/freed catalogues are never restored through old pointers.
    if(r.owned)enhancementConflict=true;r={};
   }
-  if(!r.pointer){Vec types=vec(rule.array,4096);for(int j=0;j<types.count;++j){uint32_t p=item(types,j);char id[24]{};
-   if(p>=0x10000&&read(p+0x24,id,sizeof id)&&memchr(id,0,sizeof id)&&!strcmp(id,rule.id)){r.pointer=p;r.items=types.items;r.index=j;break;}
-  }}
+  if(!r.pointer){
+   ObservationReadScope sample;
+   if(!sample||!sampleWorldSource->catalogue.complete)continue;
+   const Vec types=vec(rule.array,4096);
+   techenhancement::Record found{};
+   for(int j=0;j<types.count;++j){
+    const uint32_t p=item(types,j);char id[24]{};
+    if(p>=0x10000&&read(p+0x24,id,sizeof id)&&memchr(id,0,sizeof id)&&!strcmp(id,rule.id)){found.pointer=p;found.items=types.items;found.index=j;break;}
+   }
+   if(sample.complete())r=found;
+  }
   if(!r.pointer)continue;
   const bool owned=r.owned;
   if(!techenhancement::apply(rule,r,read,enhancementWrite))enhancementConflict=true;
@@ -97,7 +105,7 @@ static void techEnhancementTick(DWORD now){
  }
  sh->techEnhanceCount=count;sh->techEnhanceStatus=enhancementConflict?-2:1;
  if(changed){
-  enhancementChangedCatalogue=true;catalogueDirty=true;catalogueReady=false;catalogueAt=0;scanTypes();
+  enhancementChangedCatalogue=true;requestTypeCatalogue();
   // A live TechLevel change does not itself rerun native construction options.
   // Request the existing House pass once, preserving its real buildability
   // checks and all factory queues. Active/pending Master keeps its explicit

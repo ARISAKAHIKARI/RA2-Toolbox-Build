@@ -1,4 +1,4 @@
-"""Test the shipped fixed compute policy, removed settings route and legacy INI behavior.
+"""Test the shipped Runtime-owned action policy, removed settings route and legacy INI behavior.
 
 This is a source contract and portable C++ policy test; it does not replace
 the native Windows build or the game-level command/ownership regression tests.
@@ -25,30 +25,27 @@ assert 'computeRequested=compute::Fixed;' in settings
 assert 'shared->computeRequested=compute::Fixed;' in settings
 assert 'value(L"Compute"' not in settings
 assert 'write(L"Compute"' not in settings
-assert 'constexpr uint32_t Fixed=Default;' in policy
+assert 'constexpr uint32_t Fixed=All;' in policy
 
 program=r"""
 #include "compute_policy.h"
 #include <cassert>
 using namespace assist;
-static_assert(compute::Fixed == compute::Default);
+static_assert(compute::Fixed == compute::All);
 static_assert((compute::Fixed & ~compute::All) == 0);
 static_assert(compute::Count == 15);
 int main(){
- for(int i=0;i<compute::Count;++i){
-   auto kind=compute::Feature(i);
-   assert(compute::inside(compute::Fixed,kind)==compute::inside(compute::Default,kind));
- }
- assert(compute::inside(compute::Fixed,compute::Load));
- assert(compute::inside(compute::Fixed,compute::Repair));
- assert(compute::inside(compute::Fixed,compute::Unload));
- assert(compute::inside(compute::Fixed,compute::Dodge));
- assert(!compute::inside(compute::Fixed,compute::Advanced));
- assert(!compute::inside(compute::Fixed,compute::Ore));
- assert(!compute::inside(compute::Fixed,compute::Aircraft));
- // The old inner/outer pure planners remain available for regression tests.
- assert(compute::plannerFlags(8192u,compute::Fixed,false)==8192u);
- assert(compute::plannerFlags(8192u,compute::Fixed,true)==0u);
+ for(int i=0;i<compute::Count;++i)
+   assert(compute::inside(compute::Fixed,compute::Feature(i)));
+ assert(compute::plannerFlags(0xFFFFFFFFu,compute::Fixed,false)==0u);
+ assert(compute::plannerFlags(0xFFFFFFFFu,compute::Fixed,true)==
+        (8192u|262144u|32768u|1073741824u));
+ assert(compute::magnetronIntents(compute::Fixed,false)==0u);
+ assert(compute::magnetronIntents(compute::Fixed,true)==3u);
+ assert(compute::inside(compute::Fixed,compute::MagnetronDrop));
+ assert(compute::inside(compute::Fixed,compute::MagnetronGlobal));
+ assert(compute::inside(compute::Fixed,compute::Enter));
+ assert(compute::inside(compute::Fixed,compute::Aircraft));
 }
 """
 with tempfile.TemporaryDirectory(prefix="compute-policy-") as d:
@@ -57,4 +54,7 @@ with tempfile.TemporaryDirectory(prefix="compute-policy-") as d:
     source.write_text(program,encoding="utf-8")
     subprocess.run(["g++","-std=c++17","-O2","-UNDEBUG","-I",str(root),str(source),"-o",str(binary)],check=True)
     subprocess.run([str(binary)],check=True)
-print("PASS fixed compute policy and removed settings source contract")
+assert 'p.observeDrop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop);' in host
+protocol=(root/"protocol.h").read_text(encoding="utf-8-sig")
+assert 'computeRequested=compute::Fixed,computeApplied=compute::Fixed' in protocol
+print("PASS Runtime-owned action policy and removed Host compute settings contract")

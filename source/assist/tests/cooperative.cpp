@@ -15,6 +15,14 @@ int main(){auto w=make(7,3);auto a=allocate(w);auto n=counts(a);assert(a.size()=
  assist::AdditionalSettings defaults;assert(defaults.enterKey==18&&defaults.airKey1==17&&!defaults.airKey2&&defaults.defaults.first==1&&defaults.defaults.second==2&&!defaults.defaults.maximum);
  {
  using namespace assist::pointerinput;uint8_t keys[256]{};
+ const uint32_t enterClick=assist::pointerinput::Enter|PerFeatureMouse;
+ assert(clickFresh(Enhanced,enterClick,true,false,1000,1110,2,42));
+ assert(clickFresh(Enhanced,enterClick|BatchNext,true,true,1000,2000,2,402));
+ assert(!clickFresh(Enhanced,enterClick,true,false,1000,1151,2,42));
+ assert(!clickFresh(Enhanced,enterClick,true,true,1000,2501,2,402));
+ assert(!clickFresh(Enhanced,enterClick,true,false,1000,1030,42,2));
+ assert(!clickFresh(Enhanced,enterClick,false,false,1000,1110,2,42));
+ assert(!clickFresh(Enhanced,enterClick|Advanced,true,false,1000,1110,2,42));
  Bindings c{0,0,0,0,0,0,0,0,1023};
  auto b=resolveBindings(keys,Enhanced,c);
  assert((b&(Advanced|Magnetron|CS|assist::pointerinput::Enter|assist::pointerinput::AirFirst|Control))==(Advanced|Magnetron|CS|assist::pointerinput::Enter|assist::pointerinput::AirFirst|Control));assert(!(b&assist::pointerinput::AirSecond));

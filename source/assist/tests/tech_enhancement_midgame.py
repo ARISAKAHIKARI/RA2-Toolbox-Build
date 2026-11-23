@@ -94,7 +94,11 @@ def main():
         if "static bool techEnhancementCatalogueIncludesInsignificant(" in exact:
             pieces += ["static techenhancement::IdentityState enhancementWorld();",
                        function(exact, "static bool techEnhancementCatalogueIncludesInsignificant(")]
-        pieces.append(function(bridge, "static void scanTypes("))
+        if "static bool scanTypes(" in bridge:
+            pieces += ["#define SAMPLED_CATALOGUE 1", function(bridge, "static void requestTypeCatalogue("),
+                       function(bridge, "static bool scanTypes(")]
+        else:
+            pieces.append(function(bridge, "static void scanTypes("))
         for sig in ("static int typeSlot(uint32_t type)", "static int canonicalKind(", "static int typeTab(",
                     "static void sidebarRedraw(", "static bool hasCameo(", "static uint32_t techFactory(",
                     "static bool techCameoInventory(", "static void requestTechRefresh("):

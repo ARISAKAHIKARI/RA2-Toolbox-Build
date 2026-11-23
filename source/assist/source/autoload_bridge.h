@@ -1,5 +1,8 @@
 #include "tactical_frame_read.h"
 #include "../../shared/source/debug_entry_checks.h"
+// Implemented by cooperative_bridge.h later in this translation unit.
+static int cooperativePendingSlots(uint32_t targetID,uint32_t targetPointer);
+static bool cooperativePendingActor(uint32_t actorID);
 // Runs on the game's message thread. Only the normal outgoing event queue
 // receives writes: no direct passenger insertion or mission mutation.
 static bool loadInterfaces(){
@@ -102,10 +105,14 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
   if(!frameRead.complete())return -30;
  }
  for(int n=0;n<loadLedger.count;++n){auto&r=loadLedger.records[n];if(!worldObjects.contains(r.object)||incomingVehicle(r.object))continue;for(int j=0;j<nv;++j)if(r.vehicleID==vehicles[j].id){room[j]-=r.slots;break;}}
+ // Outstanding cooperative Enter packets reserve seats before native fields
+ // reflect their destination. Do not let AutoLoad overbook the same carrier.
+ for(int j=0;j<nv;++j)if(room[j]>0)
+  room[j]-=cooperativePendingSlots(vehicles[j].id,vehicles[j].object);
  for(int i=0;i<ns;++i){const auto&p=soldiers[i];int j=assignment[i];
   if(j<0||j>=nv){if(p.slots)++snap.loadUnassigned;continue;}auto&v=vehicles[j];
   if(room[j]<p.slots||loadLedger.count>=MaxInfantry||worldByID(p.id)!=p.object||worldByID(v.id)!=v.object||manualVersions.get(p.id)!=tokens[i]||
-     !loadingObject(p.object,house,p.kind)||!loadingObject(v.object,house,2)||incomingVehicle(p.object)||loadLedger.contains(p.id)||!canEnter(p.object,v.object)){
+     !loadingObject(p.object,house,p.kind)||!loadingObject(v.object,house,2)||incomingVehicle(p.object)||loadLedger.contains(p.id)||cooperativePendingActor(p.id)||!canEnter(p.object,v.object)){
    ++snap.loadUnassigned;if(loadQueryFailed)return -15;continue;
   }
   room[j]-=p.slots;
@@ -199,7 +206,7 @@ static bool collectLoadFacts(uint32_t house,int frame){
   if((k!=1&&k!=2)||!loadingObject(p,house,k))continue;uint32_t t=typeOf(p,k);if(!t||!featureTypeAllowed(featuretypes::LoadPassenger,t))continue;
   fact.unit={p,get<uint32_t>(p+0x10),get<int>(p+0x9C),get<int>(p+0xA0),slots(get<double>(t+0x380)),t,k};fact.acceptable=fact.unit.slots>0;
   if(get<bool>(p+0x134)||get<int>(p+0x94)==3||get<bool>(p+0x84)||get<bool>(p+0x8D))continue;
-  fact.candidate=true;fact.waiting=incomingVehicle(p)||loadLedger.contains(fact.unit.id);
+  fact.candidate=true;fact.waiting=incomingVehicle(p)||loadLedger.contains(fact.unit.id)||cooperativePendingActor(fact.unit.id);
  }
  // The original incoming roster is shared with every other collector; this
  // capacity observation is independent of the later live submit revalidation.
@@ -208,6 +215,9 @@ static bool collectLoadFacts(uint32_t house,int frame){
  }
  for(int n=0;n<loadLedger.count;++n){const auto&r=loadLedger.records[n];if(incomingVehicle(r.object))continue;
   for(int j=0;j<in.nv;++j)if(in.vehicles[j].id==r.vehicleID){in.vehicles[j].reserved+=r.slots;++in.vehicles[j].passengers;in.composition.add(j,typeOf(r.object,r.kind));break;}
+ }
+ for(int j=0;j<in.nv;++j){int pending=cooperativePendingSlots(in.vehicles[j].id,in.vehicles[j].object);
+  if(pending>0){in.vehicles[j].reserved+=pending;++in.vehicles[j].passengers;}
  }
  return frameRead.complete();
 }

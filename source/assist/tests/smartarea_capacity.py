@@ -53,10 +53,10 @@ static gateway::MissionObserver<> missionObserver;static void showOrderLines(uin
  entry=game[game.index('struct EntryCapacity'):game.index('template<class Read>')]
  generated='#include "autoload.h"\nstruct FixtureRead{bool operator()(uint32_t at,void*out,size_t n)const{return read(at,out,n);}};\n'+entry+'\nclass EntryView{FixtureRead read_;public:\n'
  for needle in ['template<class T>T get(','bool bytes(','int kind(','uint32_t type(','bool live(','bool neutral(','bool allied(','int radioContacts(','bool radioLinked(','EntryCapacity capacity(','int entrySlots(','uint32_t entryDestination(','bool entered(','bool entryCompatible(']:generated+=block(game,needle)+'\n'
- generated+='};static EntryView clickView;\n'
+ generated+='};static EntryView clickView;\nstatic loading::Ledger<> loadLedger;\n'
  text=text[:start]+generated+text[end:]
  coop=(SOURCE/'cooperative_bridge.h').read_text(encoding='utf-8-sig')
- text=text.replace('static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}',block(coop,'static int entryReserved('))
+ text=text.replace('static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}',block(coop,'static bool cooperativePendingActor(')+'\n'+block(coop,'static int cooperativePendingSlots(')+'\n'+block(coop,'static int entryReserved('))
  text=text.replace('#include "mo_orders_bridge.h"','#include '+json.dumps(str(orders)))
  text=text.replace('static int checks=0;static void check(bool b){++checks;assert(b);}', 'static int checks=0;static void checkAt(bool b,int line,const char*expression){++checks;if(!b){std::fprintf(stderr,"check %d line %d failed: %s\\n",checks,line,expression);std::abort();}}\n#define check(x) checkAt(bool(x),__LINE__,#x)')
  return text+'\n'+((HERE/'smartarea_capacity.cpp').read_text(encoding='utf-8-sig') if body is None else body)
@@ -65,7 +65,12 @@ if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('--zig',required=True,type=Path);p.add_argument('--out',required=True,type=Path);p.add_argument('--baseline',type=Path,default=HERE/'fixtures/mo_smartarea_baseline');a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
  paths=['assist/source/mo_orders_bridge.h','assist/source/mo_orders.h','assist/source/mo_gesture_bridge.h','assist/source/bridge.cpp','assist/source/cooperative_bridge.h','assist/source/cooperative_types.h','external_reader/source/game_view.h','assist/source/command_gateway.h','assist/source/unit_task_arbiter.h','assist/source/autoload.h','assist/tests/smartarea_capacity.cpp','assist/tests/smartarea_capacity.py','assist/tests/mo_orders_bridge_test.py','assist/tests/formation_quick_bridge_test.py']
  manifest=json.loads((a.baseline/'manifest.json').read_text()) if (a.baseline/'manifest.json').is_file() else {}
- for name,digest in manifest.get('files',{}).items():assert hashlib.sha256((a.baseline/name).read_bytes()).hexdigest()==digest
+ # Historical fixtures are stored as LF in Git. Git for Windows may check
+ # them out as CRLF; normalize that transport conversion before SHA-256,
+ # while continuing to reject any substantive fixture content modification.
+ for name,digest in manifest.get('files',{}).items():
+  raw=(a.baseline/name).read_bytes().replace(b'\r\n',b'\n')
+  assert hashlib.sha256(raw).hexdigest()==digest,(name,'baseline source digest mismatch')
  paths += [str(p.relative_to(ROOT)).replace('\\','/') for p in (HERE/'fixtures/mo_smartarea_baseline').iterdir() if p.is_file()]
  snapshot=lambda:{n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in paths};before=snapshot();reports={}
  variants=[('current',SOURCE/'bridge.cpp',SOURCE/'mo_orders_bridge.h')]

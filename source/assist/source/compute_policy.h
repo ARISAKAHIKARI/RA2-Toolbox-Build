@@ -3,10 +3,10 @@
 namespace assist { namespace compute {
 enum Feature {Advanced,Magnetron,Ore,Defense,Enter,Aircraft,Repair,Load,Unload,Escape,MissileDefense,BurstRefresh,Dodge,MagnetronGlobal,MagnetronDrop,Count};
 constexpr uint32_t All=(1u<<Count)-1,Default=(1u<<Repair)|(1u<<Load)|(1u<<Unload)|(1u<<Escape)|(1u<<MissileDefense)|(1u<<BurstRefresh)|(1u<<Dodge);
-// Stable internal policy: latency-sensitive work stays in Runtime; heavy
-// planning remains in Host. Historical INI [Compute] choices are ignored.
-// Keep both pure calculation implementations for controlled regressions.
-constexpr uint32_t Fixed=Default;
+// All action-producing features are planned and admitted in Runtime on the
+// game thread. Host sampling is reserved for read-only display/UI data.
+// Historical INI [Compute] choices are ignored; keep the enum/ABI stable.
+constexpr uint32_t Fixed=All;
 static_assert((Fixed&~All)==0,"invalid fixed compute policy");
 inline bool inside(uint32_t mask,Feature f){return (mask&(1u<<f))!=0;}
 inline const wchar_t*key(int f){const wchar_t*k[]={L"AdvancedAttack",L"Magnetron",L"OreReturn",L"AntiTheft",L"AdvancedEnter",L"AircraftSpread",L"Repair",L"AutoLoad",L"SmartUnload",L"Ejection",L"MissileDefense",L"BurstRefresh",L"Dodge",L"MagnetronGlobal",L"MagnetronDrop"};return f>=0&&f<Count?k[f]:L"";}

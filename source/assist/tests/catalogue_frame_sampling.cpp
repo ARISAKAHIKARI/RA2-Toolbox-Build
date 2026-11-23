@@ -27,6 +27,35 @@ void catalogueSampling(bool baseline){
    else{sampler.invalidateSample(&stable);++failures;}}
   reader.endWorldFrame();clock+=16;
  };
+#ifndef CATALOGUE_FRAME_NEGATIVE_CONTROL
+ if(!baseline){
+  currentPid=GamePid;
+  auto captureStamp=[&](bool complete){
+   raw.reset(key(50));
+   worldframe::CaptureGraph<Read> graph(raw,Read{&memory},scratch);
+   CHECK(graph.capture(worldframe::Base|worldframe::TypeCatalogue,{}));
+   CHECK(raw.seal());
+   const auto before=memory.calls.size();
+   worldframe::stampTypeCatalogue(raw);
+   CHECK(raw.catalogue.attempted&&raw.catalogue.complete==complete);
+   CHECK(memory.calls.size()==before);
+   return raw.catalogue.hash;
+  };
+  const auto hash=captureStamp(true);
+  memory.put(unused+0x6CC,2u);
+  CHECK(captureStamp(true)!=hash);
+  memory.denied.push_back({unused&~4095u,4096});
+  CHECK(captureStamp(false)==0);
+  memory.denied.clear();memory.calls.clear();
+  memory.put(unused+0x6CC,1u);
+  CHECK(captureStamp(true)==hash);
+  worldframe::Snapshot moved;moved.swap(raw);
+  CHECK(moved.catalogue.complete&&moved.catalogue.hash==hash);
+  raw.reset(key(50));
+  CHECK(!raw.catalogue.attempted);
+  std::puts("PASS Runtime catalogue stamp from sealed pages: changed metadata, missing fields, recovery and ownership swap");
+ }
+#endif
  // Initial discovery may require several publications; warmup is separate
  // from repeated expiry after a previously complete catalogue is available.
  for(unsigned i=0;i<32;++i)cycle();CHECK(stable.typeCount==2);

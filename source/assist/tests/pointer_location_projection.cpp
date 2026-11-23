@@ -57,7 +57,7 @@ static void publish(bool active,int left=168,int top=16,int width=632,int height
  put<int>(0xB0CE30,rect.w);put<int>(0xB0CE34,rect.h);
 }
 static pointerinput::Intent reset(bool active=true){
- memset(globals,0,sizeof globals);memset(objects,0,sizeof objects);*sh={};worldObjects.clear();lease=true;ownerOkay=false;mapCellPresent=true;queryCode[0]=0x8B;queryCount=floorCount=0;queryX=queryY=-1;queryMutation=floorMutation={};readMutation={};resolvedObject=failRead=0;nativeViewQueryDepth=0;nativeViewQueryBlocked=false;nativeViewQueryOwner=owner;
+ memset(globals,0,sizeof globals);memset(objects,0,sizeof objects);delete sh;sh=new Shared{};worldObjects.clear();lease=true;ownerOkay=false;mapCellPresent=true;queryCode[0]=0x8B;queryCount=floorCount=0;queryX=queryY=-1;queryMutation=floorMutation={};readMutation={};resolvedObject=failRead=0;nativeViewQueryDepth=0;nativeViewQueryBlocked=false;nativeViewQueryOwner=owner;
  pointerGroundZ=-999;pointerCell=123;pointerTarget=Target;pointerTargetID=99;radarHit=false;groundReady=true;dependencyChecks=0;
  put<uint32_t>(0x887324,Tactical);put<int>(Tactical+0xB0,-900);put<int>(Tactical+0xB4,400);put<int>(0x8A00A4,800);put<int>(0x8A00A8,600);put<uint32_t>(Target+0x10,77);worldObjects.add(Target,77);publish(active);
  pointerinput::Intent intent{};intent.width=800;intent.height=600;intent.cameraX=-900;intent.cameraY=400;intent.x=484;intent.y=300;intent.operation=pointerinput::Enhanced;return intent;
@@ -96,6 +96,12 @@ int main(){sh=new Shared{};unsigned checks=0;auto check=[&](bool v){if(!v)std::f
  i=reset();bool changed=false;readMutation=[&](uint32_t at){if(at==0x886FA0&&!changed){changed=true;++sh->viewportGeneration;}};rejected(i);check(queryCount==0);
  i=reset();mapCellPresent=false;rejected(i);i=reset();resolvedObject=Target+0x1000;rejected(i);
  i=reset();resolvedObject=Target;check(pointerLocation(i)&&pointerTarget==Target&&pointerTargetID==77);
+#ifdef RA2_POINTER_CANDIDATE_FIXTURE
+ i=reset();resolvedObject=Target;worldObjects.clear();bool missing=false;
+ check(!pointerLocation(i,&missing)&&missing&&pointerTargetID==99);
+ worldObjects.add(Target,77);missing=false;
+ check(pointerLocation(i,&missing)&&!missing&&pointerTargetID==77);
+#endif
  i=reset();failRead=0x886FA0;rejected(i);check(queryCount==0);
  std::printf("{\"schema\":\"ra2.pointer-location-projection.v1\",\"checks\":%u,\"assertions_active\":true,\"passed\":true,\"native_dependency_boundary\":\"synthetic\",\"game_process_tested\":false,\"windows_hooks_tested\":false}\n",checks);delete sh;
 }

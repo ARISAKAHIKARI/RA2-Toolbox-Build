@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include "ore_type_config.h"
 namespace assist { namespace featuretypes {
 // Participant filters never mutate rules or grant a new weapon ability.
@@ -6,6 +7,8 @@ namespace assist { namespace featuretypes {
 enum Feature {Aircraft,Disk,Magnetron,AdvancedAttack,LoadPassenger,LoadTransport,
  EnterSource,EnterTarget,UnloadTransport,UnloadPassenger,EscapeTransport,EscapePassenger,
  SellVehicle,RepairBuilding,AntiTheftDefense,MissileDefense,MissileTarget,BurstRefresh,Dodge,MagnetronDrop,SpiderDefense,Count};
+constexpr std::size_t TypeListTextLimit=oreconfig::Limit*24-1;
+inline bool isListEditor(int id){return id==783||id==784||(id>=9201&&id<9200+2*Count&&id%2);}
 struct Filter {uint32_t custom=0;int count=0;char ids[oreconfig::Limit][24]{};};
 struct Config {Filter filters[Count]{};};
 inline const wchar_t* key(int n){static const wchar_t* const names[]={L"Aircraft",L"Disk",L"Magnetron",L"AdvancedAttack",L"LoadPassenger",L"LoadTransport",L"EnterSource",L"EnterTarget",L"UnloadTransport",L"UnloadPassenger",L"EscapeTransport",L"EscapePassenger",L"SellVehicle",L"RepairBuilding",L"AntiTheftDefense",L"MissileDefense",L"MissileTarget",L"BurstRefresh",L"Dodge",L"MagnetronDrop",L"SpiderDefense"};return n>=0&&n<Count?names[n]:L"";}

@@ -55,6 +55,12 @@ static bool techDataBlocksEnhancement(){return false;}
 static bool techLegacyEnhancementProductionPending(uint32_t){return false;} // independent native production modeled absent
 static void deferTechEnhancementParameters(){}
 static void scanTypes(){++scans;}
+static void requestTypeCatalogue(){++scans;catalogueReady=false;}
+static struct {struct {bool complete=true;} catalogue;} sampled,*sampleWorldSource=&sampled;
+struct ObservationReadScope {
+ explicit operator bool() const {return true;}
+ bool complete() const {return true;}
+};
 static void requestTechRefresh(){++refreshes;}
 GLOBALS
 struct Memory {

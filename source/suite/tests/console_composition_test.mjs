@@ -139,11 +139,14 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  assert.equal(buttons.length,2);
  assert.equal(buttons[1].hidden,true);
  assert.equal(buttons[0].attributes.get('aria-expanded'),'false');
+ assert.equal(buttons[0].textContent,'展开','inline child settings use the same expand action everywhere');
  assert.ok(f.find('group-status')[0].textContent.includes('维修范围暂不可用'));
  f.dispatch(buttons[0],'click');
  assert.equal(buttons[0].attributes.get('aria-expanded'),'true');
+ assert.equal(buttons[0].textContent,'收起');
  assert.ok(f.find('setting-label').some(label=>label.textContent==='血量阈值'));
  f.dispatch(buttons[0],'click');
+ assert.equal(buttons[0].textContent,'展开');
  const search=node('search');search.value='血量阈值';f.dispatch(search,'input');f.render();
  assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'true');
  f.dispatch(node('foldAll'),'click');f.receive(state(2));f.render();
@@ -194,24 +197,83 @@ test('native shared rows and status notes have no redundant configuration title'
   {id:1,type:'toggle',group:'自动功能',label:'磁电全局无限吸',row:80,column:20},
   {id:2,type:'hotkey',group:'自动功能',label:'磁电全局无限吸',row:80,column:345},
   {id:3,type:'toggle',group:'防御',label:'防御状态',groupHeader:true},
-  {id:4,type:'label',group:'防御',label:'等待对局'}
+  {id:4,type:'label',group:'防御',label:'等待对局'},
+  {id:5,type:'label',group:'防御',label:'防御选项',groupHeader:true}
  ]});
  f.render();
  assert.ok(f.find('feature-subheading').every(title=>title.hidden));
  assert.ok(f.find('feature-config-toggle').every(button=>button.hidden));
- assert.ok(f.find('setting-label').some(label=>label.textContent==='等待对局'));
+ assert.ok(!f.find('setting-label').some(label=>label.textContent==='等待对局'),'no explanatory row is mounted');
+ assert.equal(f.find('label-help').length,1);
+ const [featureHelp]=f.find('label-help',f.find('feature-header-actions')[0]);
+ assert.ok(!featureHelp.open);
+ assert.equal(featureHelp.children[0].attributes.get('aria-label'),'查看防御状态的说明');
+ assert.equal(featureHelp.children[1].textContent,'等待对局');
+ const groupLabel=f.find('setting-label').find(label=>label.textContent==='防御选项');
+ assert.ok(groupLabel&&!groupLabel.hidden,'semantic group labels remain visible; only explanatory notes are tucked away');
 });
-test('unbound shortcuts show the capture and special-key picker only',()=>{
+test('compact shortcuts retain trigger, double-click, special keys and clear',()=>{
  const f=setup(),row=f.row(3);
  assert.equal(row.input.textContent,'未绑定');
  assert.equal(row.mode.hidden,true);assert.equal(row.doubleLabel.hidden,true);assert.equal(row.clear.hidden,true);
- assert.equal(row.special.disabled,false);
+ assert.equal(row.special.disabled,false);assert.ok(!row.hotkeyDetails.open);
+ f.dispatch(row.hotkeySummary,'click');
+ assert.ok(row.hotkeyDetails.open);
+ f.dispatch(row.special,'keydown',{key:'Escape'});
+ assert.equal(row.hotkeyDetails.open,false);
  f.receive({kind:'state',protocol:1,module:0,generation:1,revision:2,page:'cursor',controls:[
   {id:3,type:'hotkey',label:'快捷键',selected:0x124b,options:['press','release']}
  ]});
  row.control=f.store.getControl(3);f.context.__consoleDomFixture.patchRow(row);
- assert.equal(row.mode.hidden,false);assert.equal(row.doubleLabel.hidden,false);assert.equal(row.clear.hidden,false);
  assert.equal(row.input.textContent,'Ctrl + K');
+ assert.equal(row.mode.hidden,false);assert.equal(row.doubleLabel.hidden,false);assert.equal(row.clear.hidden,false);
+ f.dispatch(row.hotkeySummary,'click');
+ row.mode.value='8192';f.dispatch(row.mode,'change');
+ assert.equal(f.actions().at(-1).value,0x224b);
+ row.double.checked=true;f.dispatch(row.double,'change');
+ assert.equal(f.actions().at(-1).value,0xa24b);
+ row.special.value='27';f.dispatch(row.special,'change');
+ assert.equal(f.actions().at(-1).value,0xa21b);
+ assert.equal(row.hotkeyDetails.open,false);
+ f.dispatch(row.hotkeySummary,'click');f.dispatch(row.clear,'click');
+ assert.equal(f.actions().at(-1).value,0);
+ assert.equal(row.hotkeyDetails.open,false);
+});
+
+test('named type filters fold independently and edit the original control token',()=>{
+ const f=setup();
+ f.dispatch(navButton(f.document.getElementById('navigation'),4),'click');
+ const field=(id,type,label,extra)=>({id:id+60000,nativeId:id,type,label,visible:true,...extra});
+ const scope={group:'自动装车',section:'适用单位清单',featureId:9208};
+ const controls=[
+  field(9208,'toggle','限定乘员类型',{...scope,checked:false}),
+  field(9209,'text','乘员类型 ID',{...scope,enabled:false,text:'E1'}),
+  field(9210,'toggle','限定载具类型',{...scope,checked:true}),
+  field(9211,'text','载具类型 ID',{...scope,text:'HTK'}),
+  field(9216,'toggle','限定卸载载具',{...scope,group:'智能卸载',featureId:9216})
+ ];
+ const state=(revision,controls)=>({kind:'state',protocol:1,module:2,generation:1,revision,page:'tactical/2',controls});
+ f.receive(state(1,controls));f.render();
+ const titles=f.find('feature-title').map(title=>title.children[0].textContent);
+ assert.deepEqual(titles,['自动装车','智能卸载']);
+ const folds=f.find('feature-config-toggle');assert.equal(folds.length,2);
+ assert.equal(folds[0].attributes.get('aria-expanded'),'false');
+ assert.equal(f.find('field').length,0);
+ f.dispatch(folds[0],'click');
+ assert.equal(folds[1].attributes.get('aria-expanded'),'false');
+ const [passenger,transport]=f.find('field');
+ assert.equal(passenger.disabled,true);assert.equal(transport.value,'HTK');
+ const toggle=f.find('toggle')[0].children[0];toggle.checked=true;f.dispatch(toggle,'change');
+ const action=f.actions().at(-1);
+ assert.equal(action.id,69208);assert.equal(action.value,true);
+ f.receive({kind:'ack',protocol:1,module:2,generation:1,id:action.id,seq:action.seq,ok:true,revision:2});
+ f.receive(state(2,controls.map(c=>c.nativeId===9208?{...c,checked:true}:c.nativeId===9209?{...c,enabled:true}:c)));f.render();
+ assert.equal(passenger.disabled,false);
+ passenger.focus();passenger.value='E1,E2';f.dispatch(passenger,'input');f.dispatch(passenger,'keydown',{key:'Enter'});
+ const edit=f.actions().at(-1);
+ assert.equal(edit.module,2);assert.equal(edit.id,69209);assert.equal(edit.action,'text');assert.equal(edit.value,'E1,E2');
+ f.dispatch(folds[0],'click');
+ assert.equal(folds[0].attributes.get('aria-expanded'),'false');
 });
 
 test('feature settings and shortcuts stay attached to their master switch',()=>{

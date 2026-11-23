@@ -47,6 +47,12 @@ def run(ROOT, OUT, old_header=None):
     end = consumer.index('// Only the common game-thread capture epoch', start)
     body = consumer[start:end]
     (OUT / 'extracted-consumer.cpp').write_text(body)
+    bridge_bytes = (ROOT / 'source/assist/source/bridge.cpp').read_bytes()
+    hashes['source/assist/source/bridge.cpp'] = hashlib.sha256(bridge_bytes).hexdigest()
+    bridge = bridge_bytes.decode().replace('\r\n', '\n')
+    capture_start = bridge.index('static bool hostFrameCaptureWanted(DWORD now){')
+    capture_end = bridge.index('\ntemplate<class Fn>static void withInputPublication', capture_start)
+    capture_gate = bridge[capture_start:capture_end]
 
     cpp = r'''
     #include "source/assist/source/protocol.h"
@@ -69,13 +75,16 @@ def run(ROOT, OUT, old_header=None):
     static int planningRoom(int){return 8;}
     static int outgoingRoom(){return 8;}
     static void notifyHost(){}
+    static bool autoWas=true;
+    static DWORD lastAuto=0;
+    static DWORD clampedRepairInterval(DWORD interval){return interval;}
     static int admitCooperative(const cooperative::Assignment&,int,uint32_t,int,DWORD){++submissions;return admissionResult;}
     static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig&,cooperative::Input&out){
      ++collects;out.mode=r.mode;out.clicked=r.target;
      out.units.push_back({r.sources[0],10,0,0,1});
      out.targets.push_back({r.target,r.type,0,0,1,0,{}});out.compatible.push_back(1);return true;
     }
-    ''' + body + r'''
+    ''' + body + capture_gate + r'''
     static void check(bool v,const char*text){++checks;if(!v){++failures;std::cout<<"FAIL "<<text<<'\n';}}
     static void init(){
      state=std::make_unique<Shared>();sh=state.get();resetRuntimeCooperative();submissions=collects=0;admissionResult=1;
@@ -118,6 +127,25 @@ def run(ROOT, OUT, old_header=None):
      admissionResult=1;observedNow+=20;++observedFrame;runtimeCooperativeTick(0x10000,observedFrame,observedNow);
      check(submissions==2&&sh->runtimeCoopDone==5&&sh->runtimeCoopAccepted==1,
        "next complete capacity observation delivers original entry exactly once");
+     init();admissionResult=-2;runtimeCooperativeTick(0x10000,observedFrame,observedNow);
+     observedNow+=6000;observedFrame+=1500;admissionResult=1;
+     runtimeCooperativeTick(0x10000,observedFrame,observedNow);
+     check(submissions==2&&sh->runtimeCoopDone==5&&sh->runtimeCoopAccepted==1,
+       "an already admitted request survives a long capacity wait");
+     init();observedNow+=6000;observedFrame+=1500;
+     runtimeCooperativeTick(0x10000,observedFrame,observedNow);
+     check(submissions==0&&collects==0,"an unconsumed physical click still expires");
+     init();sh->computeApplied=0;
+     const auto& request=sh->cooperativeRequest;
+     check(!hostFrameCaptureWanted(7000),"an uncaptured Host request still expires");
+     sh->cooperativeInputFrame.frame=request.frame;
+     sh->cooperativeInputFrame.match=request.match;
+     sh->cooperativeInputFrame.request=request;
+     check(!hostFrameCaptureWanted(7000),"a captured request without a retry does not demand new graphs");
+     sh->cooperativeFrameWanted=request.serial;
+     check(hostFrameCaptureWanted(7000),"a Host retry with a captured request remains eligible after five seconds");
+     sh->cooperativeInputFrame.match=request.match+1;
+     check(!hostFrameCaptureWanted(7000),"an unrelated capture cannot extend the click lifetime");
      std::cout<<"{\"checks\":"<<checks<<",\"failures\":"<<failures<<",\"submissions\":"<<submissions<<"}\n";
      return failures?1:0;
     }
@@ -147,7 +175,7 @@ def main():
     current=run(args.root.resolve(),args.out/'current')
     report={'schema':1,'suite':'cooperative_read_only_recovery','scope':current['scope'],
             'current':current,'sources':dict(current['sources'])}
-    report['passed']=current['compile_exit']==0 and current.get('run_exit')==0 and current.get('execution',{}).get('checks')==14 and current['execution']['failures']==0
+    report['passed']=current['compile_exit']==0 and current.get('run_exit')==0 and current.get('execution',{}).get('checks')==20 and current['execution']['failures']==0
     if args.negative_control:
         data=FIXTURE.read_bytes()
         if hashlib.sha256(data).hexdigest()!=FIXTURE_SHA:
@@ -155,7 +183,7 @@ def main():
         negative=run(args.root.resolve(),args.out/'negative-control',data)
         log=(args.out/'negative-control/run.log').read_text() if negative['compile_exit']==0 else ''
         observed=[line for line in log.splitlines() if line.startswith('FAIL ')]
-        ok=negative['compile_exit']==0 and negative.get('run_exit')==1 and negative.get('execution',{}).get('checks')==14 and negative['execution']['failures']==2 and observed==EXPECTED
+        ok=negative['compile_exit']==0 and negative.get('run_exit')==1 and negative.get('execution',{}).get('checks')==20 and negative['execution']['failures']==2 and observed==EXPECTED
         report['negative_control']={'passed':ok,'fixture_sha256':FIXTURE_SHA,'fixture_provenance':'Public read-only helper captured before cooperative request retirement was added, 2026-11-09; not a released pre.5 source.', 'expected_failures':EXPECTED,'observed_failures':observed,'result':negative}
         report['sources'][str(FIXTURE.relative_to(args.root.resolve()))]=FIXTURE_SHA
         report['passed']=report['passed'] and ok
