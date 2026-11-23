@@ -15,6 +15,9 @@ struct Request {uint32_t pid,match,tick,control;int width,height;bool reveal,dan
 struct Result {uint32_t pid,match,control,tick;std::array<external::watch::Track,3> tracks;bool suppressed=false;std::array<View,3> views;};
 // A single hotkey press must survive a temporarily unavailable display epoch.
 // The captured pointer+UID is checked live when the pending press is admitted.
+// The input event is consumed exactly once. The display cache may take several
+// seconds to become usable after a game switch, without requiring a second key.
+static constexpr uint32_t PendingPinHorizonMs=10000;
 struct PendingPin {uint32_t pid=0,key=0,tick=0;external::watch::Track target;};
 static PendingPin pendingPin;
 static std::shared_ptr<const Result> applied;
@@ -129,8 +132,12 @@ static void update(uint32_t now){
  if(!synchronizeWorld()){suspend();return;}
  if(pendingPin.pid){
   auto pending=std::move(pendingPin);pendingPin={};
-  if(pending.pid==pid&&uint32_t(now-pending.tick)<=1500)
-   acceptPin(pending.key,std::move(pending.target));
+  if(pending.pid==pid){
+   if(uint32_t(now-pending.tick)<=PendingPinHorizonMs&&foregroundGame()&&!snap.chat&&!formationInputOwns())
+    acceptPin(pending.key,std::move(pending.target));
+   else if(uint32_t(now-pending.tick)>PendingPinHorizonMs)
+    notify(L"跟踪窗口等待游戏数据超时，目标未被修改；请再按一次快捷键。");
+  }
  }
  bool primary=enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat;
  bool secondary=extra.watchSecondary&&secondaryDisplayAvailable();
