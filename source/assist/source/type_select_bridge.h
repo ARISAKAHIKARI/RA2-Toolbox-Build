@@ -23,7 +23,7 @@ static int selectVariant(uint32_t house,bool global){
   const uint32_t id=get<uint32_t>(p+0x10),type=typeOf(p,k);
   if(!id||!type)continue;
   const uint32_t weapon=normalVariantWeapon(p,type);
-  if(weapon!=1)keys.add(type,weapon);
+  if(weapon>1)keys.add(type,weapon);
  }
  if(keys.empty())return 0;
  const uint32_t tactical=get<uint32_t>(0x887324);
@@ -37,7 +37,7 @@ static int selectVariant(uint32_t house,bool global){
   const uint32_t type=typeOf(p,k);if(!type||!keys.hasType(type))continue;
   const uint32_t id=get<uint32_t>(p+0x10);if(!id)continue;
   const uint32_t weapon=normalVariantWeapon(p,type);
-  if(weapon==1||!keys.contains(type,weapon))continue;
+  if(weapon<=1||!keys.contains(type,weapon))continue;
   if(!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x13C),p))continue;
   if(!global){POINT point{};if(!call<bool>(0x6D2140,tactical,(const void*)(p+0x9C),&point))continue;}
   chosen[count++]={p,id};
@@ -48,7 +48,8 @@ static int selectVariant(uint32_t house,bool global){
  // A stale/reused pointer never inherits a captured candidate's identity.
  for(int i=0;i<count;++i){
   const auto &c=chosen[i];
-  if(get<uint32_t>(c.pointer+0x10)!=c.id||!own(c.pointer,house))continue;
+  uint32_t currentID=0;
+  if(!read(c.pointer+0x10,&currentID,sizeof currentID)||currentID!=c.id||!own(c.pointer,house))continue;
   if(selection(c.pointer))++accepted;
  }
  return accepted;
