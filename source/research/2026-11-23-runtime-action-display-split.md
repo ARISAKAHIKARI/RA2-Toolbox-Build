@@ -7,7 +7,7 @@
 - The full-world `CommandCaptureWorker` is disabled by default. `RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=1` is retained only as an explicit benchmark/regression opt-in.
 - `AsyncPublisher` is not a command-capture worker: it transports already sealed Runtime bytes and performs bounded missing-page probes. Recovered bytes only identify ranges; Runtime re-reads them before any action. Publication uses a separate non-authoritative snapshot buffer; if all publisher slots are busy, Host publication is skipped rather than preventing the Runtime command sample.
 - Minimap, secondary camera, overlays and reservation-panel display use Host `VisualCache`. This read-only path may lag, performs world-level coherence checks, and is never used to authorize commands. Nearby same-world display frames may reuse a visual snapshot for up to 32 ms.
-- When display is the only demand, Runtime publishes a zero-page frame boundary; Host captures the visual graph. When actions and display are both active, Runtime captures the action graph while Host maintains its independent visual cache.
+- When display is the only demand, Runtime publishes a zero-page frame boundary; Host captures the visual graph. When actions and display are both active but Host has no page requests, Runtime still publishes only a zero-page display boundary and keeps the full action snapshot local. Host publishes a full page copy only when it has explicit non-visual page requests.
 
 ## Why
 
