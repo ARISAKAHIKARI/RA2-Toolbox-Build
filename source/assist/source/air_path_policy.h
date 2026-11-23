@@ -11,13 +11,15 @@ constexpr bool native(int session,bool requested,unsigned networkMode=0){
 constexpr bool arrival(int session,bool requested,unsigned networkMode=0){
  return native(session,requested,networkMode)&&networkMode==2;
 }
-constexpr bool direct(int session,bool requested,unsigned networkMode){
- return requested&&networkMode==0&&(session==0||session==5||multiplayer(session));
-}
+// Native PlanningToken append cannot reliably materialize aircraft nodes.
+// The normal aircraft waypoint mode uses sequential Move orders instead;
+// the explicit higher-risk hook modes remain separate.
+constexpr bool direct(int, bool, unsigned){return false;}
 // The current mode is mandatory at every admission point. Omitting it would
 // admit a stale sampled request after switching to either native experiment.
 constexpr bool events(int session,bool regular,bool requested,unsigned networkMode){
- return (session==0||session==5||multiplayer(session))&&!native(session,requested,networkMode)&&!direct(session,requested,networkMode)&&regular;
+ return (session==0||session==5||multiplayer(session))&&!native(session,requested,networkMode)&&
+  !direct(session,requested,networkMode)&&(regular||(requested&&networkMode==0));
 }
 }}
 
