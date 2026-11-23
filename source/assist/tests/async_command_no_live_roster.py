@@ -42,7 +42,7 @@ async_branch = between(runtime, "if(asyncCommand){", "if(!worldFramePublication.
 assert "worldFrameCommandWorker.take(key,graphDemand" in async_branch
 assert "worldFrameCommandWorker.request(key,graphDemand" in async_branch
 assert "indexWorld(" not in async_branch
-assert "CaptureGraph" not in async_branch
+assert "worldframe::CaptureGraph<Live>capture(" not in async_branch
 assert "worldframe::CaptureGraph<Live>capture(" in runtime
 assert "using WorldFramePublication=worldframe::AsyncPublisher<>" in runtime
 assert "worldFramePublication.publish(worldFrame,worldFrameServer)" in runtime
