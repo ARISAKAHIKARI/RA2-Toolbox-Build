@@ -137,12 +137,12 @@ void hostVisual(){
  m.put(0xA8ED84,60);auto next=boundary(60,208);
  CHECK(fast.acquire(next,worldframe::Resources,208,live)==original&&fast.statistics.captures==1);
  CHECK(original->controlSource==first&&original->visualTick==200);
- auto refreshed=fast.acquire(next,worldframe::Resources,216,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
+ auto refreshed=fast.acquire(next,worldframe::Resources,232,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
  m.put(0xA8ED84,61);m.put(0x87F7E8+0x1240,64);
- auto resized=boundary(61,217);auto resizedCapture=fast.acquire(resized,worldframe::Resources,217,live);
+ auto resized=boundary(61,233);auto resizedCapture=fast.acquire(resized,worldframe::Resources,233,live);
  CHECK(resizedCapture&&resizedCapture->controlSource==resized&&fast.statistics.captures==3);
- m.put(0xA8ED84,59);auto rewound=boundary(59,218);
- auto rewindCapture=fast.acquire(rewound,worldframe::Resources,218,live);
+ m.put(0xA8ED84,59);auto rewound=boundary(59,234);
+ auto rewindCapture=fast.acquire(rewound,worldframe::Resources,234,live);
  CHECK(rewindCapture&&rewindCapture->controlSource==rewound&&fast.statistics.captures==4);
  std::printf("PASS Host visual isolation: control %u reads/%u bytes/%zu pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection\n",rawCalls,rawBytes,rawPages);
 }
