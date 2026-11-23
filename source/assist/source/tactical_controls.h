@@ -118,9 +118,9 @@ label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);mode
 note(L"按住队形键或双击 Alt 进入，点按提交当前预览；拖动方向决定朝向。形状可共用键，每敲一次切换，长按不重复。Esc 取消。提交后退出预览；成员不变时后续移动保持队形。",44);
 note(L"正方形默认 B，空心框默认 N。框形未拖动时边框面积与中空面积约 3∶1，拖到最大变成单层边框；其余形状拖到最大为一横排。",44);
 activeFoldGroup=0;
-label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生路径点事件",L"高危：原生下单补丁",L"高危：完整原生补丁"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();
+label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"兼容路径点（游戏按键）",L"高危：原生下单补丁",L"高危：完整原生补丁"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();
 label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
-note(L"按住路径点键点击地面，规划飞机航线。原生事件模式松键统一提交；兼容模式逐段下令，使用自定义按住键。下方分别设置触发按键与鼠标键。",60);
+note(L"按住路径点键点击地面，规划飞机航线。游戏按键模式松键后逐点执行；兼容模式逐段下令，使用自定义按住键。下方分别设置触发按键与鼠标键。",60);
 item(L"STATIC",L"飞机路径点：关闭",20,605,866);next();
 toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"自动兼容",L"始终追加四次点击",L"不追加点击"},shiftClickMode);next();
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");
