@@ -19,10 +19,15 @@ int main(int argc,char**argv){
  const Fn stop=fn("Stop"),reads=fn("GameReadCount");
  const Fn restart=fn("RestartAfterStop");
  const Fn asyncEnabled=fn("AsyncEnabled");
- // Production sampling is unconditionally asynchronous. The legacy
- // environment variable is tested as ignored by the x86/x64 runner.
- const int expected=argc>=3&&argv[2][0]=='0'?0:1;
+ // The default and explicit zero must stay synchronous; only mode "1"
+ // starts the experimental worker used by this isolated regression harness.
+ const int expected=argc>=3&&argv[2][0]=='1'?1:0;
  assert(asyncEnabled()==expected);
+ if(!expected){
+  assert(FreeLibrary(dll));
+  std::puts("PASS synchronous Runtime default; async command worker is opt-in");
+  return 0;
+ }
  // Read a sealed global-vehicle roster but refuse to adopt it when the
  // live setting was switched off before the exact-frame handoff.
  const int rejectedBefore=rejected();
