@@ -31,11 +31,12 @@ fixture = r'''
 #include <set>
 #include <vector>
 #include @LAYOUT_HEADER@
+#include "mo_orders.h"
 using namespace assist;
 using UINT=unsigned;using DWORD=uint32_t;using HWND=uintptr_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;
 constexpr UINT WM_NULL=0,WM_KEYDOWN=0x100,WM_KEYUP=0x101,WM_SYSKEYDOWN=0x104,WM_SYSKEYUP=0x105;
 constexpr UINT WM_MOUSEMOVE=0x200,WM_LBUTTONDOWN=0x201,WM_LBUTTONUP=0x202,WM_RBUTTONDOWN=0x204,WM_RBUTTONUP=0x205;
-constexpr int VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,VK_ESCAPE=27;
+constexpr int VK_LBUTTON=1,VK_RBUTTON=2,VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,VK_ESCAPE=27;
 static uint16_t LOWORD(LPARAM v){return uint16_t(v);}static uint16_t HIWORD(LPARAM v){return uint16_t(uintptr_t(v)>>16);}
 static LPARAM MAKELPARAM(short x,short y){return uint16_t(x)|(uint32_t(uint16_t(y))<<16);}
 struct MSG{HWND hwnd=1;UINT message=0;WPARAM wParam=0;LPARAM lParam=0;};
@@ -43,6 +44,7 @@ struct POINT{int x=100,y=100;};struct RECT{int left=0,top=0,right=800,bottom=600
 static std::array<bool,256> held{};static POINT cursor;
 static bool GetClientRect(HWND,RECT*r){*r={};return true;}static bool GetCursorPos(POINT*p){*p=cursor;return true;}
 static bool ScreenToClient(HWND,POINT*){return true;}static short GetKeyState(int k){return held[k]?short(0x8000):0;}
+static short GetAsyncKeyState(int k){return GetKeyState(k);}
 static HWND GetForegroundWindow(){return 1;}static DWORD GetCurrentProcessId(){return 42;}
 static void GetWindowThreadProcessId(HWND,DWORD*p){*p=42;}
 static void MemoryBarrier(){}static void InterlockedIncrement(volatile long*p){++*p;}
@@ -60,6 +62,8 @@ static bool own(uint32_t p,uint32_t h){return get<uint32_t>(p+0x21C)==h;}
 static bool live(uint32_t p){return get<int>(p+0x6C)>0;}
 static uint32_t typeOf(uint32_t p,int){return get<uint32_t>(p+0x6C4);}
 static bool GuardedObjectAir(uint32_t,int*air){*air=0;return true;}
+static bool objectAirQuery(uint32_t p,int*air){return GuardedObjectAir(p,air);}
+static bool nativeDependencyReady(uint32_t address){return address==0x578080;}
 static int selections=0;static void indexWorld(int){++selections;}
 static uint32_t worldByID(uint32_t id){for(auto p:actors)if(get<uint32_t>(p+0x10)==id)return p;return 0;}
 static struct{std::map<uint32_t,uint32_t> tokens;uint32_t get(uint32_t id){return tokens[id];}}manualVersions;
@@ -68,6 +72,7 @@ static struct{int status=1,commandStatus=1,frame=100,session=0,chat=0;}snap;
 static uint32_t clockValue=1000;static int notifications=0,formationJobCount=0;
 static struct Shared{
  bool stop=false,foreground=true;uint32_t heartbeat=1000;
+ volatile long moGesturePolicySeq=0;moorders::GesturePolicy moGestures{};moorders::Options moOptions{};uint32_t moFeatures=0;
  volatile long formationSeq=0,formationPolicySeq=0;
  formation::Policy formationPolicy;formation::Preview formationPreview;
  int formationJobs=0,formationAccepted=0,formationRejected=0;
@@ -117,7 +122,7 @@ static bool dispatch(UINT message,uint32_t key=0,bool repeat=false,int x=100,int
  assert((sh->formationSeq&1)==0);return consumed;
 }
 static void message(UINT m,uint32_t key=0,bool repeat=false,int x=100,int y=100){assert(dispatch(m,key,repeat,x,y));}
-static void activate(){held[VK_MENU]=true;message(WM_SYSKEYDOWN,VK_MENU);assert(sh->formationPreview.active&&sh->formationPreview.count==25&&selections==1);}
+static void activate(){held[VK_MENU]=true;message(WM_SYSKEYDOWN,VK_MENU);assert(sh->formationPreview.active&&sh->formationPreview.count==25&&selections==0);}
 using Geometry=std::set<std::pair<int,int>>;
 static Geometry geometry(const formation::Preview&p){Geometry out;for(int n=0;n<p.count;++n){assert(p.slots[n].valid);out.insert({p.slots[n].x,p.slots[n].y});}assert(int(out.size())==p.count);return out;}
 static bool sameSlots(const formation::Preview&a,const formation::Preview&b){return a.count==b.count&&std::memcmp(a.slots,b.slots,sizeof a.slots)==0;}
