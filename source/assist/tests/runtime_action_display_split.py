@@ -38,6 +38,8 @@ assert "using WorldFramePublication=worldframe::AsyncPublisher<>" in runtime
 assert "worldframe::CaptureGraph<Live>capture(" in runtime
 assert "if(!worldFramePublication.begin(worldFramePublicationBuffer))return;" in runtime
 assert "worldFramePublicationBuffer.copyForPublication(worldFrame)" in runtime
+assert "if(requested.empty()){" in runtime
+assert "boundaryKey.demand|=worldframe::BoundaryOnlyKeyBit" in runtime
 assert "worldFramePublication.begin(worldFrame)" not in runtime
 assert "bool copyForPublication(const Snapshot&source)" in world
 assert "No production synchronous full-graph path exists" not in runtime
