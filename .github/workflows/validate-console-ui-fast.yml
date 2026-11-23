@@ -1,0 +1,27 @@
+name: Fast console UI consistency
+on:
+  pull_request:
+    paths:
+      - 'source/suite/frontend/**'
+      - 'source/suite/tests/console_composition_test.mjs'
+      - 'source/suite/tests/choice_help_test.mjs'
+      - 'source/suite/tests/console_hotkey_presentation_test.mjs'
+      - 'source/suite/source/tactical_console_layout.h'
+      - '.github/workflows/validate-console-ui-fast.yml'
+  push:
+    branches: [fix/watch-pin-and-control-ui-20261123]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fast-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify production component grouping, folds and controls
+        run: |
+          set -euo pipefail
+          node source/suite/tests/console_composition_test.mjs
+          node source/suite/tests/choice_help_test.mjs
+          node source/suite/tests/console_hotkey_presentation_test.mjs
