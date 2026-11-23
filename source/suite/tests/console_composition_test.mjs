@@ -212,6 +212,46 @@ test('native shared rows and status notes have no redundant configuration title'
  const groupLabel=f.find('setting-label').find(label=>label.textContent==='防御选项');
  assert.ok(groupLabel&&!groupLabel.hidden,'semantic group labels remain visible; only explanatory notes are tucked away');
 });
+test('one feature-row grammar on every tactical page including independent rows',()=>{
+ const sections={3:'移动、攻击与操作手势',4:'维修与自动救援',5:'科技与建造',6:'命令与兼容'};
+ for(const navIndex of [3,4,5,6]){
+  const f=setup(),nav=f.document.getElementById('navigation');
+  f.dispatch(navButton(nav,navIndex),'click');
+  const section=sections[navIndex],controls=[
+   {id:4001,nativeId:7001,type:'toggle',groupHeader:true,featureId:7001,group:'功能甲',section,label:'功能甲',checked:true},
+   {id:4002,nativeId:7002,type:'number',featureId:7001,group:'功能甲',section,label:'阈值',text:'50'},
+   {id:4003,nativeId:7003,type:'hotkey',featureId:7001,group:'功能甲',section,label:'快捷键',options:['hold']},
+   {id:4011,nativeId:7011,type:'toggle',group:'独立功能',label:'独立功能',checked:true},
+   {id:4012,nativeId:7012,type:'button',group:'立即操作',label:'执行操作'}
+  ];
+  f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/'+(navIndex-2),controls});
+  f.render();
+  assert.equal(f.find('feature-card').length,1,'one feature owner on page '+navIndex);
+  assert.equal(f.find('feature-common').length,2,'plain commands use same row on page '+navIndex);
+  const [button]=f.find('feature-config-toggle');
+  assert.equal(button.hidden,false);
+  assert.equal(button.textContent,'展开');
+  assert.equal(f.find('setting-row').length,3,'no invisible child controls mounted');
+  f.dispatch(button,'click');
+  assert.equal(f.find('setting-row').length,5);
+  assert.ok(f.find('feature-subheading').every(node=>node.hidden),'no redundant parameter/shortcut headings');
+  assert.deepEqual(f.find('settings-group').map(node=>node.children[0].children[0].textContent).filter(Boolean).length>0,true);
+ }
+});
+test('all page types share flat neutral feature surfaces and consistent nested controls',()=>{
+ const css=fs.readFileSync(path.join(here,'../frontend/app.css'),'utf8');
+ const start=css.indexOf('/* Universal feature hierarchy:');
+ const end=css.indexOf('.group-status {',start);
+ assert.ok(start>=0&&end>start);
+ const featureCss=css.slice(start,end);
+ assert.match(featureCss,/\.feature-card, \.feature-common\s*\{/);
+ assert.match(featureCss,/border-bottom:1px solid var\(--divider\)/);
+ assert.match(featureCss,/\.feature-card \.feature-details\s*\{/);
+ assert.match(featureCss,/border-left:1px solid var\(--divider\)/);
+ assert.doesNotMatch(featureCss,/var\(--blush/,'no colored second-level cards');
+ assert.match(css,/\.settings-line:not\(\.compound-row\) > \.setting-row:not\(\[data-type="toggle"\]\)/);
+ assert.match(css,/\.setting-row\[data-type="toggle"\] > \.setting-editor\s*\{/);
+});
 test('compact shortcuts retain trigger, double-click, special keys and clear',()=>{
  const f=setup(),row=f.row(3);
  assert.equal(row.input.textContent,'未绑定');
