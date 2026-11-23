@@ -36,11 +36,13 @@ class Panel {
  int rows()const{return panelmetrics::rows(slots());}
  int wantedWidth()const{
   if(folded_)return ButtonW+3;
-  return ButtonW+Pad*2+4+cols()*CellW+(cols()-1)*Gap;
+  return ButtonW+Pad*2+5+cols()*CellW+(cols()-1)*Gap;
  }
  int wantedHeight()const{
   if(folded_)return ButtonW+3;
-  return Pad*2+rows()*CellH+(rows()-1)*Gap+(pages()>1?22:0);
+  // Preserve the outer border and 20px pagination strip (previously
+  // clipped by the five-pixel top offset of the inset grid).
+  return Pad*2+rows()*CellH+(rows()-1)*Gap+(pages()>1?22:0)+6;
  }
  static void label(Gdiplus::Graphics&g,const std::wstring&s,float x,float y,float size,
                    Gdiplus::Color color,bool strong=false){
@@ -161,7 +163,7 @@ class Panel {
    if(!folded_&&expandableCargo()&&y>=2&&y<2+ButtonW-2){
     details_=!details_;page_=0;focused_=-1;
    }else if(y>=foldY&&y<foldY+ButtonW-2){
-    folded_=!folded_;page_=0;focused_=-1;
+    folded_=!folded_;page_=0;focused_=-1;if(folded_)details_=false;
    }
    InvalidateRect(window_,nullptr,FALSE);return;
   }
