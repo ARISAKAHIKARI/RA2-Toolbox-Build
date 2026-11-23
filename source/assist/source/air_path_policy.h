@@ -1,7 +1,8 @@
 #pragma once
 namespace assist { namespace airpathpolicy {
-// UI mode 1 retains host arrival continuation; UI mode 2 appends native
-// planning events. Only explicit networkMode 1/2 installs UI/arrival hooks.
+// UI mode 1 uses a custom key; mode 2 uses the game's planning key but
+// routes aircraft through the same bounded sequential Move continuation.
+// Only explicit networkMode 1/2 installs UI/arrival hooks.
 // Neither native experiment is netplay-certified.
 constexpr bool multiplayer(int session){return session==3||session==4;}
 inline int mode(bool regular,bool requested,unsigned networkMode){return requested?2+(networkMode<=2?int(networkMode):0):regular?1:0;}
