@@ -13,6 +13,10 @@ static std::array<int,2> panelDemand[2][3]{};
 static void demand(int slot,bool second,int width,int height){if(slot>=0&&slot<3)panelDemand[second][slot]={std::clamp(width,0,2048),std::clamp(height,0,2048)};}
 struct Request {uint32_t pid,match,tick,control;int width,height;bool reveal,danger,suppressed;std::array<external::watch::Track,3> tracks;external::presentation::Selection selection;std::array<std::array<int,2>,3> outputSizes;};
 struct Result {uint32_t pid,match,control,tick;std::array<external::watch::Track,3> tracks;bool suppressed=false;std::array<View,3> views;};
+// A single hotkey press must survive a temporarily unavailable display epoch.
+// The captured pointer+UID is checked live when the pending press is admitted.
+struct PendingPin {uint32_t pid=0,key=0,tick=0;external::watch::Track target;};
+static PendingPin pendingPin;
 static std::shared_ptr<const Result> applied;
 static external::ReadSession renderReader;
 static external::cameraassets::Context<external::ReadSession> renderAssets(renderReader);
@@ -69,7 +73,7 @@ template<class Read,class Proof>static bool followTracks(Read read,Proof proof,i
  return changed;
 }
 template<class Read>static bool followTracks(Read read,int slot=-1){return followTracks(read,read,slot);}
-static void reset(){suspended=false;worker.invalidate();applied.reset();++controls;for(auto&t:tracks)t={};for(auto&v:views)v={};autoSuppressed=false;shown=false;lifetime.reset();lifetimeSample=0;lifetimeReady=false;}
+static void reset(){suspended=false;worker.invalidate();applied.reset();++controls;for(auto&t:tracks)t={};for(auto&v:views)v={};autoSuppressed=false;shown=false;lifetime.reset();lifetimeSample=0;lifetimeReady=false;pendingPin={};}
 static void suspend(){if(suspended)return;suspended=true;worker.invalidate();applied.reset();++controls;for(auto&v:views)v.shown=false;shown=false;}
 static bool synchronizeWorld(){
  const bool valid=externalData&&externalData->status==1&&externalData->sampledTick&&uint32_t(GetTickCount()-externalData->sampledTick)<2000;
@@ -83,25 +87,51 @@ static bool synchronizeWorld(){
  return lifetimeReady&&valid;
 }
 static void close(int slot){if(slot<0||slot>=3)return;worker.invalidate();++controls;tracks[slot]={};views[slot]={};autoSuppressed=true;arrange();++paintRevision;}
-static void pin(uint32_t key){
- if((!enabled||!extra.watchEnabled)&&!extra.watchSecondary)return;
- if(!foregroundGame()||snap.chat||formationInputOwns())return;
- if(!synchronizeWorld())return;
- external::radar::FrameScope source(externalReader,epoch,{},worldframe::Resources|worldframe::HostVisualPassengers);
- auto sampled=[&](uint32_t p,void*out,size_t n){return source&&externalReader.readFresh(p,out,n);};
- auto live=[](uint32_t p,void*out,size_t n){return externalReader.readLive(p,out,n);};
- if(source)followTracks(sampled,[&](uint32_t p,void*out,size_t n){return externalReader.worldFrameComplete()&&live(p,out,n);},-1);
- int slot=-1;auto result=external::watch::add(tracks,extra.watchKeys,key,external::watch::capture(live,sampled),slot);using R=external::watch::AddResult;
+static void acceptPin(uint32_t key,external::watch::Track next){
+ if(!next){notify(L"请先选中单位，或将鼠标放到单位上。");return;}
+ // Deferred input can only target the exact same object, never a recycled pointer.
+ uint32_t liveId=0;
+ if(!next.target||!externalReader.readLive(next.target.pointer+0x10,&liveId,sizeof(liveId))||liveId!=next.target.id){
+  notify(L"跟踪目标已变化，请重新选择。");return;
+ }
+ int slot=-1;
+ auto result=external::watch::add(tracks,extra.watchKeys,key,std::move(next),slot);using R=external::watch::AddResult;
  if(result==R::NoTarget){notify(L"请先选中单位，或将鼠标放到单位上。");return;}
  if(result==R::Full){notify(L"此快捷键绑定的跟踪窗口已满；Shift＋右击窗口可关闭。");return;}
  if(result==R::AlreadyTracked){notify(L"此单位已在该快捷键的窗口中跟踪。");return;}
- worker.invalidate();++controls;autoSuppressed=true;++paintRevision;notify(L"已添加跟踪窗口 "+std::to_wstring(slot+1)+L"；左击跳转，Shift＋右击关闭。");
+ worker.invalidate();++controls;applied.reset();autoSuppressed=true;++paintRevision;
+ notify(L"已添加跟踪窗口 "+std::to_wstring(slot+1)+L"；左击跳转，Shift＋右击关闭。");
+}
+static void pin(uint32_t key){
+ if((!enabled||!extra.watchEnabled)&&!extra.watchSecondary)return;
+ if(!foregroundGame()||snap.chat||formationInputOwns())return;
+ const bool ready=synchronizeWorld();
+ external::radar::FrameScope source(externalReader,epoch,{},worldframe::Resources|worldframe::HostVisualPassengers);
+ auto sampled=[&](uint32_t p,void*out,size_t n){return source&&externalReader.readFresh(p,out,n);};
+ auto live=[](uint32_t p,void*out,size_t n){return externalReader.readLive(p,out,n);};
+ if(ready&&source)followTracks(sampled,[&](uint32_t p,void*out,size_t n){return externalReader.worldFrameComplete()&&live(p,out,n);},-1);
+ // Read the current selection live. The published hover roster may be missing
+ // during startup or visual sampling recovery; retry its live view once.
+ auto captured=external::watch::capture(live,sampled);
+ if(!captured)captured=external::watch::capture(live,live);
+ if(!captured){notify(L"请先选中单位，或将鼠标放到单位上。");return;}
+ if(!ready){
+  pendingPin={pid,key,GetTickCount(),std::move(captured)};
+  return; // update() commits this same object after the epoch becomes valid.
+ }
+ pendingPin={};
+ acceptPin(key,std::move(captured));
 }
 static void update(uint32_t now){
  auto selection=external::presentation::settings().get();static uint64_t selectedRevision=~uint64_t(0);
  if(selectedRevision!=selection.revision){selectedRevision=selection.revision;worker.invalidate();++controls;applied.reset();for(auto&v:views)v={};}
 
  if(!synchronizeWorld()){suspend();return;}
+ if(pendingPin.pid){
+  auto pending=std::move(pendingPin);pendingPin={};
+  if(pending.pid==pid&&uint32_t(now-pending.tick)<=1500)
+   acceptPin(pending.key,std::move(pending.target));
+ }
  bool primary=enabled&&extra.watchEnabled&&foregroundGame()&&!snap.chat;
  bool secondary=extra.watchSecondary&&secondaryDisplayAvailable();
  uint8_t options=uint8_t(primary||secondary)|(uint8_t(bool(extra.watchDanger))<<1);
