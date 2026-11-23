@@ -1917,7 +1917,7 @@ static void tick(){
  if(sharedWorldWanted&&worldFrameReady&&worldSample.valid()&&worldSample.scenario==worldFrame.key.scenario&&worldSample.cells==worldFrame.key.cells&&uint32_t(worldSample.count)==worldFrame.key.cellCount&&worldSample.session==worldFrame.key.session){uint32_t currentHouse=0;if(readLiveWorld(0xA83D4C,&currentHouse,4)&&currentHouse==worldFrame.key.house){auto observed=worldFrame.key;observed.frame=worldSample.frame;worldFrameServer.observe(observed);}}
  if(worldCleanupPending){reset();worldCleanupPending=!featureRestorationComplete();if(worldCleanupPending){snap.commandStatus=activation::CleanupPending;publishSnapshot(now);return;}}
  if(worldChange==worldlife::Change::Unknown){retireWorldFrame();snap.status=hookWorld.bound?1:0;snap.bridgeStatus=1;suspendedSnapshot(now,false,activation::WorldUnknown);return;}
- const uint32_t runtimeActionFlags=AutoCS|NativeOrders|AutoRepair|EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|CustomCS|MagnetronInput|AdvancedEnter|AircraftSpread|DiskPrimary|SellDrained|SellVehicles|SellEnemy|ReserveConstruction|AirWaypoints|AntiTheft|NativeAirWaypoints;
+ const uint32_t runtimeActionFlags=AutoRepair|EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|MagnetronInput|AdvancedEnter|AircraftSpread|AirWaypoints|AntiTheft;
  const bool runtimeActionDemand=(sh->flags&runtimeActionFlags)||sh->magnetronGlobal||sh->magnetronDrop||
   sh->missileEnabled||sh->dodgeEnabled||sh->burstEnabled||sh->burstHoldEnabled||sh->burstHeld||
   sh->minerDefenseEnabled||sh->bombBoardEnabled||sh->loadMode||sh->cooperativeFrameWanted||
