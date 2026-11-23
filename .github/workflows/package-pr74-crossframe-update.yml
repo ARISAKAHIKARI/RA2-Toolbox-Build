@@ -1,4 +1,4 @@
-name: Package PR75 shared-seats and UI Update candidate (paired Windows build)
+name: Package 1.0.52-pre.21 PR77 Update (paired x64 Host / x86 Runtime)
 on:
   pull_request:
     paths:
@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: package-pr75-${{ github.event.pull_request.number || github.ref }}
+  group: package-pr77-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   paired-windows-update:
@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 40
     env:
       PYTHONUTF8: "1"
-      UPDATE_FILENAME: RA2Toolbox-PR75-UI-Cleanup-Update-Candidate.zip
+      UPDATE_FILENAME: RA2Toolbox-1.0.52-pre.21-x64-Update.zip
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,15 +46,15 @@ jobs:
           set -euo pipefail
           python source/tools/package_automation_no_deadlines.py --root update-candidate --sha "$GITHUB_SHA" \
             --output-name "$UPDATE_FILENAME" \
-            --label "PR75 shared cross-frame seat reservations and compact consistent settings UI" | tee checks/package.log
+            --label "1.0.52-pre.21 PR77 synchronous Runtime commands, one-press camera, weapon selection and compact UI" | tee checks/package.log
       - uses: actions/upload-artifact@v4
         with:
-          name: RA2Toolbox-PR75-UI-Cleanup-Update-Candidate
+          name: RA2Toolbox-1.0.52-pre.21-x64-Update
           retention-days: 30
           if-no-files-found: error
           path: update-candidate/${{ env.UPDATE_FILENAME }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PR75-Update-Compile-Evidence
+          name: pre21-Update-Compile-Evidence
           path: checks/
