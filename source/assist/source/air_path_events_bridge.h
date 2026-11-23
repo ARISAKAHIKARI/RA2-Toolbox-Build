@@ -86,8 +86,7 @@ static void tick(uint32_t currentHouse,int frame,DWORD now){
  if(planning.count&&!planning.physicalHeld()){
   if(!releasedAt)releasedAt=now;
   if(nodeAt<pointCount&&DWORD(now-lastProgress)>1200&&DWORD(now-releasedAt)>750){
-   report(airevents::Partial,pointCount-nodeAt);
-   reset(airevents::Invalid);return;
+   reset(airevents::Partial);return;
   }
  }
  if(!moOrdersContext())return;
