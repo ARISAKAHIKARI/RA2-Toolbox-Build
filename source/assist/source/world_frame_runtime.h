@@ -28,6 +28,15 @@ struct WorldFramePublication {
 using WorldFramePublication=worldframe::AsyncPublisher<>;
 #endif
 static WorldFramePublication worldFramePublication;
+// Separate publication storage: a saturated Host publisher must never pin
+// or prevent the Runtime-owned command snapshot from being captured.
+static worldframe::Snapshot worldFramePublicationBuffer;
+static void publishWorldFrame(){
+ if(!worldFrameServer.wanted(worldFrame.key.owner,worldFrame.key.tick))return;
+ if(!worldFramePublication.begin(worldFramePublicationBuffer))return;
+ if(!worldFramePublicationBuffer.copyForPublication(worldFrame))return;
+ worldFramePublication.publish(worldFramePublicationBuffer,worldFrameServer);
+}
 // Runtime owns full CaptureGraph sampling, indexing and command admission.
 // The command worker is an explicit benchmark opt-in; the publisher worker
 // transports sealed bytes and only supplies bounded missing-page hints.
@@ -302,7 +311,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)&&(!asyncCommand||reuseAsync)){
    // The async worker owns Host-only transport, including same-frame
    // republishing; never interleave the older strict publisher in its slot.
-   if(!asyncCommand)worldFramePublication.publish(worldFrame,worldFrameServer);
+   if(!asyncCommand)publishWorldFrame();
    return true;
   }
   // A hotkey/manual order admitted in the same logic frame after a display
@@ -445,7 +454,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   }
   return strictReusable;
  }
- if(!worldFramePublication.begin(worldFrame))return false;
+ 
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
  // A Host-only display acquisition never consumes or sorts the command
  // dependency queue. The Host VisualCache owns its own page discovery, and
@@ -480,7 +489,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   captureRetryDelay=0;worldFrameBoundaryOnly=true;worldFrameReady=true;
   // A later native command in this same logic frame must bypass the reuse
   // path above and build a separate fully sealed sample with a new serial.
-  worldFramePublication.publish(worldFrame,worldFrameServer);
+  publishWorldFrame();
   if(sh){
    InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;
    sh->worldSamplePages=0;sh->worldSampleReads=0;sh->worldSampleBytes=0;
@@ -550,7 +559,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // that would be required by a later same-frame escalation.
  if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}
  worldFrameBoundaryOnly=boundaryOnly;
- worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
+ worldFrameReady=true;publishWorldFrame();
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
 }
