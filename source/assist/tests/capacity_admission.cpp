@@ -40,7 +40,7 @@ struct SampleReadScope {
 static bool sampleRoster(uint32_t address,Vec&out){out=vec(address);return out.count>=0;}
 
 template<class T>static T get(uint32_t p){return T(memory[p]);}
-static uint32_t unreadableField=0;
+static uint32_t unreadableField=0,invalidateOnUnselect=0;
 static bool read(uint32_t p,void*out,size_t size){
  if(unreadableField&&p==unreadableField)return false;
  if(size==1){const uint8_t v=get<uint8_t>(p);std::memcpy(out,&v,size);return true;}
@@ -63,12 +63,15 @@ static void cancelNative(uint32_t p){++cancelled;queuedUnload.cancel(p,get<uint3
 struct POINT{int x,y;};static int weaponCalls=0;
 static bool nativeDependenciesReady(uint32_t,uint32_t){return true;}static bool nativeDependencyReady(uint32_t){return true;}
 static void*GetModuleHandleW(const wchar_t*){return reinterpret_cast<void*>(1);}
-template<class T,class...Args>static T call(uint32_t address,Args...){if(address==0x7177C0)++weaponCalls;return T(1);}
-static void unselect(){selectedResult.clear();}static bool selection(uint32_t p){selectedResult.push_back(p);return true;}
+template<class T>static T call(uint32_t address,uint32_t,int slot){
+ if(address==0x7177C0){++weaponCalls;return T(0xB0000+slot*4);}return T(1);
+}
+template<class T,class...Args>static T call(uint32_t,Args...){return T(1);}
+static void unselect(){selectedResult.clear();if(invalidateOnUnselect)memory[invalidateOnUnselect+0x10]=0xDEADBEEF;}static bool selection(uint32_t p){selectedResult.push_back(p);return true;}
 #include CAPACITY_VARIANT_FUNCTIONS
 static int checks=0,failures=0;
 static void check(bool v,const char*label){++checks;if(!v){++failures;std::fprintf(stderr,"FAIL %s\n",label);}}
-static void reset(){queuedUnload.clear();queuedUnload.epoch=queuedUnload.house=queuedUnload.lastProgress=0;memory.clear();ids.clear();kinds.clear();types.clear();byID.clear();manualVersions.values.clear();selectedObjects.clear();infantry.clear();allObjects.clear();selectedResult.clear();sent.clear();recentPassengerCount=frozenUnloadCount=unloadCount=0;match=1;clockNow=100;shared={};ready=interfaces=true;eventRoom=24;cancelled=weaponCalls=0;unreadableField=0;indexedFrame=-1;memory[0xA8ED84]=1;}
+static void reset(){queuedUnload.clear();queuedUnload.epoch=queuedUnload.house=queuedUnload.lastProgress=0;memory.clear();ids.clear();kinds.clear();types.clear();byID.clear();manualVersions.values.clear();selectedObjects.clear();infantry.clear();allObjects.clear();selectedResult.clear();sent.clear();recentPassengerCount=frozenUnloadCount=unloadCount=0;match=1;clockNow=100;shared={};ready=interfaces=true;eventRoom=24;cancelled=weaponCalls=0;unreadableField=invalidateOnUnselect=0;indexedFrame=-1;memory[0xA8ED84]=1;}
 static uint32_t carrier(int n,bool passenger=true){uint32_t p=0x100000+n*0x1000,id=n+1;ids[p]=id;byID[id]=p;kinds[p]=2;types[p]=0x80000;memory[p]=0x7F5C70;memory[p+0x10]=id;memory[p+0x21C]=9;memory[p+0x6C]=100;memory[p+0x74]=1;memory[p+0x90]=1;memory[p+0x81]=0;memory[p+0x1C8]=0;memory[p+0x114]=passenger?1:0;selectedObjects.push_back(p);allObjects.push_back(p);
  if(passenger){uint32_t q=0x5000000+n*0x1000,qid=100000+n;ids[q]=qid;byID[qid]=q;kinds[q]=1;types[q]=0x90000;memory[q]=0x7EB058;memory[q+0x10]=qid;memory[q+0x21C]=9;memory[q+0x6C]=100;memory[q+0x74]=1;memory[q+0x90]=1;memory[q+0x81]=0;memory[q+0x11C]=p;memory[p+0x118]=q;memory[q+0x30]=0;infantry.push_back(q);allObjects.push_back(q);}return p;}
 static void tick(int frame,int room=24,bool candidate=false){indexedFrame=frame;memory[0xA8ED84]=frame;clockNow=100+uint32_t(frame)*16;eventRoom=room;int budget=64;smartUnloadAdmissionTick(9,frame,budget,candidate);}
@@ -129,7 +132,34 @@ int main(int argc,char**argv){std::string mode=argc>1?argv[1]:"all";
  }
  if(mode!="unload"){
  static typekeys::VariantKeys large;large.clear();for(uint32_t n=1;n<=16384;++n)large.add(n*16,n%57);bool complete=true;for(uint32_t n=1;n<=16384;++n)complete&=large.hasType(n*16)&&large.contains(n*16,n%57)&&!large.contains(n*16,99);check(complete,"all 16384 fixed-memory variant keys remain distinct");large.clear();check(large.empty()&&!large.contains(16,1),"fixed index resets across selections");large.epoch=UINT32_MAX;large.clear();large.add(16,2);check(large.contains(16,2)&&!large.contains(16,1),"fixed key generation wrap clears stale entries");
- check(selectVariant(9,true)==-12&&weaponCalls==0,"variant selection is explicitly suspended until Worker-backed variant projection exists");
+ reset();
+ const uint32_t v0=carrier(0,false),v1=carrier(1,false),v2=carrier(2,false),different=carrier(3,false);
+ selectedObjects={v0};
+ memory[0x80000+0x805]=1;memory[0x80000+0x80C]=2;
+ memory[0xB0000]=0x1111;memory[0xB0004]=0x2222;
+ memory[v0+0x138]=0;memory[v1+0x138]=0;memory[v2+0x138]=1;
+ types[different]=0xD0000;memory[0xD0000+0x805]=1;memory[0xD0000+0x80C]=2;
+ check(selectVariant(9,true)==2&&selectedResult.size()==2&&
+  selectedResult[0]==v0&&selectedResult[1]==v1,
+  "weapon variant selects current normal-weapon cohort, not different slots or types");
+ check(weaponCalls>=4,"native weapon accessor consulted for matching candidate types");
+ selectedObjects={v2};check(selectVariant(9,true)==1&&selectedResult.size()==1&&selectedResult[0]==v2,
+  "weapon slot changes produce a different selected cohort");
+ selectedObjects={v0};memory[0x887324]=0xA0;
+ check(selectVariant(9,false)==2,"screen-only variant selection preserves tactical visibility");
+ selectedObjects.clear();int beforeSelection=int(selectedResult.size());
+ check(selectVariant(9,true)==0&&int(selectedResult.size())==beforeSelection,
+  "no selected variant preserves prior selection without clearing it");
+ selectedObjects={v0};invalidateOnUnselect=v1;
+ check(selectVariant(9,true)==1&&selectedResult.size()==1&&selectedResult[0]==v0,
+  "pointer UID invalidation during unselect cannot add stale candidate");
+ reset();const uint32_t noWeapon=carrier(0,false);
+ selectedObjects={noWeapon};memory[0x80000+0x805]=0;
+ check(selectVariant(9,true)==0&&selectedResult.empty(),
+  "unit with no usable normal weapon does not match an all-zero weapon cohort");
+ reset();interfaces=false; // selection native readiness depends on the native gateway
+ check(selectVariant(9,true)==0&&weaponCalls==0,
+  "empty selected roster is a safe no-op without scanning weapon tables");
  }
  std::printf("%s capacity admission: %d checks, %d failures\n",failures?"FAIL":"PASS",checks,failures);return failures?1:0;
 }
