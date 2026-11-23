@@ -372,6 +372,7 @@ static void moCommit(){
  if(moMode==int(moorders::Patrol)){
   if(!moFlightSelection()&&!moGraphEmpty()){sh->moOrderStatus=uint32_t(-17);resetMoOrders();return;}
   moRouteCount=moorders::patrol(moStroke,moStrokeCount,moRoute,moCapturedOptions);
+  if(moRouteCount<4){sh->moOrderStatus=uint32_t(-4);sh->moOrderRejected=moActorCount;resetMoOrders();return;}
   for(int i=0;i<moRouteCount;++i)if(!readMapCell(moRoute[i].x,moRoute[i].y)){sh->moOrderStatus=uint32_t(-4);sh->moOrderRejected=moActorCount;resetMoOrders();return;}
  }
  // Explicit player intent cancels the same automatic jobs as a native click.
