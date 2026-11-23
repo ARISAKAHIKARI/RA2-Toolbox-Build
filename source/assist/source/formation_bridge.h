@@ -38,7 +38,10 @@ static void formationCancel(){if(formationQuick)formationButton=false;formationE
 static void resetFormation(){formationReleaseWatch.clear();formationFollowReleaseWatch.clear();formationForget();formationEndQuick();formationQuickCaptured=false;formationQuickMouse=0;formationFeedback=false;formationView={};formationModal=formationHolding=formationButton=false;formationHoldingKey=0;formationAltAt=0;formationHoldConsumed=false;formationJobCount=formationJobCursor=0;memset(formationSuppressed,0,sizeof formationSuppressed);if(sh){sh->formationJobs=0;formationPublish();}}
 static bool formationContext(bool preview=false){
  if(!sh||fault||sh->stop||!sh->foreground||!gameentry::active(gameentry::Client::Assist)||snap.status!=1||!match||!lastHouse||snap.commandStatus!=1||!get<bool>(0xA8E9A0)||get<uint32_t>(0xA83D4C)!=lastHouse||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u))return false;
- int frame=get<int>(0xA8ED84);if(frame<snap.frame||int64_t(frame)-snap.frame>6||frame<0||frame>=INT32_MAX||get<int>(0xA8B238)!=snap.session||!eventdelivery::mayQueue(snap.session)||get<bool>(lastHouse+0x1F5)||get<bool>(lastHouse+0x1F6)||get<bool>(lastHouse+0x1F8))return false;
+ // Game logic frames can advance much faster than the Host refresh rate.
+ // A fresh Host heartbeat plus live House/session/focus/queue checks prove
+ // gesture authority; a six-frame snapshot delta must never cancel a drag.
+ int frame=get<int>(0xA8ED84);if(frame<snap.frame||frame<0||frame>=INT32_MAX||get<int>(0xA8B238)!=snap.session||!eventdelivery::mayQueue(snap.session)||get<bool>(lastHouse+0x1F5)||get<bool>(lastHouse+0x1F6)||get<bool>(lastHouse+0x1F8))return false;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);if(foreground!=GetCurrentProcessId())return false;
  if(!external::display::inspect([](uint32_t at,void*out,size_t n){return read(at,out,n);}).visible())return false;
  long seq=sh->formationPolicySeq;if(seq&1)return formationPolicy.enabled!=0;MemoryBarrier();auto p=sh->formationPolicy;MemoryBarrier();if(seq!=sh->formationPolicySeq)return formationPolicy.enabled!=0;formationPolicy=p;return p.enabled!=0;
@@ -50,7 +53,7 @@ static bool formationAerial(const formation::Unit&u){
  if(u.kind==0)return true;
  return u.type&&(get<int>(u.type+0x5B4)==9||get<int>(u.type+0x67C)==4);
 }
-static bool formationSelectionMatchesPreview(bool requireRoster=true){
+static bool formationSelectionMatchesPreview(bool requireRoster=false){
  Vec selected=vec(0xA8ECB8);bool found[formation::Maximum]{};int count=0;
  for(int n=0;n<selected.count;++n){uint32_t p=item(selected,n);if(!formationActor(p,formationQuick,requireRoster))continue;++count;int j=0;
   for(;j<formationView.count;++j)if(!found[j]&&p==formationView.units[j].pointer&&get<uint32_t>(p+0x10)==formationView.units[j].id)break;
@@ -58,8 +61,10 @@ static bool formationSelectionMatchesPreview(bool requireRoster=true){
  }return count==formationView.count&&count>0;
 }
 static void formationSelect(){
- if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady()){formationView.count=0;return;}formationView.count=0;Vec selected=vec(0xA8ECB8);
- for(int n=0;n<selected.count&&formationView.count<formation::Maximum;++n){uint32_t p=item(selected,n);if(!formationActor(p,formationQuick))continue;
+ // Input edge only needs the game's selected vector, not a full-world index
+ // sealed in precisely this fast-running frame. Each actor is checked live.
+ formationView.count=0;Vec selected=vec(0xA8ECB8);
+ for(int n=0;n<selected.count&&formationView.count<formation::Maximum;++n){uint32_t p=item(selected,n);if(!formationActor(p,formationQuick,false))continue;
   auto&u=formationView.units[formationView.count++];u={};u.pointer=p;u.id=get<uint32_t>(p+0x10);u.type=typeOf(p,kind(p));u.token=manualVersions.get(u.id);u.x=get<int>(p+0x9C);u.y=get<int>(p+0xA0);u.z=get<int>(p+0xA4);u.kind=kind(p);
  }
 }
@@ -115,7 +120,7 @@ static void formationCommit(bool remember=true,bool feedback=true){
  formationFeedback=feedback;formationFollow={};if(remember){formationMemory={};formationMemory.ax=formationView.ax;formationMemory.ay=formationView.ay;formationMemory.facing=formationView.facing;formationMemory.directed=formationDirected;formationMemory.quick=formationQuick;}
  sh->formationAccepted=sh->formationRejected=0;
  for(int n=0;n<formationView.count;++n){auto u=formationView.units[n];auto goal=formationView.slots[n];
-  if(!goal.valid||!formationActor(u.pointer,formationQuick)||get<uint32_t>(u.pointer+0x10)!=u.id||manualVersions.get(u.id)!=u.token){++sh->formationRejected;continue;}
+  if(!goal.valid||!formationActor(u.pointer,formationQuick,false)||get<uint32_t>(u.pointer+0x10)!=u.id||manualVersions.get(u.id)!=u.token){++sh->formationRejected;continue;}
   for(int j=0;j<formationJobCount;)if(formationJobs[j].unit.id==u.id)formationJobs[j]=formationJobs[--formationJobCount];else ++j;
   if(formationJobCount>=formation::Maximum){++sh->formationRejected;continue;}
   // This is an explicit player order: invalidate older automation leases.
