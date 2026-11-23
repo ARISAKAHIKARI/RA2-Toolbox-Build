@@ -1,4 +1,4 @@
-"""Source contract: async command capture never secretly scans a live roster.
+"""Source contract: Runtime owns the same-frame action index; no feature duplicates the roster scan.
 
 This is structural admission coverage, NOT in-game FPS or multiplayer proof.
 The paired native build and actual worker DLL tests establish compilation.
@@ -13,10 +13,14 @@ def between(s, left, right):
     return s.split(left, 1)[1].split(right, 1)[0]
 assert 'static bool prepareWorldIndex(int frame)' in bridge
 gate = between(bridge, "static bool prepareWorldIndex(int frame){", '\n#include "../../shared/source/key_gesture.h"')
-assert 'indexWorld(' not in gate
-assert 'return refreshWorldIndex(frame)' in gate
-fallback = between(bridge, "static bool refreshWorldIndex(int frame){", "// Identity-index publication")
-assert 'indexWorld(' not in fallback
+assert 'if(worldFrameCommandWorker.enabled())return refreshWorldIndex(frame,false);' in gate
+assert 'indexWorld(frame);' in gate
+assert 'return indexedFrame==frame;' in gate
+fallback = between(bridge, "static bool refreshWorldIndex(int frame,bool executionGuards=true){", "// Identity-index publication")
+assert 'if(worldFrameCommandWorker.enabled()){' in fallback
+assert 'SampleReadScope sample;indexWorld(frame);' in fallback
+assert 'if(!executionGuards)return false;' in fallback
+assert 'indexWorld(frame);' in fallback
 # No active feature may rediscover the full Techno list through a live Vec.
 for path in ("bridge.cpp", "type_select_bridge.h", "autoload_bridge.h",
              "burst_bridge.h", "combat_probe_bridge.h",
@@ -30,20 +34,16 @@ assert "worldframe::Resources" not in display_demand
 assert "HostVisual" not in display_demand
 assert "worldframe::Passengers" in display_demand
 assert "worldframe::Combat" in display_demand
-# Product ProcessReader cannot promote a non-control frame with its own RPM
-# VisualCache. The old path exists only in the dedicated test fixture.
-test_visual = process_reader.index("#ifdef WORLD_FRAME_TEST_VISUAL_CACHE")
-visual_call = process_reader.index("worldClient_->visual", test_visual)
-product_else = process_reader.index("#else", test_visual)
-assert visual_call < product_else
-assert "canonicalDisplaySource(frame->key,worldDemand_)" in process_reader[product_else:]
+# Host VisualCache is production display sampling, not a test-only branch.
+assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in process_reader
+assert "worldClient_->visual(frame,worldDemand_" in process_reader
+assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in process_reader
 assert "if(worldframe::visualDemand(worldDemand_))" in process_reader
 assert "else worldClient_->request(worldDemands_,!worldComplete_);" in process_reader
-assert "worldClient_->request(worldDemands_,!worldComplete_);" in process_reader
 assert "sceneReady?SceneKeyBit:0u" in worker
 
 assert 'CaptureGraph' not in fallback
-assert 'static void indexWorld(int frame)' not in bridge
+assert 'static void indexWorld(int frame)' in bridge
 for path in ("sticky_bridge.h", "control_object_owner_bridge.h",
              "native_mega_gateway_bridge.h", "private_outlist_bridge.h"):
     body = (root / path).read_text()
@@ -62,11 +62,13 @@ assert "job.pages.swap(self->queued_.pages)" in worker
 assert "bool reclaimRequestBuffer(std::vector<uint32_t>&pages)" in worker
 assert "worldFrameCommandWorker.reclaimRequestBuffer(requests)" in runtime
 assert runtime.index("worldFrameCommandWorker.reclaimRequestBuffer(requests)") < runtime.index("const auto&hostRequests=worldFrameServer.requests();")
-# The product has one command-capture worker. The older publisher/recovery
-# worker is compiled only into the isolated synchronous regression DLL.
-assert '#elif defined(WORLD_FRAME_TEST_SYNC_CAPTURE)' in runtime
+# The full CaptureGraph runs synchronously in Runtime by default. The
+# optional command worker is a benchmark-only opt-in; AsyncPublisher remains
+# the immutable Host transport and bounded missing-page recovery worker.
+assert '#elif defined(WORLD_FRAME_TEST_SYNC_CAPTURE)' not in runtime
 assert runtime.count('world_frame_async_win.h') == 1
-assert 'The old AsyncPublisher is not a dormant compatibility path in the product.' in runtime
+assert 'using WorldFramePublication=worldframe::AsyncPublisher<>' in runtime
+assert 'The game thread owns world capture, indexing and command admission.' in runtime
 assert 'if(!worldFrameServer.wanted(key.owner,key.tick))' in runtime
 assert 'candidateCount&&worldFrameServer.wanted(key.owner,key.tick)' in runtime
 assert 'worldFrameCommandWorker.take(key,graphDemand' in runtime
@@ -92,9 +94,9 @@ assert 'readLiveWorld(pointer+0x10' in candidate_gate
 assert 'if(sampleReadDepth)' in candidate_gate
 
 assert 'coalesceInFlightWorld(lastRequestedKey_,key' in worker
-# Production has no synchronous capture opt-out. Only a separately compiled
-# test fixture can exercise the old synchronous implementation.
-assert 'RA2TOOLBOX_ASYNC_COMMAND_CAPTURE' not in worker
+# The command worker is opt-in; default product execution is synchronous.
+assert 'RA2TOOLBOX_ASYNC_COMMAND_CAPTURE' in worker
+assert 'GetEnvironmentVariableA' in worker
 assert 'WORLD_FRAME_TEST_SYNC_CAPTURE' in worker
 assert 'return true;' in worker
 assert 'worldFrameCommandWorker.enabled()' in runtime
@@ -147,8 +149,8 @@ else:
     assert "std::sort(unloadRoster" not in native_orders
 assert "ReindexBudget=128" in unload_policy
 assert "while(rebuildAt<count&&work++<ReindexBudget)" in unload_policy
-assert "if(!worldFrameCommandWorker.enabled())indexWorld(frame);" not in bridge
-assert "indexWorld(" not in bridge
+assert "if(worldFrameCommandWorker.enabled())return refreshWorldIndex(frame,false);" in bridge
+assert bridge.count("indexWorld(") == 4
 
 # A missed strict capture must pause indexed work without aborting the
 # observation publication or consuming that frame's indexed input refresh.
@@ -241,11 +243,13 @@ assert 'latestTicket_.fetch_add(1' in worker
 # Host-only page demand may refresh the worker's read-only publication without
 # revoking an already sealed, same-frame Runtime command sample.
 capture = runtime.split("template<class Live>static bool captureWorldFrame", 1)[1].split(
-    "#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)", 1
+    "static bool ensureWorldFrame", 1
 )[0]
 assert "worldframe::commandSampleReusable(" in capture
+assert "worldframe::CaptureGraph<Live>capture(" in capture
+assert "worldFramePublication.publish(worldFrame,worldFrameServer)" in capture
 assert "worldFrameReady&&!worldFrameBoundaryOnly&&!runtimeDemandOverflow" in capture
 assert "if(!strictReusable){worldFrameReady=false;worldFrameBoundaryOnly=false;}" in capture
 assert "return strictReusable;" in capture
 
-print("PASS async command graph and four native Hook paths never sync-scan the full live roster; worker expiration is nonblocking")
+print("PASS Runtime same-frame index, final live validation, opt-in worker and separate Host display sampling contract")
