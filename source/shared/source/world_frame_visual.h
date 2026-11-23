@@ -76,12 +76,12 @@ public:
   const auto started=std::chrono::steady_clock::now();
   const auto before=visualStamp(live,*source);
   if(!before.valid){attempted_=source;attemptedAt_=now;++statistics.failed;return {};}
-  // Soon after a full display capture, a high-FPS game may publish several
-  // new empty boundaries. Reuse the original sealed bytes after checking
-  // current geometry and frame order, without retagging their provenance.
-  if(compatible&&boundaryOnlySource(base_->key)&&boundaryOnlySource(source->key)&&
-     source->key.frame>=base_->key.frame&&before.frame>=latestStamp_.frame&&
-     uint32_t(now-latest_->visualTick)<16&&latestStamp_.sameWorld(before)){
+  // Display sampling is deliberately lower priority than Runtime commands.
+   // Reuse a coherent same-world visual snapshot across nearby Runtime frames;
+   // never retag its original frame or treat it as command authority.
+  if(compatible&&base_&&base_->key.sameWorld(source->key)&&
+      source->key.frame>=base_->key.frame&&before.frame>=latestStamp_.frame&&
+      uint32_t(now-latest_->visualTick)<32&&latestStamp_.sameWorld(before)){
    ++statistics.reused;return latest_;
   }
   attempted_=source;attemptedAt_=now;
