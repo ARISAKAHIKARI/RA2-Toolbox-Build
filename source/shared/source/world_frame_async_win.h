@@ -28,8 +28,8 @@ template<class Writer=Server>class AsyncPublisher {
      self->attemptAt_.store(GetTickCount(),std::memory_order_relaxed);self->attemptEpoch_.store(job.epoch,std::memory_order_relaxed);self->attemptSerial_.store(job.key.serial,std::memory_order_release);
      self->pool_.finish(job);
     }
-    // Test-only coverage for the old targeted recovery mailbox. Production
-    // samples no longer run an independent side-channel read loop.
+    // Bounded recovery probes only identify missing spans. Their returned bytes
+     // are hints; Runtime re-reads them on the game thread before use.
     RecoveryJob recoveryJob{};
     if(self->recovery_.take(recoveryJob)){
      auto result=RecoveryMailbox::probe(recoveryJob,[](uint32_t at,void*out,size_t n){
@@ -75,8 +75,8 @@ public:
  void invalidate(){pool_.invalidate();
   recovery_.invalidate();
   if(event_)SetEvent(event_);}
- // Retained only for the isolated recovery regression DLL. Product builds
- // return false and never schedule independent game-memory reads.
+ // Targeted recovery is limited to missing-page hints. It never supplies
+  // command observations; the game-thread CaptureGraph must re-read the data.
  bool requestRecovery(const Key&key,const RequestedSpan*fields,size_t count){
   if(stopping_.load(std::memory_order_acquire))return false;
   reap();
