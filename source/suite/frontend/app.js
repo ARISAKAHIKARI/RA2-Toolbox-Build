@@ -257,6 +257,21 @@
   const hasFeatureConfig=block=>Boolean(block.title||block.headers.length)&&block.details.some(control=>!['label','heading'].includes(control.type));
   // Keep compound command rows intact and give each marked feature its own settings.
   function featureBlocks(controls) {
+    const lines=settingLines(controls);
+    // Legacy panels sometimes supplied a self-named master switch plus
+    // independent child rows but no GroupHeader / Feature metadata. Infer
+    // ownership only for that unambiguous pattern; broad groups such as
+    // "自动功能" with several switches must never swallow other features.
+    const firstLine=lines[0]||[];
+    const main=firstLine.find(control=>control.type==='toggle');
+    const tail=lines.slice(1).flat();
+    if(lines.length>1&&main&&main.group&&main.group===main.label&&
+       !controls.some(control=>control.featureId||control.groupHeader)&&
+       !tail.some(control=>control.type==='toggle'||control.type==='heading')&&
+       tail.some(control=>!['heading','label'].includes(control.type))){
+      return [{key:'inferred:'+main.id,title:main.group,headers:firstLine,
+        details:tail,controls:[...firstLine,...tail]}];
+    }
     const blocks=[],named=new Map();let current=null,common=[];
     const flush=()=>{
       if(current){blocks.push(current);current=null;}
@@ -265,7 +280,7 @@
         common=[];
       }
     };
-    for(const line of settingLines(controls)){
+    for(const line of lines){
       const first=line[0];
       if(first.featureId){
         flush();
