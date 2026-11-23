@@ -1,0 +1,31 @@
+name: Validate high FPS input gestures
+on:
+  pull_request:
+    paths:
+      - 'source/assist/source/formation_bridge.h'
+      - 'source/assist/source/pointer_intent.h'
+      - 'source/assist/source/pointer_host.h'
+      - 'source/assist/tests/formation_switch_test.py'
+      - 'source/assist/tests/high_fps_input_freshness.cpp'
+      - 'source/assist/tests/high_fps_gesture_contract.py'
+      - '.github/workflows/validate-high-fps-gestures.yml'
+  push:
+    branches: [fix/watch-pin-and-control-ui-20261123]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  high-fps-gesture-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise real production pointer admission code at 240+ FPS
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/high_fps_input_freshness.cpp -o /tmp/ra2-high-fps-pointer
+          /tmp/ra2-high-fps-pointer
+          python3 source/assist/tests/high_fps_gesture_contract.py
+      - name: Run native formation bridge fixture including high-FPS mouse hold
+        run: |
+          python3 source/assist/tests/formation_switch_test.py
