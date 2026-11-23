@@ -358,6 +358,17 @@ public:
    index_[slot]=uint32_t(pages.size());
   }counters=stats;return seal();
  }
+ bool copyForPublication(const Snapshot&source){
+  // Publication-only copy: retain immutable wire pages without rebuilding the
+  // 128-KiB command lookup index. This snapshot is never used for Runtime reads.
+  if(&source==this||!source.sealed_||source.overflow_||source.controlSource)return false;
+  controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;
+  key=source.key;counters=source.counters;catalogue=source.catalogue;
+  pages.clear();indexFresh_=false;sealed_=overflow_=false;
+  if(source.pages.size()>MaxPages||!pages.reserve(source.pages.size()))return capacityFailure();
+  for(size_t i=0;i<source.pages.size();++i)if(!pages.append(source.pages[i]))return capacityFailure();
+  sealed_=true;return true;
+ }
  bool extendVisual(const std::shared_ptr<const Snapshot>&source){
   if(!source||source.get()==this||source->controlSource||!source->sealed()||source->overflow())return false;
   if(!import(source->key,source->counters,source->pages.data(),source->pages.size()))return false;
