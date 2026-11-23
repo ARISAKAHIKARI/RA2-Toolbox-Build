@@ -92,6 +92,12 @@ void hostVisual(){
  worldframe::VisualCache cache;std::vector<uint32_t>pages;
  for(unsigned i=0;i<512;++i){const uint32_t p=0xC00000+i*4096;pages.push_back(p);m.put(p,i+123u);}
  cache.request(pages,100,false);m.put(ActorA+0x6C,25);m.put(0xA8ED84,51);
+ worldframe::Snapshot publication;
+ CHECK(publication.copyForPublication(*raw));
+ CHECK(publication.sealed()&&publication.pages.size()==raw->pages.size());
+ CHECK(publication.key.sameFrame(raw->key)&&publication.counters.bytes==raw->counters.bytes);
+ CHECK(publication.pages.size()&&publication.pages[0].address==raw->pages[0].address);
+ int publicationOnlyValue=0;CHECK(!publication.read(ActorA+0x6C,&publicationOnlyValue,4));
  auto visual=cache.acquire(raw,worldframe::Resources,100,live);CHECK(visual&&visual->controlSource==raw&&visual->visualFrame==51&&visual->visualTick==100&&visual->visualSerial);
  CHECK(visual->key.serial==raw->key.serial&&visual->key.tick==raw->key.tick&&visual->key.frame==50);
  int hp=0;uint32_t value=0;CHECK(visual->read(ActorA+0x6C,&hp,4)&&hp==100);CHECK(!raw->read(0xC00000,&value,4));CHECK(visual->read(0xC00000,&value,4)&&value==123);
