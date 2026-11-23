@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/watch_slots.cpp -o /tmp/watch-slots
-          /tmp/watch-slots
+          /tmp/watch-slots single-pin
       - name: Verify pending pin is bounded and identity checked
         run: |
           python3 - <<'PY'
