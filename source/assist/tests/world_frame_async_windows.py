@@ -14,13 +14,19 @@ for arch in ['x86','x86_64']:
   cmd=[str(a.zig),'c++','-target',arch+'-windows-gnu','-std=c++17','-O2','-UNDEBUG',*extra,str(here/source),'-o',str(dest)]
   r=subprocess.run(cmd,capture_output=True,text=True);(out/(name+'-build.log')).write_text(r.stdout+r.stderr)
   if r.returncode:print(r.stderr);raise SystemExit(r.returncode)
- for mode in ('publisher-sync-test-fixture','runtime-async-default','runtime-async-candidate'):
+ for mode in ('publisher-sync-test-fixture','runtime-async-opt-in','runtime-async-candidate-opt-in'):
   for attempt in range(3):
    # Legacy synchronous capture, RecoveryMailbox and ShadowGraphWorker are
    # compiled only into a separate test DLL. The product DLL has no opt-out.
    selected=sync_dll if mode=='publisher-sync-test-fixture' else dll
-   argv=[str(exe),str(selected)]+(['async'] if mode=='runtime-async-default' else ['async-candidate'] if mode=='runtime-async-candidate' else [])
-   r=subprocess.run(argv,capture_output=True,text=True,timeout=30)
+   argv=[str(exe),str(selected)]+(['async'] if mode=='runtime-async-opt-in' else ['async-candidate'] if mode=='runtime-async-candidate-opt-in' else [])
+   env=__import__('os').environ.copy()
+   env.pop('RA2TOOLBOX_ASYNC_COMMAND_CAPTURE',None)
+   if mode!='publisher-sync-test-fixture':
+    # The product worker is intentionally opt-in. These two Win32 cases
+    # explicitly enable it; they do not redefine the shipped default.
+    env['RA2TOOLBOX_ASYNC_COMMAND_CAPTURE']='1'
+   r=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=30)
    (out/f'run-{mode}-{attempt}.log').write_text(r.stdout+r.stderr)
    print(arch,mode,attempt,r.returncode,r.stdout+r.stderr)
    rows.append(dict(arch=arch,mode=mode,attempt=attempt,exit=r.returncode,passed=r.returncode==0))
