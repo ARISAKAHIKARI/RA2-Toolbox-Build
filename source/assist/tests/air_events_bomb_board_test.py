@@ -57,6 +57,19 @@ int main(){
   check(sh->airEventReport.status==airevents::Committed&&sh->airEventReport.points==2&&sh->airEventReport.accepted==2&&feedbacks==2);
   airStep();check(events.size()==2&&posted==1); // no synthetic Commit and no arrival resend
  }
+ // Current selection capture must not wait for the indexed world roster.
+ // MO patrol already captures player input without its command roster gate.
+ airBegin();rosterChecks=0;check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));check(rosterChecks==0);
+ held['Z']=false;check(airMessage(WM_KEYUP,'Z'));
+ queueRoom=0;for(int i=0;i<85;++i)airStep();
+ check(events.empty()&&posted==1&&!directAirPending()&&sh->airEventReport.status==airevents::Partial);
+ // The timeout also recovers after a first node queued but the tail stalls.
+ airBegin();check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));
+ check(airMessage(WM_LBUTTONDOWN,0,160,100));check(airMessage(WM_LBUTTONUP,0,160,100));
+ held['Z']=false;check(airMessage(WM_KEYUP,'Z'));
+ queueRoom=1;airStep();check(events.size()==1&&posted==0);
+ queueRoom=0;for(int i=0;i<85;++i)airStep();
+ check(events.size()==1&&posted==1&&!directAirPending()&&sh->airEventReport.status==airevents::Partial);
  airBegin();check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));beforeSubmit=[](){++manualVersions.tokens[get<uint32_t>(actors[0]+0x10)];beforeSubmit=nullptr;};airStep();check(events.empty());airStep();check(!directAirPending());
  airBegin();airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);held['Z']=false;airMessage(WM_KEYUP,'Z');++match;airStep();check(posted==0&&events.empty());
  airBegin();kinds[actors[0]]=1;check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending()&&events.empty());
