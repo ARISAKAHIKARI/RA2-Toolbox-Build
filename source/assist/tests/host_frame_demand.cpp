@@ -34,5 +34,5 @@ int main(){
  for(auto mask:{Default,All}){d={};d.placement=mask;d.pending=true;assert(needsFrameNotification(d));}
  // A single unrelated setting never produces a wake.
  d={};d.flags=1u;assert(!needsFrameNotification(d));
- std::puts("PASS host-first placement and active-demand-only frame notifications");
+ std::puts("PASS Runtime-owned action placement and active-demand-only Host notifications");
 }
