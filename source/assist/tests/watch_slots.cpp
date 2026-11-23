@@ -11,6 +11,17 @@ static Target unit(int index,int x,int y){uint32_t p=0x10000+index*0x1000;put(p,
 int main(){
  auto a=unit(0,30*256,30*256),b=unit(1,34*256,30*256),c=unit(2,35*256,30*256),unselected=unit(3,30*256+1,30*256);
  vec(0xA8EC78,0x200000,{a.pointer,b.pointer,c.pointer,unselected.pointer});vec(0xA8ECB8,0x210000,{a.pointer,b.pointer,c.pointer});put(unselected.pointer+0x431,uint8_t(1));
+ // Single-target pinning must work even when the full visual Techno vector
+ // is blocked/partial. It may not wait on the unrelated hover catalogue.
+ vec(0xA8ECB8,0x210000,{a.pointer});
+ int fullRosterProbes=0;
+ auto selectionOnly=[&](uint32_t p,void*out,size_t n){
+  if(p==0xA8EC78){++fullRosterProbes;return false;}
+  return read(p,out,n);
+ };
+ auto once=capture(selectionOnly);
+ assert(once.target==a&&once.members.size()==1&&fullRosterProbes==0);
+ vec(0xA8ECB8,0x210000,{a.pointer,b.pointer,c.pointer});
  auto captured=capture(read);assert(captured.target==a&&captured.members.size()==3); // hovered outsider cannot change group
  // A successfully returned but inconsistent terminal value must not delete
  // the slot. Both observations use the read supplied by the production host.
