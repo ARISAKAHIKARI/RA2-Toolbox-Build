@@ -247,7 +247,7 @@ capture = runtime.split("template<class Live>static bool captureWorldFrame", 1)[
 )[0]
 assert "worldframe::commandSampleReusable(" in capture
 assert "worldframe::CaptureGraph<Live>capture(" in capture
-assert "worldFramePublication.publish(worldFrame,worldFrameServer)" in capture
+assert "publishWorldFrame();" in capture
 assert "worldFrameReady&&!worldFrameBoundaryOnly&&!runtimeDemandOverflow" in capture
 assert "if(!strictReusable){worldFrameReady=false;worldFrameBoundaryOnly=false;}" in capture
 assert "return strictReusable;" in capture
