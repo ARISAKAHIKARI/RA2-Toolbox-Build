@@ -17,6 +17,13 @@ struct Feature {
 // The original HWND IDs remain the settings owners. The key identifies a
 // card, and only a primary control stays visible when its settings are folded.
 inline constexpr Feature Features[]={
+ // Each gesture owns its shortcut / mouse choice under the same settings fold.
+ {477,categories::Control,L"移动、攻击与操作手势",L"磁电轮换攻击",true,{477,478,730}},
+ {702,categories::Control,L"移动、攻击与操作手势",L"高级进驻",true,{702,703,704,732}},
+ {719,categories::Control,L"移动、攻击与操作手势",L"飞碟主武器攻击",true,{719,725,726,735}},
+ {720,categories::Control,L"移动、攻击与操作手势",L"出售被吸取目标",true,{720,727,728,737}},
+ {721,categories::Control,L"移动、攻击与操作手势",L"出售战车",true,{721,789,738}},
+ {795,categories::Control,L"移动、攻击与操作手势",L"Shift 五连点",true,{795,796,797}},
  {9494,categories::Rules,L"单机速度与暂停",L"单机游戏速度",true,{9494,9495}},
  {9403,categories::Rules,L"单机速度与暂停",L"暂停与逐帧",true,{9403,9454,9455,9406}},
  {420,categories::Rules,L"科技与建造",L"科技全开",true,{420,896,9753,421,422,423,424,425,426,427,428,814,815}},
