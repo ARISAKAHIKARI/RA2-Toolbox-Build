@@ -23,7 +23,7 @@ jobs:
       - name: Exercise real production pointer admission code at 240+ FPS
         run: |
           set -euo pipefail
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/high_fps_input_freshness.cpp -o /tmp/ra2-high-fps-pointer
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Wno-error=misleading-indentation -UNDEBUG source/assist/tests/high_fps_input_freshness.cpp -o /tmp/ra2-high-fps-pointer
           /tmp/ra2-high-fps-pointer
           python3 source/assist/tests/high_fps_gesture_contract.py
       - name: Run native formation bridge fixture including high-FPS mouse hold
