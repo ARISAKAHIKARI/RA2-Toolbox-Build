@@ -31,8 +31,13 @@ static WorldFramePublication worldFramePublication;
 // Separate publication storage: a saturated Host publisher must never pin
 // or prevent the Runtime-owned command snapshot from being captured.
 static worldframe::Snapshot worldFramePublicationBuffer;
+static worldframe::Key lastPublishedKey{};
+static bool lastPublishedValid=false;
 static void publishWorldFrame(){
- if(!worldFrameServer.wanted(worldFrame.key.owner,worldFrame.key.tick))return;
+ const auto&key=worldFrame.key;
+ if(!worldFrameServer.wanted(key.owner,key.tick))return;
+ if(lastPublishedValid&&lastPublishedKey.sameFrame(key)&&
+    lastPublishedKey.serial==key.serial&&lastPublishedKey.demand==key.demand)return;
  if(!worldFramePublication.begin(worldFramePublicationBuffer))return;
  const auto&requested=worldFrameServer.requests();
  if(requested.empty()){
@@ -40,7 +45,9 @@ static void publishWorldFrame(){
   worldFramePublicationBuffer.resetBoundary(boundaryKey);
   if(!worldFramePublicationBuffer.seal())return;
  }else if(!worldFramePublicationBuffer.copyForPublication(worldFrame))return;
- worldFramePublication.publish(worldFramePublicationBuffer,worldFrameServer);
+ if(worldFramePublication.publish(worldFramePublicationBuffer,worldFrameServer)){
+  lastPublishedKey=key;lastPublishedValid=true;
+ }
 }
 // Runtime owns full CaptureGraph sampling, indexing and command admission.
 // The command worker is an explicit benchmark opt-in; the publisher worker
@@ -251,7 +258,7 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
  }
 }
 #endif
-static void retireWorldFrame(){worldFrameCatalogueProbeAt=0;worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
+static void retireWorldFrame(){worldFrameCatalogueProbeAt=0;worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();lastPublishedValid=false;worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
  runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;
 }
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
