@@ -5,9 +5,9 @@
 using namespace assist;
 int main(){
  using namespace compute;
- // The stable 1.0.51 runtime-placement policy is fixed; this test must not
- // silently change that production default during an integration merge.
- static_assert(Fixed==Default,"stable fixed compute policy must be preserved");
+ // Every action-producing feature is now Runtime-owned; Host frame demand
+ // must stay quiet unless there is a pending completion or Host-only task.
+ static_assert(Fixed==All,"all action planners must remain Runtime-owned");
  static_assert((All&(1u<<BurstRefresh))!=0,"retired burst slot is ABI-retained");
  HostFrameDemand d{};
  // The old computeApplied != All shortcut produced unconditional native
