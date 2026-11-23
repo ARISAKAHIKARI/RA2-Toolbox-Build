@@ -194,9 +194,9 @@ static void name(uint32_t t,uint16_t*out,int n){uint32_t p=get<uint32_t>(t+0x60)
 #include "build_time_tooltip.h"
 static bool sameid(const char*a,const char*b){for(int i=0;i<24;++i){if(a[i]!=b[i])return false;if(!a[i])return true;}return true;}
 static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21c)==house;}
-// An incomplete worker identity projection is UNKNOWN, not an empty world.
-// No execution guard may rebuild the full live roster as a fallback.
-// The worker-built identity projection is not a native EventClass grant.
+// In opt-in worker mode, an incomplete identity projection is UNKNOWN.
+// The default Runtime path builds one bounded same-frame live index instead.
+// Neither index is a native EventClass grant: final orders re-read live identity.
 // Its only lifetime is the currently sealed exact game logic frame. Every
 // native operation still verifies live UID, House, mission and eligibility.
 static bool commandRosterReady(){
