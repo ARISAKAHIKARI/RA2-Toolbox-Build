@@ -269,7 +269,13 @@ public:
 #ifdef WORLD_FRAME_TEST_SYNC_CAPTURE
   return false;
 #else
-  return true;
+  // Async command capture is experimental and opt-in. Product builds keep
+  // time-critical sampling and command admission on the game thread.
+  static const bool value=[]{
+   char name[3]{};
+   return GetEnvironmentVariableA("RA2TOOLBOX_ASYNC_COMMAND_CAPTURE",name,sizeof name)==1&&name[0]=='1';
+  }();
+  return value;
 #endif
  }
  // The dispatcher calls this BEFORE assembling up to 16K page addresses.
