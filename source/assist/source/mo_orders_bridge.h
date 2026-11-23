@@ -338,7 +338,7 @@ static bool moFlightCrossed(const MoFlight&f,int x,int y,int gx,int gy){
 static void moFlightTick(uint32_t house,DWORD now){
  if(!moFlightCount||DWORD(now-moFlightSample)<30)return;
  moFlightSample=now;
- if(!moOrdersContext()||get<uint8_t>(0x87F7E8+0x11B3))return;
+ if(moHolding||moStage||moWaitingForTargets||!moOrdersContext()||get<uint8_t>(0x87F7E8+0x11B3))return;
  const int budget=std::min(moFlightCount,24);
  for(int step=0;step<budget&&moFlightCount;++step){
   if(moFlightCursor>=moFlightCount)moFlightCursor=0;
