@@ -73,10 +73,19 @@ assert "captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
 assert "if(boundaryOnly){" in runtime
 assert "worldFrame.resetBoundary(key)" in runtime
 
-# Display profiles cannot quietly reintroduce per-feature full Techno-list scans.
-for path in ("type_select_bridge.h", "autoload_bridge.h", "burst_bridge.h",
-             "combat_probe_bridge.h", "cooperative_bridge.h", "native_orders_bridge.h"):
+# No recurring display/automation route may secretly walk the full live
+# Techno array. The explicit current-weapon selection shortcut is exceptional:
+# it runs once on the native game thread, when pressed, and uses the original
+# normal-weapon resolver (including Ares extended slots).
+for path in ("autoload_bridge.h", "burst_bridge.h", "combat_probe_bridge.h",
+             "cooperative_bridge.h", "native_orders_bridge.h"):
     assert "vec(0xA8EC78" not in (root / path).read_text(encoding="utf-8"), path
+variant = (root / "type_select_bridge.h").read_text(encoding="utf-8")
+assert "static int selectVariant(uint32_t house,bool global)" in variant
+assert variant.count("vec(0xA8EC78") == 1
+assert "normalVariantWeapon(p,type)" in variant
+assert "get<uint32_t>(c.pointer+0x10)" not in variant
+assert "read(c.pointer+0x10,&currentID,sizeof currentID)" in variant
 
 # Page demand is bounded, deduplicated and ownership-transferred; a partial or
 # oversized dependency set is never submitted as a complete graph.
