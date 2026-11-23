@@ -22,6 +22,8 @@ assert "constexpr uint32_t Fixed=All;" in policy
 assert "computeRequested=compute::Fixed,computeApplied=compute::Fixed" in protocol
 assert "p.drop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop)" in main
 assert "p.observeDrop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop)" in main
+assert "runtimeActionSampling" in main
+assert "shared->computeApplied!=compute::All||runtimeActionSampling" in main
 assert "static bool commandRosterReady()" in bridge
 assert "return indexedFrame==snap.frame&&indexedCount>=0" in bridge
 assert "static void indexWorld(int frame)" in bridge
