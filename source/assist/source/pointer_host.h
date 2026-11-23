@@ -70,7 +70,7 @@ static void servicePointer(){
  // Native Z planning owns the original click; do not append another feature.
  if((airway::native()||airpathpolicy::direct(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork))&&airway::held(e.keys)&&airway::selectedAircraft()){leftCaptured=false;return;}
  RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height)return;
- DWORD now=GetTickCount();if(!commandFresh(now)||!foregroundGame()||DWORD(now-e.tick)>100||snap.chat)return;
+ DWORD now=GetTickCount();if(!commandFresh(now)||!foregroundGame()||DWORD(now-e.tick)>150||snap.chat)return;
  static pointerinput::Intent in;in={};in.tick=e.tick;in.inputSerial=e.serial;in.match=e.match;
  uint32_t saleEnabled=0;
  if(featureFlags&(SellDrained|SellEnemy))saleEnabled|=pointerinput::SellDrainedInput;
@@ -107,9 +107,11 @@ static void servicePointer(){
   if(!in.count){bool sale=false;for(int j=0;j<routeCount;++j)sale|=routes[j].operation==pointerinput::Sell;if(!sale)return;}
  }
  int cameraX=0,cameraY=0;
- if(!read(0xA8ED84,&frameAfter,4)||frameAfter<in.frame||frameAfter-in.frame>2||
+ // The multi-read Host capture may span dozens of fast logic frames.
+ // Validity is bounded by wall time, House, camera and pointer serial.
+ if(!read(0xA8ED84,&frameAfter,4)||frameAfter<in.frame||
     !read(0xA83D4C,&houseAfter,4)||houseAfter!=in.house||
-    !read(tactical+0xB0,&cameraX,4)||!read(tactical+0xB4,&cameraY,4)||cameraX!=in.cameraX||cameraY!=in.cameraY||DWORD(GetTickCount()-in.tick)>100)return;
+    !read(tactical+0xB0,&cameraX,4)||!read(tactical+0xB4,&cameraY,4)||cameraX!=in.cameraX||cameraY!=in.cameraY||DWORD(GetTickCount()-in.tick)>150)return;
  if(e.operation==7&&in.operation==pointerinput::PlayerSelect)return;
  if(e.operation==7){leftCapture=in;leftCaptured=true;return;}
  if(e.operation==6)leftCaptured=false;
