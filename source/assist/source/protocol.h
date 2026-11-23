@@ -172,7 +172,7 @@ struct Shared {
  volatile uint32_t reserveInput,reserveConsumed;construction::InputClick reserveClick;
  // Requested mask is host-owned; Runtime latches it only at a new match.
  // This prevents pending state/receipts from being executed by two planners.
- volatile uint32_t computeRequested=compute::Default,computeApplied=compute::Default;
+ volatile uint32_t computeRequested=compute::Fixed,computeApplied=compute::Fixed;
  uint32_t advancedScanHz=10,advancedPriority=0;
  volatile uint32_t runtimeTracking=0,runtimePlannerMicros=0;
  // Runtime produces raw immutable tasks; host publishes pure results and the
