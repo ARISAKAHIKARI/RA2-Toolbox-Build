@@ -2762,7 +2762,7 @@ static void tick(){
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();performanceDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
-  const uint32_t runtimeActionFlags=AutoCS|NativeOrders|EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|CustomCS|MagnetronInput|AdvancedEnter|AircraftSpread|DiskPrimary|SellDrained|SellVehicles|SellEnemy|ReserveConstruction|AirWaypoints|AntiTheft|NativeAirWaypoints;
+  const uint32_t runtimeActionFlags=AutoCS|NativeOrders|AutoRepair|EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|CustomCS|MagnetronInput|AdvancedEnter|AircraftSpread|DiskPrimary|SellDrained|SellVehicles|SellEnemy|ReserveConstruction|AirWaypoints|AntiTheft|NativeAirWaypoints;
   const bool runtimeActionSampling=(shared->flags&runtimeActionFlags)||shared->magnetronGlobal||shared->magnetronDrop||
    shared->missileEnabled||shared->dodgeEnabled||shared->burstEnabled||shared->burstHoldEnabled||shared->burstHeld||
    shared->minerDefenseEnabled||shared->bombBoardEnabled||shared->loadMode||shared->cooperativeFrameWanted||
