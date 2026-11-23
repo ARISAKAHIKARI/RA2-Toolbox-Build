@@ -127,9 +127,8 @@ static uint32_t typePointers[MaxTypes];
 static ManualVersions manualVersions;static ObjectIndexView worldObjects;static int indexedFrame=-1,indexedCount=-1;static uint32_t indexedItems;
 // Reuse the mandatory world-index traversal for global magnetron discovery.
 // Input and planning still revalidate identities and native eligibility.
-static int globalVehicleCandidateCount=0;static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
-// The candidate list itself is worker-owned in async mode, not copied into
-// another 64 KiB main-thread array on every accepted command snapshot.
+static int globalVehicleCandidateCount=0;static uint32_t globalVehicleCandidates[16384]{};
+static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
 static globalvehicle::Cursor globalVehicleScan;
 static ObjectIndex advancedObjects;
 static int outgoingFrame=-1,outgoingBudget;
@@ -201,11 +200,18 @@ static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21c
 // Its only lifetime is the currently sealed exact game logic frame. Every
 // native operation still verifies live UID, House, mission and eligibility.
 static bool commandRosterReady(){
- return worldFrameCommandWorker.enabled()&&worldFrameReady&&!worldFrameBoundaryOnly&&
-  worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
-  worldFrameCommandRoster.current(worldFrame.key)&&
-  worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal)&&
-  worldFrame.key.house==lastHouse;
+ if(worldFrameCommandWorker.enabled())
+  return worldFrameReady&&!worldFrameBoundaryOnly&&
+   worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
+   worldFrameCommandRoster.current(worldFrame.key)&&
+   worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal)&&
+   worldFrame.key.house==lastHouse;
+ // The synchronous Runtime index is built in this exact game callback.
+ // It proves membership only; every action still re-reads live UID, House,
+ // mission and current eligibility immediately before native execution.
+ return indexedFrame==snap.frame&&indexedCount>=0&&
+  indexedVehicleHouse==lastHouse&&
+  indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal);
 }
 // The production background worker builds a full world index off-thread.
 // Strict same-frame identity is still required for command SNAPSHOT authority,
@@ -255,39 +261,89 @@ static bool verifyCandidatePointer(uint32_t pointer){
         observed&&worldFrameCandidateRoster.objects&&
         worldFrameCandidateRoster.objects->byId(observed)==pointer;
 }
-static bool refreshWorldIndex(int frame){
- const bool strict=commandRosterReady()&&frame==worldFrame.key.frame;
- const bool candidate=!strict&&candidateRosterReady();
- if(!strict&&!candidate){
-  worldObjects.clear();indexedFrame=indexedCount=-1;indexedItems=0;
-  globalVehicleCandidateCount=0;return false;
+static void indexWorld(int frame){
+ Vec all{};
+ const auto unknown=[](){
+  worldObjects.unbind();worldObjects.clear();indexedFrame=indexedCount=-1;
+  indexedItems=0;globalVehicleCandidateCount=0;indexedGlobalVehicles=false;indexedVehicleHouse=0;
+ };
+ if(!read(0xA8EC78,&all,sizeof all)||all.count<0||all.count>16384||
+    all.capacity<all.count||all.capacity>262144||(all.count&&all.items<0x10000)){
+  unknown();return;
  }
- static uint32_t adoptedSerial=0;static bool previouslyCandidate=false;
- const uint32_t version=candidate?worldFrameCandidateVersion:worldFrame.key.serial;
- if(indexedFrame!=frame||adoptedSerial!=version||previouslyCandidate!=candidate){
-  if(candidate)
-   worldObjects.bindCandidate(&worldFrameCandidateRoster.objects,candidateRosterReady,
-                             verifyCandidateID,verifyCandidatePointer);
-  else worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady);
-  const auto&roster=candidate?worldFrameCandidateRoster:worldFrameCommandRoster;
-  indexedCount=roster.count;indexedItems=roster.items;
-  indexedGlobalVehicles=roster.global;indexedVehicleHouse=lastHouse;
-  globalVehicleCandidateCount=int(std::min<size_t>(16384,roster.globalVehicles.size()));
-  // A full UID hash is already worker-owned. Only its view is rebound here.
- // If strict same-frame authority is unavailable, command managers are paused
- // rather than falling back to a game-thread roster walk or stale membership.
-  indexedFrame=frame;adoptedSerial=version;previouslyCandidate=candidate;
+ if(indexedFrame==frame&&indexedCount==all.count&&indexedItems==all.items&&
+    indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal)&&indexedVehicleHouse==lastHouse)return;
+ // One bounded roster read. A failed header, item span or UID read is UNKNOWN,
+ // never an empty world and never permission to use a partial index.
+ static uint32_t pointers[16384];
+ if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}
+ worldObjects.unbind();worldObjects.clear();globalVehicleCandidateCount=0;
+ indexedGlobalVehicles=bool(sh&&sh->magnetronGlobal);indexedVehicleHouse=lastHouse;
+ bool complete=true;
+ for(int i=0;i<all.count;++i){
+  const uint32_t p=pointers[i];if(p<0x10000)continue;
+  uint32_t id=0;if(!read(p+0x10,&id,4)){complete=false;continue;}
+  if(id)worldObjects.add(p,id);
+  if(id&&indexedGlobalVehicles&&kind(p)==2){
+   uint32_t owner=0;
+   if(!read(p+0x21C,&owner,4)){complete=false;continue;}
+   if(owner==lastHouse)globalVehicleCandidates[globalVehicleCandidateCount++]=p;
+  }
  }
- // Periodic pruning is an index lookup over the immutable worker roster, not
- // a new native-memory walk. Candidate-only rosters do not prune command state.
+ if(!complete||(sampleReadDepth&&!sampleReadComplete)){unknown();return;}
+ indexedFrame=frame;indexedCount=all.count;indexedItems=all.items;
  static int prunedFrame=-100000;
- if(!candidate&&manualVersions.used>=ManualVersions::Size/2&&
+ if((!sampleReadDepth||sampleReadComplete)&&manualVersions.used>=ManualVersions::Size/2&&
     (frame<prunedFrame||frame-prunedFrame>=300)){
   static ManualVersions liveVersions;
   liveVersions.copyLive(manualVersions,[](uint32_t id){return worldObjects.byId(id)!=0;});
   minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
  }
- return true;
+}
+static bool refreshWorldIndex(int frame,bool executionGuards=true){
+ static uint32_t failedMatch=0,failedAt=0;static int failedFrame=-1;
+ if(worldFrameCommandWorker.enabled()){
+  const bool strict=commandRosterReady()&&frame==worldFrame.key.frame;
+  const bool candidate=!strict&&candidateRosterReady();
+  if(!strict&&!candidate){
+   worldObjects.clear();indexedFrame=indexedCount=-1;indexedItems=0;
+   globalVehicleCandidateCount=0;return false;
+  }
+  static uint32_t adoptedSerial=0;static bool previouslyCandidate=false;
+  const uint32_t version=candidate?worldFrameCandidateVersion:worldFrame.key.serial;
+  if(indexedFrame!=frame||adoptedSerial!=version||previouslyCandidate!=candidate){
+   if(candidate)
+    worldObjects.bindCandidate(&worldFrameCandidateRoster.objects,candidateRosterReady,
+                              verifyCandidateID,verifyCandidatePointer);
+   else worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady);
+   const auto&roster=candidate?worldFrameCandidateRoster:worldFrameCommandRoster;
+   indexedCount=roster.count;indexedItems=roster.items;
+   indexedGlobalVehicles=roster.global;indexedVehicleHouse=lastHouse;
+   globalVehicleCandidateCount=int(std::min<size_t>(16384,roster.globalVehicles.size()));
+   indexedFrame=frame;adoptedSerial=version;previouslyCandidate=candidate;
+  }
+  static int prunedFrame=-100000;
+  if(!candidate&&manualVersions.used>=ManualVersions::Size/2&&
+     (frame<prunedFrame||frame-prunedFrame>=300)){
+   static ManualVersions liveVersions;
+   liveVersions.copyLive(manualVersions,[](uint32_t id){return worldObjects.byId(id)!=0;});
+   minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
+  }
+  return true;
+ }
+ const uint32_t now=sampleClock(sh);
+ if(failedMatch==match&&failedFrame==frame&&uint32_t(now-failedAt)<16)return false;
+ if(worldFrameReady&&!worldFrameBoundaryOnly){
+  bool complete=false;
+  {SampleReadScope sample;indexWorld(frame);complete=sample.complete();}
+  if(complete&&indexedFrame==frame)return true;
+ }
+ worldObjects.unbind();worldObjects.clear();indexedFrame=indexedCount=-1;
+ indexedItems=0;globalVehicleCandidateCount=0;
+ if(!executionGuards)return false;
+ indexWorld(frame);
+ if(indexedFrame==frame)return true;
+ failedMatch=match;failedFrame=frame;failedAt=now;return false;
 }
 // Identity-index publication already checked every UID. Avoid a second
 // fallible live UID read when deciding whether an automatic lease still exists.
@@ -316,6 +372,7 @@ static gateway::MissionState observeMissionReceipt(uint32_t id){
 // Never dereference an old/stale worker roster from a native command path.
 static uint32_t globalVehicleCandidateAt(int index){
  if(index<0||index>=globalVehicleCandidateCount)return 0;
+ if(!worldFrameCommandWorker.enabled())return indexedFrame==snap.frame?globalVehicleCandidates[index]:0;
  const bool strict=commandRosterReady();
  if(!strict&&!candidateRosterReady())return 0;
  const auto&roster=strict?worldFrameCommandRoster:worldFrameCandidateRoster;
@@ -329,8 +386,9 @@ static uint32_t globalVehicleCandidateAt(int index){
 // command capture worker owns all graph reads. A missing worker index is
 // UNKNOWN: caller skips this observation; native game events stay untouched.
 static bool prepareWorldIndex(int frame){
- // No production live-roster fallback. A missing worker index is UNKNOWN.
- return refreshWorldIndex(frame);
+ if(worldFrameCommandWorker.enabled())return refreshWorldIndex(frame,false);
+ indexWorld(frame);
+ return indexedFrame==frame;
 }
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
