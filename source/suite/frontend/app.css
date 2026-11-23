@@ -139,7 +139,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .setting-button.action-danger:hover:not(:disabled) { background: var(--error-hover); border-color: var(--error-border); color: var(--error); }
 .text-button { flex-shrink: 0; padding-inline: 8px; border-color: transparent; background: transparent; color: var(--accent); font-size: var(--text-small); }
 .text-button:hover:not(:disabled) { background: var(--surface); border-color: var(--border); color: var(--text); }
-.hotkey-capture { min-inline-size: 60px; max-inline-size: min(164px, 45vw); min-height: 27px; padding: 3px 7px; background: var(--field); color: var(--soft); font-size: var(--text-small); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hotkey-capture { min-inline-size: 56px; max-inline-size: min(142px, 42vw); min-height: 26px; padding: 2px 7px; background: var(--field); color: var(--soft); font-size: var(--text-small); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hotkey-capture[data-bound="false"]:not(.capturing) { background: transparent; color: var(--muted); }
 .hotkey-capture.capturing { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .icon-button { flex-shrink: 0; width: var(--control-height); padding: 0; background: transparent; color: var(--muted); font-size: 18px; }
@@ -152,7 +152,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .field[type="number"] { width: 108px; font-variant-numeric: tabular-nums; }
 .field:disabled, .setting-editor select:disabled, .setting-editor textarea:disabled { border-color: var(--divider); color: var(--disabled); background: var(--field); }
 .field[readonly] { color: var(--soft); }
-.setting-editor select { min-width: 160px; max-width: 300px; padding-right: 24px; cursor: pointer; }
+.setting-editor select { min-width: 120px; max-width: 240px; padding-right: 24px; cursor: pointer; }
 .setting-editor textarea { width: 280px; max-height: 160px; resize: vertical; }
 .choice-text { max-width: 160px; min-width: 0; }
 .list-field { width: 300px; min-height: 108px !important; max-height: 180px; padding: 4px !important; }
@@ -233,7 +233,8 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .choice-help strong { color:var(--text); font-weight:650; }
 .choice-help section p { margin:3px 0 0; white-space:pre-line; }
 .setting-label { display: block; color: var(--text); font-size: var(--text-label); font-weight: 600; line-height: 1.65; overflow-wrap: anywhere; }
-.setting-row[title]:not([title=""]) .setting-label::after { content: "ⓘ"; display: inline-block; margin-left: 5px; color: var(--muted); font-size: 10px; font-weight: 400; }
+/* Native hover hints remain in title; show a field icon only where there
+   are actual mode descriptions, never stamp one on every text label. */
 .setting-description { margin: 3px 0 0; color: var(--muted); font-size: var(--text-small); line-height: 1.6; overflow-wrap: anywhere; }
 .setting-editor { display: flex; align-items: center; justify-content: flex-end; flex: 0 1 auto; gap: var(--space-2); max-width: 60%; min-width: 0; }
 .setting-row[data-pending="true"] .setting-label::before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 6px; border-radius: 50%; background: var(--warning); vertical-align: middle; }
