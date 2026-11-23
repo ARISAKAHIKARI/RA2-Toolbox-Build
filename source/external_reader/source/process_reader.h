@@ -141,8 +141,8 @@ public:
   if(frame&&!worldframe::visualDemand(worldDemand_)&&
      worldframe::boundaryOnlySource(worldframe::authoritative(frame)->key))return false;
   if(worldframe::visualDemand(worldDemand_)){
-   // Legacy display-cache behavior is retained only by isolated regression
-   // fixtures. Product Host never performs a second game-memory world read.
+   // Display readers always use Host VisualCache, even when a Runtime command
+   // snapshot exists. This path is read-only and may lag behind game execution.
    if(frame&&!frame->controlSource)frame=worldClient_->visual(frame,worldDemand_,[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);});
   }else{
    frame=worldframe::authoritative(frame);
