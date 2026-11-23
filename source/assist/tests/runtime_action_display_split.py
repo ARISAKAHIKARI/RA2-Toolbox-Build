@@ -40,6 +40,8 @@ assert "if(!worldFramePublication.begin(worldFramePublicationBuffer))return;" in
 assert "worldFramePublicationBuffer.copyForPublication(worldFrame)" in runtime
 assert "if(requested.empty()){" in runtime
 assert "boundaryKey.demand|=worldframe::BoundaryOnlyKeyBit" in runtime
+assert "lastPublishedKey.sameFrame(key)" in runtime
+assert "lastPublishedValid=false" in runtime
 assert "worldFramePublication.begin(worldFrame)" not in runtime
 assert "bool copyForPublication(const Snapshot&source)" in world
 assert "No production synchronous full-graph path exists" not in runtime
