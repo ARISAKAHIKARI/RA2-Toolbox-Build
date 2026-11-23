@@ -1,4 +1,4 @@
-name: Package 1.0.52-pre.21 PR77 Update (paired x64 Host / x86 Runtime)
+name: Package 1.0.52-pre.22 PR77 Update (paired x64 Host / x86 Runtime)
 on:
   pull_request:
     paths:
@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 40
     env:
       PYTHONUTF8: "1"
-      UPDATE_FILENAME: RA2Toolbox-1.0.52-pre.21-x64-Update.zip
+      UPDATE_FILENAME: RA2Toolbox-1.0.52-pre.22-x64-Update.zip
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -37,6 +37,9 @@ jobs:
           python source/assist/tests/async_command_no_live_roster.py
           python source/assist/tests/ui_recovery_contract.py
           python source/assist/tests/variant_selection_entry_test.py
+          python source/assist/tests/unit_info_panel_host_contract.py
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/unit_info_panel_layout.cpp -o /tmp/unitpanel-layout
+          /tmp/unitpanel-layout
       - name: Compile x64 Host and matched x86 Runtime and Broker
         shell: bash
         run: |
@@ -53,15 +56,15 @@ jobs:
           set -euo pipefail
           python source/tools/package_automation_no_deadlines.py --root update-candidate --sha "$GITHUB_SHA" \
             --output-name "$UPDATE_FILENAME" \
-            --label "1.0.52-pre.21 PR77 synchronous Runtime commands, one-press camera, weapon selection and compact UI" | tee checks/package.log
+            --label "1.0.52-pre.22 PR77 synchronous Runtime commands, one-press camera, weapon selection and compact UI" | tee checks/package.log
       - uses: actions/upload-artifact@v4
         with:
-          name: RA2Toolbox-1.0.52-pre.21-x64-Update
+          name: RA2Toolbox-1.0.52-pre.22-x64-Update
           retention-days: 30
           if-no-files-found: error
           path: update-candidate/${{ env.UPDATE_FILENAME }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pre21-Update-Compile-Evidence
+          name: pre22-Update-Compile-Evidence
           path: checks/
