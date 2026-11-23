@@ -10,7 +10,15 @@ def source():
     text=text.replace('#include "constructor_adapter.h"', '#include "constructor_adapter.h"\n#include "air_path_policy.h"\n#include "air_path_events.h"')
     text=text.replace('static bool validateMoSubmission(const intent::EventOrder&);','static bool validateMoSubmission(const intent::EventOrder&);\nstatic bool validateDirectAirSubmission(const intent::EventOrder&);\nstatic bool validateBombBoardSubmission(const intent::EventOrder&);\nstatic void(*beforeSubmit)()=nullptr;')
     text=text.replace('static int kind(uint32_t p){return worldObjects.contains(p)?1:0;}', 'static std::map<uint32_t,int> kinds;static int kind(uint32_t p){return kinds.count(p)?kinds[p]:1;}')
-    text=text.replace('struct Vec{int count=0;};static Vec vec(uint32_t p){assert(p==0xA8ECB8);return {int(selected.size())};}\nstatic uint32_t item(Vec,int n){return selected.at(n);}', 'struct Vec{int count=0;bool all=false;};static Vec vec(uint32_t p){return {int(p==0xA8EC78?actors.size():selected.size()),p==0xA8EC78};}\nstatic uint32_t item(Vec v,int n){return v.all?actors.at(n):selected.at(n);}')
+    # mo_source already exposes a richer Vec with native roster coordinates.
+    # Preserve its layout while adding the "all actors" view for bomb scanning.
+    old='struct Vec{int count=0;uint32_t items=0;};static Vec vec(uint32_t p){assert(p==0xA8ECB8);constexpr uint32_t items=0x110000;for(size_t i=0;i<selected.size();++i)put(items+uint32_t(i)*4,selected[i]);return {int(selected.size()),items};}'
+    new='struct Vec{int count=0;uint32_t items=0;bool all=false;};static Vec vec(uint32_t p){constexpr uint32_t items=0x110000;for(size_t i=0;i<selected.size();++i)put(items+uint32_t(i)*4,selected[i]);return {int(p==0xA8EC78?actors.size():selected.size()),items,p==0xA8EC78};}'
+    assert old in text
+    text=text.replace(old,new)
+    old_item='static uint32_t item(Vec,int n){return selected.at(n);}'
+    assert old_item in text
+    text=text.replace(old_item,'static uint32_t item(Vec v,int n){return v.all?actors.at(n):selected.at(n);}')
     text=text.replace('volatile long moOrdersPreviewSeq=0;', 'volatile long airEventSeq=0;airevents::Report airEventReport;uint32_t flags=0,nativeAirNetwork=0,bombBoardEnabled=0,bombBoardRangeCells=8,bombBoardActive=0,bombBoardIssued=0,bombBoardWaiting=0;volatile long moOrdersPreviewSeq=0;')
     text=text.replace('Formation,Generic}', 'Formation,Generic,BombBoard}')
     text=text.replace('if(!validateMoSubmission(o)||constructors::admit(o)', 'if(beforeSubmit)beforeSubmit();if(!validateDirectAirSubmission(o)||!validateBombBoardSubmission(o)||!validateMoSubmission(o)||constructors::admit(o)')
