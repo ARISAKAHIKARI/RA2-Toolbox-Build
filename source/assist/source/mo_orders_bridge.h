@@ -18,6 +18,19 @@ static bool moOutlineDirty=false;
 static int moStageFrame=0,moStartFrame=0;static bool moHolding=false,moFeedback=false,moWaitingForTargets=false;
 static inputownership::ReleaseWatch moReleaseWatch;
 static bool moWaypointSubmitted=false;static mopatrol::Path moPaths[moorders::Actors];
+// Aircraft do not reliably materialize native PlanningToken nodes. Keep the
+// original atomic native PlanConnect path for ground units, but let aircraft
+// fly a validated, continuously closed Move circuit without code hooks.
+struct MoFlight {
+ uint32_t pointer=0,id=0,token=0,epoch=0,house=0;
+ uint32_t cells[moorders::Waypoints]{};
+ int count=0,next=0,previousX=0,previousY=0,attempts=0;
+ DWORD sent=0,retry=0,progress=0;
+ bool issued=false,previousValid=false;
+};
+static MoFlight moFlights[moorders::Actors];
+static int moFlightCount=0,moFlightCursor=0;
+static DWORD moFlightSample=0;
 static int moSubmitting=0,moSubmittingActor=-1;
 template<class Work>static void moSubmission(int kind,int index,Work&& work){
  const int previous=moSubmitting,actor=moSubmittingActor;
@@ -36,7 +49,8 @@ static void moOrdersPublish(){
 static void resetMoOrders(){
  moReleaseWatch.clear();
  if(moWaypointSubmitted&&sh)sh->moOrderStatus=uint32_t(-16);moWaypointSubmitted=false;
- moHolding=moWaitingForTargets=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;moPreview={};moCurrent={};moOutlineDirty=false;moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
+ moHolding=moWaitingForTargets=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;
+ moFlightCount=moFlightCursor=0;moFlightSample=0;moPreview={};moCurrent={};moOutlineDirty=false;moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
 }
 static bool moOrdersContext(bool preview=false){
  // A brief host render stall must not destroy a read-only captured preview.
@@ -59,6 +73,11 @@ static bool moCapture(){
   for(int j=0;j<moActorCount;++j)if(moActors[j].id==id)return false;
   moActors[moActorCount++]={p,id,manualVersions.get(id)};
  }return moActorCount>0;
+}
+static bool moFlightSelection(){
+ if(moActorCount<1)return false;
+ for(int i=0;i<moActorCount;++i)if(kind(moActors[i].pointer)!=0)return false;
+ return true;
 }
 static bool moSameSelection(){
  const Vec selected=vec(0xA8ECB8);if(selected.count!=moActorCount||!moActorCount)return false;
@@ -295,11 +314,63 @@ static void moSamplePreview(moorders::Point point){
  if(moMode!=int(moorders::Patrol)&&DWORD(now-moPreviewAt)>=80)moBuildPreview();
  else if(moOutlineDirty&&DWORD(now-moOutlineAt)>=16){moUpdateOutline();moOrdersPublish();}
 }
+static void moFlightCommit(){
+ for(int i=0;i<moActorCount;++i){
+  const auto&a=moActors[i];
+  for(int j=0;j<moFlightCount;)if(moFlights[j].id==a.id)moFlights[j]=moFlights[--moFlightCount];else ++j;
+  if(moFlightCount>=moorders::Actors)continue;
+  auto&flight=moFlights[moFlightCount++];flight={};
+  flight.pointer=a.pointer;flight.id=a.id;flight.token=a.token;flight.epoch=match;flight.house=lastHouse;
+  flight.count=moRouteCount;flight.progress=sampleClock(sh);
+  for(int n=0;n<moRouteCount;++n)flight.cells[n]=uint32_t(moRoute[n].y*1000+moRoute[n].x);
+ }
+ moStage=0;moPreview.active=0;sh->moOrderAccepted=moActorCount;sh->moOrderRejected=0;sh->moOrderStatus=2;
+ moOrdersPublish();
+}
+static bool moFlightCrossed(const MoFlight&f,int x,int y,int gx,int gy){
+ if(!f.previousValid)return false;
+ const double dx=double(x)-f.previousX,dy=double(y)-f.previousY,len=dx*dx+dy*dy;
+ if(len<1||len>4096.0*4096.0)return false;
+ const double t=std::clamp(((gx-f.previousX)*dx+(gy-f.previousY)*dy)/len,0.0,1.0);
+ const double ax=f.previousX+t*dx-gx,ay=f.previousY+t*dy-gy;
+ return ax*ax+ay*ay<=256.0*256.0;
+}
+static void moFlightTick(uint32_t house,DWORD now){
+ if(!moFlightCount||DWORD(now-moFlightSample)<30)return;
+ moFlightSample=now;
+ if(!moOrdersContext()||get<uint8_t>(0x87F7E8+0x11B3))return;
+ const int budget=std::min(moFlightCount,24);
+ for(int step=0;step<budget&&moFlightCount;++step){
+  if(moFlightCursor>=moFlightCount)moFlightCursor=0;
+  auto&f=moFlights[moFlightCursor];
+  auto discard=[&](){f=moFlights[--moFlightCount];};
+  MoActor actor{};actor.pointer=f.pointer;actor.id=f.id;actor.token=f.token;
+  if(f.epoch!=match||f.house!=house||!moActorValid(actor)||kind(f.pointer)!=0||f.count<4||f.count>moorders::Waypoints){discard();continue;}
+  const int x=get<int>(f.pointer+0x9C,-1),y=get<int>(f.pointer+0xA0,-1);
+  if(x<0||y<0||x>=512*256||y>=512*256){discard();continue;}
+  const uint32_t cell=f.cells[f.next];const int gx=int(cell%1000)*256+128,gy=int(cell/1000)*256+128;
+  const int64_t dx=int64_t(x)-gx,dy=int64_t(y)-gy;
+  if(f.issued&&(dx*dx+dy*dy<=256ll*256ll||moFlightCrossed(f,x,y,gx,gy))){
+   f.next=(f.next+1)%f.count;f.issued=false;f.attempts=0;f.retry=0;f.progress=now;f.previousValid=false;
+  }else{
+   f.previousX=x;f.previousY=y;f.previousValid=true;
+   if(f.issued&&DWORD(now-f.sent)>2500){f.issued=false;f.retry=now+100;}
+  }
+  if(!f.issued&&int32_t(now-f.retry)>=0&&outgoingRoom()>0){
+   const uint32_t nextCell=f.cells[f.next];
+   if(nativeMission(house,f.id,2,0,nextCell,11,nextCell,11,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::Local,false)){
+    f.issued=true;f.sent=now;++f.attempts;
+   }
+  }
+  if(f.attempts>12&&DWORD(now-f.progress)>30000){discard();continue;}
+  ++moFlightCursor;
+ }
+}
 static void moCommit(){
  if(!moSameSelection()){resetMoOrders();return;}
  sh->moOrderAccepted=sh->moOrderRejected=0;moHolding=false;moFeedback=true;moStarted=sampleClock(sh);moStartFrame=get<int>(0xA8ED84);
  if(moMode==int(moorders::Patrol)){
-  if(!moGraphEmpty()){sh->moOrderStatus=uint32_t(-17);resetMoOrders();return;}
+  if(!moFlightSelection()&&!moGraphEmpty()){sh->moOrderStatus=uint32_t(-17);resetMoOrders();return;}
   moRouteCount=moorders::patrol(moStroke,moStrokeCount,moRoute,moCapturedOptions);
   for(int i=0;i<moRouteCount;++i)if(!readMapCell(moRoute[i].x,moRoute[i].y)){sh->moOrderStatus=uint32_t(-4);sh->moOrderRejected=moActorCount;resetMoOrders();return;}
  }
@@ -307,6 +378,7 @@ static void moCommit(){
  // Subsequent manual input advances these tokens and cancels the pending tail.
  for(int i=0;i<moActorCount;++i){cancelNative(moActors[i].pointer,false);moActors[i].token=manualVersions.get(moActors[i].id);}
  if(moMode==int(moorders::Patrol)){
+  if(moFlightSelection()){moFlightCommit();return;}
   for(int i=0;i<moActorCount;++i)moPaths[i]={};
   moStage=1;moNodeAt=moActorAt=0;
  }else moWaitingForTargets=indexedFrame!=moStartFrame||!commandRosterReady()||!moAssignments(false);
@@ -347,12 +419,13 @@ static bool moOrdersMessage(MSG*msg){
  // The configured keyboard authorizes this capture, but never substitutes for
  // the game's own PlanningMode binding or mutates its local editor state.
  moPlanningReset();moEpoch=match;moHouse=lastHouse;
- if(resolved.mode==moorders::Patrol&&!moGraphEmpty()){sh->moOrderStatus=uint32_t(-17);moSuppressedButton=edge.button;return swallow();}
- if(resolved.mode==moorders::Patrol&&!moPlanningCapture(msg)){sh->moOrderStatus=uint32_t(-15);moSuppressedButton=edge.button;return swallow();}
+ if(resolved.mode==moorders::Patrol&&!moFlightSelection()&&!moGraphEmpty()){sh->moOrderStatus=uint32_t(-17);moSuppressedButton=edge.button;return swallow();}
+ if(resolved.mode==moorders::Patrol&&!moFlightSelection()&&!moPlanningCapture(msg)){sh->moOrderStatus=uint32_t(-15);moSuppressedButton=edge.button;return swallow();}
  moQueueCount=moQueueAt=moStage=0;moMode=int(resolved.mode);moHover=hover;moStrokeCount=0;moCapturedGestures=moRuntimeGestures;moCapturedOptions=moRuntimeOptions;moGestureButton=moSuppressedButton=edge.button;
  moCurrent=point;moorders::sample(moStroke,moStrokeCount,point);moReleaseWatch.clear();moHolding=true;moBuildPreview();return swallow();
 }
 static void moOrdersTick(uint32_t house,int frame,DWORD now,bool indexedWorkReady=true){
+ moFlightTick(house,now);
  if(moReleaseWatch.expired(moHolding,moGestureButton&&(GetAsyncKeyState(moorders::gestureVK(moGestureButton))&0x8000),now)){resetMoOrders();moReleaseWatch.clear();return;}
  if(!moOrdersPending())return;
  if(moPlanningUI.draining){moPlanningReset();return;}
