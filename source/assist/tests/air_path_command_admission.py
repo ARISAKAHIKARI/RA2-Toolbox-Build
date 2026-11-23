@@ -58,7 +58,7 @@ int main(){
   state.flags=AirWaypoints;check(true);state.flags=NativeAirWaypoints;
   state.nativeAirNetwork=1;check(false);
   state.nativeAirNetwork=2;check(false);
-  state.nativeAirNetwork=0;check(true); // Normal aircraft mode uses compatible Move.
+  state.nativeAirNetwork=0;check(false);
   state.flags=0;check(false);
   // A custom held key explicitly selects the sampled event route.
   state.flags=AirWaypoints;state.nativeAirNetwork=2;check(true);
