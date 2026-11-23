@@ -31,7 +31,7 @@ assert "const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled()
 assert "const bool stable=" in runtime and "before.same(after)" in runtime
 assert "worldFrameServer.retire()" in runtime
 
-assert "worldClient_->visual(frame,worldDemand_" in reader
+assert "if(frame)frame=worldClient_->visual(frame,worldDemand_" in reader
 assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in reader
 assert "VisualCache visuals_" in transport
 assert "Token visual(" in transport
