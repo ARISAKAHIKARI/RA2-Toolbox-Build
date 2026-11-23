@@ -170,7 +170,8 @@ class Client {
     ++it;
    }
   }
-  // The boundary-only source is solely a legacy fixture.
+  // Display-only demand is intentionally independent of Runtime command demand;
+  // Runtime publishes a zero-page boundary and Host VisualCache owns the graph.
   channel_->demandMask=combined|
     ((combined==Base&&displayActive&&!controlActive)?HostDisplayOnly:0u);
   demandCheckedAt_=now;demandAfter_=next;demandDirty_=false;
