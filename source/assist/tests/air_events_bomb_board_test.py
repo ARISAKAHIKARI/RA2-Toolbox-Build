@@ -47,21 +47,15 @@ static uint32_t unit(unsigned id,int k,int x,int y){uint32_t p=0x10000+id*0x1000
 static void bombBegin(){begin();bombboard::reset();directair::reset();directair::planning={};beforeSubmit=nullptr;kinds.clear();actors.clear();selected.clear();events.clear();commands.clear();illegal.clear();entryReservationCount=loadLedger.count=0;queueRoom=256;SampleReadScope::available=true;sh->bombBoardEnabled=1;}
 static void bombStep(){++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;sh->heartbeat=clockValue;bombboard::tick(lastHouse,snap.frame);}
 int main(){
+ // A native-air aircraft PlanningToken can reject nodes and indefinitely
+ // withhold the genuine Z-up. The normal mode must never capture its input;
+ // the aircraft command route now uses the host sequential path instead.
  for(int session:{0,5,3,4}){
   airBegin();put(0xA8B238,session);snap.session=session;
-  check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));check(airMessage(WM_LBUTTONDOWN,0,160,100));check(airMessage(WM_LBUTTONUP,0,160,100));
-  check(directair::pointCount==2&&events.empty());held['Z']=false;check(airMessage(WM_KEYUP,'Z')&&posted==0);
-  queueRoom=0;airStep();check(events.empty()&&posted==0&&directAirPending());queueRoom=256;
-  airStep();check(events.size()==1&&events[0].appendWaypoint&&events[0].mission==2&&events[0].c==30030&&posted==0);
-  airStep();check(events.size()==2&&events[1].appendWaypoint&&events[1].c==30032&&posted==1&&!directAirPending());
-  check(sh->airEventReport.status==airevents::Committed&&sh->airEventReport.points==2&&sh->airEventReport.accepted==2&&feedbacks==2);
-  airStep();check(events.size()==2&&posted==1); // no synthetic Commit and no arrival resend
+  check(!directair::enabled()&&!airMessage(WM_LBUTTONDOWN));
+  check(!directAirPending()&&events.empty());
+  held['Z']=false;check(!airMessage(WM_KEYUP,'Z')&&posted==0);
  }
- airBegin();check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));beforeSubmit=[](){++manualVersions.tokens[get<uint32_t>(actors[0]+0x10)];beforeSubmit=nullptr;};airStep();check(events.empty());airStep();check(!directAirPending());
- airBegin();airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);held['Z']=false;airMessage(WM_KEYUP,'Z');++match;airStep();check(posted==0&&events.empty());
- airBegin();kinds[actors[0]]=1;check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending()&&events.empty());
- airBegin();airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);airMessage(WM_KEYDOWN,VK_ESCAPE);check(events.empty()&&!directAirPending());
- airBegin();held['Z']=false;held['S']=true;put(0x200000,uint32_t('S'));airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);airMessage(WM_KEYDOWN,'S');check(directAirPending());held['S']=false;check(airMessage(WM_KEYUP,'S'));airStep();check(events.size()==1&&posted==1);
  // Nearest legal vehicle; full and incompatible vehicles cannot absorb seats.
  bombBegin();uint32_t p=unit(1,1,20,20),near=unit(2,2,21,20),far=unit(3,2,24,20);put(p+0x38,0x700000u);illegal.insert(near);bombStep();check(events.size()==1&&events[0].mission==7&&events[0].c==3&&!events[0].appendWaypoint&&entryReservationCount==1&&sh->bombBoardIssued==1);bombStep();check(events.size()==1);
  bombBegin();p=unit(1,1,20,20);near=unit(2,2,21,20);far=unit(3,2,24,20);put(p+0x38,0x700000u);put(near+0x114,1);bombStep();check(events.size()==1&&events[0].c==3);
