@@ -266,8 +266,9 @@
     const main=firstLine.find(control=>control.type==='toggle');
     const tail=lines.slice(1).flat();
     if(lines.length>1&&main&&main.group&&main.group===main.label&&
+       controls.every(control=>control.group===main.group)&&
        !controls.some(control=>control.featureId||control.groupHeader)&&
-       !tail.some(control=>control.type==='toggle'||control.type==='heading')&&
+       !tail.some(control=>control.layoutBreak||control.type==='toggle'||control.type==='heading')&&
        tail.some(control=>!['heading','label'].includes(control.type))){
       return [{key:'inferred:'+main.id,title:main.group,headers:firstLine,
         details:tail,controls:[...firstLine,...tail]}];
