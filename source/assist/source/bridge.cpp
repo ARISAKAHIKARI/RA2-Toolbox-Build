@@ -1923,6 +1923,11 @@ static void tick(){
   sh->minerDefenseEnabled||sh->bombBoardEnabled||sh->loadMode||sh->cooperativeFrameWanted||
   sh->formationPolicy.enabled||sh->moFeatures||sh->runtimeTracking||sh->plannerTracking||
   sh->privateOutMode||sh->keepInputUnlocked||sh->blockTriggerCamera;
+ const uint32_t runtimeFrameFlags=EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|MagnetronInput|AdvancedEnter|AircraftSpread|AntiTheft;
+ const bool runtimeFrameDemand=(sh->flags&runtimeFrameFlags)||sh->magnetronGlobal||sh->magnetronDrop||
+  sh->missileEnabled||sh->dodgeEnabled||sh->burstEnabled||sh->burstHoldEnabled||sh->burstHeld||
+  sh->minerDefenseEnabled||sh->bombBoardEnabled||sh->loadMode||sh->cooperativeFrameWanted||
+  sh->formationPolicy.enabled||sh->moFeatures||sh->runtimeTracking||sh->plannerTracking;
  DWORD period=sh->foreground?sh->scanMs:((runtimeActionDemand||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending())?64:500);if(period<2)period=2;if(period>1000)period=1000;
  // Runtime-owned actions bypass the ordinary display scan cadence. The game
  // frame remains the scheduler; this only bounds waits between frame callbacks.
@@ -1931,7 +1936,7 @@ static void tick(){
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=worldSample.frame!=lastFrame&&
    (sharedWorldWanted||(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->keepInputUnlocked||sh->blockTriggerCamera||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||hostFrameCaptureWanted(now)||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||queuedUnload.count||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||loadLedger.count||repairAt<repairCount||manualRepairPending||pendingRepairs.count||entryReservationCount||cooperativeEffectCount||missionObserver.pending()||actorLeaseArbiter.count||ownground::job.pending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
-    runtimeActionDemand||sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
+    runtimeFrameDemand||sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
  bool resultsDue=(loadCalculationPending&&compute::newer(sh->loadComputed,loadTaskSeen))||(repairCalculationPending&&compute::newer(sh->repairComputed,repairTaskSeen))||((sh->missileEnabled||missileHoldCount)&&compute::newer(sh->missileComputed,missileApplied))||((sh->dodgeEnabled||dodgeCount)&&compute::newer(sh->dodgeComputed,dodgeApplied))||(unloadCount&&compute::newer(sh->unloadComputed,unloadApplied));
  bool soundPending=sh->uiSoundRequest!=sh->uiSoundAck;
  const uint64_t preciseNow=preciseclock::micros();static uint64_t fastSampleAt=0;
