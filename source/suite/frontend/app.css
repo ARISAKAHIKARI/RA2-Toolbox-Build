@@ -122,7 +122,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .page-info { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 36px; padding: 2px var(--gutter); color: var(--muted); font-size: var(--text-small); }
 .page-info > span { min-width: 0; overflow-wrap: anywhere; }
 .content-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--gutter) 20px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--border-hover) transparent; }
-.settings { display: flex; flex-direction: column; gap: var(--space-2); }
+.settings { display:flex; flex-direction:column; gap:var(--space-3); width:min(100%,1260px); min-width:0; }
 
 /* Shared controls. Neutral actions are the default; task priority is explicit. */
 .setting-button, .subtle-button, .hotkey-capture, .icon-button, .text-button {
@@ -169,42 +169,53 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .settings-group { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); contain: layout style; }
 .group-summary { position:relative; display:flex; align-items:center; gap:var(--space-2); padding:8px var(--space-3); border-bottom:1px solid var(--divider); }
 .group-title { margin: 0; color: var(--text); font-size: var(--text-label); font-weight: 650; line-height: 1.6; overflow-wrap: anywhere; }
-.group-body { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
-/* A feature always has the same neutral row surface. Whether it has
-   settings only changes the presence of the fold, not the outer style. */
-.feature-card, .feature-common { min-width:0; padding:0 var(--space-3); border:1px solid var(--divider); border-radius:var(--control-radius); background:var(--surface); }
-.feature-card.is-expanded { border-color:var(--border); }
-.feature-header { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:var(--space-2); }
-.feature-main-control { min-width: 0; grid-column: 1; }
+.group-body { display:flex; flex-direction:column; gap:0; padding:var(--space-1) var(--space-3); }
+/* Universal feature hierarchy: section -> one uniform feature row -> optional
+   indented details. No decorative card within a card, and no separate
+   colored shortcut/parameter panels. This applies to every console page. */
+.feature-card, .feature-common {
+  min-width:0; padding:0 var(--space-2); border:0;
+  border-bottom:1px solid var(--divider); border-radius:0; background:transparent;
+}
+.group-body > :last-child { border-bottom:0; }
+.feature-card.is-expanded { border-color:var(--divider); }
+.feature-header { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:var(--space-2); min-height:40px; }
+.feature-main-control { min-width:0; grid-column:1; }
 .feature-header:has(.setting-row[data-type="toggle"]) { grid-template-columns:minmax(0,1fr); }
-.feature-title { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px var(--space-2); margin:0; min-height:38px; padding:8px 0; color:var(--text); font-size:var(--text-label); font-weight:600; line-height:1.5; overflow-wrap:anywhere; }
-.feature-scope-state { color:var(--blush-ink); font-size:var(--text-small); font-weight:400; }
+.feature-title { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px var(--space-2); margin:0; min-height:40px; padding:7px 0; color:var(--text); font-size:var(--text-label); font-weight:600; line-height:1.45; overflow-wrap:anywhere; }
+.feature-scope-state { color:var(--muted); font-size:var(--text-small); font-weight:400; }
 .feature-header-actions { display:flex; align-items:center; gap:var(--space-2); }
-.feature-main-control .setting-row { justify-content: flex-start; min-height: 38px; }
-.feature-main-control .setting-copy, .feature-common .compound-row > .setting-row:first-child .setting-copy { flex: 0 1 auto; }
-.feature-main-control .setting-editor { max-width: 100%; }
-.feature-common .compound-row > .setting-row:first-child { min-width: 0; padding-right: 0; }
-.feature-config-toggle { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:28px; padding:4px 11px; border:1px solid var(--border); border-radius:999px; background:var(--field); color:var(--accent); font-size:var(--text-small); white-space:nowrap; }
+.feature-main-control .setting-row { justify-content:flex-start; min-height:40px; }
+.feature-main-control .setting-copy, .feature-common .compound-row > .setting-row:first-child .setting-copy { flex:0 1 auto; }
+.feature-main-control .setting-editor { max-width:100%; }
+.feature-common .compound-row > .setting-row:first-child { min-width:0; padding-right:0; }
+.feature-config-toggle {
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  min-height:26px; padding:3px 8px; border:1px solid transparent;
+  border-radius:var(--control-radius); background:transparent; color:var(--muted);
+  font-size:var(--text-small); white-space:nowrap;
+}
 .feature-config-toggle::before { content:""; width:6px; height:6px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(45deg) translateY(-1px); transition:transform .12s; }
 .feature-config-toggle[aria-expanded="true"]::before { transform:rotate(225deg) translateY(-1px); }
 .feature-config-toggle:hover, .feature-config-toggle[aria-expanded="true"] { background:var(--accent-soft); border-color:var(--accent-border); color:var(--accent); }
-/* Sub-settings are one indented neutral hierarchy, not a second bright card. */
-.feature-card .feature-details { margin:0 0 var(--space-2) var(--space-4); }
-.feature-card .feature-config, .feature-card .feature-hotkeys { padding:0 var(--space-3); border-left:1px solid var(--divider); border-radius:0; background:var(--field); }
-.feature-hotkeys .feature-subheading { color:var(--soft); }
-/* Standalone rows (with no child settings) use exactly the same card
-   baseline and never pick up the decorative sub-settings strip. */
-.feature-common .feature-details { margin:0; }
-.feature-common .feature-config, .feature-common .feature-hotkeys { padding:0; border:0; background:transparent; box-shadow:none; }
-.feature-config:not([hidden]) + .feature-hotkeys:not([hidden]) { margin-top: var(--space-2); }
-.feature-subheading { margin: 0; color: var(--soft); font-size: var(--text-small); font-weight: 650; }
+.feature-card .feature-details {
+  margin:0 0 var(--space-2) var(--space-4); padding-left:var(--space-3);
+  border-left:1px solid var(--divider);
+}
+.feature-card .feature-config, .feature-card .feature-hotkeys,
+.feature-common .feature-config, .feature-common .feature-hotkeys {
+  margin:0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none;
+}
+.feature-common .feature-details { margin:0; padding:0; border:0; }
+.feature-config:not([hidden]) + .feature-hotkeys:not([hidden]) { margin-top:0; }
+.feature-subheading { margin:0; color:var(--muted); font-size:var(--text-small); font-weight:500; }
 .group-status { min-width: 0; padding: 6px var(--space-3); border-top: 1px solid var(--divider); border-radius: 0 0 var(--radius) var(--radius); color: var(--error); background: var(--error-bg); font-size: var(--text-small); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .settings-group.has-runtime-error { border-color: var(--error-border); }
 
 /* Labels, parameters and status are consistently subordinate to feature names. */
 .settings-line { border-bottom: 1px solid var(--divider); }
 .settings-line:last-child { border-bottom: 0; }
-.setting-row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); min-width: 0; min-height: 44px; padding: 6px 0; }
+.setting-row { display:flex; justify-content:space-between; align-items:center; gap:var(--space-3); min-width:0; min-height:40px; padding:4px 0; }
 .setting-copy { min-width: 0; flex: 1 1 220px; }
 .choice-help, .label-help { flex:0 0 auto; min-width:0; }
 .choice-help { position:relative; }
@@ -227,7 +238,18 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .setting-editor { display: flex; align-items: center; justify-content: flex-end; flex: 0 1 auto; gap: var(--space-2); max-width: 60%; min-width: 0; }
 .setting-row[data-pending="true"] .setting-label::before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 6px; border-radius: 50%; background: var(--warning); vertical-align: middle; }
 .setting-row[data-setting-level="secondary"] .setting-label { color: var(--muted); font-size: var(--text-control); font-weight: 400; }
-.subsettings-line > .setting-row:not(.label-row) { min-height: 42px; }
+.subsettings-line > .setting-row:not(.label-row) { min-height:38px; }
+/* Every standalone setting uses the same label-left/editor-right grid.
+   Compound rows keep their native sibling grouping and switch companions. */
+.settings-line:not(.compound-row) > .setting-row:not([data-type="toggle"]):not(.label-row) {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center;
+}
+.settings-line:not(.compound-row) > .setting-row:not([data-type="toggle"]):not(.label-row) .setting-editor {
+  width:auto; max-width:min(100%,580px); justify-content:flex-end;
+}
+.feature-common .setting-row[data-setting-level="secondary"] .setting-label {
+  color:var(--text); font-size:var(--text-control); font-weight:500;
+}
 .range-editor { gap: 8px; }
 .range-editor input { min-width: 0; width: 140px; max-width: 100%; min-height: var(--control-height); margin: 0; accent-color: var(--accent); cursor: pointer; }
 .range-value { min-width: 40px; min-height: var(--control-height); padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--control-radius); color: var(--soft); background: var(--field); font-size: var(--text-control); font-variant-numeric: tabular-nums; text-align: right; }
@@ -245,7 +267,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .hotkey-options { flex: 0 0 auto; }
 .hotkey-options > summary { display: grid; place-items: center; width: 25px; height: 26px; border: 1px solid transparent; border-radius: var(--control-radius); color: var(--muted); font-size: 16px; line-height: 1; list-style: none; cursor: pointer; }
 .hotkey-options > summary::-webkit-details-marker { display: none; }
-.hotkey-options > summary:hover, .hotkey-options[open] > summary { border-color: var(--blush-border); background: var(--blush-surface); color: var(--blush-ink); }
+.hotkey-options > summary:hover, .hotkey-options[open] > summary { border-color:var(--accent-border); background:var(--accent-soft); color:var(--accent); }
 .hotkey-menu { position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 3px); z-index: 30; display: grid; gap: 8px; width: min(214px, 100%); padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--soft); box-shadow: 0 8px 24px #243b5029; font-size: var(--text-small); }
 .hotkey-options:not([open]) > .hotkey-menu { display: none; }
 .hotkey-menu label { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
@@ -356,6 +378,12 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
   .range-editor input { width: 100px; }
 }
 @media (max-width: 760px) {
+  .settings-line:not(.compound-row) > .setting-row:not([data-type="toggle"]):not(.label-row) {
+    grid-template-columns:minmax(0,1fr); justify-items:start;
+  }
+  .settings-line:not(.compound-row) > .setting-row:not([data-type="toggle"]):not(.label-row) .setting-editor {
+    width:100%; max-width:100%; justify-content:flex-start;
+  }
   .setting-row { flex-direction: column; align-items: stretch; gap: 5px; }
   .setting-row[data-type="hotkey"] { display:flex; flex-flow:row wrap; align-items:center; }
   .setting-row[data-type="hotkey"] .setting-editor { width:auto; max-width:100%; margin-inline-start:auto; }
