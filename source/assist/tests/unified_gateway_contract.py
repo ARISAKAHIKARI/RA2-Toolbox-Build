@@ -40,5 +40,7 @@ assert 'gateway::validate(ctx,intent,3500)' in bridge
 assert 'actorFrameArbiter.record(' in bridge
 assert 'recordReceipt(receipt)' in bridge
 assert 'eventdelivery::mayQueue(get<int>(0xA8B238))' in bridge
-assert 'repairAckRequest=0' in bridge
+assert 'resetRepairBatch()' in bridge
+assert 'manualRepairPending=manualRepairNeedsInput=false' in bridge
+assert 'pendingRepairs.clear()' in bridge
 print('PASS: one engine order gateway, passive PID reader, hook isolation, version separation and observed/queued telemetry')
