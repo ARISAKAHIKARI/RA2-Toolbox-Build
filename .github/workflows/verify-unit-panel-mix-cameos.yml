@@ -27,6 +27,9 @@ jobs:
           /tmp/ra2-unit-panel-mix
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/unit_info_panel_model.cpp -o /tmp/ra2-unit-panel-model
           /tmp/ra2-unit-panel-model
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/unit_info_panel_layout.cpp -o /tmp/ra2-unit-panel-layout
+          /tmp/ra2-unit-panel-layout
+          python3 source/assist/tests/unit_info_panel_host_contract.py
   windows-paired-build:
     needs: mix-source-regression
     runs-on: windows-2022
