@@ -231,7 +231,7 @@ test('legacy self-named master settings infer one fold, broad groups stay separa
   {id:22,type:'toggle',label:'维修',group:'自动功能',row:55,column:10},
   {id:23,type:'number',label:'修理阈值',group:'自动功能',row:100,column:10}
  ]));
- assert.ok(unrelated.length>1,'a broad legacy section must not become one giant feature');
+ assert.ok(unrelated.every(block=>!block.title&&!block.headers.length),'a broad legacy section must not become a titled fold');
 });
 test('one feature-row grammar on every tactical page including independent rows',()=>{
  const sections={3:'移动、攻击与操作手势',4:'维修与自动救援',5:'科技与建造',6:'命令与兼容'};
