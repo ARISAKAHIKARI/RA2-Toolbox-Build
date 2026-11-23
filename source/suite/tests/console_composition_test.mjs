@@ -212,6 +212,27 @@ test('native shared rows and status notes have no redundant configuration title'
  const groupLabel=f.find('setting-label').find(label=>label.textContent==='防御选项');
  assert.ok(groupLabel&&!groupLabel.hidden,'semantic group labels remain visible; only explanatory notes are tucked away');
 });
+test('legacy self-named master settings infer one fold, broad groups stay separate',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ const canonical=controls=>controls.map(control=>core.canonical(control));
+ const master=canonical([
+  {id:11,type:'toggle',label:'自动装车',group:'自动装车',row:10,column:10},
+  {id:12,type:'hotkey',label:'自动装车',group:'自动装车',row:10,column:200},
+  {id:13,type:'number',label:'装车距离',group:'自动装车',row:60,column:20},
+  {id:14,type:'choice',label:'装车策略',group:'自动装车',row:110,column:20}
+ ]);
+ const blocks=core.featureBlocks(master);
+ assert.equal(blocks.length,1);assert.equal(blocks[0].title,'自动装车');
+ assert.deepEqual([...blocks[0].headers.map(c=>c.id)],[11,12]);
+ assert.deepEqual([...blocks[0].details.map(c=>c.id)],[13,14]);
+ assert.equal(core.hasFeatureConfig(blocks[0]),true);
+ const unrelated=core.featureBlocks(canonical([
+  {id:21,type:'toggle',label:'装车',group:'自动功能',row:10,column:10},
+  {id:22,type:'toggle',label:'维修',group:'自动功能',row:55,column:10},
+  {id:23,type:'number',label:'修理阈值',group:'自动功能',row:100,column:10}
+ ]));
+ assert.ok(unrelated.length>1,'a broad legacy section must not become one giant feature');
+});
 test('one feature-row grammar on every tactical page including independent rows',()=>{
  const sections={3:'移动、攻击与操作手势',4:'维修与自动救援',5:'科技与建造',6:'命令与兼容'};
  for(const navIndex of [3,4,5,6]){
