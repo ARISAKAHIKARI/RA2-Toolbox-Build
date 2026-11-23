@@ -199,7 +199,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .feature-config-toggle[aria-expanded="true"]::before { transform:rotate(225deg) translateY(-1px); }
 .feature-config-toggle:hover, .feature-config-toggle[aria-expanded="true"] { background:var(--accent-soft); border-color:var(--accent-border); color:var(--accent); }
 .feature-card .feature-details {
-  margin:0 0 var(--space-2) var(--space-4); padding-left:var(--space-3);
+  margin:0 0 var(--space-2) var(--space-5); padding-left:var(--space-2);
   border-left:1px solid var(--divider);
 }
 .feature-card .feature-config, .feature-card .feature-hotkeys,
