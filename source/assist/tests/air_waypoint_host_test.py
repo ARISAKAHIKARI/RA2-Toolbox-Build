@@ -105,6 +105,7 @@ int main(){for(int mode:{3,4}){
  assert(airway::jobs.empty());
 }
  initialize(5);assert(!airway::native()&&airway::active());capture(30020,1);assert(airway::jobs.size()==1); // explicit compatibility mode in SP too
+ initialize(5);extra.airWaypoints=false;extra.nativeAirWaypoints=true;extra.nativeAirNetwork=0;assert(airway::active()&&!airway::native());capture(30020,1);held['Z']=false;airway::service();assert(commandQueue.size==1);
  initialize(5);extra.nativeAirWaypoints=true;extra.nativeAirNetwork=1;assert(airway::native()&&!airway::active());capture(30020,1);assert(airway::jobs.empty());
  for(int mode:{3,4})for(unsigned experiment:{1u,2u}){
   initialize(mode);extra.nativeAirWaypoints=true;extra.nativeAirNetwork=experiment;
