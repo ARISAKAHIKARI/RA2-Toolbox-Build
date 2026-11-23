@@ -37,7 +37,10 @@ static void formationPublish(){if(!sh)return;formationView.tick=sampleClock(sh);
 static void formationCancel(){if(formationQuick)formationButton=false;formationEndQuick();formationView.active=formationView.dragging=0;formationView.count=0;formationModal=formationHolding=false;formationHoldingKey=0;formationPublish();}
 static void resetFormation(){formationReleaseWatch.clear();formationFollowReleaseWatch.clear();formationForget();formationEndQuick();formationQuickCaptured=false;formationQuickMouse=0;formationFeedback=false;formationView={};formationModal=formationHolding=formationButton=false;formationHoldingKey=0;formationAltAt=0;formationHoldConsumed=false;formationJobCount=formationJobCursor=0;memset(formationSuppressed,0,sizeof formationSuppressed);if(sh){sh->formationJobs=0;formationPublish();}}
 static bool formationContext(bool preview=false){
- if(!sh||fault||sh->stop||!sh->foreground||!gameentry::active(gameentry::Client::Assist)||snap.status!=1||!match||!lastHouse||snap.commandStatus!=1||!get<bool>(0xA8E9A0)||get<uint32_t>(0xA83D4C)!=lastHouse||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u))return false;
+ // A held gesture gets bounded scheduling slack when the Host briefly lags.
+ // Admission remains strict; current House/session/focus are checked below.
+ const uint32_t hostGrace=preview?1000u:formationView.active?600u:150u;
+ if(!sh||fault||sh->stop||!sh->foreground||!gameentry::active(gameentry::Client::Assist)||snap.status!=1||!match||!lastHouse||snap.commandStatus!=1||!get<bool>(0xA8E9A0)||get<uint32_t>(0xA83D4C)!=lastHouse||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>hostGrace)return false;
  // Game logic frames can advance much faster than the Host refresh rate.
  // A fresh Host heartbeat plus live House/session/focus/queue checks prove
  // gesture authority; a six-frame snapshot delta must never cancel a drag.
