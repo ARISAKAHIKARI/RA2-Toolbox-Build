@@ -832,7 +832,7 @@ void canonicalDisplayTransport(){
  external::ProcessReader reader;CHECK(reader.open(GamePid));
  const uint32_t sceneDemand=worldframe::Visual|worldframe::HostVisualPassengers;
  reader.setWorldDemand(sceneDemand);CHECK(!reader.beginWorldFrame(7));
- CHECK(channel()->demandMask==(worldframe::Base|worldframe::Visual|worldframe::Passengers));
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  currentPid=GamePid;worldframe::Server server;CHECK(server.wanted(HostPid,clock));
  auto k=key();k.tick=clock;k.generationLow=777;
  k.connectionLow=uint32_t(reader.generation());k.connectionHigh=uint32_t(reader.generation()>>32);
