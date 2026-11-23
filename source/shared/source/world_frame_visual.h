@@ -81,7 +81,7 @@ public:
    // never retag its original frame or treat it as command authority.
   if(compatible&&base_&&base_->key.sameWorld(source->key)&&
       source->key.frame>=base_->key.frame&&before.frame>=latestStamp_.frame&&
-      uint32_t(now-latest_->visualTick)<32&&latestStamp_.sameWorld(before)){
+      uint32_t(now-latest_->visualTick)<16&&latestStamp_.sameWorld(before)){
    ++statistics.reused;return latest_;
   }
   attempted_=source;attemptedAt_=now;
