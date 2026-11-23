@@ -15,6 +15,7 @@ planner = (assist / "runtime_planner_bridge.h").read_text(encoding="utf-8")
 transport = (shared / "world_frame_transport.h").read_text(encoding="utf-8")
 reader = (external / "process_reader.h").read_text(encoding="utf-8")
 visual = (shared / "world_frame_visual.h").read_text(encoding="utf-8")
+world = (shared / "world_frame.h").read_text(encoding="utf-8")
 worker = (shared / "world_frame_command_worker_win.h").read_text(encoding="utf-8")
 
 assert "constexpr uint32_t Fixed=All;" in policy
@@ -35,6 +36,10 @@ assert "GetEnvironmentVariableA" in worker
 assert "const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled()" in runtime
 assert "using WorldFramePublication=worldframe::AsyncPublisher<>" in runtime
 assert "worldframe::CaptureGraph<Live>capture(" in runtime
+assert "if(!worldFramePublication.begin(worldFramePublicationBuffer))return;" in runtime
+assert "worldFramePublicationBuffer.copyForPublication(worldFrame)" in runtime
+assert "worldFramePublication.begin(worldFrame)" not in runtime
+assert "bool copyForPublication(const Snapshot&source)" in world
 assert "No production synchronous full-graph path exists" not in runtime
 assert "WORLD_FRAME_TEST_SYNC_CAPTURE" not in runtime
 
