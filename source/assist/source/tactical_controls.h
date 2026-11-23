@@ -41,10 +41,10 @@ for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),
 note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
 activeFoldGroup=0;
 label(L"轮选空闲飞机",20,306);key(853,idleAircraftKey);next();
-label(featureavailability::VariantSelection?L"按当前武器选择同类单位":L"按当前武器选择同类单位（暂不可用）",20,306);
+label(L"按当前武器选择同类单位",20,306);
 extraControls[VariantKey]=key(724,extra.variantKey);
 EnableWindow(extraControls[VariantKey],featureavailability::VariantSelection);
-note(L"当前武器变体尚未接入统一采样。已有绑定会保留；普通同类选择可用。");next();
+note(L"根据当前选中单位的普通武器与类型选择同类；单按选屏幕内，双按选全图。");next();
 button(454,L"停止所选单位的自动任务");next();
 label(L"组合选兵绑定",20,455);button(9608,L"展开设置",500,125);next();
 note(L"组合选兵：多个单位类型可使用同一快捷键；单按选屏幕内，双按选全图。",44);
