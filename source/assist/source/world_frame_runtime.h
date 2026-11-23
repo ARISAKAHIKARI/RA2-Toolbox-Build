@@ -34,7 +34,12 @@ static worldframe::Snapshot worldFramePublicationBuffer;
 static void publishWorldFrame(){
  if(!worldFrameServer.wanted(worldFrame.key.owner,worldFrame.key.tick))return;
  if(!worldFramePublication.begin(worldFramePublicationBuffer))return;
- if(!worldFramePublicationBuffer.copyForPublication(worldFrame))return;
+ const auto&requested=worldFrameServer.requests();
+ if(requested.empty()){
+  auto boundaryKey=worldFrame.key;boundaryKey.demand|=worldframe::BoundaryOnlyKeyBit;
+  worldFramePublicationBuffer.resetBoundary(boundaryKey);
+  if(!worldFramePublicationBuffer.seal())return;
+ }else if(!worldFramePublicationBuffer.copyForPublication(worldFrame))return;
  worldFramePublication.publish(worldFramePublicationBuffer,worldFrameServer);
 }
 // Runtime owns full CaptureGraph sampling, indexing and command admission.
