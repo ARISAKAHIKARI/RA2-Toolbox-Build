@@ -142,25 +142,9 @@ class Panel {
    outline(g,x,y,CellW,CellH,slot==focused_?Color(255,242,220,115):Color(255,89,97,107));
   }
   int footer=by+gh+2;
-  if(details_){
-   box(g,float(bx),float(footer),float(gw),39,Color(255,22,27,36));
-   outline(g,bx,footer,gw,39,Color(255,89,100,113));
-   if(model_.selected==1){
-    const auto&u=model_.single;
-    label(g,name(u.name).substr(0,16),float(bx+5),float(footer+1),11,Color(255,225,233,245),true);
-    std::wstring more=L"HP "+std::to_wstring(std::max(0,u.health))+L"/"+std::to_wstring(std::max(0,u.strength));
-    if(u.ammoMax>0)more+=L" 弹 "+std::to_wstring(std::max(0,u.ammo))+L"/"+std::to_wstring(u.ammoMax);
-    else if(u.passengers>0)more+=L" 载员 "+std::to_wstring(u.passengers);
-    label(g,more.substr(0,27),float(bx+5),float(footer+20),10,Color(255,187,206,224));
-   }else if(focused_>=0&&focused_<slots()){
-    const auto&u=model_.groups[page_*9+focused_];
-    label(g,name(u.name).substr(0,19),float(bx+5),float(footer+2),11,Color(255,238,243,248),true);
-    label(g,L"×"+std::to_wstring(u.count),float(bx+5),float(footer+20),10,Color(255,193,215,227));
-   }else{
-    label(g,std::to_wstring(model_.selected)+L" / "+std::to_wstring(model_.groupCount),float(bx+5),float(footer+8),11,Color(255,216,231,236));
-   }
-   footer+=42;
-  }
+  // The old "i" details footer repeated information already shown in the
+  // HP tile and did not explain cargo. The +/− action now controls cargo
+  // rows directly; no redundant footer is reserved.
   if(pages()>1){
    box(g,float(bx),float(footer),float(gw),20,Color(255,26,30,39));
    label(g,L"◀",float(bx+5),float(footer+1),12,Color(255,230,220,143),true);
@@ -169,19 +153,22 @@ class Panel {
    label(g,L"▶",float(bx+gw-22),float(footer+1),12,Color(255,230,220,143),true);
   }
  }
- void click(int x,int y,bool right=false){
+ void click(int x,int y,bool /*right*/=false){
   if(x<ButtonW+3){
-   // Bottom button folds; upper 'i' toggles details. Right-click fold
-   // mirrors the reference panel's details gesture.
    const int foldY=height_-ButtonW-1;
-   if(right||(!folded_&&y<foldY-2))details_=!details_;
-   else{folded_=!folded_;page_=0;}
+   // Only real button rectangles respond. A hidden cargo switch cannot
+   // receive clicks on a group or an empty transport.
+   if(!folded_&&expandableCargo()&&y>=2&&y<2+ButtonW-2){
+    details_=!details_;page_=0;focused_=-1;
+   }else if(y>=foldY&&y<foldY+ButtonW-2){
+    folded_=!folded_;page_=0;focused_=-1;
+   }
    InvalidateRect(window_,nullptr,FALSE);return;
   }
   if(folded_)return;
   int bx=ButtonW+4,by=Pad-2;
   const int gh=Pad*2+rows()*CellH+(rows()-1)*Gap;
-  int footer=by+gh+(details_?44:2);
+  int footer=by+gh+2;
   if(pages()>1&&y>=footer){
    if(x<bx+40)page_=(page_+pages()-1)%pages();
    else if(x>bx+Pad*2+cols()*CellW+(cols()-1)*Gap-42)page_=(page_+1)%pages();
@@ -262,9 +249,11 @@ public:
   if(!ensure())return;
   lastGoodAt_=GetTickCount();
   const uint64_t key=model.visualSignature();
-  bool newEpoch=model_.match!=model.match;
-  if(newEpoch){page_=0;focused_=-1;}
+  const bool differentUnit=model_.match!=model.match||model_.selected!=model.selected||
+    (model.selected==1&&model_.single.id!=model.single.id);
+  if(differentUnit){page_=0;focused_=-1;details_=false;}
   if(key!=signature_){model_=model;signature_=key;InvalidateRect(window_,nullptr,FALSE);}
+  if(!expandableCargo())details_=false;
   page_=external::unitpanel::clampPage(page_,entries(),perPage());
   int newWidth=std::min(wantedWidth(),availableWidth);
   int newHeight=wantedHeight();
