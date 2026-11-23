@@ -170,9 +170,10 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .group-summary { position:relative; display:flex; align-items:center; gap:var(--space-2); padding:8px var(--space-3); border-bottom:1px solid var(--divider); }
 .group-title { margin: 0; color: var(--text); font-size: var(--text-label); font-weight: 650; line-height: 1.6; overflow-wrap: anywhere; }
 .group-body { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
-.feature-card { min-width: 0; padding: 0 var(--space-2); border: 1px solid var(--divider); border-radius: var(--control-radius); }
-.feature-common { padding-inline:calc(var(--space-2) + 1px); }
-.feature-card.is-expanded { border-color: var(--blush-border); }
+/* A feature always has the same neutral row surface. Whether it has
+   settings only changes the presence of the fold, not the outer style. */
+.feature-card, .feature-common { min-width:0; padding:0 var(--space-3); border:1px solid var(--divider); border-radius:var(--control-radius); background:var(--surface); }
+.feature-card.is-expanded { border-color:var(--border); }
 .feature-header { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:var(--space-2); }
 .feature-main-control { min-width: 0; grid-column: 1; }
 .feature-header:has(.setting-row[data-type="toggle"]) { grid-template-columns:minmax(0,1fr); }
@@ -186,11 +187,15 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .feature-config-toggle { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:28px; padding:4px 11px; border:1px solid var(--border); border-radius:999px; background:var(--field); color:var(--accent); font-size:var(--text-small); white-space:nowrap; }
 .feature-config-toggle::before { content:""; width:6px; height:6px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(45deg) translateY(-1px); transition:transform .12s; }
 .feature-config-toggle[aria-expanded="true"]::before { transform:rotate(225deg) translateY(-1px); }
-.feature-config-toggle:hover, .feature-config-toggle[aria-expanded="true"] { background:var(--blush-surface); border-color:var(--blush-border); color:var(--blush-ink); }
-.feature-card .feature-details { margin-block:0 var(--space-2); margin-inline:var(--space-5) calc(-1 * var(--space-2)); }
-.feature-card .feature-config, .feature-hotkeys { padding: var(--space-2); border-left: 2px solid var(--accent-border); border-radius: 0 var(--control-radius) var(--control-radius) 0; background: var(--field); }
-.feature-hotkeys { border-left-color: var(--blush); background: var(--blush-surface); box-shadow: inset 0 0 0 1px var(--surface); }
-.feature-hotkeys .feature-subheading { color: var(--blush-ink); }
+.feature-config-toggle:hover, .feature-config-toggle[aria-expanded="true"] { background:var(--accent-soft); border-color:var(--accent-border); color:var(--accent); }
+/* Sub-settings are one indented neutral hierarchy, not a second bright card. */
+.feature-card .feature-details { margin:0 0 var(--space-2) var(--space-4); }
+.feature-card .feature-config, .feature-card .feature-hotkeys { padding:0 var(--space-3); border-left:1px solid var(--divider); border-radius:0; background:var(--field); }
+.feature-hotkeys .feature-subheading { color:var(--soft); }
+/* Standalone rows (with no child settings) use exactly the same card
+   baseline and never pick up the decorative sub-settings strip. */
+.feature-common .feature-details { margin:0; }
+.feature-common .feature-config, .feature-common .feature-hotkeys { padding:0; border:0; background:transparent; box-shadow:none; }
 .feature-config:not([hidden]) + .feature-hotkeys:not([hidden]) { margin-top: var(--space-2); }
 .feature-subheading { margin: 0; color: var(--soft); font-size: var(--text-small); font-weight: 650; }
 .group-status { min-width: 0; padding: 6px var(--space-3); border-top: 1px solid var(--divider); border-radius: 0 0 var(--radius) var(--radius); color: var(--error); background: var(--error-bg); font-size: var(--text-small); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
