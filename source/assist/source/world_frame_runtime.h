@@ -28,9 +28,9 @@ struct WorldFramePublication {
 using WorldFramePublication=worldframe::AsyncPublisher<>;
 #endif
 static WorldFramePublication worldFramePublication;
-// The game frame keeps execution authority. The worker is the only production
-// CaptureGraph owner; a strict same-frame handoff is required before native
-// command use. No production synchronous fallback is compiled.
+// Runtime owns full CaptureGraph sampling, indexing and command admission.
+// The command worker is an explicit benchmark opt-in; the publisher worker
+// transports sealed bytes and only supplies bounded missing-page hints.
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 struct WorldFrameCommandFixture {
  static bool enabled(){return false;}
