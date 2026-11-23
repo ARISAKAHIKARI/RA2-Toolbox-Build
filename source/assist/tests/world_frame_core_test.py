@@ -62,10 +62,6 @@ with tempfile.TemporaryDirectory(prefix="ra2_world_frame_") as tmp:
         "-I" + str(directory), str(root / "world_frame_core.cpp"), "-o", str(binary),
     ], check=True)
     subprocess.run([str(binary)], check=True)
-    display = directory / "world_frame_canonical_display"
-    subprocess.run([
-        "g++", "-std=c++17", "-O2", "-pthread", "-DWORLD_FRAME_PLATFORM_FIXTURE",
-        "-DWORLD_FRAME_PRODUCT_DISPLAY_FIXTURE", "-I" + str(directory),
-        str(root / "world_frame_core.cpp"), "-o", str(display),
-    ], check=True)
-    subprocess.run([str(display)], check=True)
+    # Display now uses Host VisualCache over a zero-page Runtime boundary.
+    # hostVisual() and world_frame_display_split.cpp exercise that read-only lane;
+    # product ProcessReader wiring is covered by display_capture_runtime_wiring.py.
