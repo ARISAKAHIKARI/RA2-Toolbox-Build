@@ -7,7 +7,8 @@ host=(root/"pointer_host.h").read_text()
 pointer=(root/"pointer_intent.h").read_text()
 assert "int64_t(frame)-snap.frame>6" not in formation
 assert "frame<snap.frame" in formation
-assert "DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u)" in formation
+assert "const uint32_t hostGrace=preview?1000u:formationView.active?600u:150u;" in formation
+assert "DWORD(sampleClock(sh)-sh->heartbeat)>hostGrace" in formation
 assert "get<uint32_t>(0xA83D4C)!=lastHouse" in formation
 assert "get<int>(0xA8B238)!=snap.session" in formation
 assert "GetWindowThreadProcessId(GetForegroundWindow(),&foreground)" in formation
