@@ -1,4 +1,4 @@
-/* Offline WebView2 console. Ice-blue surfaces, mist-blue borders and blush accents. */
+/* Offline WebView2 console. One neutral surface and a single blue accent hierarchy. */
 :root {
   color-scheme: light;
   font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif;
@@ -61,7 +61,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Shell and navigation */
 .app-shell { display: grid; grid-template-columns: 188px minmax(0, 1fr); height: 100vh; }
-.sidebar { min-height: 0; display: flex; flex-direction: column; padding: 18px 12px 12px; background: linear-gradient(158deg, var(--surface) 5%, var(--sidebar) 62%, var(--blush-surface)); border-right: 1px solid var(--border); }
+.sidebar { min-height: 0; display: flex; flex-direction: column; padding: 18px 12px 12px; background: linear-gradient(158deg, var(--surface) 5%, var(--sidebar) 100%); border-right: 1px solid var(--border); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
 .brand-mark { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; }
 .brand strong { display: block; font-size: 15px; font-weight: 650; }
@@ -74,8 +74,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .nav-button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 8px 12px; border: 1px solid transparent; border-radius: var(--radius); background: transparent; text-align: left; color: var(--soft); font-size: var(--text-label); transition: background .12s, color .12s; }
 .nav-button svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .nav-button:hover { color: var(--text); background: var(--surface-hover); }
-.nav-button[aria-current="page"] { color: var(--blush-ink); background: linear-gradient(90deg, var(--blush-surface), var(--surface)); border-color: var(--blush-border); box-shadow: inset 0 0 0 1px var(--surface); }
-.nav-button[aria-current="page"]::before { content: ""; position: absolute; inset-inline-start: 3px; width: 3px; height: 20px; background: var(--blush); border-radius: 3px; }
+.nav-button[aria-current="page"] { color:var(--accent); background:var(--accent-soft); border-color:var(--accent-border); box-shadow:inset 0 0 0 1px var(--surface); }
+.nav-button[aria-current="page"]::before { content:""; position:absolute; inset-inline-start:3px; width:3px; height:20px; background:var(--accent); border-radius:3px; }
 .nav-button:focus-visible { outline-offset: -2px; }
 .sidebar-bottom { display: flex; align-items: center; gap: 8px; margin: auto 8px 0; padding: 16px 2px 2px; border-top: 1px solid var(--border); color: var(--muted); font-size: var(--text-small); }
 .connection-dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--disabled); }
@@ -109,7 +109,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .page-tools { display: flex; align-items: center; justify-content: flex-end; margin: 0 var(--gutter); padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .production-views { display: flex; flex-wrap: wrap; gap: 4px; margin-right: auto; }
 .production-views button { padding: 5px 10px; border: 1px solid transparent; border-radius: var(--control-radius); background: transparent; color: var(--soft); }
-.production-views button[aria-pressed="true"] { border-color: var(--blush-border); background: var(--blush-surface); color: var(--blush-ink); }
+.production-views button[aria-pressed="true"] { border-color:var(--accent-border); background:var(--accent-soft); color:var(--accent); }
 .page-tools:has(.production-views:not([hidden])) { flex-wrap: wrap; gap: 6px 12px; }
 .search-wrap { position: relative; display: flex; align-items: center; min-width: 0; }
 .search-wrap svg { position: absolute; left: 10px; width: 15px; height: 15px; stroke: var(--muted); stroke-width: 1.8; fill: none; pointer-events: none; }
