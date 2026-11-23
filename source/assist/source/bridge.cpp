@@ -339,12 +339,15 @@ static bool refreshWorldIndex(int frame,bool executionGuards=true){
   return true;
  }
  const uint32_t now=sampleClock(sh);
- if(failedMatch==match&&failedFrame==frame&&uint32_t(now-failedAt)<16)return false;
+ // Prefer a newly sealed same-frame Runtime sample even if a prior direct
+ // fallback failed less than 16ms ago. The throttle applies only to another
+ // expensive live-roster fallback, never to fresh authoritative evidence.
  if(worldFrameReady&&!worldFrameBoundaryOnly){
   bool complete=false;
   {SampleReadScope sample;indexWorld(frame);complete=sample.complete();}
   if(complete&&indexedFrame==frame)return true;
  }
+ if(failedMatch==match&&failedFrame==frame&&uint32_t(now-failedAt)<16)return false;
  worldObjects.unbind();worldObjects.clear();indexedFrame=indexedCount=-1;
  indexedItems=0;globalVehicleCandidateCount=0;
  if(!executionGuards)return false;
@@ -2002,9 +2005,12 @@ static void tick(){
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
  const bool hostDisplayOnly=sharedWorldWanted&&noCommandWork&&
   worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
- // Pure Host display subscriptions are suspended until their fields are
- // carried by the canonical Runtime snapshot; do not spend a full graph read.
- if(!hostDisplayOnly&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))
+ // Display-only demand publishes a zero-page world boundary. The Host
+ // VisualCache independently samples the read-only display graph; it never
+ // becomes a source of Runtime commands or action-planning authority.
+ if(hostDisplayOnly)
+  captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
+ else if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
  if(worldFrame.catalogue.attempted||worldFrameCandidate.catalogue.attempted){
   ObservationReadScope sample;
