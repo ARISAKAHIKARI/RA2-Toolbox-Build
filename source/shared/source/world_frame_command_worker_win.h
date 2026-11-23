@@ -265,14 +265,18 @@ public:
  CommandCaptureWorker(const CommandCaptureWorker&)=delete;
  CommandCaptureWorker&operator=(const CommandCaptureWorker&)=delete;
  ~CommandCaptureWorker(){if(thread_)CloseHandle(thread_);if(event_)CloseHandle(event_);}
- // Async command-world capture is the only production route. A synchronous
- // implementation exists only in a separately compiled test fixture.
- // Late/stale results are never native EventClass authorization.
+ // Command-world capture on a worker is an explicit benchmark/regression
+ // opt-in. Product defaults keep time-sensitive planning and final admission
+ // on the game thread; a worker result never grants native command authority.
  static bool enabled(){
 #ifdef WORLD_FRAME_TEST_SYNC_CAPTURE
   return false;
 #else
-  return true;
+  static const bool value=[]{
+   char name[3]{};
+   return GetEnvironmentVariableA("RA2TOOLBOX_ASYNC_COMMAND_CAPTURE",name,sizeof name)==1&&name[0]=='1';
+  }();
+  return value;
 #endif
  }
  // The dispatcher calls this BEFORE assembling up to 16K page addresses.
