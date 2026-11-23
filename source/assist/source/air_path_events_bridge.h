@@ -85,7 +85,9 @@ static void tick(uint32_t currentHouse,int frame,DWORD now){
  // progress. Failure to materialize a node must never strand native editor.
  if(planning.count&&!planning.physicalHeld()){
   if(!releasedAt)releasedAt=now;
-  if(nodeAt<pointCount&&DWORD(now-lastProgress)>1200&&DWORD(now-releasedAt)>750){
+  // Also recover a completed node queue whose final native commit/replay
+  // cannot be posted; no pending input may own the real Z-up indefinitely.
+  if(DWORD(now-lastProgress)>1200&&DWORD(now-releasedAt)>750){
    reset(airevents::Partial);return;
   }
  }
