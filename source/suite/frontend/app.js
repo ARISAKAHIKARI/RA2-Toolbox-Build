@@ -306,6 +306,20 @@
       if(/键鼠|高级移动|磁电|飞机分配|操作手势|攻击/.test(hint)||has(9601,9606,458,477,478,705))return 1;
       return 4;
     }
+    if(navigationIndex===5){
+      if(/速度|暂停|逐帧|帧率/.test(hint)||has(9494,9403))return 0;
+      if(/科技|建造|建筑放置|许可/.test(hint)||has(420,476,9097))return 1;
+      if(/地图|揭示|黑幕|迷雾/.test(hint)||has(808,9199,9492))return 2;
+      if(/操控|变卖|所属方/.test(hint)||has(860,9189))return 3;
+      return 4;
+    }
+    if(navigationIndex===6){
+      if(/暂不可用|未实现|尚未支持/.test(hint)||has(810,861,722))return 4;
+      if(/剧情|触发|镜头保护/.test(hint)||has(9536,9538))return 1;
+      if(/CRC|超武|自毁|规则实验/.test(hint)||has(9196,9490,9253))return 3;
+      if(/命令|入队|指令|Sticky|驻守|事件所属|兼容/.test(hint)||has(9750,9191,9187))return 2;
+      return 0;
+    }
     if(/清单|单位类型/.test(hint)||has(9610))return 4;
     if(/采矿|矿车|倒矿|蜘蛛|矿厂/.test(hint)||has(9605,832,833))return 0;
     if(/维修|救援|炸弹|寄生/.test(hint)||has(312,780,9184))return 1;
@@ -323,8 +337,9 @@
       for(const block of featureBlocks(items)){
         const pieces=(block.title||block.headers.length||block.controls.some(c=>c.groupHeader))?[block.controls]:settingLines(block.controls);
         for(const piece of pieces){
-          const legacy=navigationIndex===3||navigationIndex===4;
-          const section=piece[0].section||(legacy?names[semanticSection(name,piece,navigationIndex)]:name);
+          // All tactical pages use one section grammar. Explicit native
+          // ownership wins; legacy free-form group names no longer add boxes.
+          const section=piece[0].section||names[semanticSection(name,piece,navigationIndex)];
           if(!combined.has(section))combined.set(section,[]);
           combined.get(section).push(...piece.map((control,i)=>({...control,layoutBreak:i===0})));
         }
@@ -584,12 +599,14 @@
       const hotkeys=hasHeader?lines.filter(line=>line.every(c=>c.type==='hotkey')).flat():[];
       const hotkeyIds=new Set(hotkeys.map(c=>c.id));
       const params=settings.filter(c=>!hotkeyIds.has(c.id));
-      const hasParameters=params.some(control=>control.type!=='label');
       feature.params.section.hidden=!params.length;feature.hotkeys.section.hidden=!hotkeys.length;
-      feature.params.title.hidden=!hasHeader||!hasParameters||!hotkeys.length;
-      feature.hotkeys.title.hidden=!hasParameters||!hotkeys.length;
+      // The fold already establishes the hierarchy. Do not repeat oversized
+      // "参数 / 快捷键" subheadings for every individual feature.
+      feature.params.title.hidden=true;
+      feature.hotkeys.title.hidden=true;
       feature.details.hidden=!expanded||!settings.length;
       feature.element.classList.toggle('is-expanded',expanded&&hasConfig);
+      feature.element.classList.toggle('has-settings',hasConfig);
       // Render only mounted details. Avoid work on hundreds of collapsed cards.
       if(expanded){
         updateFeatureRows(feature.params.rows,feature.params.controls,params,hasHeader,feature.paramsChunks);
