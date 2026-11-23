@@ -2,13 +2,14 @@
 #include <cassert>
 #include <iostream>
 #include <cstring>
+#include <string>
 using namespace external::watch;
 static std::vector<uint8_t> memory(0x1000000);
 static bool read(uint32_t p,void*out,size_t n){if(uint64_t(p)+n>memory.size())return false;memcpy(out,memory.data()+p,n);return true;}
 template<class T>static void put(uint32_t p,T v){memcpy(memory.data()+p,&v,sizeof v);}
 static void vec(uint32_t p,uint32_t storage,const std::vector<uint32_t>&items){put(p+4,storage);put(p+8,int(items.size()));put(p+16,int(items.size()));memcpy(memory.data()+storage,items.data(),items.size()*4);}
 static Target unit(int index,int x,int y){uint32_t p=0x10000+index*0x1000;put(p,0x7F5C70u);put(p+0x10,index+1);put(p+0x6C,100);put(p+0x74,uint8_t(1));put(p+0x90,uint8_t(1));put(p+0x9C,x);put(p+0xA0,y);return {p,uint32_t(index+1)};}
-int main(){
+int main(int argc,char**argv){
  auto a=unit(0,30*256,30*256),b=unit(1,34*256,30*256),c=unit(2,35*256,30*256),unselected=unit(3,30*256+1,30*256);
  vec(0xA8EC78,0x200000,{a.pointer,b.pointer,c.pointer,unselected.pointer});vec(0xA8ECB8,0x210000,{a.pointer,b.pointer,c.pointer});put(unselected.pointer+0x431,uint8_t(1));
  // Single-target pinning must work even when the full visual Techno vector
@@ -23,6 +24,10 @@ int main(){
  assert(once.target==a&&once.members.size()==1&&fullRosterProbes==0);
  vec(0xA8ECB8,0x210000,{a.pointer,b.pointer,c.pointer});
  auto captured=capture(read);assert(captured.target==a&&captured.members.size()==3); // hovered outsider cannot change group
+ if(argc>1&&std::string(argv[1])=="single-pin"){
+  std::cout<<"PASS single selected actor needs no full hover roster and multi-selection stays intact\n";
+  return 0;
+ }
  // A successfully returned but inconsistent terminal value must not delete
  // the slot. Both observations use the read supplied by the production host.
  for(uint32_t offset:{0u,0x10u,0x6Cu,0x74u}){
