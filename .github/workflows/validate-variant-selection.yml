@@ -5,6 +5,7 @@ on:
       - 'source/assist/source/type_select_bridge.h'
       - 'source/assist/source/variant_keys.h'
       - 'source/assist/tests/capacity_admission.*'
+      - 'source/assist/tests/variant_selection_entry_test.py'
       - 'source/shared/source/feature_availability.h'
       - 'source/assist/source/tactical_controls.h'
       - 'source/suite/source/tactical_console_layout.h'
@@ -23,6 +24,7 @@ jobs:
       - name: Exercise normal-weapon match, viewport, stale identities, and 16K capacity
         run: |
           set -euo pipefail
+          python3 source/assist/tests/variant_selection_entry_test.py
           python3 source/assist/tests/capacity_admission.py --out /tmp/ra2-variant-regression --case variant
       - uses: actions/upload-artifact@v4
         if: always()
