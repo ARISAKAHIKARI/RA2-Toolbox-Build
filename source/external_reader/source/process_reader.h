@@ -143,7 +143,7 @@ public:
   if(worldframe::visualDemand(worldDemand_)){
    // Display readers always use Host VisualCache, even when a Runtime command
    // snapshot exists. This path is read-only and may lag behind game execution.
-   if(frame&&!frame->controlSource)frame=worldClient_->visual(frame,worldDemand_,[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);});
+   if(frame)frame=worldClient_->visual(frame,worldDemand_,[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);});
   }else{
    frame=worldframe::authoritative(frame);
    // A producer scene boundary is never a command input.
