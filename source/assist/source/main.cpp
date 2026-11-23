@@ -1179,7 +1179,7 @@ static void serviceCalculationTasks(){
 static planner::Parameters plannerParameters(){
  planner::Parameters p;p.flags=compute::plannerFlags(shared->flags,shared->computeApplied,false);p.modes=compute::magnetronIntents(shared->computeApplied,false);
  p.veteran=veteranPercent;p.elite=elitePercent;p.timeout=pathTimeout;p.hz=advancedScanHz;p.priority=advancedTargetPriority;p.range=advancedRangeCells;
- p.drop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop);p.observeDrop=extra.magnetronDrop;return p;
+ p.drop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop);p.observeDrop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop);return p;
 }
 static void plannerStatistics(){
  shared->plannerTracking=plannerState.tracking;
