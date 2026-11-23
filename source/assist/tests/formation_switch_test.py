@@ -217,6 +217,13 @@ int main(){
  auto highFpsPreview=sh->formationPreview;
  message(WM_RBUTTONUP,0,false,185,145);
  assert(!sh->formationPreview.active);checkJobs(highFpsPreview);++cases;
+ // Brief Host sampling stalls must not consume an already captured drag,
+ // but a genuinely dead Host still retires it within a bounded 600 ms.
+ setup();activate();message(WM_RBUTTONDOWN);held[VK_RBUTTON]=true;
+ clockValue+=400;put(0xA8ED84,250);formationTick(lastHouse,250,clockValue,false);
+ assert(sh->formationPreview.active&&formationButton);
+ clockValue+=220;put(0xA8ED84,350);formationTick(lastHouse,350,clockValue,false);
+ assert(!sh->formationPreview.active);held[VK_RBUTTON]=false;++cases;
  // A real live house switch still cancels the gesture immediately.
  setup();activate();message(WM_RBUTTONDOWN);
  clockValue+=30;put(0xA8ED84,280);put(0xA83D4C,lastHouse+4);
