@@ -22,6 +22,8 @@ static bool read(uint32_t p,void*out,size_t n){
     text=text.replace('struct Vec{int count=0;};static Vec vec(uint32_t p){assert(p==0xA8ECB8);return {int(selected.size())};}',
                       'struct Vec{int count=0;uint32_t items=0;};static Vec vec(uint32_t p){assert(p==0xA8ECB8);constexpr uint32_t items=0x110000;for(size_t i=0;i<selected.size();++i)put(items+uint32_t(i)*4,selected[i]);return {int(selected.size()),items};}')
     text=text.replace('uint32_t get(uint32_t id){return tokens[id];}', 'bool trackable(uint32_t id){return id!=0;}uint32_t get(uint32_t id){return tokens[id];}')
+    text=text.replace('static int kind(uint32_t p){return worldObjects.contains(p)?1:0;}',
+                      'static std::map<uint32_t,int> kinds;static int kind(uint32_t p){return kinds.count(p)?kinds[p]:(worldObjects.contains(p)?1:0);}')
     text=text.replace('static void cancelNative(uint32_t p)', 'static void cancelNative(uint32_t p,bool=false)')
     text=text.replace('uint32_t moFeatures=0;', 'volatile long moOrdersPreviewSeq=0;moorders::Preview moOrdersPreview;uint32_t moOrderStatus=0,moOrderAccepted=0,moOrderRejected=0;uint32_t moFeatures=0;')
     text=text.replace('enum class Owner{Formation}', 'enum class Owner{Formation,Generic}')
@@ -61,7 +63,7 @@ struct ObservationReadScope {
 static const auto* sampledObjectIndex(){return &worldObjects;}
 #include "mo_orders_bridge.h"
 static int checks=0;static void check(bool b){++checks;assert(b);}
-static void begin(){setup();resetMoOrders();events.clear();commands.clear();failAt=0;posted=0;actors.resize(1);selected=actors;sh->moFeatures=4;held['Z']=true;actorFrameArbiter.frame=-1;actorLeaseArbiter.allowed=true;moEpoch=match;moHouse=lastHouse;moWaypointSubmitted=false;}
+static void begin(){setup();resetMoOrders();kinds.clear();events.clear();commands.clear();failAt=0;posted=0;actors.resize(1);selected=actors;sh->moFeatures=4;held['Z']=true;actorFrameArbiter.frame=-1;actorLeaseArbiter.allowed=true;moEpoch=match;moHouse=lastHouse;moWaypointSubmitted=false;}
 static bool messageMo(UINT m,unsigned vk=0){
  if(m==WM_MBUTTONDOWN||m==WM_MBUTTONUP)held[VK_MBUTTON]=m==WM_MBUTTONDOWN;
  MSG msg;msg.message=m;msg.wParam=vk;msg.lParam=MAKELPARAM(100,100);return moOrdersMessage(&msg);
@@ -133,6 +135,26 @@ int main(){
  // Non-patrol assignment lines retain their existing world coordinates.
  begin();moMode=int(moorders::Fuzzy);moPreview.count=7;moPreview.nodeCount=4;beforeHeight=heightQueries;groundCallable=false;
  moUpdateOutline();check(moPreview.count==7&&moPreview.nodeCount==0&&heightQueries==beforeHeight&&moOutlineDirty);
+ // Aircraft patrol does not wait for an unavailable native PlanningToken
+ // or swallow the Z-up. Each waypoint is an ordinary Move; the last loops
+ // back to first, and a later manual token cancels the route.
+ begin();kinds[actors[0]]=0;
+ check(messageMo(WM_MBUTTONDOWN)&&moHolding);
+ check(messageMo(WM_MBUTTONUP)&&!moStage&&moFlightCount==1&&moRouteCount>=4);
+ check(!moPlanningUI.active&&events.empty());
+ held['Z']=false;put<uint8_t>(0x87F7E8+0x11B3,0);
+ step();check(events.size()==1&&!events.back().appendWaypoint&&events.back().mission==2);
+ const int nodes=moFlights[0].count;
+ for(int node=0;node<nodes;++node){
+  const auto cell=moFlights[0].cells[node];
+  put(actors[0]+0x9C,int(cell%1000)*256+128);
+  put(actors[0]+0xA0,int(cell/1000)*256+128);
+  step();
+  check(moFlights[0].next==(node+1)%nodes);
+ }
+ check(moFlightCount==1&&events.size()>=size_t(nodes+1));
+ ++manualVersions.tokens[get<uint32_t>(actors[0]+0x10)];
+ step();check(moFlightCount==0);
  std::cout<<"PASS "<<checks<<" actual MO bridge staged patrol/cancellation/admission checks\n";
 }
 '''
