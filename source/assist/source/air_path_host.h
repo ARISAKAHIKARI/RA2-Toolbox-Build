@@ -6,7 +6,7 @@ struct Job {uint32_t id=0,pointer=0,token=0,match=0;std::deque<Point> points;int
 struct Line {int x,y,tx,ty;};
 static std::vector<Job> jobs;static size_t cursor=0;static bool ended=false;static DWORD sampled=0;
 static bool native(){return airpathpolicy::native(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork);}
-static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints||(extra.nativeAirWaypoints&&extra.airPathKey),extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork);}
+static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints||(extra.nativeAirWaypoints&&(extra.airPathKey||extra.nativeAirNetwork==0)),extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork);}
 template<class K>static bool held(const K&keys){return extra.airPathKey?pointerinput::matchesHold(keys,extra.airPathKey,pointerinput::Enhanced):nativekeyhost::current().held(nativekeys::Planning,keys);}
 static bool held(){uint8_t keys[256]{};nativekeyhost::down(keys);return held(keys);}
 static void reset(){for(int n=0;n<commandQueue.size;)if(commandQueue.slots[n].command==AirPathMove)commandQueue.discard(n);else ++n;jobs.clear();cursor=0;ended=false;sampled=0;}
