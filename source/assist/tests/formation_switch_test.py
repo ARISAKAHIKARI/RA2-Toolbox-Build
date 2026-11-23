@@ -199,6 +199,24 @@ int main(){
  // A double-hold enters on the second key-down and ends when its prefix goes.
  setup();sh->formationPolicy.hold='G'|0xb200;assert(!dispatch(WM_KEYDOWN,VK_CONTROL));assert(!dispatch(WM_KEYDOWN,'G'));assert(!sh->formationPreview.active);assert(!dispatch(WM_KEYUP,'G'));clockValue+=100;message(WM_KEYDOWN,'G');assert(formationHolding&&sh->formationPreview.active);
  assert(!dispatch(WM_KEYUP,VK_CONTROL));assert(!formationHolding&&!sh->formationPreview.active);++cases;
+ // Game at 240 FPS, Host world snapshot still frame 100. A held drag
+ // must remain active and submit native Move orders despite 125 new frames.
+ setup();put(0xA8ED84,180);activate();
+ assert(sh->formationPreview.active&&sh->formationPreview.count==25);
+ message(WM_RBUTTONDOWN);
+ clockValue+=40;put(0xA8ED84,225);
+ formationTick(lastHouse,225,clockValue,false);
+ assert(sh->formationPreview.active&&formationButton);
+ message(WM_MOUSEMOVE,0,false,185,145);
+ assert(sh->formationPreview.active&&sh->formationPreview.dragging);
+ auto highFpsPreview=sh->formationPreview;
+ message(WM_RBUTTONUP,0,false,185,145);
+ assert(!sh->formationPreview.active);checkJobs(highFpsPreview);++cases;
+ // A real live house switch still cancels the gesture immediately.
+ setup();activate();message(WM_RBUTTONDOWN);
+ clockValue+=30;put(0xA8ED84,280);put(0xA83D4C,lastHouse+4);
+ formationTick(lastHouse,280,clockValue,false);
+ assert(!sh->formationPreview.active&&formationJobCount==0);++cases;
  std::cout<<"PASS "<<cases<<" production bridge cases: stationary six-shape switch, same-clock cycling, repeat suppression, exact per-ID preview/job/nativeMission destinations for both buttons, moved units and jitter without recomputation, obstacle resolution, release freeze and membership cancellation, Press/EXT compatibility, unsupported modes, chord cancellation/repeat/rebind, drag ownership, modal Alt and double-hold\n";
 }
 '''
