@@ -346,7 +346,8 @@ static void moFlightTick(uint32_t house,DWORD now){
   auto discard=[&](){f=moFlights[--moFlightCount];};
   MoActor actor{};actor.pointer=f.pointer;actor.id=f.id;actor.token=f.token;
   if(f.epoch!=match||f.house!=house||!moActorValid(actor)||kind(f.pointer)!=0||f.count<4||f.count>moorders::Waypoints){discard();continue;}
-  const int x=get<int>(f.pointer+0x9C,-1),y=get<int>(f.pointer+0xA0,-1);
+  int x=0,y=0;
+  if(!read(f.pointer+0x9C,&x,sizeof x)||!read(f.pointer+0xA0,&y,sizeof y)){++moFlightCursor;continue;}
   if(x<0||y<0||x>=512*256||y>=512*256){discard();continue;}
   const uint32_t cell=f.cells[f.next];const int gx=int(cell%1000)*256+128,gy=int(cell/1000)*256+128;
   const int64_t dx=int64_t(x)-gx,dy=int64_t(y)-gy;
