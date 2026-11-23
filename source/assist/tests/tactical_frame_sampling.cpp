@@ -252,7 +252,7 @@ static void testCooperative(){
  set<int>(p+0x6C,100);advance(bt);check(!collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets[0].quota.first==7,"cooperative missing page must preserve input");check(!missingLiveReads,"cooperative missing page fell back live");
  std::memcpy(memory.data()+bt+0x24,"TEST",5);seal();
  request.tick=clockNow;sh->cooperativeRequest=request;sh->quotaConfig=quotas;
- worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=true;worldFrameReady=false;
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateRoster.swap(worldFrameCommandRoster);worldFrameCandidateAvailable=true;worldFrameReady=false;
  ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
  captureCooperativeFrame(clockNow,false);
  auto&frame=sh->cooperativeInputFrame;
@@ -272,7 +272,7 @@ static void testCooperative(){
        "revised quota did not update the graph from the same sealed observation");
  ++snap.frame;++clockNow;set<int>(0xA8ED84,snap.frame);seal();
  const int secondSample=snap.frame;const DWORD secondTick=clockNow;
- worldFrameCandidate.swap(worldFrame);worldFrameReady=false;
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateRoster.swap(worldFrameCommandRoster);worldFrameReady=false;
  snap.frame+=9;clockNow+=10;set<int>(0xA8ED84,snap.frame);
  captureCooperativeFrame(clockNow,false);
  check(frame.frame==secondSample&&frame.tick==secondTick,
@@ -366,9 +366,10 @@ static void testLoad(){
        !submissions,"candidate input did not retain the saved click");
  const uint32_t other=get<uint32_t>(0x820004);
  vectorAt(0xA8ECB8,0x820000,{other});
- worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=candidateReadyForCooperative=true;
- check(worldFrameCandidateRoster.build(worldFrameCandidate,false,worldFrameCaptureScratch.list),
-       "candidate load roster could not be assembled");
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateRoster.swap(worldFrameCommandRoster);
+ worldFrameCandidateAvailable=candidateReadyForCooperative=true;
+ check(worldFrameCandidateRoster.current(worldFrameCandidate.key),
+       "candidate load roster did not move with its sealed graph");
  worldFrameReady=false;++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
  check(refreshWorldIndex(snap.frame)&&!commandRosterReady(),"candidate load did not bind");
  liveRosterReads=0;
@@ -675,7 +676,7 @@ static void testOre(){
 }
 static void testDelayedPlanning(){
  auto f=setupOre();const auto sourceFrame=snap.frame;const auto sourceTick=clockNow;
- worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=true;worldFrameReady=false;
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateRoster.swap(worldFrameCommandRoster);worldFrameCandidateAvailable=true;worldFrameReady=false;
  ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
  set<int>(f.miner+0x9C,52*256);
  check(!commandRosterReady()&&publishPlanningWorld(lastHouse,snap.frame,clockNow,false),
