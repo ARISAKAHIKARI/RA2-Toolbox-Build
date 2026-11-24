@@ -103,16 +103,20 @@ static bool sellAllowed(uint32_t p){
 }
 static bool newCooperative(uint32_t p,uint32_t target,int mode){
  auto&r=sh->cooperativeRequest;int frame=get<int>(0xA8ED84);DWORD now=sampleClock(sh);uint32_t id=get<uint32_t>(p+0x10),targetID=get<uint32_t>(target+0x10);
- if(!id||!targetID)return false;
+ const uint32_t inputRequest=sh->pointer.request;
+ if(!id||!targetID||!inputRequest||inputRequest==sh->pointer.ack)return false;
+ const bool samePointer=cooperativePointerRequest==inputRequest&&r.serial;
+ const bool same=samePointer&&cooperative::sameInputRequest(r,cooperativePointerRequest,inputRequest,match,targetID,mode,sh->aircraftDamageRadiusCells,sh->aircraftDamageCoveragePercent)&&r.count>=0&&r.count<=cooperative::MaxSources;
+ // One physical input cannot silently change target/mode while its selected
+ // sources are retried on later simulation frames.
+ if(samePointer&&!same)return false;
  if(get<int>(0xA8ECB8+16)>cooperative::MaxSources){
-  if(r.count<=cooperative::MaxSources||r.frame!=frame||r.target!=targetID||r.mode!=mode){InterlockedIncrement(&sh->cooperativeSeq);memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.mode=mode;r.frame=frame;r.tick=now;r.count=cooperative::MaxSources+1;MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();}return false;
+  if(!samePointer){InterlockedIncrement(&sh->cooperativeSeq);memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.mode=mode;r.frame=frame;r.tick=now;r.count=cooperative::MaxSources+1;cooperativePointerRequest=inputRequest;MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();}return false;
  }
- bool same=r.serial&&r.match==match&&r.target==targetID&&r.mode==mode&&r.frame==frame&&(mode!=cooperative::AirDamage||(r.airRadiusCells==sh->aircraftDamageRadiusCells&&r.airDamagePercent==sh->aircraftDamageCoveragePercent))&&r.count>=0&&r.count<=cooperative::MaxSources&&DWORD(now-r.tick)<100;
- if(same)for(int i=0;i<r.count;++i)if(r.sources[i].id==id){same=false;break;}
- if(same&&r.count>=cooperative::MaxSources)return false;
+ if(same)for(int i=0;i<r.count;++i)if(r.sources[i].id==id)return r.sources[i].token==manualVersions.get(id);
  if(!manualVersions.trackable(id))return false;
  if(mode!=cooperative::AirSingle)cancelNative(p);InterlockedIncrement(&sh->cooperativeSeq);
- if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.frame=frame;
+ if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.frame=frame;r.tick=now;cooperativePointerRequest=inputRequest;
   r.centerObject=target;
   if(mode==cooperative::AirDamage){r.airRadiusCells=sh->aircraftDamageRadiusCells;r.airDamagePercent=sh->aircraftDamageCoveragePercent;}
   else {r.airRadiusCells=0;r.airDamagePercent=0;}
@@ -120,7 +124,7 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
   else {uint32_t tactical=get<uint32_t>(0x887324);if(tactical>=0x10000){r.cameraX=get<int>(tactical+0xB0);r.cameraY=get<int>(tactical+0xB4);}}
   int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);r.viewWidth=width>0&&width<=32768?width:get<int>(0x8A00A4);r.viewHeight=height>0&&height<=32768?height:get<int>(0x8A00A8);
  }
- r.tick=now;r.sources[r.count++]={id,manualVersions.get(id)};MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();return true;
+ r.sources[r.count++]={id,manualVersions.get(id)};MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();return true;
 }
 static int cooperativeInput(uint32_t p,uint32_t target,uint32_t bindings,bool candidateEntry=false){
  if(!nativeReady()||!p||!target||!own(p,lastHouse)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C))return 0;
