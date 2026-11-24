@@ -9,79 +9,101 @@ static void check(bool value,const char*name){
  if(!value){std::fprintf(stderr,"FAIL: %s\n",name);std::abort();}
  ++checks;
 }
-static void nativeWrite(Scope&scope,uint8_t&field,uint8_t value,bool identityValid=true){
- const Result decision=beforeStore(scope,identityValid);
+static Result nativeWrite(Scope&scope,uint32_t epoch,uint32_t house,uint32_t houseID,
+                          uint8_t&field,uint8_t value){
+ const Result decision=beforeStore(scope,epoch,house,houseID);
  if(!consumeSkip(scope))field=value;
- (void)decision;
+ return decision;
 }
 int main(){
  {
   Scope s;uint8_t field=0;
   check(begin(s,1,0x20000,7)==Result::Armed,"tool Reveal scope begins");
-  nativeWrite(s,field,1);
-  check(field==0&&s.suppressed==1,"tool Map::Reveal store is suppressed at the single site");
+  check(nativeWrite(s,1,0x20000,7,field,1)==Result::SuppressStore&&field==0&&s.suppressed==1,
+        "only the matching tool House store is suppressed");
   end(s);check(!s.active&&!s.skipStore,"scope cleanup clears state");
  }
  {
   Scope s;uint8_t field=1;
   check(begin(s,1,0x20000,7)==Result::Armed,"original-one scope begins");
-  nativeWrite(s,field,1);
+  nativeWrite(s,1,0x20000,7,field,1);
   check(field==1,"suppression preserves an original one");
   end(s);
  }
  {
   Scope s;uint8_t field=0;
-  nativeWrite(s,field,1);
-  check(field==1,"natural Map::Reveal outside tool scope executes original store");
+  check(nativeWrite(s,1,0x20000,7,field,1)==Result::NativeStore&&field==1,
+        "natural Reveal outside tool scope executes original store");
  }
  {
-  Scope s;uint8_t field=0;
-  check(begin(s,1,0x20000,7)==Result::Armed,"scope for natural-writer test begins");
+  Scope s;uint8_t target=0,other=0;
+  check(begin(s,1,0x20000,7)==Result::Armed,"nested-House test scope begins");
+  check(nativeWrite(s,1,0x21000,8,other,1)==Result::NativeStore&&other==1,
+        "nested Reveal for another House remains native");
+  check(nativeWrite(s,1,0x20000,7,target,1)==Result::SuppressStore&&target==0,
+        "outer target House is still suppressed");
+  check(s.suppressed==1,"only target House stores count as suppressed");
   end(s);
-  // The six other native write sites are never patched by this design.
-  field=1;check(field==1,"natural defeat/reveal-all set remains native");
-  field=0;check(field==0,"natural shroud/reset remains native");
  }
  {
   Scope s;uint8_t field=0;
-  check(begin(s,1,0x20000,7)==Result::Armed,"fault scope begins");
-  abort(s);
-  check(s.faulted&&s.skipStore,"guarded callback fault arms fail-closed skip");
-  nativeWrite(s,field,1);
-  check(field==0&&!s.skipStore,"trampoline consumes abort fallback and skips store");
+  check(begin(s,1,0x20000,7)==Result::Armed,"identity-reuse scope begins");
+  check(nativeWrite(s,1,0x20000,8,field,1)==Result::IdentityChanged&&field==1&&s.faulted,
+        "same pointer with a different House identity is not suppressed");
+  end(s);
+ }
+ {
+  Scope s;uint8_t field=0;
+  check(begin(s,1,0x20000,7)==Result::Armed,"epoch-change scope begins");
+  check(nativeWrite(s,2,0x20000,7,field,1)==Result::IdentityChanged&&field==1&&s.faulted,
+        "world epoch change does not suppress a new-world store");
+  end(s);
+ }
+ {
+  Scope s;
+  check(begin(s,1,0x20000,7)==Result::Armed,"matching abort scope begins");
+  check(abort(s,0x20000)&&s.faulted&&s.skipStore,
+        "SEH abort arms skip for the exact target House");
+  check(consumeSkip(s),"trampoline consumes fail-closed skip after callback fault");
+  check(!consumeSkip(s),"skip is one-shot");
+  end(s);
+ }
+ {
+  Scope s;
+  check(begin(s,1,0x20000,7)==Result::Armed,"foreign abort scope begins");
+  check(!abort(s,0x21000)&&!s.skipStore,
+        "SEH fault in nested other-House reveal does not suppress its store");
   end(s);
  }
  {
   Scope s;uint8_t field=0;
   check(begin(s,1,0x20000,7)==Result::Armed,"exception-before-store scope begins");
   end(s); // RuntimeScopedCall finally after native Reveal unwinds before the site.
-  nativeWrite(s,field,1);
-  check(field==1&&!s.active,"finally clears scope so later natural Reveal is untouched");
- }
- {
-  Scope s;uint8_t fieldA=0,fieldB=1;
-  check(begin(s,1,0x20000,7)==Result::Armed,"multi-house Reveal scope begins");
-  nativeWrite(s,fieldA,1,true);nativeWrite(s,fieldB,1,true);
-  check(fieldA==0&&fieldB==1&&s.suppressed==2,
-        "every matching store in the same native Reveal call preserves its own House byte");
-  end(s);
+  check(nativeWrite(s,1,0x20000,7,field,1)==Result::NativeStore&&field==1&&!s.active,
+        "finally clears scope so later natural Reveal is untouched");
  }
  {
   Scope s;uint8_t field=0;
+  check(begin(s,1,0x20000,7)==Result::Armed,"repeated matching-store scope begins");
+  nativeWrite(s,1,0x20000,7,field,1);
+  nativeWrite(s,1,0x20000,7,field,1);
+  check(field==0&&s.suppressed==2,"repeated writes for the same scoped House remain suppressed");
+  end(s);
+ }
+ {
+  Scope s;
   check(begin(s,1,0x20000,7)==Result::Armed,"nested guard begins");
   check(begin(s,1,0x20000,7)==Result::Busy,"nested tool Reveal is rejected");
-  nativeWrite(s,field,1,false);
-  check(field==0&&s.faulted,"unknown House identity fails closed by suppressing the store");
   end(s);
  }
  {
   Scope s;uint8_t field=0;
   check(begin(s,1,0x20000,7)==Result::Armed,"stale-flag test begins");
-  beforeStore(s,true); // callback marks the single store
-  end(s);               // exception/early-return cleanup before trampoline
+  beforeStore(s,1,0x20000,7); // callback marks the single store
+  end(s);                       // exception/early-return cleanup before trampoline
   check(!consumeSkip(s),"finally clears an unconsumed skip flag");
-  nativeWrite(s,field,1);
-  check(field==1,"no stale skip leaks into the next natural reveal");
+  check(nativeWrite(s,1,0x20000,7,field,1)==Result::NativeStore&&field==1,
+        "no stale skip leaks into the next natural Reveal");
  }
- std::printf("CRC one-site store feasibility: %u checks PASS (synthetic store-scope model; no game/MP execution)\n",checks);
+ std::printf("CRC one-site store feasibility: %u checks PASS (synthetic target-identity model; no game/MP execution)\n",checks);
 }
