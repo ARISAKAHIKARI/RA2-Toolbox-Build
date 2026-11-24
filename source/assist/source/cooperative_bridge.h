@@ -105,7 +105,7 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
  auto&r=sh->cooperativeRequest;DWORD now=sampleClock(sh);uint32_t id=get<uint32_t>(p+0x10),targetID=get<uint32_t>(target+0x10);
  const uint32_t inputRequest=sh->pointer.request;
  if(!id||!targetID||!inputRequest||inputRequest==sh->pointer.ack)return false;
- const bool samePointer=r.serial&&r.pointerRequest==inputRequest;
+ const bool samePointer=r.serial&&r.match==match&&r.pointerRequest==inputRequest;
  const bool same=samePointer&&cooperative::sameInputRequest(r,inputRequest,match,targetID,mode,sh->aircraftDamageRadiusCells,sh->aircraftDamageCoveragePercent)&&r.count>=0&&r.count<=cooperative::MaxSources;
  // One physical input cannot silently change target/mode while its selected
  // sources are retried on later simulation frames.
