@@ -4,7 +4,9 @@
 
 ## 结论
 
-发现一个值得优先验证的候选：把当前八个指令补丁替换为工具手动 Reveal 调用边界上的一次保存／原生调用／比较恢复事务。若后续完整原生执行和读取者核对通过，这条路线可做到 **零个游戏代码补丁**，而不是把八个补丁硬合并成一个。
+发现一个更值得优先验证的候选：只保留 Map::Reveal 内的 0x577DB0 写入点，在工具手动 Reveal 作用域内抑制这一次 MapIsClear 写入；自然游戏调用仍执行原指令。这样有机会从八个指令补丁缩减到 **一个代码补丁点**，不再需要 CRC 读取替换或另外六个自然写入观察点。
+
+另有一个零补丁候选：调用前保存、原生 Reveal 返回后比较恢复。它已通过合成事务测试，但安全性不如单点写入抑制：恢复发生在函数返回后，若函数内部触发 CRC 会太晚；恢复写入失败时也没有 CRC 读取兜底。因此将其保留为备选，不作为首选。
 
 本轮只新增研究候选与合成测试，没有改生产 Runtime、没有删改八个站点，也没有改变现有功能行为。
 
@@ -58,6 +60,22 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 
 注意：该候选恢复的是单个 House 的 +0x241 字节，不恢复 House+0x240 Visionary、Cell 探索/重罩数据，也不撤销原生 Reveal 的其他副作用。
 
+## 首选候选：单点抑制 Map::Reveal 的写入
+
+现有 CRC 回调已经能在 0x577DB0 执行原始 MOV 前取得 ECX（House）和保存的 EBX（其中 BL 是将写入的值）。因此不必改写 EBX，也不必重算 CRC：
+
+1. crcMapToolBegin 在同步调用前校验当前世界、目标 House 身份并开启工具揭示作用域。
+2. 仅在 0x577DB0 回调中，如果作用域有效，就设置一个一次性 skipStore 标志。
+3. 裸函数 trampoline 在原 MOV 位置检查标志；为真则跳过 MOV，为假则执行原 MOV。
+4. 检查分支必须用 pushfd／popfd 恢复 EFLAGS；只访问内存标志，不修改任何 GPR。回调原有 pushad／popad 继续保护寄存器。
+5. 立刻清除一次性标志。工具调用外的自然 Reveal 不设置标志，原指令照常执行。
+6. 如果受保护回调发生异常，AssistMapCrcAbort 必须先设置 skipStore，再由 trampoline 消费；不能让异常回退路径意外执行原始写入。
+7. 手动 Reveal 外层使用 RuntimeScopedCall finally 清除作用域，确保正常返回、SEH unwind 和提前退出都不会把 skipStore 泄漏到下一次自然 Reveal。
+
+这比调用后恢复更强：MapIsClear 在 0x577DB0 之后就保持原值，CRC 即使在 Map::Reveal 内部被嵌套调用，也会直接读到原值；同时不需要对 House 内存做事后写入。
+
+**仍需验证的假设：** 作用域内到达 0x577DB0 的写入确实都属于这次工具 Reveal；不存在必须依赖该字段被置 1 的非 CRC 后续读取；其他六个写入点不在这次 Reveal 的调用链中。若任一假设不成立，不得采用该方案。
+
 ## 为什么不选“只保留一个 CRC 读取 Hook”
 
 单独保留 0x64DCCA 仍需要知道每个 House 的真实原值。没有七个写入观察点时，单纯轮询无法区分“工具把 0 写成 1”与“游戏自然地再次写入 1”。同值写入恰好是当前模型必须捕获的边界。因此仅删七个写入点、留下 CRC 读取点，不是可靠缩减。
@@ -80,12 +98,15 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 
 ## 本轮验证
 
-新增研究候选头文件和两类测试：
+新增研究候选头文件和三类测试：
 
-- 合成事务测试：覆盖原值 0/1、原生不写、后续自然同值写入、House 身份复用、未知值冲突、写失败重试、读取/读回失败、嵌套阻止，以及原生调用在写入前后异常退出。当前本地使用 g++ -std=c++17 -O2 -Wall -Wextra -Werror 编译并运行，20 项断言全部通过。异常路径由可移植 finally 替身模拟，不代表 Windows SEH 或游戏实测。
+- 零补丁事务模型：覆盖原值 0/1、原生不写、后续自然同值写入、House 身份复用、未知值冲突、写失败重试、读取/读回失败、嵌套阻止，以及原生调用在写入前后异常退出。当前本地使用 g++ -std=c++17 -O2 -Wall -Wextra -Werror 编译并运行，20 项断言全部通过。异常路径由可移植 finally 替身模拟，不代表 Windows SEH 或游戏实测。
+- 单点写入抑制模型：覆盖工具作用域内跳过写入、作用域外自然 Reveal、其他自然写入、多个 House 写入、回调异常兜底、嵌套阻止和 finally 清理。当前本地同样以 g++ -std=c++17 -O2 -Wall -Wextra -Werror 编译并运行，22 项断言全部通过。它测试的是状态机模型，不是生产裸函数汇编。
 - 静态证据契约：核对 RevealMap 单一调用边界、0x577DB0 是函数范围内唯一的已知写入点、三个已知读取候选的 CRC 分类，并明确保留 xref 缺口。
 
 以上均为研究／合成测试，不是实际游戏执行，不是完整 Map::Reveal 验证，也不是双机联机测试。CI 工作流已加入，实际 GitHub Actions 运行结果仍待回报。
+
+交叉参考：固定 YRpp HouseClass 将 Visionary 与 MapIsClear 相邻声明（[HouseClass.h](https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/HouseClass.h#L869-L872)）；MapClass 将 Reveal 声明为 0x577D90（[MapClass.h](https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/MapClass.h#L477-L479)）；Phobos SyncLogging 将每个 House 的 MapIsClear 加入 CurrentFrameCRC（[SyncLogging.cpp](https://github.com/Phobos-developers/Phobos/blob/develop/src/Misc/SyncLogging.cpp#L653)）。这些只佐证字段布局和摘要用途，不证明完整可执行文件不存在其他读取者。
 
 ## 下一步验收门槛
 
