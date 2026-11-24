@@ -125,14 +125,15 @@ extern "C" unsigned GuardedBuildTimeTooltip(unsigned id,unsigned original){
  return result;
 }
 
-// CRC leaves return the already-loaded native EBX on failure. No game writes
-// or CRC/RNG recomputation in this boundary; capture is owned by native logic.
-extern "C" unsigned __cdecl AssistMapCrcShadow(unsigned,unsigned,unsigned);
-extern "C" void __cdecl AssistMapCrcAbort();
-extern "C" unsigned __cdecl GuardedMapCrcShadow(unsigned op,unsigned house,unsigned savedEBX){
+// The single Map::Reveal store adapter returns the original EBX value.
+// If its guarded identity check faults, only the scoped target House may
+// consume the one-shot skip; the surrounding RuntimeScopedCall clears scope.
+extern "C" unsigned __cdecl AssistMapCrcRevealStore(unsigned,unsigned);
+extern "C" void __cdecl AssistMapCrcRevealAbort(unsigned);
+extern "C" unsigned __cdecl GuardedMapCrcRevealStore(unsigned house,unsigned savedEBX){
  const unsigned long savedError=GetLastError();unsigned result=savedEBX;
- __try {result=AssistMapCrcShadow(op,house,savedEBX);}
- __except(AssistExceptionFilter(_exception_info(),14)){AssistMapCrcAbort();}
+ __try {result=AssistMapCrcRevealStore(house,savedEBX);}
+ __except(AssistExceptionFilter(_exception_info(),14)){AssistMapCrcRevealAbort(house);}
  SetLastError(savedError);return result;
 }
 
