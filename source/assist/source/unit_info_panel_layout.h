@@ -2,8 +2,8 @@
 #include <algorithm>
 #include "../../external_reader/source/unit_info_panel_model.h"
 
-// Pure layout rules for the bottom-left unit panel. Collapsed single-unit
-// view shows only the unit cameo and HP tile; cargo is an explicit expansion.
+// Pure layout rules for the bottom-left unit panel. Expanded single-unit
+// view includes cargo; folding the panel hides passengers with the rest of it.
 namespace unitpanelhost::panelmetrics {
 inline constexpr int CellW=60,CellH=48,PassengerCameoW=44,PassengerCameoH=36;
 inline constexpr int CargoPerPage=7,GroupPerPage=9;
