@@ -17,6 +17,9 @@ enum class Result : uint8_t {
 // the guarded wrapper passes captured ECX to abort(), which arms the same
 // target-only skip. The branch's CMP flags are discarded by POPFD; MOV itself
 // preserves flags and all original GPRs remain owned by the existing callback.
+// When skipped, resume at the original next instruction 0x577DB6. Do not read,
+// mirror, store, or otherwise manage Cell or House+0x240 Visionary state: the
+// untouched native Map::Reveal body owns all downstream map/vision side effects.
 // The actual naked trampoline and Win32 SEH wiring are not implemented here.
 struct Scope {
  uint32_t epoch=0,house=0,houseID=0;
