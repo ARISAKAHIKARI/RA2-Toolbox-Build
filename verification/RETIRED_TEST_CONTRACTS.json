@@ -1,6 +1,6 @@
 {
   "version": "0.7.17",
-  "reason": "Architecture intentionally removes all feature detours; these historical tests require them. They are not claimed as passed for this release.",
+  "reason": "The current architecture retires legacy ordinary input/CS/click and frame-provider detours. Explicitly opted-in judgment, rendering, sidebar, camera and transport patches remain manager-owned. These historical tests encode removed paths or old protocol topology and are not current contracts.",
   "replacement": [
     "no_interception_source_contract.py",
     "no_interception_runtime.py",
