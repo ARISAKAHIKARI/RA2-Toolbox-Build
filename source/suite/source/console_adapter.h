@@ -205,7 +205,7 @@ class Host {
    // A combo's native rectangle can include its dropdown height; use the
    // aligned row origin, not the centre of that tall rectangle, for labels.
    for(const auto& label:controls)if((label.control.type=="label"||label.control.type=="button"||label.control.type=="toggle")&&!label.control.text.empty()&&label.rect.right<=item.rect.left+6){long dy=std::abs(label.rect.top-item.rect.top);if(dy>24)continue;long candidate=dy*1000+item.rect.left-label.rect.right;if(candidate<score){score=candidate;best=&label;}}
-   if(best){c.label=best->control.text;if(best->control.type=="label")usedLabels.push_back(best->control.id);}else if(c.label.empty())c.label="设置 "+std::to_string(GetDlgCtrlID(item.window));
+   if(best){c.label=best->control.text;if(best->control.type=="label")usedLabels.push_back(best->control.id);}else if(c.type=="hotkey")c.label="快捷键";else if(c.type=="choice")c.label="选项";else if(c.type=="number"||c.type=="range")c.label="数值";else if(c.type=="text")c.label="输入内容";else if(c.label.empty())c.label="设置";
   }
   consolemodel::Snapshot snapshot;snapshot.module=p.module;snapshot.page=nav.page;snapshot.status=std::move(status);snapshot.title=p.module==0?"视频":p.module==1?"监控视图":nav.category==1?"控制":nav.category==2?"自动功能":nav.category==3?"游戏规则":nav.category==4?"实验性功能":nav.category==5?"调试":"设置";
   for(auto& item:controls){auto& c=item.control;
