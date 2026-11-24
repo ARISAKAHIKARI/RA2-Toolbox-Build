@@ -36,6 +36,10 @@ inline bool abort(Scope&scope,uint32_t currentHouse){
  scope.skipStore=true;scope.faulted=true;return true;
 }
 
+inline bool consumeSkip(Scope&scope){
+ const bool skip=scope.skipStore;scope.skipStore=false;return skip;
+}
+
 inline void end(Scope&scope){
  scope.active=false;scope.skipStore=false;
  scope.epoch=scope.house=scope.houseID=0;
