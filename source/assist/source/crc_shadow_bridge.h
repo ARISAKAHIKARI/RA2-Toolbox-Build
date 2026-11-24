@@ -52,7 +52,7 @@ extern "C" unsigned __cdecl AssistMapCrcRevealStore(unsigned house,unsigned save
  const auto decision=crcshadowsingle::beforeStore(crcMapSingleScope,id.epoch,id.pointer,id.id);
  if(decision==crcshadowsingle::Result::SuppressStore){
   crcMapSkipStore=1;++crcMapSuppressed;
- }else if(decision==crcshadowsingle::Result::IdentityChanged)crcMapFault();
+ }else if(decision==crcshadowsingle::Result::IdentityChanged)crcMapFault(false);
  return savedEBX;
 }
 extern "C" void __cdecl AssistMapCrcRevealAbort(unsigned house){
@@ -92,9 +92,8 @@ static void crcMapPrepare(){
  memcpy(crcMapSite.patch+1,&rel,4);
 }
 static bool restoreCrcMapShadow(){
- crcMapPrepare();crcMapActive=false;
  if(crcMapSingleScope.active){crcMapState=-2;crcMapPublish();return false;}
- crcMapSkipStore=0;
+ crcMapActive=false;crcMapPrepare();crcMapSkipStore=0;
  const auto&s=crcMapSite.spec;
  if(codeHookRegistry.conflict(s.address)){crcMapState=-2;crcMapPublish();return false;}
  if(codeHookRegistry.active(s.address)&&
@@ -105,10 +104,12 @@ static bool restoreCrcMapShadow(){
  crcMapInstalled=false;crcMapResetWorld();crcMapState=0;crcMapPublish();return true;
 }
 static void crcMapShadowTick(){
- crcMapPrepare();
  if(crcMapFaulted&&!crcMapInstalled&&crcMapUnsafeEpoch!=match){crcMapFaulted=false;crcMapUnsafeEpoch=0;}
  const bool requested=sh&&sh->crcMapShadow&&!sh->stop&&!fault;
- if(!requested){restoreCrcMapShadow();return;}
+ if(!requested){
+  if(crcMapInstalled||crcMapActive||crcMapState!=0||crcMapSingleScope.active)restoreCrcMapShadow();
+  return;
+ }
  if(crcMapFaulted||crcMapUnsafeEpoch==match){
   if(!restoreCrcMapShadow())return;
   crcMapState=-4;crcMapPublish();return;
@@ -126,8 +127,8 @@ static void crcMapShadowTick(){
   crcMapFaulted=false;crcMapUnsafeEpoch=0;
  }
  if(!crcMapInstalled){
-  if(!match||!lastHouse||snap.status!=1||!get<bool>(0xA8E9A0)){crcMapState=2;crcMapPublish();return;}
-  const auto&s=crcMapSite.spec;uint8_t actual[7]{};
+  if(!match||!lastHouse||snap.status!=1||!get<bool>(0xA8E9A0)){if(crcMapState!=2){crcMapState=2;crcMapPublish();}return;}
+  crcMapPrepare();const auto&s=crcMapSite.spec;uint8_t actual[7]{};
   if(codeHookRegistry.active(s.address)||codeHookRegistry.conflict(s.address)||
      !read(s.address,actual,s.size)||!hookregistry::admissibleOriginal(s.address,actual,s.size)){
    crcMapState=-2;crcMapPublish();return;
@@ -145,7 +146,7 @@ static void crcMapShadowTick(){
    crcMapState=-2;crcMapPublish();return;
   }
  }
- crcMapActive=true;crcMapState=1;crcMapPublish();
+ if(!crcMapActive||crcMapState!=1){crcMapActive=true;crcMapState=1;crcMapPublish();}
 }
 static bool crcMapToolBegin(uint32_t house){
  if(!sh||!sh->crcMapShadow)return !crcMapSingleScope.active&&!crcMapSkipStore;
