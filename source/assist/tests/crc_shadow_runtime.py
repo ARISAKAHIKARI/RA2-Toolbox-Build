@@ -78,8 +78,11 @@ def setup(mode=3):
  m.w(0x87f7e8+316,m.alloc(8));m.w(0x87f7e8+320,512*512)
  # Confirm the production trampoline returns to the exact original continuation.
  # The suffix is deliberately not emulated: it remains entirely native in-game.
+ m.crcContinuationHits=0
  def continuation(uc,at,size,_):
-  if at==0x577db6:uc.reg_write(UC_X86_REG_EIP,0x577f1e)
+  if at==0x577db6:
+   m.crcContinuationHits+=1
+   uc.reg_write(UC_X86_REG_EIP,0x577f1e)
  m.u.hook_add(UC_HOOK_CODE,continuation,begin=0x577db6,end=0x577db6)
  return m
 
@@ -121,9 +124,11 @@ check('default_off',default_off)
 
 def tool_reveal_and_restore():
  m=setup();s=enable(m);assert s.crcMapShadowStatus==1,s.crcMapShadowStatus;installed(m)
- reveal(m)
+ s=reveal(m)
  assert m.u.mem_read(m.house+0x241,1)[0]==0
  assert m.u.mem_read(m.enemy+0x241,1)[0]==0
+ assert m.crcContinuationHits==1
+ assert s.crcMapShadowTracked==1 and s.crcMapShadowSubstitutions==1
  s=enable(m,False);assert s.crcMapShadowStatus==0;restored(m)
  assert m.u.mem_read(m.house+0x241,1)[0]==0
  native_reveal(m);assert m.u.mem_read(m.house+0x241,1)[0]==1
@@ -135,15 +140,19 @@ def native_reveal_while_hook_active():
  m=setup();assert enable(m).crcMapShadowStatus==1;installed(m)
  native_reveal(m)
  assert m.u.mem_read(m.house+0x241,1)[0]==1
+ assert m.crcContinuationHits==1
+ assert state(m).crcMapShadowSubstitutions==0
  installed(m)
- return {'unscoped_native_write_unchanged':True}
+ return {'unscoped_native_write_unchanged':True,'native_continuation_reached':True}
 check('native_reveal_while_hook_active',native_reveal_while_hook_active)
 
 
 def actual_native_crc():
  m=setup();assert enable(m).crcMapShadowStatus==1;compute=crc_world(m);baseline=compute()
  reveal(m);assert m.u.mem_read(m.house+0x241,1)[0]==0;assert compute()==baseline
+ assert m.crcContinuationHits==1
  native_reveal(m);assert m.u.mem_read(m.house+0x241,1)[0]==1;native=compute()
+ assert m.crcContinuationHits==2
  assert native!=baseline
  m.w(m.unit+0x9c,34570);moved=compute();assert moved!=native
  m.rng_variant=1;random_changed=compute();assert random_changed!=moved
