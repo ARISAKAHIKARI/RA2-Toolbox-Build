@@ -30,7 +30,7 @@ int main(){
  auto weapon=[&](uint32_t w,int damage,uint32_t warhead){m.put<int>(w+0x9c,1);m.put(w+0xa0,projectile);m.put<int>(w+0xa4,damage);m.put(w+0xac,warhead);m.put<int>(w+0xb4,2560);};
  m.put<uint8_t>(projectile+0x2a5,1);m.put<double>(wh+0xa0,1);m.put<double>(wh2+0xa0,1);
  weapon(primary,40,wh);weapon(secondary,90,wh2);weapon(elite,70,wh);weapon(stage,130,wh);weapon(ifv,110,wh);m.put(sourceType+0x898,primary);m.vec(0xa8ec78,0x110000,all);
- cooperative::Request r{};r.serial=r.match=1;r.mode=cooperative::AirDamage;r.target=100;r.type=targetType;r.count=1;r.viewWidth=r.viewHeight=1;r.cameraX=r.cameraY=center;r.centerObject=clicked;r.sources[0]={1,7};
+ cooperative::Request r{};r.serial=r.match=1;r.pointerRequest=1;r.mode=cooperative::AirDamage;r.target=100;r.type=targetType;r.count=1;r.viewWidth=r.viewHeight=1;r.cameraX=r.cameraY=center;r.centerObject=clicked;r.sources[0]={1,7};
  auto input=[&](){return external::cooperativeInput(read,r,[](uint32_t){return cooperative::Quota{};});};
  auto w=input();std::set<uint32_t> candidates;for(auto&t:w.targets)candidates.insert(t.id);assert(candidates==std::set<uint32_t>({100,101,110,111,112,113}));
  auto orders=cooperative::allocate(w);assert(orders.size()==1&&orders[0].target==100&&orders[0].expectedDamage==40);
