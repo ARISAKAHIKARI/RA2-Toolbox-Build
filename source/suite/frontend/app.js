@@ -57,7 +57,7 @@
       const d=control.debug, status=debugStatus(control,receivedAt,now,current);
       if (group && (control.group || '未分组')!==group) return false;
       if (state==='unchecked' ? control.checked : state==='attention' ? !(status.state==='blocked' || status.hook==='conflict' || status.stale) : state && status.state!==state) return false;
-      return !query || [control.label,control.group,debugAddress(d.address),String(d.address),d.kind,d.purpose,d.features,d.detail,status.label,status.hookLabel].join(' ').toLocaleLowerCase().includes(query);
+      return !query || fuzzyMatch(query,[control.label,control.group,debugAddress(d.address),String(d.address),d.kind,d.purpose,d.features,d.detail,status.label,status.hookLabel]);
     });
   }
   function canonical(control) {
@@ -226,6 +226,19 @@
   function encodeHotkey(event, previous = 0) { if (composingKey(event) || event.metaKey) return null; const vk = virtualKey(event); if (!vk || vk > 255) return null; let mods = (event.shiftKey ? 0x100 : 0) | (event.ctrlKey ? 0x200 : 0) | (event.altKey ? 0x400 : 0); if (vk === 16) mods &= ~0x100; if (vk === 17) mods &= ~0x200; if (vk === 18) mods &= ~0x400; return (previous & 0xb000) | mods | vk; }
   function keyName(value) { const vk = value & 255; if (!vk) return '未绑定'; const names = { 1:'鼠标左键',2:'鼠标右键',4:'鼠标中键',5:'鼠标侧键 1',6:'鼠标侧键 2',8:'Backspace',9:'Tab',13:'Enter',16:'Shift',17:'Ctrl',18:'Alt',19:'Pause',20:'Caps Lock',27:'Esc',32:'Space',33:'Page Up',34:'Page Down',35:'End',36:'Home',37:'←',38:'↑',39:'→',40:'↓',45:'Insert',46:'Delete',106:'Num *',107:'Num +',108:'Num 分隔',109:'Num -',110:'Num .',111:'Num /',144:'Num Lock',145:'Scroll Lock',186:';',187:'=',188:',',189:'-',190:'.',191:'/',192:'`',219:'[',220:'\\',221:']',222:"'" }; const prefix = []; if ((value & 0x200) && vk !== 17) prefix.push('Ctrl'); if ((value & 0x100) && vk !== 16) prefix.push('Shift'); if ((value & 0x400) && vk !== 18) prefix.push('Alt'); const name = names[vk] || (vk >= 112 && vk <= 135 ? `F${vk - 111}` : vk >= 96 && vk <= 105 ? `Num ${vk - 96}` : (vk>=48 && vk<=57 || vk>=65 && vk<=90) ? String.fromCharCode(vk) : `VK ${vk}`); return [...prefix, name].join(' + '); }
   const debugToolControls = controls => controls.filter(control => control.visible && !control.debug?.present);
+  // Case/width-insensitive, unordered keywords and in-order partial characters.
+  function fuzzyMatch(query,fields) {
+    const normalize=value=>String(value??'').normalize('NFKC').toLocaleLowerCase();
+    const tokens=normalize(query).trim().split(/\s+/).filter(Boolean);
+    const haystacks=fields.map(normalize);
+    return tokens.every(token=>haystacks.some(text=>{
+      if(text.includes(token))return true;
+      if(token.length<2)return false;
+      let position=0;
+      for(const ch of text){if(ch===token[position]&&++position===token.length)return true;}
+      return false;
+    }));
+  }
   function groupControls(controls, query = '') {
     const groups=new Map(),needle=query.trim().toLocaleLowerCase();let heading='常用设置';
     for(const control of controls) {
@@ -239,7 +252,7 @@
       const matches=[];
       for(const block of featureBlocks(items)){
         const matchingLines=settingLines(block.controls).filter(line=>line.some(control=>
-          [control.label,control.text,control.hint,name,control.section,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle)
+          fuzzyMatch(needle,[control.label,control.text,control.hint,name,control.section,...control.options,...control.optionDescriptions])
         ));
         if(!matchingLines.length)continue;
         // Named features can contain controls that depend on each other.
@@ -355,7 +368,7 @@
     }
     return {number:'数值',range:'数值',text:'内容'}[control.type] || '';
   }
-  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, featureBlocks, hasFeatureConfig, layoutGroups, displayPageControls, targetFor, restoredIndex, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
+  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, fuzzyMatch, groupControls, settingLines, featureBlocks, hasFeatureConfig, layoutGroups, displayPageControls, targetFor, restoredIndex, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
   if (typeof document === 'undefined') return;
 
   const $ = id => document.getElementById(id);
