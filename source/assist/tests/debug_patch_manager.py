@@ -14,13 +14,16 @@ constexpr BOOL FALSE=0;constexpr DWORD WAIT_OBJECT_0=0,WAIT_TIMEOUT=258,SYNCHRON
 constexpr DWORD MEM_COMMIT=0x1000,MEM_IMAGE=0x1000000,PAGE_GUARD=0x100,PAGE_NOACCESS=1,PAGE_READONLY=2,PAGE_READWRITE=4,PAGE_WRITECOPY=8,PAGE_EXECUTE=0x10,PAGE_EXECUTE_READ=0x20,PAGE_EXECUTE_READWRITE=0x40,PAGE_EXECUTE_WRITECOPY=0x80;
 constexpr DWORD GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS=4,GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT=2,GET_MODULE_HANDLE_EX_FLAG_PIN=1;
 struct MEMORY_BASIC_INFORMATION{void*BaseAddress;void*AllocationBase;size_t RegionSize;DWORD State,Protect,Type;};
-inline unsigned fixtureReads=0,fixtureQueries=0;inline uint32_t fixtureUnreadable=0;inline bool fixtureFlush=true,fixtureProtect=true;
+inline unsigned fixtureReads=0,fixtureQueries=0,fixtureProtectCalls=0,fixtureFlushCalls=0;
+inline uint32_t fixtureUnreadable=0;inline bool fixtureFlush=true,fixtureProtect=true,fixturePointerExecutable=false;
+inline DWORD fixtureProtectionRequests[16]{};
+inline bool fixturePointerAddress(uintptr_t at){return at==0x7F74D8||at==0x7F74C8||at==0x7F7B60;}
 inline DWORD GetCurrentThreadId(){return 77;}inline HANDLE GetCurrentProcess(){return (void*)-1;}
 inline HMODULE GetModuleHandleW(LPCWSTR){return (void*)0x400000;}inline BOOL GetModuleHandleExW(DWORD,LPCWSTR,HMODULE*out){*out=(void*)0x10000000;return 1;}
-inline size_t VirtualQuery(const void*p,MEMORY_BASIC_INFORMATION*out,size_t){++fixtureQueries;uintptr_t at=(uintptr_t)p;uintptr_t base=at>=0x400000&&at<0xC00000?0x400000:at>=0x10000000&&at<0x10010000?0x10000000:0;if(!base)return 0;*out={(void*)base,(void*)base,base==0x400000?0x800000u:0x10000u,MEM_COMMIT,PAGE_EXECUTE_READWRITE,MEM_IMAGE};return sizeof *out;}
+inline size_t VirtualQuery(const void*p,MEMORY_BASIC_INFORMATION*out,size_t){++fixtureQueries;uintptr_t at=(uintptr_t)p;uintptr_t base=at>=0x400000&&at<0xC00000?0x400000:at>=0x10000000&&at<0x10010000?0x10000000:0;if(!base)return 0;DWORD protection=fixturePointerAddress(at)&&!fixturePointerExecutable?PAGE_READONLY:PAGE_EXECUTE_READWRITE;*out={(void*)base,(void*)base,base==0x400000?0x800000u:0x10000u,MEM_COMMIT,protection,MEM_IMAGE};return sizeof *out;}
 inline BOOL ReadProcessMemory(HANDLE,const void*p,void*out,size_t n,size_t*got){++fixtureReads;MEMORY_BASIC_INFORMATION info{};uintptr_t at=(uintptr_t)p;if(!VirtualQuery(p,&info,sizeof info)||at+n>(uintptr_t)info.BaseAddress+info.RegionSize||(fixtureUnreadable&&at<=fixtureUnreadable&&fixtureUnreadable<at+n)){*got=0;return 0;}memcpy(out,p,n);*got=n;return 1;}
-inline BOOL VirtualProtect(void*,size_t,DWORD,DWORD*prior){*prior=PAGE_EXECUTE_READWRITE;return fixtureProtect;}
-inline BOOL FlushInstructionCache(HANDLE,void*,size_t){return fixtureFlush;}
+inline BOOL VirtualProtect(void*p,size_t,DWORD requested,DWORD*prior){if(fixtureProtectCalls<16)fixtureProtectionRequests[fixtureProtectCalls]=requested;++fixtureProtectCalls;*prior=fixturePointerAddress((uintptr_t)p)?PAGE_READONLY:PAGE_EXECUTE_READWRITE;return fixtureProtect;}
+inline BOOL FlushInstructionCache(HANDLE,void*,size_t){++fixtureFlushCalls;return fixtureFlush;}
 inline HANDLE OpenThread(DWORD,BOOL,DWORD){return (void*)1;}inline DWORD WaitForSingleObject(HANDLE,DWORD){return WAIT_TIMEOUT;}inline BOOL CloseHandle(HANDLE){return 1;}
 inline LONG InterlockedCompareExchange(volatile LONG*p,LONG x,LONG cmp){LONG old=*p;if(old==cmp)*p=x;return old;}inline LONG InterlockedExchange(volatile LONG*p,LONG x){LONG old=*p;*p=x;return old;}inline LONG InterlockedIncrement(volatile LONG*p){return ++*p;}
 '''
