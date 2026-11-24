@@ -24,7 +24,8 @@ inc=out/'production-routes.inc';inc.write_text(generated,encoding='utf-8')
 assert 'if(c==DestructPlayer)return false;' in block(main,'static bool queueCommand(')
 assert 'destructownerhost::exclusive(hotkeyRegistry,extra.destructSelectedOwnerKey)' in block(main,'static void registerKeys()')
 assert 'bool destructSelectedOwner=false;uint32_t destructSelectedOwnerKey=0;' in texts['additional_settings.h']
-assert '精确原生战斗查询仍不标高危' not in texts['tactical_controls.h']
+assert '高危：精确原生战斗查询' not in texts['tactical_controls.h']
+assert '精确原生战斗查询（实验）' in texts['tactical_controls.h']
 assert '高危：工具揭示 CRC 单点保护' in texts['tactical_controls.h']
 assert 'send(DestructPlayer,int(selected.pointer)' not in main
 results={}
