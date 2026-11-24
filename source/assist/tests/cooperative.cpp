@@ -82,6 +82,31 @@ int main(){auto w=make(7,3);auto a=allocate(w);auto n=counts(a);assert(a.size()=
  assert(resolveMouseMatches(keys,2,buttons,independent,0,true,matched)==1&&matched[0].operation==AttackMove);
  keys['G']=0;independent.enabled=bindingOptions(0,0);
  assert(resolveMouse(keys,2,buttons,independent,0).operation==AttackMove);
+ // Same sampled state, no synthesized mouse click: keyboard-only, double
+ // press, combined double-hold, both unbound, and independent sell chords.
+ for(auto&v:buttons)v=0;
+ uint32_t edges[256]{};KeyOnlyEdges edgeRoute;
+ independent.enabled=bindingOptions(0,'G');
+ assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,1,matched));
+ keys['G']=1;edges['G']=1;
+ assert(edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,1,matched)==1&&matched[0].operation==AttackMove);
+ assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,1,matched));
+ keys['G']=0;edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,1,matched);
+ independent.enabled=bindingOptions(0,'G'|keygesture::Double);
+ assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,2,matched));
+ keys['G']=1;edges['G']=2;assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,2,matched));
+ keys['G']=0;edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,2,matched);
+ keys['G']=3;edges['G']=3;assert(edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,2,matched)==1);
+ buttons[MouseAttack]=2;assert(resolveMouse(keys,2,buttons,independent,0).operation==AttackMove);
+ keys['G']=1;assert(!resolveMouse(keys,2,buttons,independent,0).operation);
+ keys['G']=0;buttons[MouseAttack]=0;independent.enabled=0;
+ assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,3,matched));
+ independent.enabled=512|IndependentSellKeys;independent.sell=packedSellKeys('G','H');
+ buttons[MouseSellDrained]=buttons[MouseSellVehicle]=2;keys['G']=1;
+ assert((resolveMouse(keys,2,buttons,independent,SellDrainedInput|SellVehicleInput).bindings&(SellDrainedInput|SellVehicleInput))==SellDrainedInput);
+ keys['G']=0;keys['H']=1;
+ assert((resolveMouse(keys,2,buttons,independent,SellDrainedInput|SellVehicleInput).bindings&(SellDrainedInput|SellVehicleInput))==SellVehicleInput);
+ keys['H']=0;
  }
  std::cout<<"PASS: both aircraft priorities, per-target caps/unlimited, AA/AG scarcity, garrison size best-fit, malformed request/viewport guards and defaults\n";
 }
