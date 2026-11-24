@@ -133,7 +133,7 @@ static void formationCommit(bool remember=true,bool feedback=true){
   // Only a newly dragged layout asks for a common final heading. Continuation
   // translates the saved slots directly, without another facing detour.
   if(remember&&formationDirected&&formationCell(cx,cy))approach=cy*1000+cx;
-  auto&j=formationJobs[formationJobCount++];j={};j.unit=u;j.goal=goal;j.quick=formationQuick;j.approach=approach;j.epoch=match;j.frame=get<int>(0xA8ED84);++sh->formationAccepted;
+  auto&j=formationJobs[formationJobCount++];j={};j.unit=u;j.goal=goal;j.quick=formationQuick;j.approach=approach;j.epoch=match;j.frame=get<int>(0xA8ED84);j.issued=sampleClock(sh);++sh->formationAccepted;
   if(remember){int at=formationMemory.count++;formationMemory.units[at]=u;formationMemory.offsets[at]=goal;formationMemory.offsets[at].x-=formationView.ax;formationMemory.offsets[at].y-=formationView.ay;}
  }
  if(remember&&!formationSameSelection())formationForget();
@@ -288,12 +288,12 @@ static void formationTick(uint32_t house,int frame,DWORD now,bool indexedWorkRea
  if(formationFollow.down&&!formationFollow.dragged&&int32_t(sh->formationConsumedUntil-now)>0)sh->formationConsumedUntil=inputownership::afterGesture(now);
  formationContinue(now);
  int visited=0;while(formationJobCount&&visited++<32){if(formationJobCursor>=formationJobCount)formationJobCursor=0;int at=formationJobCursor++;auto&j=formationJobs[at];uint32_t p=worldByID(j.unit.id);
-  bool remove=j.epoch!=match||p!=j.unit.pointer||!formationActor(p,j.quick)||manualVersions.get(j.unit.id)!=j.unit.token||frame<j.frame||frame-j.frame>1800;
+  bool remove=j.epoch!=match||p!=j.unit.pointer||!formationActor(p,j.quick)||manualVersions.get(j.unit.id)!=j.unit.token||formation::taskExpired(frame,j.frame,now,j.issued);
   uint32_t cell=j.stage<2&&j.approach?j.approach:uint32_t(j.goal.y/256*1000+j.goal.x/256);int gx=int(cell%1000)*256+128,gy=int(cell/1000)*256+128;
   if(!remove){double dx=double(get<int>(p+0x9C))-gx,dy=double(get<int>(p+0xA0))-gy;bool arrived=dx*dx+dy*dy<=96.*96.;
    if(j.stage==1||j.stage==3){bool going=get<int>(p+0xAC)==2&&get<uint32_t>(p+0x5A4)==readMapCell(cell%1000,cell/1000);j.observed|=going;
-    if(arrived){if(j.stage==1&&j.approach){j.stage=2;j.observed=false;}else remove=true;}
-    else if((j.observed&&!going)||DWORD(now-j.issued)>15000)remove=true;
+    if(arrived){if(j.stage==1&&j.approach){j.stage=2;j.observed=false;j.issued=now;}else remove=true;}
+    else if(j.observed&&!going)remove=true;
    }
    if(!remove&&(j.stage==0||j.stage==2)&&outgoingRoom()>0){uint32_t destination=j.stage==2?uint32_t(j.goal.y/256*1000+j.goal.x/256):cell;
     if(nativeMission(house,j.unit.id,2,0,destination,11,0,0,taskarbiter::Owner::Formation)){j.stage=j.stage==2?3:1;j.issued=now;if(formationFeedback){formationFeedback=false;inputFeedback(p,0,false);}}
