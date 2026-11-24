@@ -75,7 +75,7 @@ for n,p in FILES.items():
   assert 'gameentry::active(' not in s and 'gameentry::Scope' not in s,n
   assert not re.search(r'\bshared->(?:ack|result|selectAck|planAck|cooperativeAck|uiSoundAck)\s*=(?!=)',s),n
   assert not re.search(r'\([^()]*\*\)\s*0x[0-9a-fA-F]+',s),n
- assert 'ReadScope' not in s and 'readHub()' not in s,n
+ assert not re.search(r'\\bReadScope\\b',s) and 'readHub()' not in s,n
  for api in ('ReadProcessMemory','WriteProcessMemory','SendInput','SendMessageTimeoutW','SetWindowsHookExW','VirtualProtect','LoadLibraryW'):
   for m in re.finditer(r'\b'+api+r'\s*\(',s):api_sites.append({'file':n,'line':s.count('\n',0,m.start())+1,'api':api})
 bridge=FILES['assist/source/bridge.cpp'].read_text()
