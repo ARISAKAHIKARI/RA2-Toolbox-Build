@@ -1,0 +1,68 @@
+name: Ordinary input code-patch boundary
+on:
+  push:
+    branches: [work/latest-ra2-integration]
+    paths:
+      - 'source/assist/source/hook_policy.h'
+      - 'source/assist/source/native_input_hooks.h'
+      - 'source/assist/source/auto_cs_bridge.h'
+      - 'source/assist/source/cooperative_bridge.h'
+      - 'source/assist/source/pointer_bridge.h'
+      - 'source/assist/source/native_orders_bridge.h'
+      - 'source/assist/source/bridge.cpp'
+      - 'source/shared/source/host_game_input.h'
+      - 'source/shared/source/game_entry_manager.cpp'
+      - 'source/assist/tests/hook_policy.cpp'
+      - 'source/assist/tests/no_interception_source_contract.py'
+      - 'source/tools/audit_architecture.py'
+      - '.github/workflows/ordinary-input-patch-contract.yml'
+  pull_request:
+    paths:
+      - 'source/assist/source/hook_policy.h'
+      - 'source/assist/source/native_input_hooks.h'
+      - 'source/assist/source/auto_cs_bridge.h'
+      - 'source/assist/source/cooperative_bridge.h'
+      - 'source/assist/source/pointer_bridge.h'
+      - 'source/assist/source/native_orders_bridge.h'
+      - 'source/assist/source/bridge.cpp'
+      - 'source/shared/source/host_game_input.h'
+      - 'source/shared/source/game_entry_manager.cpp'
+      - 'source/assist/tests/hook_policy.cpp'
+      - 'source/assist/tests/no_interception_source_contract.py'
+      - 'source/tools/audit_architecture.py'
+      - '.github/workflows/ordinary-input-patch-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ordinary-input-patch-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify feature flags no longer request input patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/assist/tests/hook_policy.cpp -o /tmp/ra2-hook-policy
+          /tmp/ra2-hook-policy
+      - name: Verify ordinary input routes contain no executable patch path
+        run: python3 source/assist/tests/no_interception_source_contract.py
+      - name: Exercise the host message-hook and polling manager
+        run: python3 source/assist/tests/host_input_test.py
+      - name: Verify permitted opt-in patch ownership and source boundaries
+        run: python3 source/tools/audit_architecture.py
+      - name: Preserve architecture audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ordinary-input-patch-boundary-evidence
+          retention-days: 14
+          if-no-files-found: warn
+          path: source/ARCHITECTURE_AUDIT.json
