@@ -14,14 +14,14 @@ constexpr double MaximumExpectedDamage=1000000000.0;
 struct Source {uint32_t id,token;};
 // AirDamage freezes the clicked target's WORLD XY in cameraX/Y. Other modes
 // retain their original click-time screen projection and viewport bounds.
-struct Request {uint32_t serial,match,tick,target,type;int frame,mode,count,cameraX,cameraY,viewWidth,viewHeight;Source sources[MaxSources];uint32_t centerObject=0;uint32_t airRadiusCells=0,airDamagePercent=0; // frozen at click; zero decodes as legacy 5/120 for older tests
+struct Request {uint32_t serial,match,tick,target,type,pointerRequest;int mode,count,cameraX,cameraY,viewWidth,viewHeight;Source sources[MaxSources];uint32_t centerObject=0;uint32_t airRadiusCells=0,airDamagePercent=0; // frozen at click; zero decodes as legacy 5/120 for older tests
 };
 // One pointer mailbox is processed on the game thread and may need more than
 // one frame when some selected actors are temporarily unresolved. Its request
 // serial, not the simulation frame, defines the click-scoped source batch.
-inline bool sameInputRequest(const Request&r,uint32_t previousInput,uint32_t currentInput,
+inline bool sameInputRequest(const Request&r,uint32_t currentInput,
                              uint32_t match,uint32_t target,int mode,uint32_t radius,uint32_t percent){
- return currentInput&&previousInput==currentInput&&r.serial&&r.match==match&&
+ return currentInput&&r.pointerRequest==currentInput&&r.serial&&r.match==match&&
   r.target==target&&r.mode==mode&&
   (mode!=AirDamage||(r.airRadiusCells==radius&&r.airDamagePercent==percent));
 }
