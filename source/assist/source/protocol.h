@@ -29,7 +29,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=114; // wall-clock dodge leases and pointer-scoped cooperative requests; both components must match
+constexpr uint32_t Magic=0x41533130, Version=115; // optional attack-move hold gesture in pointer policy; both components must match
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
