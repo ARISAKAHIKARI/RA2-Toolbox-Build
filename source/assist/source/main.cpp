@@ -2279,7 +2279,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
   }
  }
  if(c==RevealMap&&r<0&&extra.mapStrategy==3){autoRevealMatch=0;autoRevealRetry=GetTickCount()+2000;}
- if(c==RevealMap&&r==-22){notify(L"全图 CRC 单点保护尚未就绪，本次未揭示；请查看实验功能状态。");return;}
+ if(c==RevealMap&&r==-22){notify(L"工具揭示 CRC 单点保护尚未就绪，本次未揭示；请查看实验功能状态。");return;}
  if(r==-10||r==-15){critical(L"command exception result="+std::to_wstring(r)+L" command="+std::to_wstring(c));logBridgeHealth(true);}
  if(r<0){const wchar_t*s=r==-10?L"游戏操作发生异常，已暂停发送指令；请重启游戏。详情见 logs/Runtime.log。":r==-15?L"无法确认本次装车条件，操作未执行；其他功能仍可用。详情见 logs/Runtime.log。":r==-3?L"当前没有可操作的对局。":r==-5?L"超级武器尚未就绪或当前不可用。":r==-6?L"指令未能提交，详细原因已记录到日志。":r==-7?L"指令已过期或对局已改变，本次未执行。":r==-8?L"请先关闭游戏聊天输入框。":r==-9?L"缺少可用的匹配工厂 / 供电，或已达建造上限。":r==-11?L"此游戏版本暂不支持科技生产，功能未启用。":r==-12?L"此游戏版本暂不支持该操作。":r==-22?L"喝彩或嘲讽尚在冷却，请稍后再试。":r==-23?L"本局已关闭嘲讽；快捷键不能更改其他玩家的接收设置。":r==-21?L"地图揭示未获允许或绘制方式冲突，本次未执行。":r==-20?L"当前版本不支持此操作。":r==-13?L"此操作仅支持单机。":r==-14?L"地图尚未完成初始化，稍后重试。":L"所选目标已失效，请刷新后重试。";if(r==-6)critical(L"command submission failed: "+submitDiagnostic());notify(s);return;}
  if(c==Repair)notify(n?L"已安排维修 "+std::to_wstring(n)+L" 座受损建筑。":L"没有需要维修的己方建筑。");
@@ -2508,7 +2508,7 @@ static void updateModeStatus(DWORD now){
   else if(cs==-5)crc+=L"仅支持联机的工具地图揭示";
   else if(cs==-6)crc+=L"暂不支持Ares/Phobos扩展";
   else if(cs<0)crc+=L"代码补丁冲突或原生入口不兼容";
-  else if(!fresh)crc+=extra.crcMapShadow?L"等待新对局及连接":L"关闭";
+  else if(!fresh)crc+=extra.crcMapShadow?L"等待联机对局及连接":L"关闭";
   else if(cs==1){crc+=extra.crcMapShadow?L"实验已启用":L"正在关闭";crc+=L" · Hook "+std::to_wstring(shared->crcMapShadowTracked)+L" 点 · 单点抑制 "+std::to_wstring(shared->crcMapShadowSubstitutions)+L" 次";}
   else crc+=extra.crcMapShadow?L"等待适配":L"关闭";
   SetWindowTextW(GetDlgItem(ui,9197),crc.c_str());
@@ -2933,7 +2933,7 @@ static void finalizeTacticalLayout(){
 #ifdef RA2_CONSOLE_WEBVIEW2
 static void prepareConsoleSettingsModel(){
  struct Group {int fold;const wchar_t*name;};
- static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9610,L"单位类型清单"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 单点保护"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻"}};
+ static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9610,L"单位类型清单"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"工具揭示 CRC 单点保护"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻"}};
  constexpr size_t count=sizeof(groups)/sizeof(groups[0]);int groupPages[count],groupRows[count];
  std::fill(std::begin(groupPages),std::end(groupPages),-999);std::fill(std::begin(groupRows),std::end(groupRows),-999);
  for(const auto&c:pageControls)for(size_t i=0;i<count;++i)if(GetDlgCtrlID(c.hwnd)==groups[i].fold){groupPages[i]=c.page;groupRows[i]=c.fullRect.y;}
