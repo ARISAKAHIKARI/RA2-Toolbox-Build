@@ -22,6 +22,7 @@
 
 - **NativeAirWaypoints** 是显式高危实验模式，不是普通控制默认路径。`AirType=0x7E2908` 是 vtable 函数指针槽（数据），`AirArrival=0x416AB6` 才是可执行代码分支补丁；只有用户明确选择 native network mode 1/2 才请求。该实验模式未被认证为稳定联机路径。
 - 已修正 `GameEntryManager::dataPointerSlot`：`AirType` 现在使用 `PAGE_READWRITE`，不再把 vtable 数据页临时标成 `PAGE_EXECUTE_READWRITE`。Tooltip 的 `0x7F74D8` / `0x7F74C8` 和 NativeViewport 指针槽也按数据指针处理。
+- **Tech UI 硬件断点管理器** `assist/source/tech_ui_breakpoint_core.h` 使用独立 VEH 处理器，只有显式申请/配置硬件断点租约时才注册，并在 `retire()` 中移除；它操作线程 DR 寄存器，不修改游戏代码段。`game_runtime/source/runtime.cpp` 的异常观察器是另一条独立的只观察链路。架构审计已把这两个有明确边界的 VEH 注册点列入允许名单。
 - C4Execution/C4Movement（`0x51A4D8`、`0x51C32B`）仍在历史/许可清单中，但当前 `riskC4Active=false` 且 op4 返回 0，不安装这两处补丁。
 
 ## 原则
