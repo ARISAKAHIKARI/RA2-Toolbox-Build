@@ -56,6 +56,8 @@ static Result patchDenied(uint32_t at,debugentries::Reason reason=debugentries::
 // grant an executable page RWX just to update a tooltip or viewport pointer.
 static bool dataPointerSlot(uint32_t address){
  if(assist::hookregistry::tooltipSlot(address))return true;
+ // Native AirType is a vtable function-pointer slot, not executable code.
+ if(address==experimentalpatch::AirType)return true;
  const auto*site=nativeviewportpolicy::find(address);
  return site&&site->kind==nativeviewportpolicy::Kind::Pointer;
 }
