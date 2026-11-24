@@ -151,12 +151,11 @@
     "This is static disassembly of the exact SHA-256-matched executable, not a live game run.",
     "The compiled x86 trampoline probe verifies COFF code generation and relocation shape only; it is not the production Runtime DLL and does not validate Windows SEH or live execution.",
     "No Windows loader, live game, RA2OL/CnCNet peer, or multiplayer determinism test was performed.",
-    "The single-store candidate remains research-only; production still uses the existing eight-site implementation.",
     "The default singleton vtable at 0x7EED60 resolves the Map::Reveal indirect call at 0x577DF4 to 0x5C0E30 (xor al,al; ret); runtime object replacement or third-party vtable substitution is not ruled out.",
     "The exact direct callee bodies were scanned for direct field/CRC references, but Techno virtual calls, secondary indirect callbacks and the full transitive call graph are not exhausted.",
     "The compiled x86 trampoline probe verifies COFF code generation and relocation shape only; it is not the production Runtime DLL and does not validate Windows SEH or live execution.",
     "No Windows loader, live game, RA2OL/CnCNet peer, or multiplayer determinism test was performed.",
-    "The single-store candidate remains research-only; production still uses the existing eight-site implementation."
+    "The one-site CRC implementation is integrated into the current source branch but remains default-off and is not yet accepted by a real game session or two-peer multiplayer test. Do not publish until the Win32 build, full native Reveal continuation, identity/fault cases, and peer CRC comparison pass."
   ],
   "reader_classification": [
     {
@@ -280,7 +279,7 @@
       "resume at original continuation 0x577DB6",
       "one guarded-callback relocation and two references to the same skip flag"
     ],
-    "result": "PASS locally; CI workflow updated to run this code-generation contract",
-    "limitation": "Research-only prototype. It does not implement production SEH wiring, link the actual Runtime DLL, execute the trampoline, or run the full native Map::Reveal body."
+    "result": "PASS locally; Ubuntu CRC CI compiles and inspects the mirrored x86 COFF sequence; static source contract verifies the production trampoline uses the same branch/store/continuation sequence.",
+    "limitation": "The COFF probe mirrors production assembly and checks code generation/relocations only. The production GuardedMapCrcRevealStore and RuntimeScopedCall are now wired in source; the full Win32 paired build, Windows exception-path execution, complete native Map::Reveal, and multiplayer acceptance remain pending."
   }
 }
