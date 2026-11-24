@@ -43,7 +43,7 @@ assert "r.frame==frame" not in cooperative and "r.tick=now;r.sources" not in coo
 assert "if(sh->pointer.request!=sh->pointer.ack)return;" in cooperative
 assert "if(shared->pointer.request!=shared->pointer.ack)return;" in extra
 assert "if(sh->pointer.request!=sh->pointer.ack)return false;" in bridge
-assert "cooperativePointerRequest==b.request" in pointer_bridge and "memset(&sh->cooperativeRequest,0" in pointer_bridge
+assert "sh->cooperativeRequest.pointerRequest==b.request" in pointer_bridge and "memset(&sh->cooperativeRequest,0" in pointer_bridge
 assert "formation::taskExpired(frame,j.frame,now,j.issued,(j.stage==1||j.stage==3)?formation::IssuedTaskTimeoutMs:formation::PendingTaskTimeoutMs)" in formation
 assert "PendingTaskTimeoutMs=30000,IssuedTaskTimeoutMs=15000" in formation_policy
 assert "frame-j.frame>1800" not in formation
