@@ -164,6 +164,6 @@ static void crcMapToolEnd(bool completed){
 }
 static void crcMapShadowRewind(uint32_t nextEpoch){
  if(crcMapInstalled||crcMapActive||crcMapSingleScope.active){
-  crcMapFault();crcMapUnsafeEpoch=nextEpoch;
+  crcMapFault(false);crcMapUnsafeEpoch=nextEpoch;
  }
 }
