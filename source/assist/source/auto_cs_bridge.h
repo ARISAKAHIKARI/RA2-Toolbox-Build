@@ -13,4 +13,5 @@ static bool csAllowedFor(uint32_t p,bool held){
  uint32_t type=typeOf(p,kind(p));for(int i=0;i<snap.typeCount;++i)if(typePointers[i]==type)return csMask[i]&&rawArmed(p);
  return false;
 }
+// Legacy csHookStatus reports active CS policy, not an installed input hook.
 static void csHooksTick(uint32_t flags){snap.csHookStatus=(featuregate::flags(flags)&(AutoCS|CustomCS))?1:0;}
