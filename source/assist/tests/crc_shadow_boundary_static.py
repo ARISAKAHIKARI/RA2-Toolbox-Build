@@ -1,19 +1,24 @@
-"""Static evidence contract for CRC Shadow simplification research.
+"""Static evidence and production-source contract for CRC single-store suppression.
 
-This validates recorded source/disassembly relationships only. It does not prove
-the complete Reveal call graph, Windows SEH behavior, or multiplayer safety.
+This validates recorded PE evidence and the source wiring. It does not prove
+complete transitive call-graph coverage, Windows SEH behavior, or multiplayer safety.
 """
 from pathlib import Path
 import json
 
 ROOT = Path(__file__).resolve().parents[2]
 
+
 def read(path):
     return (ROOT / path).read_text(encoding="utf-8")
+
 
 bridge = read("assist/source/bridge.cpp")
 crc_bridge = read("assist/source/crc_shadow_bridge.h")
 crc_policy = read("assist/source/crc_shadow_policy.h")
+single_policy = read("assist/source/crc_shadow_single_store_policy.h")
+guard = read("assist/source/guard.cpp")
+main = read("assist/source/main.cpp")
 crc_evidence = json.loads(read("research/evidence/crc-shadow-research.json"))
 map_evidence = json.loads(read("research/evidence/trainer-map-cheatcheck.json"))
 binary = json.loads(read("research/evidence/crc-shadow-single-store-disassembly.json"))
@@ -24,12 +29,14 @@ end = bridge.index("else if(c==OpenTech)", start)
 branch = bridge[start:end]
 begin_at = branch.index("crcMapToolBegin(house)")
 reveal_at = branch.index("call<void>(0x577D90,0x87F7E8,(void*)house)")
-end_at = branch.index("crcMapToolEnd()")
-assert begin_at < reveal_at < end_at
+scope_end_at = branch.index("crcMapToolEnd(completed)")
+assert begin_at < reveal_at < scope_end_at
 assert branch.count("crcMapToolBegin(house)") == 1
 assert branch.count("call<void>(0x577D90,0x87F7E8,(void*)house)") == 1
-assert branch.count("crcMapToolEnd()") == 1
-assert bridge.count("call<void>(0x577D90,0x87F7E8,(void*)house)") == 1
+assert branch.count("crcMapToolEnd(completed)") == 1
+assert "runtimeunwind::run(" in branch
+assert "completed=true" in branch
+assert "static void crcMapToolEnd(bool)" in bridge
 
 # Existing linear scan: three direct read candidates, seven direct write sites,
 # with explicit unresolved alias/load/extension coverage gaps.
@@ -39,8 +46,7 @@ assert all("CRC" in site.upper() for site in scan["read_sites"])
 assert len(scan["write_sites"]) == 7
 assert scan["unknowns"]
 
-# Original SHA-matched PE disassembly confirms exactly one direct +0x241 store
-# inside Map::Reveal and no direct read/call to ComputeGameCRC after that store.
+# SHA-matched PE disassembly: one direct MapIsClear store inside Map::Reveal.
 assert binary["executable_sha256"] == crc_evidence["executable_sha256"]
 assert binary["function"]["entry"] == "0x577D90"
 assert binary["function"]["recorded_range"]["end_exclusive"] == "0x577F25"
@@ -78,31 +84,51 @@ hi = lo + int(reveal_range["length"])
 writers = [int(item.split(":", 1)[0], 16) for item in scan["write_sites"]]
 assert [address for address in writers if lo <= address < hi] == [0x577DB0]
 
-# Production remains the old eight-site implementation until all gates pass.
-assert "constexpr unsigned SiteCount=sizeof(Sites)/sizeof(Sites[0]);" in crc_policy
-assert "crcMapSites[crcshadow::SiteCount]" in crc_bridge
+# Production has one scoped Map::Reveal store hook, not the old eight-site mirror.
+assert '#include "crc_shadow_single_store_policy.h"' in crc_bridge
+assert "crcshadow::Sites[6]" in crc_bridge
+assert "crcMapRevealSingleEntry" in crc_bridge
+assert "GuardedMapCrcRevealStore" in crc_bridge
+assert "crcMapSkipStore" in crc_bridge
+assert "push 577DB6h" in crc_bridge
+assert "mov byte ptr [ecx+241h],bl" in crc_bridge
+assert "crcMapTargetIndex" in crc_bridge
+assert "crcMapModel" not in crc_bridge
+assert "crcMapSites[crcshadow::SiteCount]" not in crc_bridge
+assert "crcshadow::restoreData" not in crc_bridge
+assert crc_bridge.count("gameentry::patch(") == 2  # one install, one restore
+assert "crcMapShadowTracked=crcMapInstalled?1u:0u" in crc_bridge
+assert "crcMapShadowSubstitutions=crcMapSuppressed" in crc_bridge
+assert "crcMapToolEnd(bool completed)" in crc_bridge
+assert "crcshadowsingle::end(crcMapSingleScope)" in crc_bridge
+
+# The policy is the production implementation used by the compiled unit test.
+assert "inline Result begin(" in single_policy
+assert "inline Result beforeStore(" in single_policy
+assert "inline bool abort(" in single_policy
+assert "inline void end(" in single_policy
+assert "currentHouse!=scope.house" in single_policy
+assert "epoch!=scope.epoch||currentHouseID!=scope.houseID" in single_policy
+
+# Guarded callback uses the existing x86 SEH boundary; outer finally owns scope cleanup.
+assert "GuardedMapCrcRevealStore(unsigned house,unsigned savedEBX)" in guard
+assert "AssistMapCrcRevealStore(house,savedEBX)" in guard
+assert "AssistMapCrcRevealAbort(house)" in guard
+assert "RuntimeScopedCall(void* context" in guard
+assert "__finally {cleanup(context);}" in guard
+
+# CRC production path never reads or mirrors Cell/Visionary state.
+production_code = "\\n".join(line.split("//", 1)[0] for line in crc_bridge.splitlines())
+assert "0x240" not in production_code and "Visionary" not in production_code and "Cell" not in production_code
+
+# Preserve admission gates for the experimental multiplayer reveal path.
 assert "crcMapShadowTick();" in bridge
 assert "if(!(sh->flags&ExperimentalReveal)||sh->renderReveal||" in crc_bridge
 assert 'GetModuleHandleW(L"Ares.dll")||GetModuleHandleW(L"Phobos.dll")' in crc_bridge
 
-# Research-only candidate scopes suppression to the exact House identity.
-single = read("research/crc_shadow_single_store_candidate.h")
-assert "currentHouse!=scope.house" in single
-assert "epoch!=scope.epoch||currentHouseID!=scope.houseID" in single
-assert "currentHouse!=scope.house" in single[single.index("inline bool abort"):]
-assert "inline bool consumeSkip" in single
-assert "pushfd" in single and "popfd" in single
-assert "mov byte ptr [ecx+241h],bl" in single
-assert "resume at the original next instruction 0x577DB6" in single
-assert "Do not read," in single and "Visionary state" in single
-single_code = "\\n".join(line.split("//", 1)[0] for line in single.splitlines())
-assert "Cell" not in single_code and "Visionary" not in single_code and "0x240" not in single_code
-assert "actual naked trampoline and Win32 SEH wiring are not implemented" in single
+# The old candidate remains research-only; production uses the policy above.
+candidate = read("research/crc_shadow_single_store_candidate.h")
+assert "actual naked trampoline and Win32 SEH wiring are not implemented" in candidate
+assert "单点抑制" in main or "crcShadowSuppressed" in main
 
-# Keep the zero-patch post-call restoration candidate as a comparison only.
-transaction = read("research/crc_shadow_boundary_candidate.h")
-assert "runtimeunwind::run(" in transaction
-assert "Result::WriteFailed" in transaction and "Result::VerifyFailed" in transaction
-assert "Result::IdentityChanged" in transaction
-
-print("PASS: SHA-matched Map::Reveal single-store evidence; exact-House scoped candidate; current production remains unchanged")
+print("PASS: SHA-matched Map::Reveal evidence; one-site production trampoline; exact-House scope; SEH finally cleanup; no Cell/Visionary mirror")
