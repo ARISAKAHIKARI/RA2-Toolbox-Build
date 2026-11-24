@@ -1,5 +1,5 @@
-// Research-only x86 MSVC/clang-cl code-generation probe.
-// This is not included by production Runtime.
+// Standalone x86 code-generation mirror of production crcMapRevealSingleEntry.
+// crc_shadow_boundary_static.py checks that the production source keeps this sequence.
 extern "C" volatile unsigned char crcMapSkipStore;
 extern "C" unsigned __cdecl GuardedMapCrcRevealStore(unsigned house, unsigned savedEBX);
 
