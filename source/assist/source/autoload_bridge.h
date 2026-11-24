@@ -124,7 +124,10 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
   // A delayed observation can plan and reserve an assignment. The retry
   // service proves up-to-date shared seat capacity before emitting Enter.
   bool sent=!candidateOnly&&outgoingRoom()>0&&enterEvent(house,p.id,v.id,proof,&ticket);
-  Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;job.retryAfter=sent?frame+30:frame+8;job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.manualToken=tokens[i];job.ticket=ticket;job.queuedAt=sent?sampleClock(sh):0;loadLedger.add(job);
+  const DWORD submittedAt=sampleClock(sh);
+  Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;
+  job.lastSentAt=sent?submittedAt:0;job.progressAt=submittedAt;job.retryAfterAt=submittedAt+(sent?loading::RetryIntervalMs:loading::FirstRetryMs);
+  job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.manualToken=tokens[i];job.ticket=ticket;job.queuedAt=sent?submittedAt:0;loadLedger.add(job);
   if(sent)++snap.loadIssued;else ++snap.loadWaiting;
  }
  return snap.loadWaiting?2:1;
@@ -288,7 +291,7 @@ static void cancelLoadingJobs(uint32_t p){
  }
 }
 static void autoLoadTick(uint32_t house,int frame,bool candidateOnly=false){
- FaultPhase phase(runtimefault::LoadRetry);loadQueryFailed=false;
+ FaultPhase phase(runtimefault::LoadRetry);loadQueryFailed=false;const DWORD now=sampleClock(sh);
  static int processed[2]={-1,-1};static uint32_t processedMatch[2];
  const int lane=candidateOnly?1:0;
  if(frame==processed[lane]&&match==processedMatch[lane])return;
@@ -316,9 +319,9 @@ static void autoLoadTick(uint32_t house,int frame,bool candidateOnly=false){
    finishLoadingReservation(r,match,frame,boarded);loadLedger.erase(i);continue;
   }
   const uint32_t incoming=view.incoming;
-  if(view.x!=r.x||view.y!=r.y){r.x=view.x;r.y=view.y;r.progress=frame;}
-  bool due=r.lastSent<0||(frame-r.lastSent>=30&&(!incoming||frame-r.progress>=120));
-  if(due&&frame>=r.retryAfter&&budget>0&&outgoingRoom()>0&&loadingObject(r.object,house,r.kind)&&loadingObject(r.vehicle,house,2)){
+  if(view.x!=r.x||view.y!=r.y){r.x=view.x;r.y=view.y;r.progress=frame;r.progressAt=now;}
+  bool due=loading::retryDue(now,r.lastSent<0,r.lastSentAt,r.progressAt,r.retryAfterAt,incoming!=0);
+  if(due&&budget>0&&outgoingRoom()>0&&loadingObject(r.object,house,r.kind)&&loadingObject(r.vehicle,house,2)){
    if(candidateOnly){
     candidateProbed=true;
     if(!candidateLoadAdmission(r.object,r.vehicle,r.id,house,r.slots)){++i;break;}
@@ -332,10 +335,10 @@ static void autoLoadTick(uint32_t house,int frame,bool candidateOnly=false){
     if(enterEvent(house,r.id,r.vehicleID,proof,&ticket)){
      if(r.lastSent<0)++snap.loadIssued;
      finishLoadingReservation(r,match,frame,false);
-     r.ticket=ticket;r.queuedAt=sampleClock(sh);r.lastSent=frame;r.progress=frame;r.retryAfter=frame+30;r.attempts=0;--budget;
+     r.ticket=ticket;r.queuedAt=now;r.lastSent=frame;r.lastSentAt=now;r.progress=frame;r.progressAt=now;r.retryAfterAt=now+loading::RetryIntervalMs;r.attempts=0;--budget;
     }else{
      if(r.attempts<10)++r.attempts;
-     r.retryAfter=frame+6*r.attempts;
+     r.retryAfterAt=now+loading::RetryBackoffMs*uint32_t(r.attempts);
     }
    }
   }
