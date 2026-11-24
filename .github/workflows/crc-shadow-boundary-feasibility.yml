@@ -7,6 +7,9 @@ on:
       - 'source/assist/tests/crc_shadow_boundary_feasibility.cpp'
       - 'source/research/crc_shadow_single_store_candidate.h'
       - 'source/assist/tests/crc_shadow_single_store_feasibility.cpp'
+      - 'source/research/evidence/crc-shadow-single-store-disassembly.json'
+      - 'source/research/crc_shadow_single_store_candidate.h'
+      - 'source/assist/tests/crc_shadow_single_store_feasibility.cpp'
       - 'source/assist/tests/crc_shadow_boundary_static.py'
       - 'source/assist/source/bridge.cpp'
       - 'source/assist/source/crc_shadow_bridge.h'
@@ -29,7 +32,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: crc-shadow-boundary-\${{ github.ref }}
+  group: crc-shadow-boundary
   cancel-in-progress: true
 jobs:
   feasibility:
