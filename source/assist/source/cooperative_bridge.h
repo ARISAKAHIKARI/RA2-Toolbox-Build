@@ -394,6 +394,9 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
 }
 // Only the common game-thread capture epoch produces host cooperative input.
 static void captureCooperativeFrame(DWORD now,bool indexedWorkReady){
+ // Never publish a partial prefix while the physical pointer request is still
+ // being admitted/retried across simulation frames.
+ if(sh->pointer.request!=sh->pointer.ack)return;
  const auto&r=sh->cooperativeRequest;auto&out=sh->cooperativeInputFrame;
  const bool captured=out.frame>=0&&out.request.serial==r.serial&&out.match==r.match;
  if(!cooperative::valid(r)||r.match!=match||(!captured&&!freshness::intentAlive(r.tick,now))||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
