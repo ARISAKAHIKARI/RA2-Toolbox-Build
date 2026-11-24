@@ -449,3 +449,31 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 }
 
 .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+/* An action with a shortcut has the same title / right controls layout as
+   a switch feature. The action button is a control, not the feature title. */
+.settings-group .action-command-row > .setting-row:first-child {
+  flex: 1 1 260px;
+  min-width: 0;
+  justify-content: space-between;
+  padding-right: 0;
+}
+.settings-group .action-command-row > .setting-row:first-child .setting-copy {
+  flex: 1 1 auto;
+}
+.settings-group .action-command-row > .setting-row:first-child .setting-label {
+  font-size: var(--text-label);
+  font-weight: 600;
+  color: var(--text);
+}
+.settings-group .action-command-row > .setting-row:first-child.is-disabled .setting-label {
+  color: var(--disabled);
+}
+.settings-group .action-command-row > .setting-row:first-child .setting-editor {
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+.settings-group .action-command-row > .setting-row[data-type="hotkey"] {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
