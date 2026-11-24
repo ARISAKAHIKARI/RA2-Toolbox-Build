@@ -105,4 +105,14 @@ for relative in (
 experimental = read("shared/source/experimental_patch_policy.h")
 assert "Retired scheduling/input/CS/sidebar detours remain forbidden." in experimental
 
-print("PASS: ordinary input has no executable patch path; Win32 message hooks remain; explicit special patches stay manager-owned")
+# Data-pointer replacements are not code detours. The manager must keep their
+# pages non-executable while retaining RWX only for verified instruction sites.
+manager = read("shared/source/game_entry_manager.cpp")
+assert "static bool dataPointerSlot(uint32_t address)" in manager
+assert "assist::hookregistry::tooltipSlot(address)" in manager
+assert "site&&site->kind==nativeviewportpolicy::Kind::Pointer" in manager
+assert "pointerSlot?PAGE_READWRITE:PAGE_EXECUTE_READWRITE" in manager
+assert "pointerSlot||FlushInstructionCache(GetCurrentProcess(),site,r.length)" in manager
+assert "if(pointerSlot&&(info.Protect&executableProtection))" in manager
+
+print("PASS: ordinary input has no executable patch path; data-pointer slots use non-executable protection; explicit code patches stay manager-owned")
