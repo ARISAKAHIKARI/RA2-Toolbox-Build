@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile and inspect the research-only x86 single-store trampoline probe."""
+"""Compile and inspect the x86 single-store trampoline sequence mirrored by production."""
 from pathlib import Path
 import shutil
 import struct
@@ -73,7 +73,7 @@ def main() -> None:
     print("  - clears the one-shot flag and restores original EFLAGS")
     print("  - resumes at original Map::Reveal continuation 0x577DB6")
     print("  - callback and both one-shot-flag relocations are present")
-    print("  - research probe only; no production Runtime code is changed")
+    print("  - production source is separately checked against this sequence by crc_shadow_boundary_static.py")
 
 
 if __name__ == "__main__":
