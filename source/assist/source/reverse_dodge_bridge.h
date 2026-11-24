@@ -2,23 +2,23 @@
 #include "reverse_target_index.h"
 // Read-only projectile/terrain observation; movement goes through nativeMission.
 // Never call Scatter, SetDestination, or alter a projectile on this peer.
-struct ReverseShot {uint32_t id=0,pointer=0;int frame=0;bool handled=false;};
+struct ReverseShot {uint32_t id=0,pointer=0;int frame=0;bool handled=false;uint32_t tick=0;};
 static ReverseShot reverseShots[16384];static uint32_t reverseMatch=0;static bool reverseWasEnabled=false;
-static ReverseShot* reverseShotSlot(uint32_t p,uint32_t id,int frame){
+static ReverseShot* reverseShotSlot(uint32_t p,uint32_t id,uint32_t now){
  if(!id)return nullptr;
  unsigned slot=(id*2654435761u) & 16383u;
  for(unsigned n=0;n<16384;++n){auto&s=reverseShots[(slot+n)&16383u];
-  if((s.id==id&&s.pointer==p)||!s.id||frame-s.frame>900)return &s;
+  if((s.id==id&&s.pointer==p)||!s.id||reversedodge::shotExpired(now,s.tick))return &s;
  }return nullptr;
 }
-static ReverseShot* reverseShot(uint32_t p,int frame){
- const uint32_t id=get<uint32_t>(p+0x10);auto*s=reverseShotSlot(p,id,frame);
- if(s&&(s->id!=id||s->pointer!=p))*s={id,p,frame,false};return s;
+static ReverseShot* reverseShot(uint32_t p,int frame,uint32_t now){
+ const uint32_t id=get<uint32_t>(p+0x10);auto*s=reverseShotSlot(p,id,now);
+ if(s&&(s->id!=id||s->pointer!=p))*s={id,p,frame,false,now};return s;
 }
-static bool reverseShotHandled(const DodgeThreatRef&ref,int frame){
+static bool reverseShotHandled(const DodgeThreatRef&ref,uint32_t now){
  // Read-only rejection from the sealed projectile identity. Never create a
  // record or start its retry deadline before candidate collection completes.
- const auto*s=reverseShotSlot(ref.pointer,ref.id,frame);
+ const auto*s=reverseShotSlot(ref.pointer,ref.id,now);
  return s&&s->id==ref.id&&s->pointer==ref.pointer&&s->handled;
 }
 static bool reverseVector(uint32_t q,reversedodge::Point&delta){
@@ -33,8 +33,7 @@ static bool reverseDodgeActor(uint32_t p,uint32_t q,uint32_t house,int frame,DWO
  if(j>=0&&dodgeSeen(dodgeJobs[j],shot))return true;
  // Nearby shots, including later frames, belong to the accepted dodge. Consume
  // them now, not as deferred turns. Suppression does not extend the window.
- if(j>=0&&dodgeJobs[j].reverseFrame>=0&&frame>=dodgeJobs[j].reverseFrame&&
-    frame-dodgeJobs[j].reverseFrame<=reversedodge::MergeFrames){dodgeRemember(dodgeJobs[j],s,now);return true;}
+ if(j>=0&&dodgeJobs[j].reverseAt&&reversedodge::withinMergeWindow(now,dodgeJobs[j].reverseAt)){dodgeRemember(dodgeJobs[j],s,now);return true;}
  if(!outgoingRoom())return false;
  uint32_t cell=reversedodge::destination(get<int>(p+0x9C),get<int>(p+0xA0),delta,[&](int x,int y,int direction){
   uint32_t c=readMapCell(x,y);if(!c)return false;
@@ -51,7 +50,7 @@ static bool reverseDodgeActor(uint32_t p,uint32_t q,uint32_t house,int frame,DWO
  for(int k=0;k<missionObserver.count;++k)if(missionObserver.tickets[k].receipt.serial==ticket){receipt=missionObserver.tickets[k].receipt;break;}
  missionObserver.dismissTicket(match,ticket); // Dodge observer owns this receipt now.
  job.active=true;job.observed=false;job.sentFrame=job.quietFrame=frame;job.sentAt=now;
- job.reverseFrame=frame;
+ job.reverseAt=now;
  job.x=get<int>(p+0x9C);job.y=get<int>(p+0xA0);job.marker=get<bool>(p+0x6B2);job.receipt=receipt;
  dodgeRemember(job,s,now);++sh->dodgeIssued;cancelBurst(s.id);return true;
 }
@@ -109,13 +108,13 @@ static bool reverseDodgeTick(uint32_t house,int frame,DWORD now,bool candidateOn
  // index within this non-pumping dispatch, then refresh it on the next one.
  // A failed immutable observation remains deferred until its source changes.
  if(reverseTargetStamp.ready)reverseTargetStamp.attempted=false;
- for(int n=0;n<dodgeThreatCount;++n){const auto&ref=dodgeThreatRefs[n];if(!ref.projectile||reverseShotHandled(ref,frame))continue;
+ for(int n=0;n<dodgeThreatCount;++n){const auto&ref=dodgeThreatRefs[n];if(!ref.projectile||reverseShotHandled(ref,now))continue;
   reversedodge::Point delta{};if(!collectReverseTargets(ref,house,delta,candidateOnly))continue;
   // The sample chose candidates; native path legality and submission retain
   // live identity/target checks after the scope. No roster is reacquired here.
   if(!dodgeThreatCurrent(ref))continue;
-  auto*shot=reverseShot(ref.pointer,frame);if(!shot||shot->handled)continue;
-  if(frame-shot->frame>8){shot->handled=true;continue;}
+  auto*shot=reverseShot(ref.pointer,frame,now);if(!shot||shot->handled)continue;
+  if(reversedodge::processingExpired(now,shot->tick)){shot->handled=true;continue;}
   if(!reverseVector(ref.pointer,delta)){shot->handled=true;continue;}
   bool done=true;const uint32_t target=get<uint32_t>(ref.pointer+0x10C);
   if(target!=ref.target)continue;
