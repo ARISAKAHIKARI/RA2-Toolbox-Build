@@ -17,7 +17,12 @@ static void resetPointerInput(){
 static void pointerFinish(int result){
  auto&b=sh->pointer;
  if(result>0&&b.accepted>0&&pointerFeedback&&b.intent.operation!=pointerinput::FollowNative&&!(b.intent.bindings&pointerinput::BatchNext))inputFeedback(pointerFeedback,pointerTarget,b.intent.operation==pointerinput::C4Test||(b.intent.bindings&pointerinput::Enter)!=0);
- pointerFeedback=0;pointerActive=false;if(result==-7)pointerBatchValid=false;b.result=result;b.rejected=b.intent.count-b.accepted;
+ pointerFeedback=0;pointerActive=false;if(result==-7)pointerBatchValid=false;
+ if(result<0&&cooperativePointerRequest==b.request){
+  InterlockedIncrement(&sh->cooperativeSeq);memset(&sh->cooperativeRequest,0,sizeof sh->cooperativeRequest);
+  MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);sh->cooperativeFrameWanted=0;cooperativePointerRequest=0;
+ }
+ b.result=result;b.rejected=b.intent.count-b.accepted;
  if(b.intent.operation==pointerinput::Sell)b.rejected=b.accepted?0:1;
  if(b.rejected<0)b.rejected=0;MemoryBarrier();b.ack=b.request;notifyHost();
 }
