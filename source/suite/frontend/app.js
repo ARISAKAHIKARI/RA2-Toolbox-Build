@@ -243,6 +243,20 @@
   // in the store, but do not render controls that cannot currently apply.
   const dependencyPrefix=/^\[(?:需先|需开启|需选择|需要 |当前模式不|此功能暂不可用|当前控制实现不能|规则数据模式)[^\]]*\]\s*/;
   const dependencyHidden=c=>!c.runtimeError&&c.enabled===false&&(dependencyPrefix.test(c.label||c.text||'')||/^当前不可用：(?!硬件断点预算不足)/.test(c.hint||''));
+  // Native feedback labels are not independent settings. Keep exceptional
+  // feedback and real measurements, but do not repeat switch/choice values.
+  const routineStatusIds=new Set([866,807,809,813,888,9093,9098,9190,9192,9194,9197,9223,9303,9406,9407,9460,9461,9464,9471,9491,9493,9495,9498,9499,9532,9537,9539,9540,9751]);
+  function redundantStatus(c){
+    if(c.type!=='label'||c.groupHeader||c.runtimeError||c.debug)return false;
+    const value=(c.text||c.label||'').trim();
+    if(/失败|异常|冲突(?!时)|错误|未就绪|未能|不支持|还原未完成|拒绝|受阻|预算不足/.test(value)&&!/无冲突/.test(value))return false;
+    return routineStatusIds.has(c.nativeId)||Boolean(c.nativeId&&/^[^：:\n]{1,48}[：:]\s*(?:关闭|开启|已关闭|已开启|已启用|未启用|原实现|原版|暂不可用|已停用)(?:\s*[（(][^）)]*[）)])?$/.test(value));
+  }
+  function displaySettingLabel(c){
+    const value=(c.label||(c.type==='label'?c.text:'')).replace(dependencyPrefix,'');
+    if(c.type==='label'||!/^设置\s*\d+$/.test(value)&&value)return value;
+    return ({hotkey:'快捷键',choice:'选项',number:'数值',range:'数值',text:'输入内容',button:'操作'})[c.type]||'设置';
+  }
   function applicableSettings(items,allControls){
     const aircraft=allControls.find(c=>c.nativeId===9195||c.id===9195);
     const policy=aircraft?.selected;
@@ -345,7 +359,7 @@
   // feature boundaries before flattening so parameter ownership survives.
   const FLAT_PAGE_NAMES=['光标','渲染','监控视图','控制','自动功能','游戏规则','实验功能',null,'生产','生产'];
   function layoutGroups(controls,query='',navigationIndex=0){
-    const groups=groupControls(controls,query);
+    const groups=groupControls(navigationIndex===7?controls:controls.filter(c=>!redundantStatus(c)),query);
     const pageName=FLAT_PAGE_NAMES[navigationIndex];
     if(!pageName||!groups.size)return groups;
     const flat=[],blocks=[];
@@ -392,7 +406,7 @@
     }
     return {number:'数值',range:'数值',text:'内容'}[control.type] || '';
   }
-  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, fuzzyMatch, applicableSettings, groupControls, settingLines, featureBlocks, hasFeatureConfig, layoutGroups, displayPageControls, targetFor, restoredIndex, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
+  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, fuzzyMatch, redundantStatus, displaySettingLabel, applicableSettings, groupControls, settingLines, featureBlocks, hasFeatureConfig, layoutGroups, displayPageControls, targetFor, restoredIndex, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
   if (typeof document === 'undefined') return;
 
   const $ = id => document.getElementById(id);
@@ -663,7 +677,7 @@
         row.inlineLabel=compound && index>0 && control.label===name?inlineLabel(control,hasPreset):null;
         // A pushbutton already carries its action name. Do not print it twice.
         if(control.type==='button' && control.label===control.text&&!row.commandAction)row.inlineLabel='';
-        if(commandRow&&index>0&&control.type==='hotkey')row.inlineLabel='快捷键';
+        if(compound&&index>0&&control.type==='hotkey')row.inlineLabel='';
         row.element.classList.toggle('inline-hotkey',control.type==='hotkey'&&Boolean(row.inlineLabel));
         patchRow(row);
         if(control===presetControl){row.element.hidden=true;row.element.remove();continue;}
@@ -799,7 +813,7 @@
   }
   function patchRow(row) {
     const control = row.control, error = store.error(control.id); row.element.dataset.pending = String(store.isPending(control.id)); row.element.classList.toggle('is-disabled',!control.enabled); row.element.classList.toggle('has-error',Boolean(error)||control.runtimeError);
-    let labelText=(row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置'))).replace(dependencyPrefix,''); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(row.commandAction)labelText=control.text||control.label||'操作'; else if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(!control.enabled)labelText=labelText.replace(/^\[此功能暂不可用\]\s*/,''); if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText;
+    let labelText=(row.inlineLabel ?? displaySettingLabel(control)).replace(dependencyPrefix,''); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(row.commandAction)labelText=control.text||control.label||'操作'; else if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(!control.enabled)labelText=labelText.replace(/^\[此功能暂不可用\]\s*/,''); if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText;
     const optionHelp=control.type==='choice'&&(control.optionDescriptions||[]).some(Boolean);
     row.element.title=control.type==='label'||optionHelp?'':(!control.enabled&&/^\[此功能暂不可用\]/.test(control.label)?['此功能暂不可用',control.hint].filter(Boolean).join('\n'):control.hint);
     if(control.type==='label'){
