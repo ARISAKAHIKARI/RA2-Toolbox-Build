@@ -76,6 +76,8 @@ jobs:
           set -euo pipefail
           g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/hook_policy.cpp -o /tmp/ra2-hook-policy
           /tmp/ra2-hook-policy
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/disabled_feature_policy.cpp -o /tmp/ra2-disabled-policy
+          /tmp/ra2-disabled-policy
       - name: Verify ordinary input routes contain no executable patch path
         run: python3 source/assist/tests/no_interception_source_contract.py
       - name: Exercise the host message-hook and polling manager
