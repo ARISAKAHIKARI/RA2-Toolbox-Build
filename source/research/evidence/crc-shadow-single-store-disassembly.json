@@ -78,6 +78,18 @@
       "address": "0x577F21",
       "bytes": "C20400",
       "instruction": "ret 0x4"
+    },
+    {
+      "address": "0x577DF4",
+      "bytes": "FF5204",
+      "instruction": "call dword ptr [edx+0x4]",
+      "meaning": "indirect virtual call through the object at global 0xA8B23C; resolved for the observed default singleton vtable below"
+    },
+    {
+      "address": "0x577E0F",
+      "bytes": "8A8840020000",
+      "instruction": "mov cl,byte ptr [eax+0x240]",
+      "meaning": "actual House+0x240 Visionary read; 0x577E09 only loads the local House pointer"
     }
   ],
   "direct_call_targets_after_store": [
@@ -90,29 +102,40 @@
   ],
   "checked_direct_callee_windows": [
     {
+      "start": "0x4068E0",
+      "end": "0x4068E1",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false,
+      "detail": "single RET instruction"
+    },
+    {
       "start": "0x4ADEE0",
-      "end": "0x4AE100",
-      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+      "end": "0x4ADFEF",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false,
+      "detail": "complete helper body; direct calls to 0x50B6F0 and 0x4F9A50 plus Techno virtual calls"
     },
     {
       "start": "0x578290",
-      "end": "0x578500",
-      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+      "end": "0x578342",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false,
+      "detail": "complete iterator/cursor helper body; no calls"
     },
     {
       "start": "0x4ADCD0",
-      "end": "0x4ADED0",
-      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+      "end": "0x4ADED8",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false,
+      "detail": "complete helper body; direct calls to 0x50B6F0, 0x567DA0 and 0x4F9A50 plus Techno virtual calls"
     },
     {
       "start": "0x657CE0",
-      "end": "0x658200",
-      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+      "end": "0x657D92",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false,
+      "detail": "complete function body; direct calls to 0x656150, 0x655C50 and 0x622B50 plus indirect callbacks"
     },
     {
       "start": "0x4F42F0",
-      "end": "0x4F4500",
-      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+      "end": "0x4F431E",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false,
+      "detail": "complete helper body; calls 0x578AC0"
     }
   ],
   "static_findings": {
@@ -126,7 +149,9 @@
   "existing_fixture_limit": "crc_shadow_runtime.py deliberately returns at 0x577DB6 and jumps to 0x577F1E; it validates the existing flag leaf and CRC adapter, not the full native Reveal suffix. The single-store design does not emulate or manage Cell or Visionary state. Its acceptance requirement is only to verify that skipping the MapIsClear store resumes at the original next instruction 0x577DB6 and that the unmodified native Reveal body continues to execute in the actual game.",
   "safety_limitations": [
     "This is static disassembly of the exact SHA-256-matched executable, not a live game run.",
-    "The five direct callee windows were scanned for direct field/CRC references only; indirect calls, virtual targets and transitive callees are not exhausted.",
+    "The default singleton vtable at 0x7EED60 resolves the Map::Reveal indirect call at 0x577DF4 to 0x5C0E30 (xor al,al; ret); runtime object replacement or third-party vtable substitution is not ruled out.",
+    "The exact direct callee bodies were scanned for direct field/CRC references, but Techno virtual calls, secondary indirect callbacks and the full transitive call graph are not exhausted.",
+    "The compiled x86 trampoline probe verifies COFF code generation and relocation shape only; it is not the production Runtime DLL and does not validate Windows SEH or live execution.",
     "No Windows loader, live game, RA2OL/CnCNet peer, or multiplayer determinism test was performed.",
     "The single-store candidate remains research-only; production still uses the existing eight-site implementation."
   ],
@@ -167,5 +192,82 @@
       "No additional hooks for these fields"
     ],
     "continuation": "After suppressing the single store, continue at original instruction 0x577DB6; all downstream native Reveal logic remains untouched."
+  },
+  "second_pass_control_flow_audit": {
+    "map_reveal_virtual_call": {
+      "call_site": "0x577DF4",
+      "instruction": "call dword ptr [edx+0x4]",
+      "object_global": "0xA8B23C",
+      "observed_default_singleton": {
+        "getter_or_initializer": "0x5D5E10",
+        "object_storage": "0xABFDA4",
+        "constructor": "0x5D5B60",
+        "constructor_vtable_store": "0x5D5BE1",
+        "vtable": "0x7EED60",
+        "slot_offset": "0x4",
+        "slot_target": "0x5C0E30",
+        "target_bytes": "32C0C3",
+        "target_instruction": "xor al,al; ret",
+        "behavior": "returns false without reading or writing memory"
+      },
+      "caveat": "This resolves the call for the default singleton construction path in this PE. Runtime replacement of the global object or third-party vtable substitution is not ruled out."
+    },
+    "null_house_helper_call": {
+      "call_site": "0x577DD1",
+      "target": "0x4068E0",
+      "target_bytes": "C3",
+      "target_instruction": "ret",
+      "behavior": "no-op"
+    },
+    "vision_field": {
+      "house_pointer_load": "0x577E09",
+      "actual_read": "0x577E0F",
+      "read_instruction": "mov cl,byte ptr [eax+0x240]",
+      "write": "0x577E29",
+      "policy": "leave all Visionary behavior to native Map::Reveal; no sampling, mirroring, writes or restoration"
+    },
+    "exact_helper_ranges": [
+      {
+        "name": "Map::Reveal helper A",
+        "start": "0x4ADEE0",
+        "end_exclusive": "0x4ADFEF"
+      },
+      {
+        "name": "map iterator/cursor helper",
+        "start": "0x578290",
+        "end_exclusive": "0x578342"
+      },
+      {
+        "name": "Map::Reveal helper B",
+        "start": "0x4ADCD0",
+        "end_exclusive": "0x4ADED8"
+      },
+      {
+        "name": "map update helper",
+        "start": "0x657CE0",
+        "end_exclusive": "0x657D92"
+      },
+      {
+        "name": "map state update helper",
+        "start": "0x4F42F0",
+        "end_exclusive": "0x4F431E"
+      }
+    ],
+    "conclusion": "The default singleton's only direct virtual call in the Map::Reveal body resolves to a trivial false-return method. The exact direct helper bodies listed above contain no direct House+0x241 or ComputeGameCRC reference. Techno virtual calls and indirect callbacks inside the helper bodies remain a transitive-call-graph limitation."
+  },
+  "trampoline_codegen_probe": {
+    "source": "source/assist/tests/crc_shadow_single_store_trampoline_probe.cpp",
+    "test": "source/assist/tests/crc_shadow_single_store_trampoline_contract.py",
+    "compiler": "clang++ -target i686-pc-windows-msvc -fms-extensions",
+    "expected_contract": [
+      "save/restore GPRs, EFLAGS, x87 and SSE around the guarded callback",
+      "one-shot skip branch skips exactly the original 6-byte MOV [ecx+0x241],bl",
+      "clear the one-shot flag on both branch paths",
+      "restore original EFLAGS",
+      "resume at original continuation 0x577DB6",
+      "one guarded-callback relocation and two references to the same skip flag"
+    ],
+    "result": "PASS locally; CI workflow updated to run this code-generation contract",
+    "limitation": "Research-only prototype. It does not implement production SEH wiring, link the actual Runtime DLL, execute the trampoline, or run the full native Map::Reveal body."
   }
 }
