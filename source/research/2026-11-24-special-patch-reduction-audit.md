@@ -88,7 +88,7 @@
 - 只有指令补丁使用 `PAGE_EXECUTE_READWRITE` 并刷新指令缓存。
 - 写后仍恢复原页面保护，并沿用既有 ownership journal、冲突检测和失败恢复。
 
-新增源码契约检查，确保未来不会把数据指针槽退化成通用 RWX 写入。该检查由 `.github/workflows/ordinary-input-patch-contract.yml` 执行。
+新增源码契约检查，并扩展真实 GameEntryManager 的 Linux 合成内存夹具：验证 Tooltip 指针槽使用 PAGE_READWRITE、恢复 PAGE_READONLY、不调用 FlushInstructionCache；若已知指针槽落在可执行页则在 VirtualProtect 前拒绝。该夹具和源码契约均由 `.github/workflows/ordinary-input-patch-contract.yml` 执行。
 
 ## 未完成验证
 
