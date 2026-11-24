@@ -52,6 +52,13 @@ static Result patchDenied(uint32_t at,debugentries::Reason reason=debugentries::
   if(reason==Reason::None||reason==Reason::NoRequest||reason==Reason::AwaitRuntime)reason=Reason::Structural;}
  installation(Kind::Patch,at,patches.active(at)?Hook::Pending:Hook::Unavailable,reason,int(result));return result;
 }
+// These addresses replace data pointers, not executable instructions. Never
+// grant an executable page RWX just to update a tooltip/viewport vtable slot.
+static bool dataPointerSlot(uint32_t address){
+ if(assist::hookregistry::tooltipSlot(address))return true;
+ const auto*site=nativeviewportpolicy::find(address);
+ return site&&site->kind==nativeviewportpolicy::Kind::Pointer;
+}
 extern "C" __declspec(dllexport) const uint32_t GameEntryManagerInfo[2]={Version,sizeof(Request)};
 static bool isBoundThreadDead(uint32_t boundTid){
  // Numeric thread IDs can be recycled. Only the retained object handle
@@ -120,6 +127,11 @@ static Result applyPatch(const Request&r){
  void* site=(void*)(uintptr_t)r.address;MEMORY_BASIC_INFORMATION info{};
  if(!VirtualQuery(site,&info,sizeof info)||info.State!=MEM_COMMIT||info.AllocationBase!=GetModuleHandleW(nullptr)||
     (info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||uintptr_t(site)+r.length>uintptr_t(info.BaseAddress)+info.RegionSize)return patchDenied(r.address,debugentries::Reason::Unreadable);
+ const bool pointerSlot=dataPointerSlot(r.address);
+ const DWORD executableProtection=PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY;
+ // A pointer slot on an executable page is structurally unexpected. Refuse
+ // rather than silently widening or changing that page's execution rights.
+ if(pointerSlot&&(info.Protect&executableProtection))return patchDenied(r.address,debugentries::Reason::Structural);
  if(memcmp(site,r.before,r.length)){
   // A platform may have restored one of our two tooltip vtable slots to its
   // verified original before the user disabled the feature. This is not a
@@ -140,9 +152,10 @@ static Result applyPatch(const Request&r){
   if(patches.active(r.address))patches.markConflict(r.address);
   return patchDenied(r.address,debugentries::Reason::Foreign);
  }
- DWORD prior=0;if(!VirtualProtect(site,r.length,PAGE_EXECUTE_READWRITE,&prior))return patchDenied(r.address,debugentries::Reason::OwnerPending,Result::SystemFailure);
+ const DWORD writableProtection=pointerSlot?PAGE_READWRITE:PAGE_EXECUTE_READWRITE;
+ DWORD prior=0;if(!VirtualProtect(site,r.length,writableProtection,&prior))return patchDenied(r.address,debugentries::Reason::OwnerPending,Result::SystemFailure);
  memcpy(site,r.after,r.length);
- const bool flushed=FlushInstructionCache(GetCurrentProcess(),site,r.length)!=FALSE;
+ const bool flushed=pointerSlot||FlushInstructionCache(GetCurrentProcess(),site,r.length)!=FALSE;
  DWORD ignored=0;const bool protectedAgain=VirtualProtect(site,r.length,prior,&ignored)!=FALSE;
  // Record actual bytes even on an OS error, so cleanup retains ownership.
  patches.commit(r.address,r.before,r.after,r.length,transition);
