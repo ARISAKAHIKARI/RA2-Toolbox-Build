@@ -96,6 +96,12 @@ static bool restoreCrcMapShadow(){
  crcMapActive=false;crcMapPrepare();crcMapSkipStore=0;
  const auto&s=crcMapSite.spec;
  if(codeHookRegistry.conflict(s.address)){crcMapState=-2;crcMapPublish();return false;}
+ if(!codeHookRegistry.active(s.address)){
+  uint8_t actual[7]{};
+  if(!read(s.address,actual,s.size)||!hookregistry::admissibleOriginal(s.address,actual,s.size)){
+   crcMapInstalled=true;crcMapState=-2;crcMapPublish();return false;
+  }
+ }
  if(codeHookRegistry.active(s.address)&&
     !gameentry::patch(gameentry::Client::Assist,s.address,crcMapSite.patch,s.original,s.size)){
   crcMapInstalled=true;crcMapState=-2;crcMapPublish();return false;
