@@ -13,6 +13,9 @@ extra=(root/"extra_settings_io.h").read_text()
 bridge=(root/"bridge.cpp").read_text()
 formation_policy=(root/"formation.h").read_text()
 dodge=(root/"dodge_bridge.h").read_text()
+dodge_policy=(root/"dodge_compute.h").read_text()
+autoload=(root/"autoload_bridge.h").read_text()
+autoload_policy=(root/"autoload.h").read_text()
 assert "int64_t(frame)-snap.frame>6" not in formation
 assert "frame<snap.frame" in formation
 assert "const uint32_t hostGrace=preview?1000u:formationView.active?600u:150u;" in formation
@@ -41,4 +44,10 @@ assert "if(sh->pointer.request!=sh->pointer.ack)return false;" in bridge
 assert "cooperativePointerRequest==b.request" in pointer_bridge and "memset(&sh->cooperativeRequest,0" in pointer_bridge
 assert "taskExpired(frame,j.frame,now,j.issued)" in formation
 assert "frame-j.frame>1800" not in formation
+assert "loading::retryDue(now,r.lastSent<0,r.lastSentAt,r.progressAt,r.retryAfterAt,incoming!=0)" in autoload
+assert "frame-r.lastSent>=30" not in autoload and "frame-r.progress>=120" not in autoload
+assert "RetryIntervalMs=500" in autoload_policy and "NoProgressMs=2000" in autoload_policy
+assert "dodgecompute::retentionExpired(now,j.lastSeenAt)" in dodge
+assert "frame-j.lastSeen>300" not in dodge
+assert "RetentionMs=5000" in dodge_policy
 print("PASS high-FPS input guard: real-time freshness, click-scoped multi-frame cohort, safe cancellation and wall-clock task lease")
