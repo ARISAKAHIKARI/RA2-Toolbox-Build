@@ -26,6 +26,8 @@ on:
       - 'source/shared/source/game_entry_manager.cpp'
       - 'source/assist/tests/hook_policy.cpp'
       - 'source/assist/tests/disabled_feature_policy.cpp'
+      - 'source/assist/tests/debug_patch_manager.cpp'
+      - 'source/assist/tests/debug_patch_manager.py'
       - 'source/assist/tests/no_interception_source_contract.py'
       - 'source/tools/audit_architecture.py'
       - '.github/workflows/ordinary-input-patch-contract.yml'
