@@ -70,7 +70,7 @@ steps = [
     [*msvc, root/'source/cursor/source/resource_guard.cpp', '-o', out/'cursor-resource-guard.o'],
     [*msvc, here/'exception_policy_seh_boundary.cpp', '-o', out/'policy-outer.o'],
     [*msvc, here/'runtime_scope_seh_outer.cpp', '-o', out/'scope-outer.o'],
-    [*gnu, '-Dmain=PolicyFixtureUnusedMain', here/'exception_policy_windows.cpp', '-o', out/'guard-callback-stubs.o'],
+    [*gnu, '-DRUNTIME_SCOPE_FIXTURE', '-Dmain=PolicyFixtureUnusedMain', here/'exception_policy_windows.cpp', '-o', out/'guard-callback-stubs.o'],
     [*gnu, manager_source, '-o', out/'manager.o'],
     [*gnu, fixture_source, '-o', out/'scope.o'],
     [zig, 'c++', '-target', 'x86-windows-gnu', out/'guard.o', out/'cursor-resource-guard.o', out/'policy-outer.o', out/'scope-outer.o',
