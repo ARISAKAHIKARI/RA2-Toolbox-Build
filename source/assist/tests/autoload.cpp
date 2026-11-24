@@ -3,6 +3,15 @@
 #include <limits>
 using namespace assist::loading;
 int main(){
+ assert(!retryDue(1132,true,0,1000,1133,false));
+ assert(retryDue(1133,true,0,1000,1133,false));
+ assert(!retryDue(1499,false,1000,1000,1000,false));
+ assert(retryDue(1500,false,1000,1000,1000,false));
+ assert(!retryDue(2999,false,1000,1000,1000,true));
+ assert(retryDue(3000,false,1000,1000,1000,true));
+ assert(!retryDue(1099,false,1000,1000,1100,false));
+ assert(retryDue(0x20,false,0xfffffe28u,0xfffffe28u,0xfffffff0u,false));
+
  assert(slots(1)==1&&slots(2.1)==3&&slots(0)==0&&slots(-1)==0);
  assert(slots(std::numeric_limits<double>::quiet_NaN())==0);
  assert(slots(std::numeric_limits<double>::infinity())==0);
