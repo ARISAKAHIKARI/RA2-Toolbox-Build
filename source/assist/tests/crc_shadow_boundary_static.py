@@ -56,6 +56,13 @@ assert "not an exhaustive proof" in binary["reader_scope_note"]
 store = next(item for item in binary["relevant_instructions"] if item["address"] == "0x577DB0")
 assert store["bytes"] == "889941020000"
 assert store["instruction"] == "mov byte ptr [ecx+0x241],bl"
+audit = binary["second_pass_control_flow_audit"]
+assert audit["map_reveal_virtual_call"]["call_site"] == "0x577DF4"
+assert audit["map_reveal_virtual_call"]["observed_default_singleton"]["slot_target"] == "0x5C0E30"
+assert audit["map_reveal_virtual_call"]["observed_default_singleton"]["target_bytes"] == "32C0C3"
+assert audit["null_house_helper_call"]["target_bytes"] == "C3"
+assert audit["vision_field"]["actual_read"] == "0x577E0F"
+assert binary["trampoline_codegen_probe"]["result"].startswith("PASS locally")
 
 # The separate map-range evidence agrees with the SHA-matched disassembly.
 reveal_range = next(
