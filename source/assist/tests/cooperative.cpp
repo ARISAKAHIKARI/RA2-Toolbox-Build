@@ -15,16 +15,16 @@ int main(){auto w=make(7,3);auto a=allocate(w);auto n=counts(a);assert(a.size()=
  // A single pointer request can be admitted over several game frames. Its
  // identity remains stable even when the simulation advances by hundreds of
  // frames; a genuinely new physical pointer request starts a new cohort.
- r.serial=9;r.match=7;r.target=88;r.mode=Enter;r.frame=100;r.count=24;
- assert(sameInputRequest(r,41,41,7,88,Enter,0,0));
- assert(sameInputRequest(r,41,41,7,88,Enter,0,0)); // later frame, same pointer serial
- assert(!sameInputRequest(r,41,42,7,88,Enter,0,0));
- assert(!sameInputRequest(r,41,41,8,88,Enter,0,0));
- assert(!sameInputRequest(r,41,41,7,89,Enter,0,0));
- assert(!sameInputRequest(r,41,41,7,88,AirFirst,0,0));
+ r.serial=9;r.match=7;r.target=88;r.mode=Enter;r.pointerRequest=41;r.count=24;
+ assert(sameInputRequest(r,41,7,88,Enter,0,0));
+ assert(sameInputRequest(r,41,7,88,Enter,0,0)); // later frame, same pointer serial
+ assert(!sameInputRequest(r,42,7,88,Enter,0,0));
+ assert(!sameInputRequest(r,41,8,88,Enter,0,0));
+ assert(!sameInputRequest(r,41,7,89,Enter,0,0));
+ assert(!sameInputRequest(r,41,7,88,AirFirst,0,0));
  r.mode=AirDamage;r.airRadiusCells=5;r.airDamagePercent=120;
- assert(sameInputRequest(r,41,41,7,88,AirDamage,5,120));
- assert(!sameInputRequest(r,41,41,7,88,AirDamage,6,120));
+ assert(sameInputRequest(r,41,7,88,AirDamage,5,120));
+ assert(!sameInputRequest(r,41,7,88,AirDamage,6,120));
  assist::AdditionalSettings defaults;assert(defaults.enterKey==18&&defaults.airKey1==17&&!defaults.airKey2&&defaults.defaults.first==1&&defaults.defaults.second==2&&!defaults.defaults.maximum);
  {
  using namespace assist::pointerinput;uint8_t keys[256]{};
