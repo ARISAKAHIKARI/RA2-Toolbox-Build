@@ -69,8 +69,8 @@ static void addBullet(unsigned n,uint32_t target=Unit,uint32_t id=700){
  set<double>(p+0xE8,20.);set<double>(p+0xF0,0.);set<uint32_t>(p+0x10C,target);
  dodgeThreatRefs[dodgeThreatCount++]={p,target,true,id};
 }
-static void tick(int frame=100){if(frame!=currentFrame)++worldFrame.key.serial;currentFrame=frame;check(reverseDodgeTick(0x600000,frame,1000+uint32_t(frame-100)*17)==sampleComplete,"continuation completion");}
-static uint32_t tableDigest(){uint32_t h=2166136261u;for(const auto&s:reverseShots)for(uint32_t v:{s.id,s.pointer,uint32_t(s.frame),uint32_t(s.handled),s.tick})h=(h^v)*16777619u;return h;}
+static void tick(int frame=100){if(frame!=currentFrame)++worldFrame.key.serial;currentFrame=frame;check(reverseDodgeTick(0x600000,frame,1000+uint32_t(frame-100)*1000/60)==sampleComplete,"continuation completion");}
+static uint32_t tableDigest(){uint32_t h=2166136261u;for(const auto&s:reverseShots)for(uint32_t v:{s.id,s.pointer,uint32_t(s.frame),uint32_t(s.handled)})h=(h^v)*16777619u;return h;}
 int main(){
  check(reversedodge::withinMergeWindow(1200,1000)&&!reversedodge::withinMergeWindow(1201,1000),"fixed 200ms merge lease");
  check(!reversedodge::shotExpired(16000,1000)&&reversedodge::shotExpired(16001,1000),"15s handled-shot retention");
