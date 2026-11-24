@@ -299,7 +299,7 @@ struct Shared {
  // Host preferences only: a click snapshots these into cooperative::Request.
  volatile uint32_t aircraftDamageRadiusCells=cooperative::DefaultDamageRadiusCells;
  volatile uint32_t aircraftDamageCoveragePercent=cooperative::DefaultDamagePercent;
- // ABI v112, append-only. All values are fixed-width counters copied into
+ // ABI v114, append-only. All values are fixed-width counters copied into
  // shared IPC by Runtime; Host logs them at most once per five seconds.
  // A stale/absent diagnostic is never permission to execute a native order.
  struct SamplingDiagnostic {
