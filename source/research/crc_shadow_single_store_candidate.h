@@ -9,6 +9,15 @@ enum class Result : uint8_t {
 
 // A single synchronous Map::Reveal call may suppress only the MapIsClear store
 // for the exact House whose identity was checked before entering that call.
+// Proposed x86 leaf contract after the guarded callback:
+//   pushfd; cmp byte ptr [crcMapSkipStore],0; jne skip_original_store
+//   mov byte ptr [ecx+241h],bl
+// skip_original_store: mov byte ptr [crcMapSkipStore],0; popfd
+// The callback sets the one-shot flag only for Scope::house. On callback SEH,
+// the guarded wrapper passes captured ECX to abort(), which arms the same
+// target-only skip. The branch's CMP flags are discarded by POPFD; MOV itself
+// preserves flags and all original GPRs remain owned by the existing callback.
+// The actual naked trampoline and Win32 SEH wiring are not implemented here.
 struct Scope {
  uint32_t epoch=0,house=0,houseID=0;
  bool active=false,skipStore=false,faulted=false;
