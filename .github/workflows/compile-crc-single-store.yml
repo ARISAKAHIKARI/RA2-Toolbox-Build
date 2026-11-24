@@ -9,6 +9,9 @@ on:
       - 'source/assist/source/guard.cpp'
       - 'source/assist/source/main.cpp'
       - 'source/assist/tests/exception_policy_windows.cpp'
+      - 'source/assist/tests/crc_shadow_reveal_transition.py'
+      - 'source/assist/tests/crc_shadow_single_store_feasibility.cpp'
+      - 'source/assist/tests/crc_shadow_boundary_static.py'
       - 'source/assist/tests/runtime_scope_windows.py'
       - 'source/shared/source/runtime_seh_scope.h'
       - 'source/shared/source/game_entry_manager.cpp'
@@ -22,6 +25,9 @@ on:
       - 'source/assist/source/guard.cpp'
       - 'source/assist/source/main.cpp'
       - 'source/assist/tests/exception_policy_windows.cpp'
+      - 'source/assist/tests/crc_shadow_reveal_transition.py'
+      - 'source/assist/tests/crc_shadow_single_store_feasibility.cpp'
+      - 'source/assist/tests/crc_shadow_boundary_static.py'
       - 'source/assist/tests/runtime_scope_windows.py'
       - 'source/shared/source/runtime_seh_scope.h'
       - 'source/shared/source/game_entry_manager.cpp'
@@ -65,6 +71,8 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'x86 exception policy test failed'}
           python source/assist/tests/runtime_scope_windows.py --zig "$env:ZIG_EXE" --out diagnostics/runtime-scope
           if($LASTEXITCODE -ne 0){throw 'x86 RuntimeScopedCall finally test failed'}
+          python source/assist/tests/crc_shadow_reveal_transition.py --zig "$env:ZIG_EXE" --build-dir diagnostics/crc-single-store-policy
+          if($LASTEXITCODE -ne 0){throw 'x86 CRC single-store policy test failed'}
       - name: Compile x64 host with paired x86 Runtime and broker
         shell: bash
         run: |
