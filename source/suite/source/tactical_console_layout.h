@@ -18,6 +18,9 @@ struct Feature {
 // card, and only a primary control stays visible when its settings are folded.
 inline constexpr Feature Features[]={
  // Each gesture owns its shortcut / mouse choice under the same settings fold.
+ {458,categories::Control,L"移动、攻击与操作手势",L"高级移动攻击",true,{458,450,729,787,818,802}},
+ {705,categories::Control,L"移动、攻击与操作手势",L"飞机分配攻击",true,{705,706,707,708,709,710,711,712,713,714,715,716,717,718,733,734,751,9195,9794,9795}},
+ {459,categories::Control,L"进驻、装卸与超武目标选择",L"智能卸载",true,{459,451,453}},
  {477,categories::Control,L"移动、攻击与操作手势",L"磁电轮换攻击",true,{477,478,730}},
  {702,categories::Control,L"移动、攻击与操作手势",L"高级进驻",true,{702,703,704,732}},
  {719,categories::Control,L"移动、攻击与操作手势",L"飞碟主武器攻击",true,{719,725,726,735}},
@@ -31,9 +34,14 @@ inline constexpr Feature Features[]={
  {9401,categories::Control,L"队形、巡逻与飞机路径",L"区域目标分配",true,{9401,9442,9443}},
  {9402,categories::Control,L"队形、巡逻与飞机路径",L"自定义巡逻圈",true,{9402,9444,9445,9482,9483,9484,9485,9486}},
  {803,categories::Control,L"队形、巡逻与飞机路径",L"飞机路径点",true,{803,894,866}},
- {700,categories::Control,L"进驻、装卸与超武目标选择",L"装车策略与范围",true,{700,701}},
- {885,categories::Automatic,L"自动战斗与防空",L"自动躲弹",true,{885,895}},
- {9530,categories::Automatic,L"维修与自动救援",L"绑弹步兵自动上车",true,{9530,9531,9532}},
+ {111,categories::Control,L"进驻、装卸与超武目标选择",L"自动装车",true,{111,211,700,701}},
+ {100,categories::Automatic,L"维修与自动救援",L"自动维修",true,{100,200,312,780}},
+ {455,categories::Automatic,L"维修与自动救援",L"载员自动逃生",true,{455,456}},
+ {899,categories::Automatic,L"自动战斗与防空",L"磁电全局自动摔落",true,{899,9502}},
+ {804,categories::Automatic,L"自动战斗与防空",L"防御建筑优先攻击渗透单位",true,{804,9506}},
+ {880,categories::Automatic,L"自动战斗与防空",L"防空火控",true,{880,9508,9040,9041,9181,9509,881,9499}},
+ {885,categories::Automatic,L"自动战斗与防空",L"自动躲弹",true,{885,9507,895}},
+ {9530,categories::Automatic,L"维修与自动救援",L"绑弹步兵自动上车",true,{9530,9535,9531,9532}},
  {9494,categories::Rules,L"单机速度与暂停",L"单机游戏速度",true,{9494,9495}},
  {9403,categories::Rules,L"单机速度与暂停",L"暂停与逐帧",true,{9403,9454,9455,9406}},
  {420,categories::Rules,L"科技与建造",L"科技全开",true,{420,896,9753,421,422,423,424,425,426,427,428,814,815}},
@@ -106,6 +114,37 @@ inline const TypeScope* typeScope(int index){
  };
  static_assert(sizeof(scopes)/sizeof(scopes[0])==Count,"every saved filter has a presentation decision");
  return index>=0&&index<Count&&scopes[index].title?&scopes[index]:nullptr;
+}
+
+// A participant filter is a child of its actual feature, never a second card.
+inline const Feature* scopeFeature(int index){
+ using namespace assist::featuretypes;
+ const auto* scope=typeScope(index);if(!scope)return nullptr;
+ int key=0;
+ switch(scope->owner){
+ case Aircraft:key=705;break;
+ case Disk:key=719;break;
+ case Magnetron:key=477;break;
+ case AdvancedAttack:key=458;break;
+ case LoadPassenger:key=111;break;
+ case EnterSource:key=702;break;
+ case UnloadTransport:key=459;break;
+ case EscapeTransport:key=455;break;
+ case SellVehicle:key=721;break;
+ case RepairBuilding:key=100;break;
+ case AntiTheftDefense:key=804;break;
+ case MissileDefense:key=880;break;
+ case Dodge:key=885;break;
+ case MagnetronDrop:key=899;break;
+ case SpiderDefense:key=9496;break;
+ default:return nullptr;
+ }
+ return feature(key);
+}
+inline const Feature* ownerFeature(int id){
+ if(const auto* entry=feature(id))return entry;
+ if(id>=9200&&id<9200+2*assist::featuretypes::Count)return scopeFeature((id-9200)/2);
+ return nullptr;
 }
 
 inline const wchar_t* label(int id){
