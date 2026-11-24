@@ -152,16 +152,9 @@ consoleFeature(productionRows,L"生产预定",productionMaster);
 oreCheck=toggle(470,L"矿车自动卸矿",oreMode,20,245);key(9504,extra.automaticKeys[autofeatures::OreReturn],280,205);button(9605,L"展开设置",500,125);next();
 activeFoldGroup=9605;
 oreStatus=item(L"STATIC",L"等待对局",20,605,0,0,44);next(44);
-for(int i=0;i<2;++i){bool miner=i==0;toggle(781+i,miner?L"指定矿车类型":L"指定矿场类型",miner?oreTypes.customMiners:oreTypes.customRefineries);next();auto h=edit(783+i,miner?oreMiners:oreRefineries,20,605);SendMessageW(h,EM_SETLIMITTEXT,featuretypes::TypeListTextLimit,0);next();}
-note(L"类型 ID 用逗号分隔；未启用清单时自动识别，启用后仅使用所列类型。",44);
 activeFoldGroup=0;
 automaticToggle(9496,L"自动点杀蜘蛛",extra.minerDefenseEnabled);next();
-note(L"默认由正在工作的己方武装矿车点杀敌方蜘蛛。可在下方单独指定参与单位，独立于自动卸矿的矿车清单。玩家手动命令优先。",60);
-{const int f=featuretypes::SpiderDefense;
- toggle(9200+f*2,L"自定义点杀单位类型",featureTypes.filters[f].custom);next();
- auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,featuretypes::TypeListTextLimit,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"参与点杀的己方单位类型 ID，以逗号分隔");next();
-}
-note(L"填写参与点杀的己方地面载具或步兵类型 ID（不是蜘蛛 ID），以逗号分隔。勾选后只处理清单；清单为空时不处理任何单位。未勾选时自动识别矿车。",76);
+note(L"默认由正在工作的己方武装矿车点杀敌方蜘蛛。可在“命令类型手动指定”中选择参与单位，独立于自动卸矿的矿车清单。玩家手动命令优先。",60);
 number(9497,L"防蛛额外索敌距离 / 格",extra.minerDefenseRangeCells,L"0–30 · 默认 1");
 note(L"蜘蛛进入武器射程＋N 格时点杀；目标死亡或离开射程＋N＋1 格后，矿车恢复采矿、卸矿或等待。其他单位只接管闲置警戒／区域警戒，结束后返回原位及原警戒状态。",76);
 item(L"STATIC",L"点杀蜘蛛：关闭",20,605,9498,0,44);next(44);
@@ -174,7 +167,7 @@ extraControls[LoadRadius]=number(701,L"自动装车范围 / 格",extra.loadRadiu
 automaticToggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
 automaticToggle(885,L"自动躲弹",extra.dodgeEnabled);next();
 label(L"躲弹方式",20,260);choices(combo(895),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
-note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，选择附近落点进行短距离躲避。下方可选择参与自动躲避的兵种。",60);
+note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，选择附近落点进行短距离躲避。默认自动识别参与单位。",60);
 toggle(880,L"防空火控",extra.missileDefense,20,245);key(9508,extra.automaticKeys[autofeatures::MissileDefense],280,205);button(9603,L"展开设置",500,125);next();
 item(L"STATIC",L"防空火控：关闭",20,605,9499,0,44);next(44);
 activeFoldGroup=9603;
@@ -198,18 +191,20 @@ csStatus=item(L"STATIC",L"",20,605,0,0,44);pageControls.back().feedbackHidden=tr
 nativeStatus=item(L"STATIC",L"",20,605,0,0,44);pageControls.back().feedbackHidden=true;next(44);
 // Keep the heading/button visible; all saved per-feature controls retain
 // their HWND and values while the complete list is folded.
-section=5;rowY=0;item(L"STATIC",L"单位类型清单",20,455,905,0,30);button(9610,L"展开设置",500,125);next(30);
+section=5;rowY=0;item(L"STATIC",L"命令类型手动指定",20,455,905,0,30);button(9610,L"展开设置",500,125);next(30);
 note(L"每个功能独立设置。关闭限制时按功能本身的条件处理；开启且清单为空时不处理任何类型。");
 activeFoldGroup=9610;
+for(int i=0;i<2;++i){bool miner=i==0;toggle(781+i,miner?L"指定矿车类型":L"指定矿场类型",miner?oreTypes.customMiners:oreTypes.customRefineries);next();auto h=edit(783+i,miner?oreMiners:oreRefineries,20,605);SendMessageW(h,EM_SETLIMITTEXT,featuretypes::TypeListTextLimit,0);next();}
+note(L"类型 ID 用逗号分隔；未启用清单时自动识别，启用后仅使用所列类型。",44);
 for(int f=0;f<featuretypes::Count;++f){
- if(f==featuretypes::BurstRefresh||f==featuretypes::SpiderDefense)continue; // Retired slot; spider controls are beside the feature.
+ if(f==featuretypes::BurstRefresh)continue; // Retired slot; preserve its ABI index.
  auto caption=label(featuretypes::name(f),20,350);
 #ifdef RA2_CONSOLE_WEBVIEW2
  SetPropW(caption,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));
 #endif
  toggle(9200+f*2,L"仅处理清单中的类型",featureTypes.filters[f].custom,380,245);next();
  auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,featuretypes::TypeListTextLimit,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"单位类型 ID，以逗号分隔");next();
- note(L"用逗号分隔类型 ID。关闭限制时按功能条件自动识别；开启且留空时不处理任何类型。");
+ note(f==featuretypes::SpiderDefense?L"填写参与点杀的己方地面载具或步兵类型 ID（不是蜘蛛 ID）。关闭时自动识别矿车；开启且留空时不处理任何单位。":L"用逗号分隔类型 ID。关闭限制时按功能条件自动识别；开启且留空时不处理任何类型。");
 }
 activeFoldGroup=0;
 
