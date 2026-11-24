@@ -146,10 +146,10 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 
 只有以下项目通过，才改生产代码：
 
-1. 用支持的固定 PE 执行完整 Map::Reveal，不跳过 0x577DB6 后的代码；记录全部 House+0x241 写入、Cell/Visionary 写入、同步 RNG 和 CRC 调用时点。
+1. 在固定 PE/受控运行环境中验证单点 trampoline 跳过 0x577DB0 的 MOV 后，准确回到原始下一条指令 0x577DB6；确认原生后续代码继续执行并正常返回。无需采集、记录或模拟 Cell/Visionary 状态。
 2. 证明 0x577D90 返回前没有嵌套的 ComputeGameCRC；确认被跳过的写入只针对工具命令指定的 House，其他 House 与自然 Reveal 保持原生行为。
 3. 补充 MapIsClear 读取者审计，特别是宽访问、间接地址和扩展模块；不扩大到 Cell/Visionary 状态审计。
-4. 在实际 Runtime 的游戏线程 finally 边界中验证正常返回、SEH 异常、写失败、对象退休和重试。
-5. 最后才把八个 detour 改为单事务边界，并保留原八点实现作为可回退基线，完成新旧方案 CRC 输入逐帧对照。
+4. 在实际 Runtime 的游戏线程 SEH/finally 边界中验证正常返回、异常退出、作用域清理、House 身份变化和嵌套 Reveal；不引入事后内存恢复流程。
+5. 最后才把八个 detour 改为单点 MapIsClear 写入抑制，并保留原八点实现作为可回退基线，完成新旧方案 CRC 输入逐帧对照。
 
 如果任一门槛不通过，继续保留现有八点实现，不强行缩减。
