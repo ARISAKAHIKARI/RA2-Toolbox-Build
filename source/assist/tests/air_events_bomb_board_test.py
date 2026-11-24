@@ -34,6 +34,7 @@ static struct {struct Capacity{int occupants=0,maximum=0,used=0;};
 ''' + text[end:]
     text=text.replace('static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}', 'static int fixtureAutoPendingSeats(uint32_t,uint32_t);static int entryReserved(uint32_t target,uint32_t ignore,uint32_t){int n=0;for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];if(r.id!=ignore&&r.target==get<uint32_t>(target+0x10))n+=r.slots;}return n+fixtureAutoPendingSeats(target,ignore);}')
     text+=r'''
+static bool readLiveWorld(uint32_t p,void*out,size_t n){return read(p,out,n);}
 constexpr uint32_t NativeAirWaypoints=0x80000000u;
 #include "air_path_events_bridge.h"
 struct SampleReadScope{static bool available;explicit operator bool()const{return available;}bool complete()const{return available;}};bool SampleReadScope::available=true;
@@ -55,6 +56,12 @@ static uint32_t unit(unsigned id,int k,int x,int y){uint32_t p=0x10000+id*0x1000
 static void bombBegin(){begin();bombboard::reset();directair::reset();directair::planning={};beforeSubmit=nullptr;kinds.clear();actors.clear();selected.clear();events.clear();commands.clear();illegal.clear();entryReservationCount=loadLedger.count=0;queueRoom=256;SampleReadScope::available=true;sh->bombBoardEnabled=1;}
 static void bombStep(){++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;sh->heartbeat=clockValue;bombboard::tick(lastHouse,snap.frame);}
 int main(){
+ // Null, unmapped and freed selections must be rejected without raw pointer dereferences.
+ airBegin();selected[0]=0;check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending());
+ airBegin();selected[0]=0xFFFFFFF0u;check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending());
+ airBegin();check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));
+ held['Z']=false;check(airMessage(WM_KEYUP,'Z'));failAt=actors[0];airStep();
+ check(!directAirPending()&&events.empty());
  for(int session:{0,5,3,4}){
   airBegin();put(0xA8B238,session);snap.session=session;
   check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));check(airMessage(WM_LBUTTONDOWN,0,160,100));check(airMessage(WM_LBUTTONUP,0,160,100));
