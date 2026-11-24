@@ -94,6 +94,36 @@ inline int resolveMouseMatches(const uint8_t*keys,int physical,const uint32_t*bu
  }
  if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
 }
+// Keyboard-only point commands use the already sampled key edge serials.
+ // Legacy/hold bindings fire once on the qualified down edge, not every frame.
+struct KeyOnlyEdges {
+ uint32_t serial[MouseCount]{};
+ bool armed[MouseCount]{};
+ uint32_t match=0,revision=0;bool ready=false;
+ int resolve(const uint8_t*keys,const uint32_t*edges,const uint32_t*buttons,
+             const Bindings&c,uint32_t saleEnabled,bool all,bool active,
+             uint32_t epoch,uint32_t settings,MouseRoute*out){
+  const uint32_t holds[]={c.advanced,c.magnetron,c.cs,c.enter,c.airFirst,c.airSecond,c.disk,c.enabled>>16,c.sell,c.sell};
+  const uint32_t flags[]={Advanced,Magnetron,CS,Enter,AirFirst,AirSecond,256,0,512,512};
+  const uint32_t bits[]={Advanced,Magnetron,CS,Enter,AirFirst,AirSecond,Control,0,Control|SellDrainedInput,Control|SellVehicleInput};
+  const bool reset=!active||!ready||match!=epoch||revision!=settings;
+  match=epoch;revision=settings;ready=active;int count=0;
+  for(int i=0;i<MouseCount;++i){
+   const uint32_t key=holds[i],vk=key&255,edge=edges[vk];
+   const bool available=active&&!buttons[i]&&vk>=7&&(!flags[i]||(c.enabled&flags[i]))&&
+       (i<MouseSellDrained||(saleEnabled&(i==MouseSellDrained?SellDrainedInput:SellVehicleInput)));
+   const bool fresh=serial[i]!=edge;serial[i]=edge;
+   if(reset||!available){armed[i]=false;continue;}
+   const bool qualifies=keygesture::matchesHold(keys,(key&~keygesture::ModeMask)|uint32_t(keygesture::Mode::Hold));
+   const bool release=keygesture::mode(key)==keygesture::Mode::Release;
+   bool fire=false;
+   if(fresh){armed[i]=release&&qualifies;fire=!release&&qualifies;}
+   if(release&&armed[i]&&!keys[vk]){armed[i]=false;fire=keygesture::modifiersMatch(keys,key);}
+   if(fire&&(all||!count))out[count++]={i<MouseAttack?Enhanced:i==MouseAttack?AttackMove:Sell,bits[i]|PerFeatureMouse};
+  }
+  return count;
+ }
+};
 struct NativePolicy {uint32_t match,enabled,overrideNative;Bindings bindings;uint32_t buttons[MouseCount];};
 struct SuppressedClick {uint32_t match,tick,physical;int x,y;};
 struct Source { uint32_t id,pointer; };
