@@ -53,7 +53,7 @@ static Result patchDenied(uint32_t at,debugentries::Reason reason=debugentries::
  installation(Kind::Patch,at,patches.active(at)?Hook::Pending:Hook::Unavailable,reason,int(result));return result;
 }
 // These addresses replace data pointers, not executable instructions. Never
-// grant an executable page RWX just to update a tooltip/viewport vtable slot.
+// grant an executable page RWX just to update a tooltip or viewport pointer.
 static bool dataPointerSlot(uint32_t address){
  if(assist::hookregistry::tooltipSlot(address))return true;
  const auto*site=nativeviewportpolicy::find(address);
