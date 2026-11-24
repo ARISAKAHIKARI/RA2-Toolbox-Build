@@ -92,7 +92,7 @@ extraControls[DiskEnabled]=toggle(719,L"飞碟主武器攻击",extra.disk,20,210
 extraControls[SellDrainedEnabled]=toggle(720,L"出售被吸取目标",extra.sellDrained,20,210);holdPresetControl(SellPreset,SellCustom,extra.sellKey);mouse(pointerinput::MouseSellDrained);next();
 extraControls[SellVehiclesEnabled]=toggle(721,L"出售战车",extra.sellVehicles,20,210);key(789,extra.sellKey,240,258,true);mouse(pointerinput::MouseSellVehicle);next();
 note(L"出售战车不支持兰博玩；两种出售操作共用按住键，鼠标键分别设置。",44);
-label(L"直接攻击移动",20,210);label(L"仅鼠标",240,258);mouse(pointerinput::MouseAttack);next();
+label(L"直接攻击移动",20,450);mouse(pointerinput::MouseAttack);next();
 note(L"直接攻击移动只下达一次命令；高级移动攻击会持续重新选择目标。",44);
 toggle(9400,L"模糊下令",(extra.moFeatures&1)!=0,20,210);{auto h=key(9440,extra.moGestures.keys[0],240,258,true);modernui::keyboardOnly(h);}choices(combo(9441,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.moGestures.buttons[0]==6?5:int(extra.moGestures.buttons[0]));next();
 toggle(9401,L"区域目标分配",(extra.moFeatures&2)!=0,20,210);{auto h=key(9442,extra.moGestures.keys[1],240,258,true);modernui::keyboardOnly(h);}choices(combo(9443,510,115,180),{L"停用",L"中键",L"侧键 1",L"侧键 2",L"右键",L"左键"},extra.moGestures.buttons[1]==6?5:int(extra.moGestures.buttons[1]));next();
