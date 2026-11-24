@@ -90,15 +90,15 @@ struct Snapshot {
  int loadUnits,loadVehicles,loadIssued,loadWaiting,loadUnassigned;
  uint32_t sampledTick;int cameraX,cameraY;
  int crateHookStatus,crateResultCount;uint32_t crateResultSerial;CrateResult crateResults[MaxCrateResults];
- int chat,csHookStatus,csConverted;
- int nativeHookStatus,advancedUnits,unloadPending,unloadIssued,ejectWatched;
- int inputPatchMask; // 1=local outgoing mission, 2=CS key/cursor, 4=local event cancellation
+ int chat,csHookStatus,csConverted; // csHookStatus is legacy policy telemetry, not an installed hook.
+ int nativeHookStatus,advancedUnits,unloadPending,unloadIssued,ejectWatched; // nativeHookStatus is event-interface readiness.
+ int inputPatchMask; // Reserved legacy telemetry; ordinary input no longer installs code patches.
  int oreQueued,oreDocking,oreIssued,placementStatus,nativeAirStatus;
  uint32_t controlMicros,worldMicros,displayMicros;
  int oreManual,oreYielded;
  uint32_t oreDelivered=0,oreUnverified=0; // Planner read-only evidence; not credit accounting.
  uint32_t magnetShots=0,magnetUnverified=0; // Read-only weapon/lift evidence, not hit attribution.
- uint32_t hookInstalled=0,hookConflicts=0; // Game-process inline patch registry only.
+ uint32_t hookInstalled=0,hookConflicts=0; // Game-process inline patch registry only; includes explicit opt-in special patches.
  uint32_t queueSent,queueFull,queueTimingFailure,planDeferred;
  int megaQueueStatus=0; // 0=direct EventClass; 1=game native accepted; negative=reason
  uint32_t megaQueueAccepted=0,megaQueueRejected=0;
@@ -144,7 +144,7 @@ struct Shared {
  volatile uint32_t cooperativePlan,cooperativeAck;uint32_t cooperativeSerial,cooperativeTick;
  int cooperativeCount,cooperativeAccepted,cooperativeRejected,cooperativeMode;
  cooperative::Assignment cooperativeOrders[cooperative::MaxSources];
- int clickHookStatus;
+ int clickHookStatus; // Legacy policy telemetry; no click detour is installed.
  // Scheduler configuration/state. One selected call site at a time.
  uint32_t driverMode,driverTarget;
  uint32_t megaQueueMode; // 0=EventClass; 1=game QueueMegaMission, MP only
