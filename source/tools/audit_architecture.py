@@ -70,7 +70,11 @@ for n,p in FILES.items():
  if 'constructors::fill(' in s or re.search(r'\benqueue\(',s):assert n=='assist/source/bridge.cpp',n
  for hook in re.findall(r'SetWindowsHookExW\(([^,]+)',s):
   assert n=='shared/source/host_game_input.h' and hook in ('WH_GETMESSAGE','WH_CALLWNDPROCRET'),(n,hook)
- if re.search(r'\bAddVectoredExceptionHandler\s*\(',s):assert n=='game_runtime/source/runtime.cpp',n
+ if re.search(r'\bAddVectoredExceptionHandler\s*\(',s):
+  assert n in ('game_runtime/source/runtime.cpp','assist/source/tech_ui_breakpoint_core.h'),n
+  if n=='assist/source/tech_ui_breakpoint_core.h':
+   assert 'if(!ensureHandler())return false;' in s and 'RemoveVectoredExceptionHandler(handler_)' in s,n
+
  if n in HOST:
   assert 'gameentry::active(' not in s and 'gameentry::Scope' not in s,n
   assert not re.search(r'\bshared->(?:ack|result|selectAck|planAck|cooperativeAck|uiSoundAck)\s*=(?!=)',s),n
