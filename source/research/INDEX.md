@@ -1,6 +1,7 @@
 # 逆向研究索引
 
 | Runtime 单采样架构与功能暂挂切换 | [架构原则与迁移门槛](2026-11-20-runtime-single-pass-sampling-principles.md) | single-owner Runtime snapshot suspend legacy readers no compatibility branch Host VisualCache RecoveryMailbox ShadowGraphWorker |
+| 六类特殊补丁缩减审计 | [指令补丁、数据指针、硬件断点与原生替代边界](2026-11-24-special-patch-reduction-audit.md) | GameEntryManager PAGE_READWRITE tooltip vtable NetworkSender CRC MapIsClear FrameCommitted no-code paths |
 
 从 2026-10-21 起记录新研究，不补录旧工作。
 
