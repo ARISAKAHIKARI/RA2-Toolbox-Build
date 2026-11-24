@@ -477,3 +477,16 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
   flex: 0 0 auto;
   margin-inline-start: auto;
 }
+
+/* Search shares the existing result/fold toolbar; the production tabs alone
+   retain a separate strip. Empty tab strips take no vertical space. */
+.page-tools:not(:has(.production-views:not([hidden]))) { display:none; }
+.page-info { min-height:34px; flex-wrap:wrap; gap:4px 8px; }
+.page-info-actions { display:flex; align-items:center; gap:8px; margin-inline-start:auto; min-width:0; max-width:100%; }
+.page-info-actions .search-wrap { flex:0 1 200px; min-width:0; width:200px; max-width:100%; }
+.page-info-actions .search-wrap input { width:100%; min-height:30px; }
+.page-info-actions #foldAll { flex:none; white-space:nowrap; }
+@media (max-width:650px) {
+  .page-info-actions .search-wrap { width:140px; flex-basis:140px; }
+  .page-info-actions .search-wrap input { padding-left:30px; }
+}
