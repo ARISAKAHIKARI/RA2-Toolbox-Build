@@ -23,12 +23,12 @@ static void reset(int status=airevents::Cancelled){
 // live read proves the complete identity/mission fields are still readable.
 static bool aircraftState(uint32_t p,uint32_t&id){
  uint8_t raw[0x220]{};if(!p||!readLiveWorld(p,raw,sizeof raw))return false;
- uint32_t vtable=0,owner=0,mission=0;int32_t health=0;uint8_t active=0,limbo=0,alive=0;
- memcpy(&vtable,raw,sizeof vtable);memcpy(&id,raw+0x10,sizeof id);
- memcpy(&health,raw+0x6C,sizeof health);memcpy(&active,raw+0x74,sizeof active);
- memcpy(&limbo,raw+0x81,sizeof limbo);memcpy(&alive,raw+0x90,sizeof alive);
- memcpy(&mission,raw+0x11C,sizeof mission);memcpy(&owner,raw+0x21C,sizeof owner);
- return id&&vtable==0x7E22A4&&owner==lastHouse&&health>0&&active&&!limbo&&alive&&!mission;
+ uint32_t owner=0,mission=0;int32_t health=0;uint8_t active=0,limbo=0,alive=0;
+ memcpy(&id,raw+0x10,sizeof id);memcpy(&health,raw+0x6C,sizeof health);
+ memcpy(&active,raw+0x74,sizeof active);memcpy(&limbo,raw+0x81,sizeof limbo);
+ memcpy(&alive,raw+0x90,sizeof alive);memcpy(&mission,raw+0x11C,sizeof mission);
+ memcpy(&owner,raw+0x21C,sizeof owner);
+ return id&&kind(p)==0&&owner==lastHouse&&health>0&&active&&!limbo&&alive&&!mission;
 }
 static bool valid(const Actor&a){
  uint32_t id=0;return aircraftState(a.pointer,id)&&id==a.id&&manualVersions.get(id)==a.token;
