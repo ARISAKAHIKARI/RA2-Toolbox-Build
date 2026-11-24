@@ -2,7 +2,11 @@
 #include <cassert>
 #include <iostream>
 using namespace assist::formation;
-int main(){Point p[Maximum];uint32_t keys[]={90,90,67,90,90,90};assert(cycle(0,90,keys)==1);assert(cycle(1,90,keys)==3);assert(cycle(3,90,keys)==4);assert(cycle(4,90,keys)==5);assert(cycle(5,90,keys)==0);assert(cycle(0,67,keys)==2);assert(cycle(2,88,keys)==2);
+int main(){
+ assert(!taskExpired(1901,100,8500,1000)); // 1801 frames in 7.5s at 240 FPS is still within the 15s task lease.
+ assert(taskExpired(4000,100,16001,1000));
+ assert(taskExpired(99,100,1001,1000)); // frame rewind still retires the task.
+Point p[Maximum];uint32_t keys[]={90,90,67,90,90,90};assert(cycle(0,90,keys)==1);assert(cycle(1,90,keys)==3);assert(cycle(3,90,keys)==4);assert(cycle(4,90,keys)==5);assert(cycle(5,90,keys)==0);assert(cycle(0,67,keys)==2);assert(cycle(2,88,keys)==2);
  uint32_t gestureKeys[]={'Z',uint32_t('Z'|0x1000),uint32_t('Z'|0x1800),uint32_t('Z'|0x9000),uint32_t('Z'|0x2000),uint32_t('Z'|0x3000)};
  assert(cycle(0,'Z'|0x1000,gestureKeys)==1);assert(cycle(1,'Z',gestureKeys)==2);assert(cycle(2,'Z'|0x1800,gestureKeys)==0);
  assert(cycle(0,'Z'|0x8000,gestureKeys)==3);assert(cycle(0,'Z'|0x2000,gestureKeys)==0);assert(cycle(0,'Z'|0x3000,gestureKeys)==0);
