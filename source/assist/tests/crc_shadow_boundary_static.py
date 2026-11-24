@@ -1,7 +1,7 @@
-"""Static evidence contract for the CRC single-boundary candidate.
+"""Static evidence contract for CRC Shadow simplification research.
 
-This verifies source/evidence relationships only. It does not prove a complete
-Map::Reveal execution, exhaustive xrefs, or multiplayer compatibility.
+This validates recorded source/disassembly relationships only. It does not prove
+the complete Reveal call graph, Windows SEH behavior, or multiplayer safety.
 """
 from pathlib import Path
 import json
@@ -16,8 +16,9 @@ crc_bridge = read("assist/source/crc_shadow_bridge.h")
 crc_policy = read("assist/source/crc_shadow_policy.h")
 crc_evidence = json.loads(read("research/evidence/crc-shadow-research.json"))
 map_evidence = json.loads(read("research/evidence/trainer-map-cheatcheck.json"))
+binary = json.loads(read("research/evidence/crc-shadow-single-store-disassembly.json"))
 
-# There is already one synchronous tool-owned Reveal transaction boundary.
+# Existing synchronous tool-owned Map::Reveal boundary.
 start = bridge.index("else if(c==RevealMap){")
 end = bridge.index("else if(c==OpenTech)", start)
 branch = bridge[start:end]
@@ -30,16 +31,28 @@ assert branch.count("call<void>(0x577D90,0x87F7E8,(void*)house)") == 1
 assert branch.count("crcMapToolEnd()") == 1
 assert bridge.count("call<void>(0x577D90,0x87F7E8,(void*)house)") == 1
 
-# The prior static scan found three +0x241 readers, all classified as CRC
-# or CRCEngine paths; it also explicitly lists incomplete-xref limitations.
+# Existing linear scan: three direct read candidates, seven direct write sites,
+# with explicit unresolved alias/load/extension coverage gaps.
 scan = crc_evidence["static_candidate_scan"]
 assert len(scan["read_sites"]) == 3
-assert all(("CRC" in site.upper()) for site in scan["read_sites"])
+assert all("CRC" in site.upper() for site in scan["read_sites"])
 assert len(scan["write_sites"]) == 7
-assert scan["unknowns"], "Do not silently promote the scan to exhaustive xrefs"
+assert scan["unknowns"]
 
-# Only one of the seven direct +0x241 writes lies inside the recorded
-# Map::Reveal function range. This is the critical single-boundary premise.
+# Original SHA-matched PE disassembly confirms exactly one direct +0x241 store
+# inside Map::Reveal and no direct read/call to ComputeGameCRC after that store.
+assert binary["executable_sha256"] == crc_evidence["executable_sha256"]
+assert binary["function"]["entry"] == "0x577D90"
+assert binary["function"]["recorded_range"]["end_exclusive"] == "0x577F25"
+assert binary["static_findings"]["direct_House_plus_0x241_accesses_in_MapReveal"] == ["0x577DB0"]
+assert binary["static_findings"]["direct_ComputeGameCRC_calls_in_MapReveal"] == []
+assert binary["static_findings"]["direct_House_plus_0x241_reads_after_store_in_MapReveal"] == []
+assert binary["static_findings"]["indirect_calls_and_transitive_call_graph_exhaustive"] is False
+store = next(item for item in binary["relevant_instructions"] if item["address"] == "0x577DB0")
+assert store["bytes"] == "889941020000"
+assert store["instruction"] == "mov byte ptr [ecx+0x241],bl"
+
+# The separate map-range evidence agrees with the SHA-matched disassembly.
 reveal_range = next(
     item for item in map_evidence["unchanged_ranges"]
     if item["address"].lower() == "0x577d90"
@@ -47,30 +60,29 @@ reveal_range = next(
 lo = int(reveal_range["address"], 16)
 hi = lo + int(reveal_range["length"])
 writers = [int(item.split(":", 1)[0], 16) for item in scan["write_sites"]]
-inside = [address for address in writers if lo <= address < hi]
-assert inside == [0x577DB0], [hex(address) for address in inside]
+assert [address for address in writers if lo <= address < hi] == [0x577DB0]
 
-# Current production remains the eight-site design; this audit does not
-# silently remove it before the full native Reveal proof is available.
+# Production remains the old eight-site implementation until all gates pass.
 assert "constexpr unsigned SiteCount=sizeof(Sites)/sizeof(Sites[0]);" in crc_policy
 assert "crcMapSites[crcshadow::SiteCount]" in crc_bridge
 assert "crcMapShadowTick();" in bridge
 assert "if(!(sh->flags&ExperimentalReveal)||sh->renderReveal||" in crc_bridge
 assert 'GetModuleHandleW(L"Ares.dll")||GetModuleHandleW(L"Phobos.dll")' in crc_bridge
 
-# Candidate uses a single save/call/compare-and-restore transaction with
-# an SEH-finally boundary and retryable failure ownership.
-candidate = read("research/crc_shadow_boundary_candidate.h")
-assert "runtimeunwind::run(" in candidate
-assert "if(live!=1)" in candidate and "Result::Conflict" in candidate
-assert "Result::WriteFailed" in candidate and "Result::VerifyFailed" in candidate
-assert "Result::IdentityChanged" in candidate
-
+# Research-only candidate scopes suppression to the exact House identity.
 single = read("research/crc_shadow_single_store_candidate.h")
-assert "scope.skipStore=true" in single
+assert "currentHouse!=scope.house" in single
+assert "epoch!=scope.epoch||currentHouseID!=scope.houseID" in single
+assert "currentHouse!=scope.house" in single[single.index("inline bool abort"):]
 assert "inline bool consumeSkip" in single
-assert "inline void abort" in single
 assert "pushfd" in single and "popfd" in single
 assert "mov byte ptr [ecx+241h],bl" in single
+assert "actual naked trampoline and Win32 SEH wiring are not implemented" in single
 
-print("PASS: one existing tool Reveal boundary; one writer in Map::Reveal; three CRC-classified readers; one-site fail-closed store candidate; xref gaps retained")
+# Keep the zero-patch post-call restoration candidate as a comparison only.
+transaction = read("research/crc_shadow_boundary_candidate.h")
+assert "runtimeunwind::run(" in transaction
+assert "Result::WriteFailed" in transaction and "Result::VerifyFailed" in transaction
+assert "Result::IdentityChanged" in transaction
+
+print("PASS: SHA-matched Map::Reveal single-store evidence; exact-House scoped candidate; current production remains unchanged")
