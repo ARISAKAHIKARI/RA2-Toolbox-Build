@@ -17,7 +17,7 @@ struct MEMORY_BASIC_INFORMATION{void*BaseAddress;void*AllocationBase;size_t Regi
 inline unsigned fixtureReads=0,fixtureQueries=0,fixtureProtectCalls=0,fixtureFlushCalls=0;
 inline uint32_t fixtureUnreadable=0;inline bool fixtureFlush=true,fixtureProtect=true,fixturePointerExecutable=false;
 inline DWORD fixtureProtectionRequests[16]{};
-inline bool fixturePointerAddress(uintptr_t at){return at==0x7F74D8||at==0x7F74C8||at==0x7F7B60;}
+inline bool fixturePointerAddress(uintptr_t at){return at>=0x7F7000&&at<0x7F8000;}
 inline DWORD GetCurrentThreadId(){return 77;}inline HANDLE GetCurrentProcess(){return (void*)-1;}
 inline HMODULE GetModuleHandleW(LPCWSTR){return (void*)0x400000;}inline BOOL GetModuleHandleExW(DWORD,LPCWSTR,HMODULE*out){*out=(void*)0x10000000;return 1;}
 inline size_t VirtualQuery(const void*p,MEMORY_BASIC_INFORMATION*out,size_t){++fixtureQueries;uintptr_t at=(uintptr_t)p;uintptr_t base=at>=0x400000&&at<0xC00000?0x400000:at>=0x10000000&&at<0x10010000?0x10000000:0;if(!base)return 0;DWORD protection=fixturePointerAddress(at)&&!fixturePointerExecutable?PAGE_READONLY:PAGE_EXECUTE_READWRITE;*out={(void*)base,(void*)base,base==0x400000?0x800000u:0x10000u,MEM_COMMIT,protection,MEM_IMAGE};return sizeof *out;}
