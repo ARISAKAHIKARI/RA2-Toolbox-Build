@@ -2918,7 +2918,7 @@ static void finalizeTacticalLayout(){
    std::vector<int> ids;std::wstring rowHelp;for(size_t i=at;i<end;++i){int id=GetDlgCtrlID(pageControls[items[i]].hwnd);if(id){ids.push_back(id);if(rowHelp.empty())rowHelp=controlHelp(id,L"");}}
    int category=suite::categories::row(section,ids.data(),unsigned(ids.size()));
 #ifdef RA2_CONSOLE_WEBVIEW2
-   for(int id:ids)if(const auto* feature=suite::consolelayout::feature(id)){category=feature->page;break;}
+   for(int id:ids)if(const auto* feature=suite::consolelayout::ownerFeature(id)){category=feature->page;break;}
 #endif
    int&y=bottoms[category];
    for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);if(c.help.empty())c.help=controlHelp(GetDlgCtrlID(c.hwnd),L"");if(c.help.empty())c.help=rowHelp.empty()?controlHelp(0,label):rowHelp;c.rect.y=y+c.rect.y-top;c.page=category;
@@ -2966,14 +2966,10 @@ static void prepareConsoleSettingsModel(){
   }
   // Explicit ownership supersedes the Win32 fold and label heuristics.
   using namespace suite::consolelayout;
-  const auto* entry=feature(id);
-  int key=entry?entry->key:0;
+  const auto* entry=ownerFeature(id);
+  const int key=entry?entry->key:0;
   const wchar_t* section=entry?entry->section:nullptr;
   const wchar_t* title=entry?entry->title:nullptr;
-  const int filter=id>=9200&&id<9200+2*featuretypes::Count?(id-9200)/2:-1;
-  if(!entry)if(const auto* scope=typeScope(filter)){
-   key=9200+scope->owner*2;section=L"适用单位清单";title=scope->title;
-  }
   if(key){
    SetPropW(c.hwnd,L"RA2.Console.Feature",reinterpret_cast<HANDLE>(INT_PTR(key)));
    SetPropW(c.hwnd,L"RA2.Console.Section",const_cast<wchar_t*>(section));
