@@ -51,7 +51,7 @@ for n,p in FILES.items():
   assert 'VirtualQuery(' in s and 'PAGE_READWRITE' in s and 'bytes>128*1024' in s and 'VirtualProtect(' not in s
   assert not re.search(r'\b(?:enqueue|submitConstructed|nativeMission|nativeObjectEvent)\s*\(',s)
  if re.search(r'\bReadProcessMemory\s*\(',s):
-  assert n in ('external_reader/source/process_reader.h','assist/source/bridge.cpp','cursor/source/hide.cpp'),n
+  assert n in ('external_reader/source/process_reader.h','assist/source/bridge.cpp','cursor/source/hide.cpp','shared/source/game_entry_manager.cpp'),n
   if n!='external_reader/source/process_reader.h':assert 'ReadProcessMemory(GetCurrentProcess(),' in s,n
  if re.search(r'\bSendInput\s*\(|\bSendMessageTimeout[AW]?\s*\(',s):assert n=='shared/source/host_game_input.h',n
  if re.search(r'\bLoadLibrary(?:Ex)?[AW]?\s*\(',s):
