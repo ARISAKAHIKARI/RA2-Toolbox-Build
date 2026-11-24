@@ -13,6 +13,16 @@ for obsolete in ("needsCSInputPatch", "needsNativeInputPatch"):
     assert obsolete not in policy, obsolete
     assert obsolete not in policy_test, obsolete
 
+# No other current Assist implementation or top-level test may retain the old
+# feature-flag-to-input-patch dependency. Historical fixtures are intentionally
+# outside this current-source contract.
+for candidate in list((ROOT / "assist/source").rglob("*")) + list((ROOT / "assist/tests").glob("*")):
+    if candidate.suffix not in (".h", ".hpp", ".cpp", ".py") or candidate.resolve() == Path(__file__).resolve():
+        continue
+    body = candidate.read_text(encoding="utf-8")
+    for obsolete in ("needsCSInputPatch", "needsNativeInputPatch"):
+        assert obsolete not in body, (candidate, obsolete)
+
 # These are the ordinary input/command paths. None may install executable
 # patches, allocate trampolines, or write another process's code.
 ordinary_paths = (
