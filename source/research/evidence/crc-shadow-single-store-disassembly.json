@@ -9,22 +9,79 @@
     "entry": "0x577D90",
     "last_instruction": "0x577F21",
     "return": "ret 0x4",
-    "recorded_range": ["0x577D90", "0x577F25")
+    "recorded_range": {
+      "start": "0x577D90",
+      "end_exclusive": "0x577F25"
+    }
   },
   "relevant_instructions": [
-    {"address":"0x577D9D","bytes":"BB01000000","instruction":"mov ebx,1"},
-    {"address":"0x577DA2","bytes":"7412","instruction":"je 0x577DB6","meaning":"null argument skips the MapIsClear store"},
-    {"address":"0x577DA4","bytes":"8B4830","instruction":"mov ecx,[eax+0x30]","meaning":"read House index from the Reveal argument"},
-    {"address":"0x577DA7","bytes":"8B152C02A800","instruction":"mov edx,[0xA8022C]","meaning":"load House array"},
-    {"address":"0x577DAD","bytes":"8B0C8A","instruction":"mov ecx,[edx+ecx*4]","meaning":"resolve exact House pointer from the index"},
-    {"address":"0x577DB0","bytes":"889941020000","instruction":"mov byte ptr [ecx+0x241],bl","meaning":"the only direct House+0x241 store found inside Map::Reveal"},
-    {"address":"0x577DB6","bytes":"3B054C3DA800","instruction":"cmp eax,[0xA83D4C]","meaning":"compare Reveal argument with current local House"},
-    {"address":"0x577DBE","bytes":"3BC7","instruction":"cmp eax,edi","meaning":"non-local non-null House exits the function"},
-    {"address":"0x577E09","bytes":"A14C3DA800","instruction":"mov eax,[0xA83D4C]","meaning":"load local House for the remaining local-reveal path"},
-    {"address":"0x577E29","bytes":"889940020000","instruction":"mov byte ptr [ecx+0x240],bl","meaning":"separate Visionary field write; not MapIsClear"},
-    {"address":"0x577F21","bytes":"C20400","instruction":"ret 0x4"}
+    {
+      "address": "0x577D9D",
+      "bytes": "BB01000000",
+      "instruction": "mov ebx,1"
+    },
+    {
+      "address": "0x577DA2",
+      "bytes": "7412",
+      "instruction": "je 0x577DB6",
+      "meaning": "null argument skips the MapIsClear store"
+    },
+    {
+      "address": "0x577DA4",
+      "bytes": "8B4830",
+      "instruction": "mov ecx,[eax+0x30]",
+      "meaning": "read House index from the Reveal argument"
+    },
+    {
+      "address": "0x577DA7",
+      "bytes": "8B152C02A800",
+      "instruction": "mov edx,[0xA8022C]",
+      "meaning": "load House array"
+    },
+    {
+      "address": "0x577DAD",
+      "bytes": "8B0C8A",
+      "instruction": "mov ecx,[edx+ecx*4]",
+      "meaning": "resolve exact House pointer from the index"
+    },
+    {
+      "address": "0x577DB0",
+      "bytes": "889941020000",
+      "instruction": "mov byte ptr [ecx+0x241],bl",
+      "meaning": "the only direct House+0x241 store found inside Map::Reveal"
+    },
+    {
+      "address": "0x577DB6",
+      "bytes": "3B054C3DA800",
+      "instruction": "cmp eax,[0xA83D4C]",
+      "meaning": "compare Reveal argument with current local House"
+    },
+    {
+      "address": "0x577DBE",
+      "bytes": "3BC7",
+      "instruction": "cmp eax,edi",
+      "meaning": "non-local non-null House exits the function"
+    },
+    {
+      "address": "0x577E09",
+      "bytes": "A14C3DA800",
+      "instruction": "mov eax,[0xA83D4C]",
+      "meaning": "load local House for the remaining local-reveal path"
+    },
+    {
+      "address": "0x577E29",
+      "bytes": "889940020000",
+      "instruction": "mov byte ptr [ecx+0x240],bl",
+      "meaning": "separate Visionary field write; not MapIsClear"
+    },
+    {
+      "address": "0x577F21",
+      "bytes": "C20400",
+      "instruction": "ret 0x4"
+    }
   ],
   "direct_call_targets_after_store": [
+    "0x4068E0",
     "0x4ADEE0",
     "0x578290",
     "0x4ADCD0",
@@ -32,14 +89,36 @@
     "0x4F42F0"
   ],
   "checked_direct_callee_windows": [
-    {"start":"0x4ADEE0","end":"0x4AE100","direct_House_plus_0x241_or_ComputeGameCRC_reference_found":false},
-    {"start":"0x578290","end":"0x578500","direct_House_plus_0x241_or_ComputeGameCRC_reference_found":false},
-    {"start":"0x4ADCD0","end":"0x4ADED0","direct_House_plus_0x241_or_ComputeGameCRC_reference_found":false},
-    {"start":"0x657CE0","end":"0x658200","direct_House_plus_0x241_or_ComputeGameCRC_reference_found":false},
-    {"start":"0x4F42F0","end":"0x4F4500","direct_House_plus_0x241_or_ComputeGameCRC_reference_found":false}
+    {
+      "start": "0x4ADEE0",
+      "end": "0x4AE100",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+    },
+    {
+      "start": "0x578290",
+      "end": "0x578500",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+    },
+    {
+      "start": "0x4ADCD0",
+      "end": "0x4ADED0",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+    },
+    {
+      "start": "0x657CE0",
+      "end": "0x658200",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+    },
+    {
+      "start": "0x4F42F0",
+      "end": "0x4F4500",
+      "direct_House_plus_0x241_or_ComputeGameCRC_reference_found": false
+    }
   ],
   "static_findings": {
-    "direct_House_plus_0x241_accesses_in_MapReveal": ["0x577DB0"],
+    "direct_House_plus_0x241_accesses_in_MapReveal": [
+      "0x577DB0"
+    ],
     "direct_ComputeGameCRC_calls_in_MapReveal": [],
     "direct_House_plus_0x241_reads_after_store_in_MapReveal": [],
     "indirect_calls_and_transitive_call_graph_exhaustive": false
