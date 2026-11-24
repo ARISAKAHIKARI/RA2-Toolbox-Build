@@ -43,6 +43,7 @@ on:
   pull_request:
     paths:
       - 'source/assist/source/hook_policy.h'
+      - 'source/assist/source/protocol.h'
       - 'source/assist/source/native_input_hooks.h'
       - 'source/assist/source/auto_cs_bridge.h'
       - 'source/assist/source/cooperative_bridge.h'
