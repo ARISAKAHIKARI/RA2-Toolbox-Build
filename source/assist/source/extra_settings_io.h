@@ -372,6 +372,9 @@ static void serviceCooperative(){
  if(!retry&&!freshness::intentAlive(request.tick,now)){
   cooperativeDelivered=request.serial;retryCooperative=false;notify(L"协同请求已超时，请重新下令。");return;
  }
+ // Do not allocate from a partial prefix of a pointer cohort that is still
+ // being admitted/retried by Runtime.
+ if(shared->pointer.request!=shared->pointer.ack)return;
  // Read the immutable game-thread frame capture; never independently scan
  // another game frame from the host/UI while preparing this command.
  shared->cooperativeFrameWanted=request.serial;
