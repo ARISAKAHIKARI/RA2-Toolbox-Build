@@ -11,7 +11,7 @@ int main(){auto w=make(7,3);auto a=allocate(w);auto n=counts(a);assert(a.size()=
  w=make(10,3);w.targets[0].quota={2,3,2};w.targets[1].quota={1,2,1};w.targets[2].quota={0,0,0};n=counts(allocate(w));assert(n[100]==2&&n[101]==1&&n[102]==7);for(auto&t:w.targets)t.quota.maximum=1;assert(allocate(w).size()==3);
  w=make(2,2);w.compatible={1,1,1,0};n=counts(allocate(w));assert(n[100]==1&&n[101]==1);
  w=make(3,2,Enter);w.units[0].slots=3;w.units[1].slots=w.units[2].slots=2;w.targets[0].free=4;w.targets[1].free=3;a=allocate(w);assert(a.size()==3);std::map<uint32_t,int> slots;for(auto&o:a)slots[o.target]+=w.units[o.id-1].slots;assert(slots[100]<=4&&slots[101]<=3);
- w.compatible.pop_back();assert(allocate(w).empty());Request r{};r.serial=r.match=1;r.mode=Enter;r.count=MaxSources+1;assert(!valid(r));r.count=1;r.viewWidth=1920;r.viewHeight=1080;assert(valid(r));
+ w.compatible.pop_back();assert(allocate(w).empty());Request r{};r.serial=r.match=1;r.pointerRequest=1;r.mode=Enter;r.count=MaxSources+1;assert(!valid(r));r.count=1;r.viewWidth=1920;r.viewHeight=1080;assert(valid(r));
  // A single pointer request can be admitted over several game frames. Its
  // identity remains stable even when the simulation advances by hundreds of
  // frames; a genuinely new physical pointer request starts a new cohort.
