@@ -6,7 +6,7 @@
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
   "resources_legacy_reuse": true,
   "build_protocol": 107,
-  "validation": "This revision records only focused checks actually executed against its frozen production and test source bytes. Historical suites are not counted as new execution. Complete Windows-target compilation, static PE/ABI validation, paired component digests and archive verification are recorded separately in the frozen build receipts and release-manifest.json; this source manifest does not assert their completion. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed.",
+  "validation": "This revision records only focused checks actually executed against its frozen production and test source bytes. Historical suites are not counted as new execution. Complete Windows-target compilation, static PE/ABI validation, paired component digests and archive verification are recorded separately in the frozen build receipts and release-manifest.json; this source manifest does not assert their completion. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed. The CRC single-site source change remains pending its exact-commit Windows build and real-game acceptance.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -15,7 +15,7 @@
     "Orders.ObjectEventBackend": "0=constructor; 1=ClickedEvent MP for repair; explicit Sell always bypasses ClickedEvent/constructor; multiplayer Sell serializes wire packets directly, no native OutList/packer",
     "Display.ShroudStrategy": "UI0=off,1/2=HIGH RISK original half/clear draw hooks,3=HIGH RISK automatic reveal,4=HIGH RISK direct map; material5/6 are visible disabled choices and resolve to off; stored7/8 aliases1/2",
     "Display.BuildTimeTooltip": "default0 after one-time migration; independent native sidebar time tooltip; no high-risk prefix",
-    "Experimental.CrcMapIsClearShadow": "default0; HIGH RISK MapIsClear-only original-value input at native CRC; MP automatic/native reveal only; enable before first tool reveal in a new match; not a full reveal or platform compatibility guarantee",
+    "Experimental.CrcMapIsClearShadow": "default0; HIGH RISK one-site Map::Reveal MapIsClear write suppression at 0x577DB0, scoped to the tool-owned exact House identity; multiplayer automatic/native reveal only; natural Reveal and other House writes remain native; no CRC read replacement or post-call data restoration; Cell/Visionary remain fully native; game/netplay acceptance pending",
     "Experimental.NativeMegaGateway": "default0 after one-time migration; explicit HIGH RISK successful native command observer",
     "Experimental.NativeCombatQueries": "default0; raw weapon/range observations by default; explicit experimental native virtual queries, not code patches",
     "Experimental.ManualReveal": "default0; migrates legacy RevealMap into manual permission only; Ctrl+Alt+O and button explicitly invoke original577D90; enabling alone never reveals",
@@ -36,7 +36,7 @@
   "entry_manager_api": 3,
   "package_type": "Windows x64 prerelease lightweight Full and Update, same-build x86 Runtime/broker, pinned WebView2 loader; generated cursor DIS/preview and optional Python scientific runtime excluded.",
   "runtime_transport_protocol": 4,
-  "game_code_patching": "Prefer native events, polling and external rendering; gameplay code changes, simulation mutations and original-value CRC mirror retain explicit HIGH RISK labels. Read-only native queries, build-time display and HideCursor are not classified as HIGH RISK. Cursor tooltip repair owns validated data/vtable slots without rewriting .text; this is not a multiplayer certification.",
+  "game_code_patching": "Prefer native events, polling and external rendering; gameplay code changes, simulation mutations and single-site MapIsClear write suppression retain explicit HIGH RISK labels. Read-only native queries, build-time display and HideCursor are not classified as HIGH RISK. Cursor tooltip repair owns validated data/vtable slots without rewriting .text; this is not a multiplayer certification.",
   "input_entry": "Windows WH_GETMESSAGE/WH_CALLWNDPROCRET; ordinary sessions use frame-counter polling, native frame notification only explicitly selected diagnostic test",
   "symbolic_original_interfaces": [
     "DisplayClass::ProcessClickCoords (0x692300), normal query call",
