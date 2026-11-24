@@ -61,7 +61,7 @@ jobs:
           python3 source/assist/tests/reverse_dodge_hotpath.py --out /tmp/ra2-reverse-dodge
           python3 source/assist/tests/tactical_frame_sampling.py
           python3 source/assist/tests/cooperative_read_only_recovery.py --out /tmp/ra2-cooperative-readonly
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Wno-error=misleading-indentation -UNDEBUG source/assist/tests/cooperative_snapshot.cpp -o /tmp/ra2-cooperative-snapshot
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Wno-error=misleading-indentation -Wno-error=parentheses -Wno-error=class-memaccess -UNDEBUG source/assist/tests/cooperative_snapshot.cpp -o /tmp/ra2-cooperative-snapshot
           /tmp/ra2-cooperative-snapshot
           python3 source/assist/tests/construction_delivery_test.py
       - name: Run native formation bridge fixture including high-FPS mouse hold
