@@ -342,7 +342,12 @@
           block={key:'named:'+first.featureId,title:first.group,headers:[],details:[],controls:[]};
           named.set(first.featureId,block);blocks.push(block);
         }
-        for(const control of line)(isFeatureHeader(control)?block.headers:block.details).push(control);
+        const primary=line.some(isFeatureHeader);
+        const mouseGesture=line.some(c=>c.type==='choice'&&c.options.includes('中键')&&c.options.includes('侧键 1'));
+        for(const control of line){
+          const companion=primary&&!mouseGesture&&['hotkey','button'].includes(control.type);
+          (isFeatureHeader(control)||companion?block.headers:block.details).push(control);
+        }
         block.controls.push(...line);
         continue;
       }
