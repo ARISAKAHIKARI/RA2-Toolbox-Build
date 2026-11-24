@@ -1,32 +1,95 @@
-"""Current release invariants; runtime and host-polling tests provide behavior checks."""
+"""Ordinary input is host-polled and translated to native events; special patches stay manager-owned."""
 from pathlib import Path
 import re
-r=Path(__file__).resolve().parents[2]
-sources=[p for d in ('assist','cursor','unit_monitor','shared','game_runtime','external_reader','suite') for p in (r/d/'source').rglob('*') if p.suffix in ('.h','.hpp','.cpp','.c')]
-for p in sources:
- s=p.read_text()
- assert not re.search(r'\b(?:WriteProcessMemory|VirtualProtect|CreateRemoteThread|VirtualAllocEx)\s*\(',s),p
- for hook in re.findall(r'SetWindowsHookExW\(([^,]+)',s):
-  assert p==r/'shared/source/host_game_input.h' and hook in ('WH_GETMESSAGE','WH_CALLWNDPROCRET'),(p,hook)
- assert 'makeInputTrampoline' not in s and 'patchNativeInput' not in s,p
-manager=(r/'shared/source/game_entry_manager.cpp').read_text()
-assert 'applyPatch(const Request&){return Result::PatchDenied;}' in manager
-bridge=(r/'assist/source/bridge.cpp').read_text();pointer=(r/'assist/source/pointer_bridge.h').read_text();host=(r/'assist/source/pointer_host.h').read_text()
-assert bridge.count('pointerTick();')==3 and 'snap.inputPatchMask=0' in bridge
-assert 'installFrameDriver' not in bridge and 'assistFrameObserver' not in bridge
-assert 'i.inputSerial!=b.cancelSerial' in pointer and 'DWORD(now-i.tick)>1500' in pointer
-assert 'pointerDone[n]=1' in pointer and 'manualVersions.get(i.sources[n].id)' in pointer
-assert 'get<int>(p+0xAC)!=2' in pointer and 'destination!=readMapCell' in pointer
-assert 'call<void>(0x692300,0x87F7E8,&point,&cell,&coord,&object,&a,&b)' in pointer
-assert 'nativeMission(' in pointer and 'nativeObjectEvent(' in pointer and 'enqueue(' not in pointer
-assert 'i.x>=width||i.y>=height' in pointer
-assert 'GetAsyncKeyState' not in pointer
-assert not re.search(r'box\.(?:ack|result)\s*=(?!=)',host)
-assert 'e.serial!=box.cancelSerial' in host and 'externalReader.readFresh' in host
-assert 'in.tick=e.tick' in host and 'in.tick=GetTickCount' not in host
-assert 'Version=42' in (r/'assist/source/protocol.h').read_text()
-ui=(r/'assist/source/main.cpp').read_text()
-assert 'techMode=false;' in ui and 'buildAnywhereMode=false;' in ui and 'schedulerMode=0;schedulerTarget=0' in ui
-assert 'extra.sellEnemy=false;' in (r/'assist/source/extra_settings_io.h').read_text()
-assert 'owner!=lastHouse)return false;' in (r/'assist/source/cooperative_bridge.h').read_text()
-print('PASS no feature hooks/code writes; message manager owns entry; bounded stamped input, native follow, sole event gateway, unsupported rule bypasses closed')
+
+ROOT = Path(__file__).resolve().parents[2]
+
+def read(relative):
+    return (ROOT / relative).read_text(encoding="utf-8")
+
+policy = read("assist/source/hook_policy.h")
+policy_test = read("assist/tests/hook_policy.cpp")
+for obsolete in ("needsCSInputPatch", "needsNativeInputPatch"):
+    assert obsolete not in policy, obsolete
+    assert obsolete not in policy_test, obsolete
+
+# These are the ordinary input/command paths. None may install executable
+# patches, allocate trampolines, or write another process's code.
+ordinary_paths = (
+    "assist/source/native_input_hooks.h",
+    "assist/source/auto_cs_bridge.h",
+    "assist/source/cooperative_bridge.h",
+    "assist/source/pointer_bridge.h",
+    "assist/source/native_orders_bridge.h",
+    "assist/source/bridge.cpp",
+    "shared/source/host_game_input.h",
+    "assist/source/input_patch.h",
+)
+for relative in ordinary_paths:
+    body = read(relative)
+    for forbidden in (
+        "gameentry::patch(",
+        "VirtualProtect(",
+        "WriteProcessMemory(",
+        "makeInputTrampoline(",
+        "writeInputCodeGuarded(",
+        "patchNativeInput(",
+    ):
+        assert forbidden not in body, (relative, forbidden)
+
+# The old registry adapter is inspection/diagnostics only.
+patch_view = read("assist/source/input_patch.h")
+assert "gameentry::inspect" in patch_view
+assert "gameentry::markConflict" in patch_view
+
+native = read("assist/source/native_input_hooks.h")
+assert "there are no input detours" in native
+assert "static void restoreNativeHooks(){}" in native
+assert "loadInterfaces()" in native
+
+cs = read("assist/source/auto_cs_bridge.h")
+assert "csAllowedFor(" in cs and "csHooksTick(" in cs
+assert "static void restoreCSHook(){csMaskSeq=-1;csMaskMatch=0;}" in cs
+
+cooperative = read("assist/source/cooperative_bridge.h")
+assert "static void restoreClickHooks(){}" in cooperative
+assert "clickHooksTick(" in cooperative
+
+pointer = read("assist/source/pointer_bridge.h")
+assert "nativeMission(" in pointer and "nativeObjectEvent(" in pointer
+assert "enqueue(" not in pointer
+orders = read("assist/source/native_orders_bridge.h")
+assert "nativeMission(" in orders
+
+bridge = read("assist/source/bridge.cpp")
+assert "csHooksTick(inputFlags);nativeHooksTick(inputFlags);clickHooksTick(inputFlags);" in bridge
+assert "pointerTick();" in bridge and "snap.inputPatchMask=0;" in bridge
+
+# The only Windows hooks in the input manager are public message-boundary
+# hooks. They do not overwrite the game's executable code or swallow clicks.
+host = read("shared/source/host_game_input.h")
+hooks = re.findall(r"SetWindowsHookExW\(([^,]+)", host)
+assert hooks == ["WH_GETMESSAGE", "WH_CALLWNDPROCRET"], hooks
+assert "WH_KEYBOARD_LL" not in host and "WH_MOUSE_LL" not in host
+assert "GetAsyncKeyState" in host and "pollPointer" in host
+pointer_host = read("assist/source/pointer_host.h")
+assert "GetAsyncKeyState" not in pointer_host
+assert "externalReader.readFresh" in pointer_host
+
+# Keep the deliberately opt-in patch family intact. These features still use
+# GameEntryManager; removing all patch support would be a different regression.
+manager = read("shared/source/game_entry_manager.cpp")
+assert "VirtualProtect(site" in manager
+assert "FlushInstructionCache" in manager
+assert "patches.proposal" in manager and "patches.commit" in manager
+for relative in (
+    "assist/source/placement_bridge.h",
+    "assist/source/direct_modes_bridge.h",
+    "assist/source/network_sender_bridge.h",
+):
+    assert "gameentry::patch(" in read(relative), relative
+
+experimental = read("shared/source/experimental_patch_policy.h")
+assert "Retired scheduling/input/CS/sidebar detours remain forbidden." in experimental
+
+print("PASS: ordinary input has no executable patch path; Win32 message hooks remain; explicit special patches stay manager-owned")
