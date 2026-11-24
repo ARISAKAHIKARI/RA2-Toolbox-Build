@@ -52,7 +52,16 @@ def main():
     for label, reverse in variants.items():
         directory = out / label; directory.mkdir(exist_ok=True)
         header = directory / "reverse_hotpath_production.h"
-        content = extract(reverse, dodge); header.write_text(content)
+        content = extract(reverse, dodge)
+        # Keep the historical 60 FPS implementation comparable while the
+        # production API now carries a wall-clock tick and ReverseShot adds
+        # one same-sized timestamp field.
+        if "static ReverseShot* reverseShot(uint32_t p,int frame){" in reverse:
+            content = content.replace(
+                "struct ReverseShot {uint32_t id=0,pointer=0;int frame=0;bool handled=false;};",
+                "struct ReverseShot {uint32_t id=0,pointer=0;int frame=0;bool handled=false;uint32_t tick=0;};")
+            content += "\nstatic ReverseShot* reverseShot(uint32_t p,int frame,uint32_t now){(void)now;return reverseShot(p,frame);}\n"
+        header.write_text(content)
         exe = directory / "reverse-hotpath"
         command = ["g++", "-std=c++17", "-O2", "-UNDEBUG", "-I", str(directory), "-I", str(SRC),
                    str(HERE / "reverse_dodge_hotpath.cpp"), "-o", str(exe)]
