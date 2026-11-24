@@ -48,6 +48,11 @@ assert binary["static_findings"]["direct_House_plus_0x241_accesses_in_MapReveal"
 assert binary["static_findings"]["direct_ComputeGameCRC_calls_in_MapReveal"] == []
 assert binary["static_findings"]["direct_House_plus_0x241_reads_after_store_in_MapReveal"] == []
 assert binary["static_findings"]["indirect_calls_and_transitive_call_graph_exhaustive"] is False
+readers = {item["address"]: item for item in binary["reader_classification"]}
+assert readers["0x502FFF"]["classification"] == "CRC serializer input"
+assert readers["0x64DCCA"]["classification"] == "ComputeGameCRC House MapIsClear input"
+assert readers["0x64E250"]["classification"] == "diagnostic logging read"
+assert "not an exhaustive proof" in binary["reader_scope_note"]
 store = next(item for item in binary["relevant_instructions"] if item["address"] == "0x577DB0")
 assert store["bytes"] == "889941020000"
 assert store["instruction"] == "mov byte ptr [ecx+0x241],bl"
