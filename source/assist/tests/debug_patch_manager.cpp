@@ -13,7 +13,8 @@ static void put(uint32_t at,uint32_t value){memcpy((void*)(uintptr_t)at,&value,4
 static void reset(){
  memset((void*)0x400000,0,0x800000);patches=assist::hookregistry::Registry<>{};memset(patchModules,0,sizeof patchModules);memset(patchErrors,0,sizeof patchErrors);
  policy={};busy=activeThread=activeModule=entries=reentrant=contended=wrongThread=0;boundThreadHandle=nullptr;boundThreadId=0;
- debugentries::activePolicy={};memset(debugentries::observations,0,sizeof debugentries::observations);fixtureUnreadable=0;fixtureFlush=true;fixtureProtect=true;
+ debugentries::activePolicy={};memset(debugentries::observations,0,sizeof debugentries::observations);fixtureUnreadable=0;fixtureFlush=true;fixtureProtect=true;fixturePointerExecutable=false;
+ fixtureProtectCalls=fixtureFlushCalls=0;memset(fixtureProtectionRequests,0,sizeof fixtureProtectionRequests);
  patchcontext::verifiedCallDependency=nullptr;
  put(0xA8B238,0);put(0xA83D4C,0x900000);put(0xA8ED84,123);put(0xA8E9A0,1);put(0xA8B8C2,0);
  gameentry::Request r{};r.operation=gameentry::Operation::Enter;r.module=0x10000000;r.bindThread=1;
@@ -37,6 +38,13 @@ struct RiskSite{uint32_t address;unsigned size;uint8_t before[16],after[16];};
 static void skip(uint32_t at,bool yes){auto next=debugentries::activePolicy;check(debugentries::setSkip(next,debugentries::id(debugentries::Kind::Patch,at),yes));check(debugentries::applyPolicy(next));}
 static void seedFrame(){for(const auto&p:patchcontext::Probes)if(p.site==0x55DE81)memcpy((void*)(uintptr_t)p.address,p.bytes,p.size);
  const uint8_t original[]={0x89,0x15,0x84,0xED,0xA8,0};memcpy((void*)0x55DE81,original,6);}
+static void seedTooltip(){
+ const uint8_t textSlot[]={0x50,0x90,0x47,0},layoutSlot[]={0xA0,0x8B,0x47,0};
+ const uint8_t textContext[]={0xB0,0x8D,0x47,0,0x10,0x8E,0x47,0,0x30,0x8E,0x47,0};
+ const uint8_t textCall[]={0x8B,0x16,0x50,0x8B,0xCE,0xFF,0x52,0x14};
+ memcpy((void*)0x7F74D8,textSlot,4);memcpy((void*)0x7F74C8,layoutSlot,4);
+ memcpy((void*)0x7F74CC,textContext,sizeof textContext);memcpy((void*)0x724AEB,textCall,sizeof textCall);
+}
 static bool dependencyVerdict=true;static unsigned dependencyChecks=0;
 static bool dependency(uint32_t at){++dependencyChecks;return at==0x4F7870&&dependencyVerdict;}
 int main(){
@@ -71,6 +79,20 @@ int main(){
  reset();seedFrame();skip(0x55DE81,true);check(write(0x55DE81,frame,detour,6,0x20000000)==int(Result::Busy));check(!patches.installed());
  fixtureProtect=false;check(write(0x55DE81,frame,detour,6)==int(Result::SystemFailure));check(!patches.installed()&&!memcmp((void*)0x55DE81,frame,6));
  check(write(0x646E90,frame,detour,5)==int(Result::PatchDenied));check(!patches.installed());
+ // Tooltip vtable slots are data pointers: write with PAGE_READWRITE,
+ // restore PAGE_READONLY, and do not require an instruction-cache flush.
+ reset();seedTooltip();check(dataPointerSlot(0x7F74D8)&&dataPointerSlot(0x7F74C8)&&dataPointerSlot(0x7F7B60));
+ check(!dataPointerSlot(0x55DE81)&&!dataPointerSlot(0x478BD1));
+ const uint8_t tooltipOriginal[]={0x50,0x90,0x47,0};uint8_t tooltipAdapter[4]{};const uint32_t tooltipTarget=0x10001000;memcpy(tooltipAdapter,&tooltipTarget,4);
+ fixtureFlush=false;check(write(0x7F74D8,tooltipOriginal,tooltipAdapter,4)==int(Result::Ok));
+ check(fixtureProtectCalls==2&&fixtureProtectionRequests[0]==PAGE_READWRITE&&fixtureProtectionRequests[1]==PAGE_READONLY);
+ check(fixtureFlushCalls==0);journal=observed(0x7F74D8);check(journal.active&&journal.length==4);
+ check(write(0x7F74D8,tooltipAdapter,tooltipOriginal,4)==int(Result::Ok));check(!observed(0x7F74D8).active);
+ // A known pointer slot on an executable page is unexpected and must fail
+ // closed before VirtualProtect; it must never be converted to RWX.
+ reset();seedTooltip();fixturePointerExecutable=true;
+ check(write(0x7F74D8,tooltipOriginal,tooltipAdapter,4)==int(Result::PatchDenied));
+ check(fixtureProtectCalls==0&&!patches.installed());fixturePointerExecutable=false;fixtureFlush=true;
  // Extracted production common adapter captures the actual operand, then
  // retires through the manager journal when strict context checking resumes.
  reset();memcpy((void*)0x478BD1,actual,s->n);RiskSite risk{s->at,s->n,{},{}};memcpy(risk.before,s->before,s->n);memcpy(risk.after,after,s->n);
