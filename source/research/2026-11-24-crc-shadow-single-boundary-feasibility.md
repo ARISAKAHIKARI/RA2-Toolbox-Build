@@ -74,11 +74,35 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 - `0x577DA4–0x577DAD`：从 Reveal 参数的 `+0x30` 取得 House 索引，再由 House 数组解析实际 House 指针到 ECX。
 - `0x577DB0`：`mov byte ptr [ecx+0x241],bl`，写入 MapIsClear=1。
 - `0x577DB6`：开始比较 Reveal 参数与当前本地 House；单点拦截必须从这里继续执行原生指令。
-- 非本地 House 会跳到函数尾部；本地 House 继续执行原生地图揭示流程，并在 `0x577E29` 按原版写 `House+0x240`（Visionary）。这个地址只用于区分字段，工具箱不接管它。
+- 非本地 House 会跳到函数尾部；本地 House 继续执行原生地图揭示流程。`0x577E09` 先加载本地 House 指针，真正读取 `House+0x240`（Visionary）的是 `0x577E0F`，并在 `0x577E29` 按原版写回。这个字段只用于区分原生流程，工具箱不接管它。
 
 完整函数在 `0x577F21` 执行 `ret 4`。在该函数体内，直接访问 House+0x241 的位置只有 `0x577DB0`；该函数没有直接调用 ComputeGameCRC，也没有在该 store 之后直接读取 House+0x241。对几个直接调用目标的局部代码窗口也没有发现直接的 +0x241 或 ComputeGameCRC 引用。
 
 证据文件：`research/evidence/crc-shadow-single-store-disassembly.json`。
+
+### 4. 第二轮控制流与虚调用核验
+
+对 Map::Reveal 的后半段又做了一轮指令级核验：
+
+- `0x577DD1` 调用的 `0x4068E0` 在本 EXE 中只有一条 `ret`，是空操作。
+- 函数体唯一的间接虚调用位于 `0x577DF4`（`call dword ptr [edx+0x4]`），对象来自全局 `0xA8B23C`。默认单例构造路径把 vtable 设为 `0x7EED60`；该表的 `+0x4` 槽指向 `0x5C0E30`，其机器码为 `32 C0 C3`（`xor al,al; ret`），不读写内存，只返回 false。该返回值只影响栈上的局部标志，不会调用 CRC。
+- 这只解析了固定 EXE 的默认单例路径；运行时第三方替换全局对象或 vtable 的情况仍未排除。
+- 直接调用目标的完整函数体边界也已重新确定：`0x4ADEE0–0x4ADFEF`、`0x578290–0x578342`、`0x4ADCD0–0x4ADED8`、`0x657CE0–0x657D92`、`0x4F42F0–0x4F431E`。这些完整函数体没有直接的 House+0x241 或 ComputeGameCRC 引用；其中仍有 Techno 虚调用和间接回调，所以这不是穷尽的传递调用图证明。
+- Visionary 的真实读取指令是 `0x577E0F`，`0x577E09` 只是加载本地 House 指针；写入仍是 `0x577E29`。
+
+### 5. x86 单点 trampoline 代码生成探针
+
+新增研究专用的 x86 naked-function 探针，并用 `clang++ -target i686-pc-windows-msvc -fms-extensions` 实际编译成 COFF 对象。当前本地代码生成契约通过：
+
+- 回调前保存 GPR、EFLAGS、x87 和 SSE 状态，回调后完整恢复。
+- one-shot 分支恰好跳过原始 6 字节 `MOV [ecx+0x241],bl`，不碰其他指令。
+- 两条分支都清除同一个 skip 标志，再恢复原始 EFLAGS。
+- 通过 `push 0x577DB6; ret` 精确续接原始下一条指令。
+- COFF 重定位中恰好有一个受保护回调引用，以及同一 skip 标志的比较/清除两处引用。
+
+探针和测试分别位于 `source/assist/tests/crc_shadow_single_store_trampoline_probe.cpp` 与 `source/assist/tests/crc_shadow_single_store_trampoline_contract.py`。CRC 专项 CI 已加入该编译检查。
+
+**边界：** 这只是汇编代码生成与重定位形状验证，不是生产 Runtime 的实际 trampoline，不证明 Win32 SEH/异常回调已经接通，也没有执行真实 Map::Reveal。生产仍保持八点实现。
 
 这比此前仅按静态候选区间推断更强，但仍不是完整调用图证明：Map::Reveal 后续会调用地图/渲染相关函数，其中有虚函数与间接调用；局部窗口扫描不能代替对所有间接目标的穷尽分析。现有 Unicorn fixture 在 `0x577DB6` 后提前返回，因此它没有验证完整原生后续执行。但本项目不需要在工具箱中模拟或维护 Cell/Visionary 状态；验收只需确认单点拦截后从原始下一条指令 `0x577DB6` 继续，游戏原生后半段不被跳过、不被改写，并在真实游戏中正常运行。
 
@@ -137,6 +161,7 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 - 零补丁事务模型：覆盖原值 0/1、原生不写、后续自然同值写入、House 身份复用、未知值冲突、写失败重试、读取/读回失败、嵌套阻止，以及原生调用在写入前后异常退出。当前本地使用 g++ -std=c++17 -O2 -Wall -Wextra -Werror 编译并运行，20 项断言全部通过。异常路径由可移植 finally 替身模拟，不代表 Windows SEH 或游戏实测。
 - 单点写入抑制模型：覆盖工具作用域内跳过写入、作用域外自然 Reveal、其他自然写入、多个 House 写入、回调异常兜底、嵌套阻止和 finally 清理。当前本地以 g++ -std=c++17 -O2 -Wall -Wextra -Werror 编译并运行，29 项断言全部通过；覆盖精确目标 House、嵌套其他 House 原生放行、同地址身份变化、epoch 变化、SEH abort 仅对目标生效、finally 清理和防止 skip 标志泄漏。它测试的是状态机模型，不是生产裸函数汇编。
 - 静态证据契约：核对 RevealMap 单一调用边界、0x577DB0 是函数范围内唯一的已知写入点、三个已知读取候选的 CRC 分类，并明确保留 xref 缺口。
+- x86 trampoline 代码生成契约：本地 clang++ 交叉编译 i686 Windows COFF 对象，检查完整寄存器/浮点状态保护、一次性分支只跳过原始 MOV、标志清理、0x577DB6 续接和重定位；本地通过，CI 已加入，仍不代表生产 SEH 或游戏实测。
 
 以上均为研究／合成测试，不是实际游戏执行，不是完整 Map::Reveal 验证，也不是双机联机测试。CI 工作流已加入，实际 GitHub Actions 运行结果仍待回报。
 
