@@ -15,6 +15,7 @@
 #include "clock_ms.h"
 #include "../../shared/source/precise_clock.h"
 #include "../../shared/source/runtime_fault.h"
+#include "../../shared/source/runtime_seh_scope.h"
 #include "signatures.h"
 #include "../../shared/source/debug_entry_policy.h"
 #include "../../shared/source/patch_context.h"
@@ -89,7 +90,7 @@ static bool validateNativePlacement(const intent::EventOrder&,const NativePlacem
 static bool nativePlacementPacket(const vanilla::Packet&,const intent::EventOrder&);
 static void nativePlacementOffers(DWORD);
 static bool networkHousePreserveReady();static bool networkSenderHouse(int);static void networkSenderTick(bool);static bool restoreNetworkSender();
-static void crcMapShadowTick();static void crcMapShadowRewind(uint32_t);static bool restoreCrcMapShadow();static bool crcMapToolBegin(uint32_t);static void crcMapToolEnd();
+static void crcMapShadowTick();static void crcMapShadowRewind(uint32_t);static bool restoreCrcMapShadow();static bool crcMapToolBegin(uint32_t);static void crcMapToolEnd(bool);
 static bool controlCommandOwnerReady(uint32_t);
 static void controlCommandOwnerTick();static void restoreControlCommandOwner();static void controlObjectOwnerTick();static void restoreControlObjectOwner();
 static void nativeSellCursorTick();static void restoreNativeSellCursor();static void nativeMegaGatewayTick();static void restoreNativeMegaGateway();
@@ -1424,7 +1425,12 @@ static void command(uint32_t house,DWORD now,commandsampling::Sample sample=comm
   if(cells<0x10000||capacity<=0||capacity>512*512)result=-14;
   else if(!revealSignature())result=-12;
   else if(!crcMapToolBegin(house))result=-22;
-  else {call<void>(0x577D90,0x87F7E8,(void*)house);crcMapToolEnd();n=1;}
+  else {
+   bool completed=false;
+   runtimeunwind::run([&]{call<void>(0x577D90,0x87F7E8,(void*)house);completed=true;},
+                      [&]{crcMapToolEnd(completed);});
+   n=1;
+  }
  }
  else if(c==OpenTech){
   if(arg&&!techmode::valid(sh->arg2))result=-4;
