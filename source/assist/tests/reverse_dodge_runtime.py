@@ -59,7 +59,7 @@ for mode in (0,3,4,5):
     m.w(0xa8ed84,first_frame+gap-1);m.w(m.bullet+0x10,702);m.u.mem_write(m.bullet+0xe8,struct.pack('<ddd',0,30,-5));n.tick(m)
     assert n.count(m)==1,'nearby shot interrupted accepted Move'
     if case=='fixed_window':
-     m.w(0xa8ed84,first_frame+12);m.w(m.bullet+0x10,703);n.tick(m)
+     m.w(0xa8ed84,first_frame+13);m.w(m.bullet+0x10,703);n.tick(m)
      assert n.count(m)==2,'suppressed shot extended merge window'
      expected=2
    for _ in range(3):n.tick(m)
