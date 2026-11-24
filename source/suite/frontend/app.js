@@ -646,12 +646,16 @@
       line.classList.toggle('compound-row',compound);line.classList.toggle('subsettings-line',subsettings);
       const hasPreset=members.some(control=>control.type==='choice' && control.options.includes('仅鼠标') && control.options.includes('自定义'));
       let previous=null,parent=line;
+      const hotkeyControl=members.find(c=>c.type==='hotkey');
+      const mouseControl=hotkeyControl&&members.find(c=>c.type==='choice'&&c.options.includes('中键')&&c.options.includes('侧键 1'));
+      const presetControl=hotkeyControl&&members.find(c=>c.type==='choice'&&c.options.includes('仅鼠标')&&c.options.includes('自定义'));
       for(const [index,control] of members.entries()) {
         let row=rows.get(control.id);
         if(!row || row.type!==control.type || row.presentation!==control.presentation || Boolean(row.textInput)!==(control.type==='choice' && !control.readonly && control.presentation!=='list')) {
           const next=makeRow(control);if(row)row.element.replaceWith(next.element);row=next;rows.set(control.id,row);
         }
         row.control=control;
+        if(control===hotkeyControl)row.pairedMouse=mouseControl||null;
         row.commandAction=commandRow&&index===0;
         // An unowned choice, number or hotkey is a full feature row, not
         // a subordinate field simply because it is not a switch.
@@ -662,10 +666,13 @@
         if(commandRow&&index>0&&control.type==='hotkey')row.inlineLabel='快捷键';
         row.element.classList.toggle('inline-hotkey',control.type==='hotkey'&&Boolean(row.inlineLabel));
         patchRow(row);
+        if(control===presetControl){row.element.hidden=true;row.element.remove();continue;}
+        if(control===mouseControl){row.inlineLabel='鼠标';patchRow(row);continue;}
         placeAfter(parent,row.element,previous);
         if(index===0&&row.companions){parent=row.companions;previous=null;}
         else previous=row.element;
       }
+      if(hotkeyControl){const hotkeyRow=rows.get(hotkeyControl.id);if(hotkeyRow){const mouseRow=mouseControl&&rows.get(mouseControl.id);if(mouseRow){if(mouseRow.element.parentNode!==hotkeyRow.mouseSlot)hotkeyRow.mouseSlot.replaceChildren(mouseRow.element);}else hotkeyRow.mouseSlot.replaceChildren();hotkeyRow.mouseSlot.hidden=!mouseRow;}}
       placeAfter(container,line,after);after=line;
     }
     for(const [key,line] of lines)if(!wanted.has(key)){line.remove();lines.delete(key);}
@@ -736,7 +743,7 @@
   function closeHotkeyOptions(restoreFocus=false) {
     const row=hotkeyOptions;
     if(!row)return;
-    hotkeyOptions=null;row.hotkeyDetails.open=false;
+    hotkeyOptions=null;if(capture?.row===row)stopCapture();row.hotkeyDetails.open=false;
     if(restoreFocus)row.hotkeySummary.focus();
   }
   function makeHotkeyEditor(row,send) {
@@ -746,11 +753,14 @@
     const summary=document.createElement('summary'),menu=document.createElement('div');
     const modeLabel=document.createElement('label'),mode=document.createElement('select');
     const doubleLabel=document.createElement('label'),check=document.createElement('input');
+    const keyboardLabel=document.createElement('label'),mouseSlot=document.createElement('div');
     const specialLabel=document.createElement('label'),special=document.createElement('select');
+    keyboardLabel.className='hotkey-keyboard';keyboardLabel.append(document.createTextNode('键盘'),button);
+    mouseSlot.className='hotkey-mouse-slot';
     const clear=document.createElement('button');
     button.type='button';button.className='hotkey-capture';
     button.addEventListener('click',()=>{if(capture?.row===row)stopCapture();else startCapture(row);});
-    details.className='hotkey-options';summary.textContent='⋯';menu.className='hotkey-menu';
+    details.className='hotkey-options';summary.textContent='快捷键';menu.className='hotkey-menu';
     summary.addEventListener('click',event=>{
       event.preventDefault();
       const wasOpen=details.open;
@@ -764,18 +774,18 @@
     check.type='checkbox';doubleLabel.className='hotkey-double';
     doubleLabel.append(check,document.createTextNode('双击触发'));
     check.addEventListener('change',()=>send('hotkey',(current()&~0x8000)|(check.checked?0x8000:0)));
-    special.setAttribute('aria-label','选择特殊按键');
-    specialLabel.append(document.createTextNode('特殊按键'),special);
+    special.setAttribute('aria-label','鼠标绑定');
+    specialLabel.append(document.createTextNode('鼠标'),special);
     special.addEventListener('change',()=>{
       const vk=Number(special.value);
-      if(vk){send('hotkey',(current()&0xb700)|vk);closeHotkeyOptions(true);}
+      if(vk){send('hotkey',(current()&0xb700)|vk);}
       special.value='0';
     });
     clear.type='button';clear.className='text-button hotkey-clear';clear.textContent='清除绑定';
     clear.setAttribute('aria-label','清除快捷键');
     clear.addEventListener('click',()=>{send('hotkey',0);closeHotkeyOptions(true);});
-    menu.append(modeLabel,doubleLabel,specialLabel,clear);details.append(summary,menu);editor.append(button,details);
-    Object.assign(row,{input:button,mode,modeLabel,double:check,doubleLabel,clear,special,hotkeyDetails:details,hotkeySummary:summary});
+    menu.append(keyboardLabel,mouseSlot,specialLabel,modeLabel,doubleLabel,clear);details.append(summary,menu);editor.append(details);
+    Object.assign(row,{input:button,mode,modeLabel,double:check,doubleLabel,clear,special,specialLabel,mouseSlot,hotkeyDetails:details,hotkeySummary:summary});
   }
   function patchChoiceHelp(row) {
     const c=row.control, descriptions=c.optionDescriptions || [];
@@ -827,7 +837,7 @@
       const keyboardOnly = control.options.includes('keyboardOnly');
       if (row.keyboardOnly !== keyboardOnly) {
         row.keyboardOnly = keyboardOnly;
-        const keys = [['选择…',0],['Esc',27],['Enter',13],['Tab',9]];
+        const keys = [['未绑定',0]];
         if (!keyboardOnly) keys.push(['鼠标左键',1],['鼠标右键',2],['鼠标中键',4],['鼠标侧键 1',5],['鼠标侧键 2',6]);
         row.special.replaceChildren(...keys.map(([text,vk]) => {
           const option = document.createElement('option');
@@ -841,6 +851,8 @@
       row.double.checked = Boolean(value & 0x8000);
       row.mode.disabled = row.double.disabled = row.clear.disabled = disabled || !bound;
       row.special.disabled = disabled;
+      row.specialLabel.hidden=keyboardOnly||Boolean(row.pairedMouse);
+      row.hotkeySummary.textContent='快捷键';
       const binding=keyName(value);
       row.input.dataset.bound=String(bound);
       row.input.title=binding;
@@ -852,16 +864,16 @@
       row.input.classList.toggle('capturing',capture?.row === row);
     }
   }
-  function startCapture(row) { closeHotkeyOptions(); stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
+  function startCapture(row) { stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
   function stopCapture() { const previous = capture?.row; capture = null; if (previous) patchRow(previous); }
-  document.addEventListener('keydown',event => { if (!capture || composingKey(event)) return; event.preventDefault(); event.stopPropagation(); if (event.repeat) return; if (event.key === 'Escape') { stopCapture(); return; } if (event.metaKey) { notify('当前快捷键格式不支持 Win 组合键，请使用 Ctrl、Shift 或 Alt。'); return; } if (['Shift','Control','Alt'].includes(event.key)) { capture.modifier = event; return; } capture.usedModifier = true; const row = capture.row, previous = Number(store.value(row.control,'hotkey')) || 0, value = encodeHotkey(event,previous); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
+  document.addEventListener('keydown',event => { if (!capture || composingKey(event)) return; event.preventDefault(); event.stopPropagation(); if (event.repeat) return; if (event.metaKey) { notify('当前快捷键格式不支持 Win 组合键，请使用 Ctrl、Shift 或 Alt。'); return; } if (['Shift','Control','Alt'].includes(event.key)) { capture.modifier = event; return; } capture.usedModifier = true; const row = capture.row, previous = Number(store.value(row.control,'hotkey')) || 0, value = encodeHotkey(event,previous); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
   document.addEventListener('keyup',event => { if (!capture || composingKey(event) || capture.usedModifier || !capture.modifier || event.key !== capture.modifier.key) return; event.preventDefault(); const row = capture.row, value = encodeHotkey(capture.modifier,Number(store.value(row.control,'hotkey')) || 0); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
   document.addEventListener('pointerdown',event => {
     if(capture&&event.target!==capture.row.input)stopCapture();
     if(hotkeyOptions&&!hotkeyOptions.hotkeyDetails.contains(event.target))closeHotkeyOptions();
   },true);
   document.addEventListener('keydown',event=>{
-    if(!hotkeyOptions||composingKey(event)||event.key!=='Escape')return;
+    if(capture||!hotkeyOptions||composingKey(event)||event.key!=='Escape'||event.defaultPrevented)return;
     event.preventDefault();event.stopPropagation();closeHotkeyOptions(true);
   },true);
   document.addEventListener('focusin',event => { if (capture && event.target !== capture.row.input) stopCapture(); });
