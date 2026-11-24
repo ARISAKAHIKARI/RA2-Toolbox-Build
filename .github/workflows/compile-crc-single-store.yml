@@ -13,6 +13,7 @@ on:
       - 'source/assist/tests/crc_shadow_reveal_transition.py'
       - 'source/assist/tests/crc_shadow_single_store_feasibility.cpp'
       - 'source/assist/tests/crc_shadow_boundary_static.py'
+      - 'source/assist/tests/destruct_owner_host.py'
       - 'source/assist/tests/runtime_scope_windows.py'
       - 'source/shared/source/runtime_seh_scope.h'
       - 'source/shared/source/game_entry_manager.cpp'
@@ -30,6 +31,7 @@ on:
       - 'source/assist/tests/crc_shadow_reveal_transition.py'
       - 'source/assist/tests/crc_shadow_single_store_feasibility.cpp'
       - 'source/assist/tests/crc_shadow_boundary_static.py'
+      - 'source/assist/tests/destruct_owner_host.py'
       - 'source/assist/tests/runtime_scope_windows.py'
       - 'source/shared/source/runtime_seh_scope.h'
       - 'source/shared/source/game_entry_manager.cpp'
@@ -69,6 +71,8 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'CRC single-store policy fixture failed'}
           python source/assist/tests/crc_shadow_boundary_static.py
           if($LASTEXITCODE -ne 0){throw 'CRC source/evidence contract failed'}
+          python source/assist/tests/destruct_owner_host.py --zig "$env:ZIG_EXE" --out diagnostics/destruct-owner-host
+          if($LASTEXITCODE -ne 0){throw 'tactical UI risk-label contract failed'}
           python source/assist/tests/exception_policy.py --zig "$env:ZIG_EXE" --out diagnostics/exception-policy
           if($LASTEXITCODE -ne 0){throw 'x86 exception policy test failed'}
           python source/assist/tests/runtime_scope_windows.py --zig "$env:ZIG_EXE" --out diagnostics/runtime-scope
