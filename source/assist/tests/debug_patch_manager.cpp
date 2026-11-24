@@ -87,12 +87,12 @@ int main(){
  skip(0x7F74D8,true);fixtureFlush=false;check(write(0x7F74D8,tooltipOriginal,tooltipAdapter,4)==int(Result::Ok));
  check(fixtureProtectCalls==2&&fixtureProtectionRequests[0]==PAGE_READWRITE&&fixtureProtectionRequests[1]==PAGE_READONLY);
  check(fixtureFlushCalls==0);journal=observed(0x7F74D8);check(journal.active&&journal.length==4);
- check(write(0x7F74D8,tooltipAdapter,tooltipOriginal,4)==int(Result::Ok));check(!observed(0x7F74D8).active);
+ check(write(0x7F74D8,tooltipAdapter,tooltipOriginal,4)==int(Result::Ok));check(!observed(0x7F74D8).active);check(fixtureFlushCalls==0);
  // A known pointer slot on an executable page is unexpected and must fail
  // closed before VirtualProtect; it must never be converted to RWX.
  reset();seedTooltip();skip(0x7F74D8,true);fixturePointerExecutable=true;
  check(write(0x7F74D8,tooltipOriginal,tooltipAdapter,4)==int(Result::PatchDenied));
- check(fixtureProtectCalls==0&&!patches.installed());fixturePointerExecutable=false;fixtureFlush=true;
+ check(fixtureProtectCalls==0&&!patches.installed()&&!memcmp((void*)0x7F74D8,tooltipOriginal,4));fixturePointerExecutable=false;fixtureFlush=true;
  // Extracted production common adapter captures the actual operand, then
  // retires through the manager journal when strict context checking resumes.
  reset();memcpy((void*)0x478BD1,actual,s->n);RiskSite risk{s->at,s->n,{},{}};memcpy(risk.before,s->before,s->n);memcpy(risk.after,after,s->n);
