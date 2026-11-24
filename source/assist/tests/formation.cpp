@@ -3,7 +3,7 @@
 #include <iostream>
 using namespace assist::formation;
 int main(){
- assert(!taskExpired(1901,100,8500,1000)); // 1801 frames in 7.5s at 240 FPS is still within the 15s task lease.
+ assert(!taskExpired(1901,100,8500,1000)); // 1801 frames in 7.5s at 240 FPS is still within the 30s pending-task lease.
  assert(!taskExpired(4000,100,30000,1000));
  assert(taskExpired(4000,100,31001,1000));
  assert(taskExpired(4000,100,16001,1000,IssuedTaskTimeoutMs));
