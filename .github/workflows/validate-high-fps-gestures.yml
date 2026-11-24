@@ -16,7 +16,11 @@ on:
       - 'source/assist/source/autoload_bridge.h'
       - 'source/assist/source/dodge_compute.h'
       - 'source/assist/source/dodge_bridge.h'
+      - 'source/assist/source/reverse_dodge.h'
+      - 'source/assist/source/reverse_dodge_bridge.h'
       - 'source/assist/tests/formation_switch_test.py'
+      - 'source/assist/tests/reverse_dodge_hotpath.cpp'
+      - 'source/assist/tests/reverse_dodge_hotpath.py'
       - 'source/assist/tests/high_fps_input_freshness.cpp'
       - 'source/assist/tests/high_fps_gesture_contract.py'
       - '.github/workflows/validate-high-fps-gestures.yml'
@@ -31,6 +35,8 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Exercise real production pointer admission code at 240+ FPS
         run: |
           set -euo pipefail
@@ -45,6 +51,7 @@ jobs:
             /tmp/ra2-$test
           done
           python3 source/assist/tests/dodge_compute_routing.py
+          python3 source/assist/tests/reverse_dodge_hotpath.py --out /tmp/ra2-reverse-dodge
           python3 source/assist/tests/tactical_frame_sampling.py
           python3 source/assist/tests/construction_delivery_test.py
       - name: Run native formation bridge fixture including high-FPS mouse hold
