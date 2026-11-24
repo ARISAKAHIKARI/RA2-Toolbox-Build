@@ -246,7 +246,7 @@ static void testCooperative(){
  // Exercise the legacy Host observation-only path explicitly; product policy fixes all action planners in Runtime.
  reset();sh->computeApplied=0;const uint32_t tt=makeType(),bt=makeType();set<double>(tt+0x380,3.);set<bool>(tt+0xD2E,true);set<bool>(bt+0x16AB,true);std::memcpy(memory.data()+bt+0x24,"TEST",5);
  uint32_t p=object(tt,2,7,lastHouse,25600,25600),target=object(bt,3,8,lastHouse,25600,25600);vectorAt(0xA8EC78,0x800000,{p,target});seal();
- cooperative::Request request{};request.serial=1;request.match=match;request.target=8;request.type=bt;request.mode=cooperative::Enter;request.count=1;request.sources[0]={7,0};request.cameraX=-320;request.cameraY=2700;request.viewWidth=640;request.viewHeight=480;
+ cooperative::Request request{};request.serial=1;request.match=match;request.pointerRequest=1;sh->pointer.request=sh->pointer.ack=1;request.target=8;request.type=bt;request.mode=cooperative::Enter;request.count=1;request.sources[0]={7,0};request.cameraX=-320;request.cameraY=2700;request.viewWidth=640;request.viewHeight=480;
  compute::QuotaConfig quotas{};quotas.count=1;std::memcpy(quotas.entries[0].id,"TEST",5);quotas.entries[0].quota.first=7;
  cooperative::Input input;check(collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets.size()==1,"cooperative complete capture");
  set<int>(p+0x6C,0);std::memcpy(memory.data()+bt+0x24,"LIVE",5);check(collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets[0].quota.first==7,"cooperative shares frozen objects and quota type bytes");check(liveReads==0,"cooperative pure converter made a live read");
