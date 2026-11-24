@@ -1,3 +1,35 @@
+# Hook 边界现状（2026-11-24，work/latest-ra2-integration）
+
+以下是当前源码状态；后面的 1.0.22/1.0.25 条目保留为历史记录，不能覆盖本节的现状。
+
+## 普通控制功能：不修改游戏可执行代码段
+
+高级操作/高级移动攻击、磁电吸附与轮换、手动 CS/自动 CS、协同进驻与高级 Enter、编队、自动装车、躲蛋/反躲蛋、自动装载等路径，当前不请求游戏代码段 detour。它们通过宿主输入轮询、只读采样和原生游戏事件/命令执行。`native_input_hooks.h` 不再安装输入 detour；`input_patch.h` 只是兼容状态视图。
+
+`host_game_input.h` 仍有 Windows 消息边界 Hook（`WH_GETMESSAGE` / `WH_CALLWNDPROCRET`），但它们不是对 `gamemd` 代码段写入，也不等同于 inline detour。对应的 no-code-patch contract 已覆盖高级控制、手动/自动 CS、磁电、编队、自动装载和躲避等源文件。
+
+## 仍保留的显式代码补丁
+
+这些是按功能开关、会话和实验模式条件安装的许可补丁集合，并不代表每局游戏都会全部安装：
+
+- **规则/所有权/建造**：BuildAnywhere（`0x4A8EB0`，另有 direct placement 两处 `0x4A8EC3`、`0x4A918E`）；ControlAll/所有权判定（`0x50B6F0`、`0x6339BA`、`0x637E40`、`0x646EF5`、`0x646FD2`、`0x6FFC93`、`0x6FFE2B`）；科技规则/科技栏（`0x44574A`、`0x445795`、`0x4457D0`、`0x445810`、`0x6AA788`、`0x6A97D2`、`0x6AA781`）；LowDamage（`0x6F7D44`）。
+- **联机协议/发送端适配**：7 个 NetworkSender 补丁点，定义在 `assist/source/network_sender_policy.h`（`0x649CA0`、`0x649E1E`、`0x64B660`、`0x64B9D4`、`0x64B4EA`、`0x649D61`、`0x649DBC`）。
+- **CRC Shadow**：当前生产仍是 8 个补丁点（`0x64DCCA`、`0x4F576B`、`0x4FC328`、`0x577ACA`、`0x577BC7`、`0x577CA7`、`0x577DB0`、`0x577F48`）。单点 `Map::Reveal` 写入抑制目前只是研究候选，尚未替换生产实现。
+- **地图/显示**：direct Map 5 点（`0x508E60`、`0x508EBA`、`0x508F8F`、`0x577B3A`、`0x6D88FC`）；Shroud/Fog 绘制（`0x47F038`、`0x47F274`）；CameraClamp/ScrollMap（`0x6D8640`、`0x4A9840`）；PauseLoop/FrameCommitted（`0x55D360`、`0x55DE81`）。
+- **特殊原生动作**：NativeSell（`0x6929E5`、`0x4AC179`）、NativeMegaSuccess（`0x646F4E`）及其 ControlAll 所有权分支。
+
+## 特殊例外与非代码指针
+
+- **NativeAirWaypoints** 是显式高危实验模式，不是普通控制默认路径。`AirType=0x7E2908` 是 vtable 函数指针槽（数据），`AirArrival=0x416AB6` 才是可执行代码分支补丁；只有用户明确选择 native network mode 1/2 才请求。该实验模式未被认证为稳定联机路径。
+- 已修正 `GameEntryManager::dataPointerSlot`：`AirType` 现在使用 `PAGE_READWRITE`，不再把 vtable 数据页临时标成 `PAGE_EXECUTE_READWRITE`。Tooltip 的 `0x7F74D8` / `0x7F74C8` 和 NativeViewport 指针槽也按数据指针处理。
+- C4Execution/C4Movement（`0x51A4D8`、`0x51C32B`）仍在历史/许可清单中，但当前 `riskC4Active=false` 且 op4 返回 0，不安装这两处补丁。
+
+## 原则
+
+普通控制优先宿主轮询、只读采样和原生事件；只有确实改变规则、所有权、协议或明确选择的原生实验路径，才保留可审计的补丁。不得为了“统一 Hook”给本来不需要的普通控制增加代码段 detour。数据指针替换必须使用非执行页保护。
+
+---
+
 # Hook 修改游戏判断清单（更新至 1.0.25）
 
 ## 1.0.25 当前变更
