@@ -116,6 +116,8 @@ assert "inline bool abort(" in single_policy
 assert "inline void end(" in single_policy
 assert "currentHouse!=scope.house" in single_policy
 assert "epoch!=scope.epoch||currentHouseID!=scope.houseID" in single_policy
+assert "currentHouse!=scope.house||scope.consumed" in single_policy
+assert "scope.consumed=true;++scope.suppressed" in single_policy
 
 # Guarded callback uses the existing x86 SEH boundary; outer finally owns scope cleanup.
 assert "GuardedMapCrcRevealStore(unsigned house,unsigned savedEBX)" in guard
