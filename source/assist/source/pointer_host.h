@@ -21,7 +21,7 @@ static void servicePointer(){
  if(featureFlags&AircraftSpread)allowed|=pointerinput::AirFirst|pointerinput::AirSecond;
  if(featureFlags&DiskPrimary)allowed|=256;
  if(featureFlags&(SellDrained|SellVehicles|SellEnemy))allowed|=512;
- pointerinput::Bindings bindings{advancedKey,magnetronKey,csHoldKey,extra.enterKey,extra.airKey1,extra.airKey2,extra.diskKey,extra.sellKey,allowed};
+ pointerinput::Bindings bindings{advancedKey,magnetronKey,csHoldKey,extra.enterKey,extra.airKey1,extra.airKey2,extra.diskKey,extra.sellKey,pointerinput::bindingOptions(allowed,extra.attackMoveKey)};
  InterlockedIncrement(&shared->pointerPolicySeq);shared->pointerPolicy={};shared->pointerPolicy.match=commandMatch();shared->pointerPolicy.enabled=inputReady;shared->pointerPolicy.overrideNative=extra.overrideNative;shared->pointerPolicy.bindings=bindings;memcpy(shared->pointerPolicy.buttons,extra.mouseButtons,sizeof extra.mouseButtons);MemoryBarrier();InterlockedIncrement(&shared->pointerPolicySeq);
  auto&box=shared->pointer;box.cancelSerial=gameinput::pointerCancelSerial(hook);static uint32_t ack=0;
  if(ack!=box.ack){ack=box.ack;MemoryBarrier();
