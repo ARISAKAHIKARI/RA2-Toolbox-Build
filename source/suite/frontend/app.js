@@ -362,7 +362,7 @@
   }
   // Navigation pages are the only category level. Keep the original native
   // feature boundaries before flattening so parameter ownership survives.
-  const FLAT_PAGE_NAMES=['光标','渲染','监控视图','控制','自动功能','游戏规则','实验功能',null,'生产','生产'];
+  const FLAT_PAGE_NAMES=['鼠标','渲染','监控视图','控制','自动功能','游戏规则','实验功能',null,'生产','生产'];
   function layoutGroups(controls,query='',navigationIndex=0){
     const groups=groupControls(navigationIndex===7?controls:controls.filter(c=>!redundantStatus(c)),query);
     const pageName=FLAT_PAGE_NAMES[navigationIndex];
@@ -416,7 +416,7 @@
 
   const $ = id => document.getElementById(id);
   const CATEGORIES = [
-    ['光标','管理光标外观、刷新率与位置。','<circle cx="12" cy="12" r="8"></circle><path d="M12 6v6l4 4"></path>'],
+    ['鼠标','管理鼠标外观、刷新率与位置。','<circle cx="12" cy="12" r="8"></circle><path d="M12 6v6l4 4"></path>'],
     ['渲染','画面效果、GPU 加速与帧率。','<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m7 14 4-4 3 3 3-4"></path>'],
     ['监控视图','副相机、小地图与战场信息。','<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 10h10M9 15h6"></path>'],
     ['控制','键鼠操作、选兵、移动与下令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'],
