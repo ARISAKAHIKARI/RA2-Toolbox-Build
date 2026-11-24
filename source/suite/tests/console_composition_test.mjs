@@ -435,6 +435,29 @@ test('participant filters share their master feature and never create a duplicat
  assert.equal(searched.length,3);
  assert.ok(searched.every(b=>b.headers.some(c=>c.type==='toggle')));
 });
+test('all manual command type restrictions share one collapsed control entry',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ const title='命令类型手动指定';
+ const fields=[];
+ for(let f=0;f<21;f++){
+  if(f===17)continue;
+  fields.push(core.canonical({id:9200+2*f,type:'toggle',label:'功能 '+f+' · 单位',group:title,section:title,featureId:9610,checked:false,row:100+f*2,column:20}));
+  fields.push(core.canonical({id:9201+2*f,type:'text',label:'功能 '+f+' · 类型 ID',group:title,section:title,featureId:9610,enabled:false,row:101+f*2,column:20}));
+ }
+ for(const [id,type,label] of [[781,'toggle','矿车'],[783,'text','矿车类型 ID'],[782,'toggle','矿场'],[784,'text','矿场类型 ID']])
+  fields.push(core.canonical({id,type,label,group:title,section:title,featureId:9610,row:200+id,column:20}));
+ const master=core.canonical({id:705,type:'toggle',label:'飞机分配攻击',group:'飞机分配攻击',featureId:705,groupHeader:true});
+ const blocks=core.featureBlocks([...core.layoutGroups([master,...fields],'',3).values()][0]);
+ assert.equal(blocks.length,2);
+ const manual=blocks.find(b=>b.title===title);
+ assert.equal(manual.headers.length,0);
+ assert.equal(manual.details.length,44);
+ assert.equal(core.hasFeatureConfig(manual),true);
+ assert.equal(blocks.find(b=>b.title==='飞机分配攻击').details.length,0);
+ const searched=core.featureBlocks([...core.layoutGroups([master,...fields],'矿车类型 ID',3).values()][0]);
+ assert.equal(searched.length,1);
+ assert.equal(searched[0].title,title);
+});
 let failures=0;
 for(const {name,run} of cases){try{run();console.log(`PASS ${name}`)}catch(error){failures++;console.error(`FAIL ${name}\n${error.stack}`)}}
 console.log(JSON.stringify({suite:'console_composition',checks:cases.length,failures,level:'production listeners with controlled DOM event fixture'}));
