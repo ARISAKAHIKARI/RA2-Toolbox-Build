@@ -87,9 +87,10 @@ int main(){
  {
   Scope s;uint8_t field=0;
   check(begin(s,1,0x20000,7)==Result::Armed,"repeated matching-store scope begins");
-  nativeWrite(s,1,0x20000,7,field,1);
-  nativeWrite(s,1,0x20000,7,field,1);
-  check(field==0&&s.suppressed==2,"repeated writes for the same scoped House remain suppressed");
+  check(nativeWrite(s,1,0x20000,7,field,1)==Result::SuppressStore&&field==0,
+        "first target write is suppressed");
+  check(nativeWrite(s,1,0x20000,7,field,1)==Result::NativeStore&&field==1&&s.suppressed==1,
+        "a second same-House reveal inside the scope remains native");
   end(s);
  }
  {
