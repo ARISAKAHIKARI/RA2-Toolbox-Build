@@ -1,81 +1,99 @@
-"""Actual compiled experimental MapIsClear CRC adapter on a synthetic world.
+"""Actual compiled single-site CRC adapter on a synthetic x86 game world.
 
-Native reveal is stopped AFTER its real flag write and BEFORE cells/Visionary.
-The real CRC and installed leaves run; Win32 and logger are fixture sinks.
-No complete Reveal, world tick, platform transport or multiplayer execution.
+The real Map::Reveal prologue and the 0x577DB0 trampoline execute. The fixture
+stops at 0x577DB6, the exact native continuation, so Cell/Visionary are neither
+simulated nor mirrored. The real CRC reader executes; transport/logging are sinks.
+No live Windows game, platform peer or multiplayer acceptance is claimed.
 """
-import argparse,ctypes as C,hashlib,importlib.util,json,struct,sys,traceback
+import argparse,ctypes as C,hashlib,importlib.util,json,sys,traceback
 from pathlib import Path
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import *
-p=argparse.ArgumentParser();p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True);p.add_argument('--filter',default='');a=p.parse_args();rows=[]
-spec=importlib.util.spec_from_file_location('netfixture',Path(__file__).with_name('network_house_runtime.py'));n=importlib.util.module_from_spec(spec)
-argv=sys.argv;sys.argv=[str(spec.origin),a.game,a.dll,'--filter','__helpers_only__','--output',str(Path(a.output).with_suffix('.helpers.json'))]
+
+p=argparse.ArgumentParser()
+p.add_argument('game');p.add_argument('dll');p.add_argument('--output',required=True);p.add_argument('--filter',default='')
+a=p.parse_args();rows=[]
+spec=importlib.util.spec_from_file_location('netfixture',Path(__file__).with_name('network_house_runtime.py'))
+n=importlib.util.module_from_spec(spec)
+argv=sys.argv
+sys.argv=[str(spec.origin),a.game,a.dll,'--filter','__helpers_only__','--output',str(Path(a.output).with_suffix('.helpers.json'))]
 try:spec.loader.exec_module(n)
 except SystemExit as e:assert not e.code
 finally:sys.argv=argv
-SITES={0x64dcca:bytes.fromhex('8a9941020000'),0x4f576b:bytes.fromhex('889d41020000'),0x4fc328:bytes.fromhex('c6814102000001'),
- 0x577aca:bytes.fromhex('889941020000'),0x577bc7:bytes.fromhex('c6814102000000'),0x577ca7:bytes.fromhex('c6814102000000'),
- 0x577db0:bytes.fromhex('889941020000'),0x577f48:bytes.fromhex('c6814102000001')}
-END={address+len(raw) for address,raw in SITES.items()}
-GPRS=n.GPRS
+
+SITE=0x577db0
+ORIGINAL=bytes.fromhex('889941020000')
+OTHER_SITES={
+ 0x64dcca:bytes.fromhex('8a9941020000'),
+ 0x4f576b:bytes.fromhex('889d41020000'),
+ 0x4fc328:bytes.fromhex('c6814102000001'),
+ 0x577aca:bytes.fromhex('889941020000'),
+ 0x577bc7:bytes.fromhex('c6814102000000'),
+ 0x577ca7:bytes.fromhex('c6814102000000'),
+ 0x577f48:bytes.fromhex('c6814102000001')
+}
+
 
 def check(name,fn):
  if a.filter and a.filter not in name:return
- try:rows.append({'case':name,'status':'PASS',**(fn() or {})});print('PASS',name,flush=True)
- except Exception as e:rows.append({'case':name,'status':'FAIL','error':repr(e)});traceback.print_exc()
+ try:
+  rows.append({'case':name,'status':'PASS',**(fn() or {})})
+  print('PASS',name,flush=True)
+ except Exception as e:
+  rows.append({'case':name,'status':'FAIL','error':repr(e)})
+  traceback.print_exc()
+
 
 def state(m):return n.n.state(m)
 def save(m,s):return n.n.save(m,s)
 def tick(m):return n.n.tick(m)
+
+
 def enable(m,on=True):
  s=state(m);s.crcMapShadow=int(on);save(m,s);return tick(m)
+
+
 def installed(m):
- for address,raw in SITES.items():assert bytes(m.u.mem_read(address,len(raw)))[0]==0xe9,hex(address)
+ actual=bytes(m.u.mem_read(SITE,len(ORIGINAL)))
+ assert actual[0]==0xe9 and actual[5]==0x90 and actual!=ORIGINAL,actual.hex()
+ rel=int.from_bytes(actual[1:5],'little',signed=True)
+ target=SITE+5+rel
+ base=m.dll.OPTIONAL_HEADER.ImageBase
+ assert base<=target<base+m.dll.OPTIONAL_HEADER.SizeOfImage,hex(target)
+ for address,raw in OTHER_SITES.items():
+  assert bytes(m.u.mem_read(address,len(raw)))==raw,hex(address)
+
+
 def restored(m):
- for address,raw in SITES.items():assert bytes(m.u.mem_read(address,len(raw)))==raw,hex(address)
+ assert bytes(m.u.mem_read(SITE,len(ORIGINAL)))==ORIGINAL
+ for address,raw in OTHER_SITES.items():
+  assert bytes(m.u.mem_read(address,len(raw)))==raw,hex(address)
+
+
 def setup(mode=3):
- m=n.setup(mode,1);m.u.hook_del(m.native_stub_hooks[0x577d90]);m.b(m.house+0x241,0);m.b(m.enemy+0x241,0)
+ m=n.setup(mode,1)
+ m.u.hook_del(m.native_stub_hooks[0x577d90])
+ m.b(m.house+0x241,0);m.b(m.enemy+0x241,0)
  s=state(m);s.flags|=67108864;save(m,s);tick(m)
  m.w(0x87f7e8+316,m.alloc(8));m.w(0x87f7e8+320,512*512)
- # Retain the actual constructor-independent flag write through our real hook;
- # skip only the unmodeled cells/Visionary suffix of Reveal.
- m.leaf_return=m.STUB+0xed00;m.u.mem_write(m.leaf_return,b'\xc3')
- m.leaf_target=None;m.leaf_finish=None
- def tail(uc,at,size,_):
-  if at==m.leaf_target:
-   m.leaf_finish();uc.reg_write(UC_X86_REG_EIP,m.leaf_return)
-  elif at==0x577db6:uc.reg_write(UC_X86_REG_EIP,0x577f1e)
- for address in END:m.u.hook_add(UC_HOOK_CODE,tail,begin=address,end=address)
+ # Confirm the production trampoline returns to the exact original continuation.
+ # The suffix is deliberately not emulated: it remains entirely native in-game.
+ def continuation(uc,at,size,_):
+  if at==0x577db6:uc.reg_write(UC_X86_REG_EIP,0x577f1e)
+ m.u.hook_add(UC_HOOK_CODE,continuation,begin=0x577db6,end=0x577db6)
  return m
 
-def leaf(m,address,house=None,value=0,expected=None):
+
+def native_reveal(m,house=None):
  house=m.house if house is None else house
- if address==0x577db0:
-  # Direct leaf invocation owns no Reveal prologue; temporary switch below.
-  pass
- before={};after={};frames=[]
- def enter(uc,at,size,_):
-  before['gpr']=tuple(uc.reg_read(r) for r in GPRS);before['flags']=uc.reg_read(UC_X86_REG_EFLAGS);before['fp']=n.fp(m)
- def end():
-  uc=m.u
-  after['gpr']=tuple(uc.reg_read(r) for r in GPRS);after['flags']=uc.reg_read(UC_X86_REG_EFLAGS);after['fp']=n.fp(m)
- start=m.u.hook_add(UC_HOOK_CODE,enter,begin=address,end=address)
- m.leaf_target=address+len(SITES[address]);m.leaf_finish=end
- m.u.reg_write(UC_X86_REG_EBX,0x12345600|value);m.u.reg_write(UC_X86_REG_EBP,house if address==0x4f576b else 0x12345678)
- try:m.run(address,(),house)
- finally:m.u.hook_del(start);m.leaf_target=None;m.leaf_finish=None
- assert after and before
- desired=list(before['gpr'])
- if address==0x64dcca:desired[1]=(desired[1]&0xffffff00)|(m.u.mem_read(house+0x241,1)[0] if expected is None else expected)
- assert tuple(desired)==after['gpr'],(hex(address),desired,after['gpr'])
- assert before['flags']==after['flags'] and before['fp']==after['fp'],hex(address)
- return m.u.reg_read(UC_X86_REG_EBX)&255
+ m.run(0x577d90,(house,),0x87f7e8)
+
 
 def reveal(m):
  s=state(m);s.request+=1;s.command=9;s.requestTick=m.clock;s.requestMatch=s.data.match;save(m,s);s=tick(m)
  assert s.ack==s.request and s.result==1,(s.result,s.data.lastSubmitError,s.crcMapShadowStatus)
  return s
+
 
 def crc_world(m):
  m.vector(0xa83de8,[]);m.vector(0x8b4108,[m.unit]);m.vector(0xa8eb40,[m.building])
@@ -94,69 +112,100 @@ def crc_world(m):
   return m.r(0xac51fc)
  return compute
 
+
 def default_off():
  m=setup();restored(m);assert state(m).crcMapShadow==0
- return {'all_eight_sites_original':True}
+ return {'only_site_original':True}
 check('default_off',default_off)
 
-def tool_and_restore():
+
+def tool_reveal_and_restore():
  m=setup();s=enable(m);assert s.crcMapShadowStatus==1,s.crcMapShadowStatus;installed(m)
- reveal(m);assert m.u.mem_read(m.house+0x241,1)[0]==1
- leaf(m,0x64dcca,expected=0);s=enable(m,False);assert s.crcMapShadowStatus==0;restored(m)
+ reveal(m)
  assert m.u.mem_read(m.house+0x241,1)[0]==0
- return {'tracked_tool_flag':True,'restored_original_flag_and_eight_sites':True}
-check('tool_reveal_and_restore',tool_and_restore)
+ assert m.u.mem_read(m.enemy+0x241,1)[0]==0
+ s=enable(m,False);assert s.crcMapShadowStatus==0;restored(m)
+ assert m.u.mem_read(m.house+0x241,1)[0]==0
+ native_reveal(m);assert m.u.mem_read(m.house+0x241,1)[0]==1
+ return {'tool_write_suppressed':True,'unload_did_not_restore_game_memory':True,'native_reveal_after_unload':True}
+check('tool_reveal_and_restore',tool_reveal_and_restore)
 
-def native_crc():
+
+def native_reveal_while_hook_active():
+ m=setup();assert enable(m).crcMapShadowStatus==1;installed(m)
+ native_reveal(m)
+ assert m.u.mem_read(m.house+0x241,1)[0]==1
+ installed(m)
+ return {'unscoped_native_write_unchanged':True}
+check('native_reveal_while_hook_active',native_reveal_while_hook_active)
+
+
+def actual_native_crc():
  m=setup();assert enable(m).crcMapShadowStatus==1;compute=crc_world(m);baseline=compute()
- reveal(m);assert compute()==baseline
- m.w(m.unit+0x9c,34570);moved=compute();assert moved!=baseline
+ reveal(m);assert m.u.mem_read(m.house+0x241,1)[0]==0;assert compute()==baseline
+ native_reveal(m);assert m.u.mem_read(m.house+0x241,1)[0]==1;native=compute()
+ assert native!=baseline
+ m.w(m.unit+0x9c,34570);moved=compute();assert moved!=native
  m.rng_variant=1;random_changed=compute();assert random_changed!=moved
- enable(m,False);assert compute()==random_changed
- return {'shadow_crc_matches_original':True,'normal_motion_still_changes_crc':True,'normal_rng_still_changes_crc':True,'no_extra_crc_or_rng_calls':True}
-check('actual_native_crc',native_crc)
+ enable(m,False);assert compute()==random_changed;restored(m)
+ return {'tool_reveal_crc_matches_pre_reveal':True,'native_reveal_changes_crc':True,
+         'normal_motion_and_rng_still_change_crc':True,'no_extra_crc_or_rng_calls':True}
+check('actual_native_crc',actual_native_crc)
 
-for address,value in [(0x4fc328,1),(0x577aca,0),(0x577bc7,0),(0x577ca7,0),(0x577db0,1),(0x577f48,1)]:
- def natural(address=address,value=value):
-  m=setup();assert enable(m).crcMapShadowStatus==1;reveal(m);leaf(m,address,value=value)
-  expected=1 if address in (0x4fc328,0x577f48) else 0 if address in (0x577bc7,0x577ca7) else value
-  assert m.u.mem_read(m.house+0x241,1)[0]==expected;leaf(m,0x64dcca,expected=expected)
-  enable(m,False);assert m.u.mem_read(m.house+0x241,1)[0]==expected;restored(m)
-  return {'natural_value':expected,'same_value_write_recorded':expected==1}
- check('natural_write_'+hex(address),natural)
 
-for case in ['singleplayer','mode','late','conflict','writer_conflict','mod','unknown_write','pointer_reuse','constructor','pending_off','frame_rewind','heartbeat_stop']:
+def identity_change_fails_open():
+ m=setup();assert enable(m).crcMapShadowStatus==1;installed(m)
+ fired=[]
+ def mutate(uc,at,size,_):
+  if not fired:
+   fired.append(True);m.w(m.house+0x10,101)
+ h=m.u.hook_add(UC_HOOK_CODE,mutate,begin=SITE,end=SITE)
+ try:reveal(m)
+ finally:m.u.hook_del(h)
+ assert fired and m.u.mem_read(m.house+0x241,1)[0]==1
+ s=tick(m);assert s.crcMapShadowStatus<0,s.crcMapShadowStatus
+ restored(m)
+ return {'identity_change_used_native_store':True,'hook_disabled_after_fault':True}
+check('identity_change_fails_open',identity_change_fails_open)
+
+
+def late_enable():
+ m=setup();native_reveal(m);assert m.u.mem_read(m.house+0x241,1)[0]==1
+ s=enable(m);assert s.crcMapShadowStatus==1,s.crcMapShadowStatus;installed(m)
+ reveal(m);assert m.u.mem_read(m.house+0x241,1)[0]==1
+ return {'late_enable_safe_for_next_tool_reveal':True}
+check('late_enable',late_enable)
+
+
+for case in ('singleplayer','mode','conflict','mod','pending_off','heartbeat_stop','frame_rewind'):
  def boundary(case=case):
   m=setup(5 if case=='singleplayer' else 3)
-  if case=='mode':s=state(m);s.flags&=~67108864;save(m,s)
-  if case=='late':reveal(m)
-  if case=='conflict':m.u.mem_write(0x64dcca,b'\x90')
-  if case=='writer_conflict':m.u.mem_write(0x577f48,b'\x90')
+  if case=='mode':
+   s=state(m);s.flags&=~67108864;save(m,s)
+  if case=='conflict':m.u.mem_write(SITE,b'\x90'*len(ORIGINAL))
   if case=='mod':m.legacy_loaded=True
   s=enable(m)
-  if case in ('singleplayer','mode','late','conflict','writer_conflict','mod'):
+  if case in ('singleplayer','mode','conflict','mod'):
    assert s.crcMapShadowStatus<0,(case,s.crcMapShadowStatus)
-   if case not in ('conflict','writer_conflict'):restored(m)
+   if case=='conflict':
+    for address,raw in OTHER_SITES.items():assert bytes(m.u.mem_read(address,len(raw)))==raw
+   else:restored(m)
    return {'rejected_before_activation':True,'runtime_status':s.crcMapShadowStatus}
-  assert s.crcMapShadowStatus==1;reveal(m)
-  if case=='unknown_write':
-   m.b(m.house+0x241,0);leaf(m,0x64dcca,expected=0);s=tick(m);assert s.crcMapShadowStatus<0
-  elif case=='pointer_reuse':
-   m.w(m.house+0x10,101);leaf(m,0x64dcca,expected=1);enable(m,False);assert m.u.mem_read(m.house+0x241,1)[0]==1
-  elif case=='pending_off':
-   s=state(m);s.crcMapShadow=0;save(m,s);leaf(m,0x64dcca,expected=0)
-   tick(m);assert m.u.mem_read(m.house+0x241,1)[0]==0;restored(m)
+  assert s.crcMapShadowStatus==1;installed(m)
+  if case=='pending_off':
+   s=state(m);s.crcMapShadow=0;save(m,s);s=tick(m);assert s.crcMapShadowStatus==0;restored(m)
+  elif case=='heartbeat_stop':
+   s=state(m);s.stop=1;save(m,s);s=tick(m);assert s.stop==2;restored(m)
   elif case=='frame_rewind':
-   m.w(0xa8ed84,0);s=tick(m);assert s.crcMapShadowStatus<0
-   assert m.u.mem_read(m.house+0x241,1)[0]==1;restored(m)
-  elif case=='constructor':
-   leaf(m,0x4f576b,value=0);leaf(m,0x64dcca,expected=0);enable(m,False);assert m.u.mem_read(m.house+0x241,1)[0]==0
-  else:
-   s=state(m);s.stop=1;save(m,s);s=tick(m);assert s.stop==2
-   assert m.u.mem_read(m.house+0x241,1)[0]==0;restored(m)
-  return {'no_stale_original_applied':True}
+   m.w(0xa8ed84,0);s=tick(m);assert s.crcMapShadowStatus==1;installed(m)
+  return {'single_site_lifecycle':True}
  check('boundary_'+case,boundary)
 
-Path(a.output).write_text(json.dumps({'scope':__doc__,'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),
- 'game_fixture_sha256':hashlib.sha256(Path(a.game).read_bytes()).hexdigest(),'game_tested':False,'multiplayer_tested':False,'results':rows},indent=2)+'\n')
+
+Path(a.output).write_text(json.dumps({
+ 'scope':__doc__,
+ 'dll_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),
+ 'game_fixture_sha256':hashlib.sha256(Path(a.game).read_bytes()).hexdigest(),
+ 'game_tested':False,'multiplayer_tested':False,'results':rows
+},indent=2)+'\n')
 raise SystemExit(any(r['status']!='PASS' for r in rows))
