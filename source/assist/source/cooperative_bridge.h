@@ -23,7 +23,7 @@ static bool collectCooperativeInput(const cooperative::Request&r,const compute::
  if(source)*source=sampleWorldSource->key;
  out=std::move(input);return true;
 }
-static uint32_t clickSerial,cooperativePlanSeen,cooperativePointerRequest;static int cooperativeAt;
+static uint32_t clickSerial,cooperativePlanSeen;static int cooperativeAt;
 static cooperative::CaptureHistory cooperativeCaptures;
 static uint64_t cooperativeCandidateAt=0;
 static constexpr uint64_t CooperativeCandidateIntervalUs=4000;
@@ -105,18 +105,18 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
  auto&r=sh->cooperativeRequest;int frame=get<int>(0xA8ED84);DWORD now=sampleClock(sh);uint32_t id=get<uint32_t>(p+0x10),targetID=get<uint32_t>(target+0x10);
  const uint32_t inputRequest=sh->pointer.request;
  if(!id||!targetID||!inputRequest||inputRequest==sh->pointer.ack)return false;
- const bool samePointer=cooperativePointerRequest==inputRequest&&r.serial;
- const bool same=samePointer&&cooperative::sameInputRequest(r,cooperativePointerRequest,inputRequest,match,targetID,mode,sh->aircraftDamageRadiusCells,sh->aircraftDamageCoveragePercent)&&r.count>=0&&r.count<=cooperative::MaxSources;
+ const bool samePointer=r.serial&&r.pointerRequest==inputRequest;
+ const bool same=samePointer&&cooperative::sameInputRequest(r,inputRequest,match,targetID,mode,sh->aircraftDamageRadiusCells,sh->aircraftDamageCoveragePercent)&&r.count>=0&&r.count<=cooperative::MaxSources;
  // One physical input cannot silently change target/mode while its selected
  // sources are retried on later simulation frames.
  if(samePointer&&!same)return false;
  if(get<int>(0xA8ECB8+16)>cooperative::MaxSources){
-  if(!samePointer){InterlockedIncrement(&sh->cooperativeSeq);memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.mode=mode;r.frame=frame;r.tick=now;r.count=cooperative::MaxSources+1;cooperativePointerRequest=inputRequest;MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();}return false;
+  if(!samePointer){InterlockedIncrement(&sh->cooperativeSeq);memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.mode=mode;r.pointerRequest=inputRequest;r.tick=now;r.count=cooperative::MaxSources+1;MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();}return false;
  }
  if(same)for(int i=0;i<r.count;++i)if(r.sources[i].id==id)return r.sources[i].token==manualVersions.get(id);
  if(!manualVersions.trackable(id))return false;
  if(mode!=cooperative::AirSingle)cancelNative(p);InterlockedIncrement(&sh->cooperativeSeq);
- if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.frame=frame;r.tick=now;cooperativePointerRequest=inputRequest;
+ if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.pointerRequest=inputRequest;r.tick=now;
   r.centerObject=target;
   if(mode==cooperative::AirDamage){r.airRadiusCells=sh->aircraftDamageRadiusCells;r.airDamagePercent=sh->aircraftDamageCoveragePercent;}
   else {r.airRadiusCells=0;r.airDamagePercent=0;}
@@ -158,7 +158,7 @@ static void cancelCooperativePlan(int result){
  sh->cooperativeResult=result;MemoryBarrier();sh->cooperativeAck=sh->cooperativePlan;
 }
 static void resetRuntimeCooperative();
-static void resetCooperativeState(){resetRuntimeCooperative();cooperativeCaptures={};cooperativeCandidateAt=0;singleDamageSerial=singleDamageMatch=cooperativePointerRequest=0;singleDamageCommitted=0;entryReservationCount=cooperativeEffectCount=0;cooperativeAt=0;cooperativePlanSeen=0;}
+static void resetCooperativeState(){resetRuntimeCooperative();cooperativeCaptures={};cooperativeCandidateAt=0;singleDamageSerial=singleDamageMatch=0;singleDamageCommitted=0;entryReservationCount=cooperativeEffectCount=0;cooperativeAt=0;cooperativePlanSeen=0;}
 static void restoreClickHooks(){}
 static void clickHooksTick(uint32_t flags){sh->clickHookStatus=(flags&SpecialClickFlags)?1:0;}
 // Cross-feature seat reservations are read-only and never grant permission
@@ -399,7 +399,7 @@ static void captureCooperativeFrame(DWORD now,bool indexedWorkReady){
  if(sh->pointer.request!=sh->pointer.ack)return;
  const auto&r=sh->cooperativeRequest;auto&out=sh->cooperativeInputFrame;
  const bool captured=out.frame>=0&&out.request.serial==r.serial&&out.match==r.match;
- if(!cooperative::valid(r)||r.match!=match||(!captured&&!freshness::intentAlive(r.tick,now))||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
+ if(!cooperative::valid(r)||r.match!=match||r.pointerRequest!=sh->pointer.request||(!captured&&!freshness::intentAlive(r.tick,now))||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
  if(out.request.serial==r.serial&&sh->cooperativeFrameWanted!=r.serial)return;
  // A worker may finish between two callbacks in the same game frame. Use
  // its original stamp, and avoid rebuilding the graph when several game
