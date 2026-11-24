@@ -49,7 +49,13 @@ static bool formationContext(bool preview=false){
  if(!external::display::inspect([](uint32_t at,void*out,size_t n){return read(at,out,n);}).visible())return false;
  long seq=sh->formationPolicySeq;if(seq&1)return formationPolicy.enabled!=0;MemoryBarrier();auto p=sh->formationPolicy;MemoryBarrier();if(seq!=sh->formationPolicySeq)return formationPolicy.enabled!=0;formationPolicy=p;return p.enabled!=0;
 }
-static bool formationActor(uint32_t p,bool quick=false,bool requireRoster=true){int air=0,k=kind(p);return p&&(!requireRoster||worldObjects.contains(p))&&own(p,lastHouse)&&(k==1||k==2||(quick&&k==0))&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&!get<bool>(p+0x427)&&(quick||(objectAirQuery(p,&air)&&!air));}
+static bool formationActor(uint32_t p,bool quick=false,bool requireRoster=true){
+ if(p<0x10000)return false;int air=0,k=kind(p);
+ return (!requireRoster||worldObjects.contains(p))&&own(p,lastHouse)&&
+  (k==1||k==2||(quick&&k==0))&&!get<bool>(p+0x1C8)&&
+  !get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&
+  !get<bool>(p+0x427)&&(quick||(objectAirQuery(p,&air)&&!air));
+}
 static bool formationAerial(const formation::Unit&u){
  // Aircraft are always in the air placement group, including while landed.
  // Existing type definitions identify jumpjet/flying infantry and vehicles.
