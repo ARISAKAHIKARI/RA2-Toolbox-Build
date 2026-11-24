@@ -84,7 +84,8 @@ assert "pushfd" in single and "popfd" in single
 assert "mov byte ptr [ecx+241h],bl" in single
 assert "resume at the original next instruction 0x577DB6" in single
 assert "Do not read," in single and "Visionary state" in single
-assert "Cell" not in single and "0x240" not in single
+single_code = "\\n".join(line.split("//", 1)[0] for line in single.splitlines())
+assert "Cell" not in single_code and "Visionary" not in single_code and "0x240" not in single_code
 assert "actual naked trampoline and Win32 SEH wiring are not implemented" in single
 
 # Keep the zero-patch post-call restoration candidate as a comparison only.
