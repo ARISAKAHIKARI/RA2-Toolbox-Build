@@ -3,6 +3,7 @@
   "reason": "The current architecture retires legacy ordinary input/CS/click and frame-provider detours. Explicitly opted-in judgment, rendering, sidebar, camera and transport patches remain manager-owned. These historical tests encode removed paths or old protocol topology and are not current contracts.",
   "replacement": [
     "no_interception_source_contract.py",
+    "special_patch_inventory_contract.py",
     "no_interception_runtime.py",
     "tools/audit_architecture.py"
   ],
