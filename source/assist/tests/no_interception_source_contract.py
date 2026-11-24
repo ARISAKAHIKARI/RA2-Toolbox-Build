@@ -96,6 +96,9 @@ for relative in (
     "assist/source/placement_bridge.h",
     "assist/source/direct_modes_bridge.h",
     "assist/source/network_sender_bridge.h",
+    "assist/source/crc_shadow_bridge.h",
+    "game_runtime/source/frame_signal_runtime.h",
+    "game_runtime/source/native_tooltip_runtime.h",
 ):
     assert "gameentry::patch(" in read(relative), relative
 
