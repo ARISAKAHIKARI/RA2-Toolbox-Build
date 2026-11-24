@@ -84,13 +84,13 @@ int main(){
  reset();seedTooltip();check(dataPointerSlot(0x7F74D8)&&dataPointerSlot(0x7F74C8)&&dataPointerSlot(0x7F7B60));
  check(!dataPointerSlot(0x55DE81)&&!dataPointerSlot(0x478BD1));
  const uint8_t tooltipOriginal[]={0x50,0x90,0x47,0};uint8_t tooltipAdapter[4]{};const uint32_t tooltipTarget=0x10001000;memcpy(tooltipAdapter,&tooltipTarget,4);
- fixtureFlush=false;check(write(0x7F74D8,tooltipOriginal,tooltipAdapter,4)==int(Result::Ok));
+ skip(0x7F74D8,true);fixtureFlush=false;check(write(0x7F74D8,tooltipOriginal,tooltipAdapter,4)==int(Result::Ok));
  check(fixtureProtectCalls==2&&fixtureProtectionRequests[0]==PAGE_READWRITE&&fixtureProtectionRequests[1]==PAGE_READONLY);
  check(fixtureFlushCalls==0);journal=observed(0x7F74D8);check(journal.active&&journal.length==4);
  check(write(0x7F74D8,tooltipAdapter,tooltipOriginal,4)==int(Result::Ok));check(!observed(0x7F74D8).active);
  // A known pointer slot on an executable page is unexpected and must fail
  // closed before VirtualProtect; it must never be converted to RWX.
- reset();seedTooltip();fixturePointerExecutable=true;
+ reset();seedTooltip();skip(0x7F74D8,true);fixturePointerExecutable=true;
  check(write(0x7F74D8,tooltipOriginal,tooltipAdapter,4)==int(Result::PatchDenied));
  check(fixtureProtectCalls==0&&!patches.installed());fixturePointerExecutable=false;fixtureFlush=true;
  // Extracted production common adapter captures the actual operand, then
