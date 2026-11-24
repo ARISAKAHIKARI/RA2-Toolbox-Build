@@ -4,11 +4,11 @@
 
 ## 结论
 
-发现一个更值得优先验证的候选：只保留 Map::Reveal 内的 0x577DB0 写入点，在工具手动 Reveal 作用域内抑制这一次 MapIsClear 写入；自然游戏调用仍执行原指令。这样有机会从八个指令补丁缩减到 **一个代码补丁点**，不再需要 CRC 读取替换或另外六个自然写入观察点。
+本分支已将 CRC Shadow 运行时切换为单点实现：只在工具手动 Reveal 作用域内，于 Map::Reveal 的 0x577DB0 抑制目标 House 的 MapIsClear 写入；自然游戏调用、其他 House 和其余写入继续执行原生指令。运行时只安装一个代码补丁点，不再做 CRC 读取替换、字段镜像或事后数据恢复。该路径仍是默认关闭的高危实验功能；Windows 完整构建、完整 Map::Reveal 和双机联机验收尚未通过，不能发布或视为认证。
 
 另有一个零补丁候选：调用前保存、原生 Reveal 返回后比较恢复。它已通过合成事务测试，但安全性不如单点写入抑制：恢复发生在函数返回后，若函数内部触发 CRC 会太晚；恢复写入失败时也没有 CRC 读取兜底。因此将其保留为备选，不作为首选。
 
-本轮只新增研究候选、反汇编证据与合成测试，没有改生产 Runtime、没有删改八个站点，也没有改变现有功能行为。用户已明确确认：只处理 MapIsClear；Cell 与 Visionary 继续完全使用当前正常工作的原生机制，不扩展状态管理。
+研究阶段最初只新增候选、反汇编证据与合成测试；本次继续推进已把单点实现接入运行时代码，并移除生产八点镜像/恢复路径。用户已明确确认：只处理 MapIsClear；Cell 与 Visionary 继续完全使用当前正常工作的原生机制，不扩展状态管理。源码切换不等于游戏验收。
 
 ## 现有证据
 
@@ -34,7 +34,7 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 2. 同步调用 Map::Reveal（0x577D90）
 3. crcMapToolEnd()
 
-这个调用发生在 Runtime 的游戏线程命令路径。当前 CRC Shadow 正是依赖这个边界设置 crcMapToolScope，只是之后又通过八个 detour 去追踪字段读写。
+这个调用发生在 Runtime 的游戏线程命令路径。现在该边界通过 RuntimeScopedCall 的 finally 清理单点作用域；只有 0x577DB0 的写入 trampoline 会检查目标 House 身份。
 
 ### 3. 当前静态扫描中的读取者
 
@@ -46,7 +46,7 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 
 因此当前三个直接读取候选均属于 CRC 输入或诊断，不是已知普通游戏玩法读取者。YRpp 的 HouseClass 将 Visionary 与 MapIsClear 相邻声明；MapClass 将 Reveal 声明为 0x577D90。Phobos 的 SyncLogging 也把每个 House 的 MapIsClear 加入 CurrentFrameCRC。这些是字段与摘要关系的交叉佐证，不等于证明整个可执行文件不存在间接别名、批量拷贝、动态模块或扩展读取者。
 
-## 候选机制：保存 → 原生 Reveal → 比较恢复
+## 对比方案（不采用）：保存 → 原生 Reveal → 比较恢复
 
 对工具手动 Reveal 的单次调用：
 
@@ -103,25 +103,25 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 
 探针和测试分别位于 `source/assist/tests/crc_shadow_single_store_trampoline_probe.cpp` 与 `source/assist/tests/crc_shadow_single_store_trampoline_contract.py`。CRC 专项 CI 已加入该编译检查。
 
-**边界：** 这只是汇编代码生成与重定位形状验证，不是生产 Runtime 的实际 trampoline，不证明 Win32 SEH/异常回调已经接通，也没有执行真实 Map::Reveal。生产仍保持八点实现。
+**边界：** 这是独立 x86 代码生成探针；生产 trampoline 已按同一指令序列接入 `crc_shadow_bridge.h`，并有静态源码契约对照。它仍不等于完整 Runtime DLL 的执行，也不证明 Windows SEH、完整 Map::Reveal 或联机行为已经通过。
 
 这比此前仅按静态候选区间推断更强，但仍不是完整调用图证明：Map::Reveal 后续会调用地图/渲染相关函数，其中有虚函数与间接调用；局部窗口扫描不能代替对所有间接目标的穷尽分析。现有 Unicorn fixture 在 `0x577DB6` 后提前返回，因此它没有验证完整原生后续执行。但本项目不需要在工具箱中模拟或维护 Cell/Visionary 状态；验收只需确认单点拦截后从原始下一条指令 `0x577DB6` 继续，游戏原生后半段不被跳过、不被改写，并在真实游戏中正常运行。
 
-## 首选候选：单点抑制 Map::Reveal 的写入
+## 当前实现：单点抑制 Map::Reveal 的写入
 
-现有 CRC 回调已经能在 0x577DB0 执行原始 MOV 前取得 ECX（House）和保存的 EBX（其中 BL 是将写入的值）。反汇编确认该点正是 Map::Reveal 函数内唯一的 House+0x241 写入。候选只在工具调用作用域且 ECX 与事先校验的目标 House 身份完全匹配时跳过这条 MOV；其他 House、自然 Reveal 和异常身份变化都走原生写入，不做全局拦截。因此不必改写 EBX，也不必重算 CRC：
+现有 CRC 回调已经能在 0x577DB0 执行原始 MOV 前取得 ECX（House）和保存的 EBX（其中 BL 是将写入的值）。反汇编确认该点正是 Map::Reveal 函数内唯一的 House+0x241 写入。生产代码只在工具调用作用域且 ECX 与事先校验的目标 House 指针、ID、索引完全匹配时跳过这条 MOV；其他 House、自然 Reveal 和身份变化都走原生写入，不做全局拦截。身份异常时 fail-open 执行原生 MOV，并停用本局单点保护。因此不必改写 EBX，也不必重算 CRC：
 
 1. crcMapToolBegin 在同步调用前校验当前世界、目标 House 身份并开启工具揭示作用域。
 2. 仅在 0x577DB0 回调中，如果作用域有效，就设置一个一次性 skipStore 标志。
 3. 裸函数 trampoline 在原 MOV 位置检查标志；为真则跳过 MOV，为假则执行原 MOV。
 4. 检查分支必须用 pushfd／popfd 恢复 EFLAGS；只访问内存标志，不修改任何 GPR。回调原有 pushad／popad 继续保护寄存器。
 5. 立刻清除一次性标志。工具调用外的自然 Reveal 不设置标志，原指令照常执行。
-6. 如果受保护回调发生异常，AssistMapCrcAbort 必须先设置 skipStore，再由 trampoline 消费；不能让异常回退路径意外执行原始写入。
+6. 如果受保护回调发生可处理异常，AssistMapCrcRevealAbort 只对匹配的目标 House 设置 skipStore，再由 trampoline 消费；未处理异常则由外层 RuntimeScopedCall finally 清理作用域。
 7. 手动 Reveal 外层使用 RuntimeScopedCall finally 清除作用域，确保正常返回、SEH unwind 和提前退出都不会把 skipStore 泄漏到下一次自然 Reveal。
 
 这比调用后恢复更强：MapIsClear 在 0x577DB0 之后就保持原值，CRC 即使在 Map::Reveal 内部被嵌套调用，也会直接读到原值；同时不需要对 House 内存做事后写入。
 
-**仍需验证的假设：** 作用域内到达 0x577DB0 的写入确实都属于这次工具 Reveal；不存在必须依赖该字段被置 1 的非 CRC 后续读取；其他六个写入点不在这次 Reveal 的调用链中。若任一假设不成立，不得采用该方案。
+**仍需验证的假设：** 作用域内到达 0x577DB0 的写入确实属于这次工具 Reveal；不存在依赖该字段临时变为 1 的非 CRC 后续读取；其他六个写入点不在这次 Reveal 的调用链中。当前源代码已经采用单点实现，但这些假设未完成完整传递调用图和真实游戏验证前，不得打包发布。
 
 ## 为什么不选“只保留一个 CRC 读取 Hook”
 
@@ -153,7 +153,7 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 
 1. **优先验证单点写入抑制**：一个 0x577DB0 指令点、一个同步工具作用域、精确 House 身份比较；自然游戏调用完全原生。若确认 trampoline 正确续接且实际游戏中原生 Reveal 正常，这是当前最小且最直观的方案。
 2. **不优先零补丁事后恢复**：保存／调用／比较恢复虽能在合成模型中成立，但需要额外读写 House 内存、异常清理和失败重试，且恢复发生在 Map::Reveal 返回后；如果函数内部发生 CRC 或依赖该字段，时序更复杂。
-3. **保留现有八点实现作为安全回退**：在单点候选未完成续接验证、Windows SEH 和双机验证前，不改生产代码、不删除旧路径。
+3. **回退策略**：八点旧实现不与单点实现并存，保留在 Git 历史中；若单点验收失败，回退该实现提交或保持功能关闭，不增加运行时双轨。
 
 ## 本轮验证
 
@@ -164,18 +164,18 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 - 静态证据契约：核对 RevealMap 单一调用边界、0x577DB0 是函数范围内唯一的已知写入点、三个已知读取候选的 CRC 分类，并明确保留 xref 缺口。
 - x86 trampoline 代码生成契约：本地 clang++ 交叉编译 i686 Windows COFF 对象，检查完整寄存器/浮点状态保护、一次性分支只跳过原始 MOV、标志清理、0x577DB6 续接和重定位；本地通过，CI 已加入，仍不代表生产 SEH 或游戏实测。
 
-以上均为研究／合成测试，不是实际游戏执行，不是完整 Map::Reveal 验证，也不是双机联机测试。CI 工作流已加入，实际 GitHub Actions 运行结果仍待回报。
+以上证据分为静态/合成验证和运行时代码验证；它们都不是实际游戏执行、完整 Map::Reveal 验证或双机联机测试。CRC 专项 Ubuntu CI 已通过；Windows 完整构建和 SEH 验收仍在进行。
 
 交叉参考：固定 YRpp HouseClass 将 Visionary 与 MapIsClear 相邻声明（[HouseClass.h](https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/HouseClass.h#L869-L872)）；MapClass 将 Reveal 声明为 0x577D90（[MapClass.h](https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/MapClass.h#L477-L479)）；Phobos SyncLogging 将每个 House 的 MapIsClear 加入 CurrentFrameCRC（[SyncLogging.cpp](https://github.com/Phobos-developers/Phobos/blob/develop/src/Misc/SyncLogging.cpp#L653)）。这些只佐证字段布局和摘要用途，不证明完整可执行文件不存在其他读取者。
 
 ## 下一步验收门槛
 
-只有以下项目通过，才改生产代码：
+单点实现已接入当前源码，但在以下项目通过前不发布 Update/Release：
 
 1. 在固定 PE/受控运行环境中验证单点 trampoline 跳过 0x577DB0 的 MOV 后，准确回到原始下一条指令 0x577DB6；确认原生后续代码继续执行并正常返回。无需采集、记录或模拟 Cell/Visionary 状态。
 2. 验证回调只对工具命令指定的 House 设置一次性 skip；其他 House、自然 Reveal 和身份变化均执行原生写入。确认 Map::Reveal 后续没有依赖 MapIsClear 临时变为 1 的非 CRC 读取者；不再把“没有嵌套 CRC”作为门槛，因为单点抑制在 CRC 执行前就保持原值。
 3. 补充 MapIsClear 读取者审计，特别是宽访问、间接地址和扩展模块；不扩大到 Cell/Visionary 状态审计。
 4. 在实际 Runtime 的游戏线程 SEH/finally 边界中验证正常返回、异常退出、作用域清理、House 身份变化和嵌套 Reveal；不引入事后内存恢复流程。
-5. 最后才把八个 detour 改为单点 MapIsClear 写入抑制，并完成新旧方案 CRC 输入逐帧对照。**不能只把 SiteCount 从 8 改成 1：当前 `restoreCrcMapShadow()` 仍调用 `crcshadow::restoreData()`，可能在卸载时写回 `House+0x241`；单点抑制版从不改数据，卸载时必须只撤销唯一 detour、清理作用域，彻底移除这条事后数据恢复路径。** 原八点实现保留在 Git 历史中作为回退基线，不在新运行时里并存。
+5. 完成新旧方案 CRC 输入逐帧对照，并在真实游戏中确认完整原生 Map::Reveal 从 0x577DB6 继续执行、正常返回，随后完成双机联机验收。单点实现已彻底移除 `restoreData()` 和事后 House 数据回写；卸载只撤销唯一代码补丁并清理作用域。原八点实现只保留在 Git 历史中，不在新运行时并存。
 
-如果任一门槛不通过，继续保留现有八点实现，不强行缩减。
+如果任一门槛不通过，保持 CRC Shadow 关闭并回退单点实现，不强行发布。
