@@ -2503,11 +2503,11 @@ static void updateModeStatus(DWORD now){
   else if(fresh&&extra.commandOwnerRequested()&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
   else owner+=stateText(extra.commandOwnerRequested(),shared?shared->controlCommandOwnerStatus:0);
   SetWindowTextW(GetDlgItem(ui,9194),owner.c_str());
-  const int cs=shared?shared->crcMapShadowStatus:0;std::wstring crc=L"高危 · 全图 CRC 单点保护：";
+  const int cs=shared?shared->crcMapShadowStatus:0;std::wstring crc=L"高危 · 工具揭示 CRC 单点保护：";
   if(cs==-4||cs==-3)crc+=L"执行或 House 身份异常，本局已停用";
-  else if(cs==-5)crc+=L"仅支持联机的自动地图全开";
+  else if(cs==-5)crc+=L"仅支持联机的工具地图揭示";
   else if(cs==-6)crc+=L"暂不支持Ares/Phobos扩展";
-  else if(cs<0)crc+=L"站点不兼容或恢复冲突";
+  else if(cs<0)crc+=L"代码补丁冲突或原生入口不兼容";
   else if(!fresh)crc+=extra.crcMapShadow?L"等待新对局及连接":L"关闭";
   else if(cs==1){crc+=extra.crcMapShadow?L"实验已启用":L"正在关闭";crc+=L" · Hook "+std::to_wstring(shared->crcMapShadowTracked)+L" 点 · 单点抑制 "+std::to_wstring(shared->crcMapShadowSubstitutions)+L" 次";}
   else crc+=extra.crcMapShadow?L"等待适配":L"关闭";
