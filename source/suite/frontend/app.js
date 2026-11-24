@@ -242,7 +242,7 @@
   // Dependency captions are a legacy native representation. Keep saved values
   // in the store, but do not render controls that cannot currently apply.
   const dependencyPrefix=/^\[(?:需先|需开启|需选择|需要 |当前模式不|此功能暂不可用|当前控制实现不能|规则数据模式)[^\]]*\]\s*/;
-  const dependencyHidden=c=>!c.runtimeError&&dependencyPrefix.test(c.label||c.text||'');
+  const dependencyHidden=c=>!c.runtimeError&&c.enabled===false&&(dependencyPrefix.test(c.label||c.text||'')||/^当前不可用：(?!硬件断点预算不足)/.test(c.hint||''));
   function applicableSettings(items,allControls){
     const aircraft=allControls.find(c=>c.nativeId===9195||c.id===9195);
     const policy=aircraft?.selected;
@@ -799,7 +799,7 @@
   }
   function patchRow(row) {
     const control = row.control, error = store.error(control.id); row.element.dataset.pending = String(store.isPending(control.id)); row.element.classList.toggle('is-disabled',!control.enabled); row.element.classList.toggle('has-error',Boolean(error)||control.runtimeError);
-    let labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(row.commandAction)labelText=control.text||control.label||'操作'; else if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(!control.enabled)labelText=labelText.replace(/^\[此功能暂不可用\]\s*/,''); if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText;
+    let labelText=(row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置'))).replace(dependencyPrefix,''); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(row.commandAction)labelText=control.text||control.label||'操作'; else if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(!control.enabled)labelText=labelText.replace(/^\[此功能暂不可用\]\s*/,''); if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText;
     const optionHelp=control.type==='choice'&&(control.optionDescriptions||[]).some(Boolean);
     row.element.title=control.type==='label'||optionHelp?'':(!control.enabled&&/^\[此功能暂不可用\]/.test(control.label)?['此功能暂不可用',control.hint].filter(Boolean).join('\n'):control.hint);
     if(control.type==='label'){
