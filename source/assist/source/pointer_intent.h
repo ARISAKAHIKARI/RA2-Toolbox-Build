@@ -28,6 +28,11 @@ inline bool matchesHold(const uint8_t*keys,uint32_t key,int operation){
  return keygesture::matchesHold(keys,key);
 }
 struct Bindings {uint32_t advanced,magnetron,cs,enter,airFirst,airSecond,disk,sell,enabled;};
+// IPC v115: low 16 bits contain feature-enable flags; upper 16 bits store
+// the optional attack-move hold gesture. Preserve shared structure size.
+constexpr uint32_t FeatureEnableMask=0xffffu;
+inline uint32_t bindingOptions(uint32_t flags,uint32_t attackHold){return (flags&FeatureEnableMask)|((attackHold&0xffffu)<<16);}
+inline bool attackHoldMatches(const uint8_t*keys,uint32_t options){const uint32_t key=options>>16;return !(key&255u)||keygesture::matchesHold(keys,key);}
 inline uint32_t resolveBindings(const uint8_t*keys,int operation,const Bindings&c){
  uint32_t out=0,explicitGround=0;
  const uint32_t values[]={c.advanced,c.magnetron,c.cs},bits[]={Advanced,Magnetron,CS};
@@ -65,7 +70,7 @@ inline MouseRoute resolveMouse(const uint8_t*keys,int physical,const uint32_t*bu
  uint32_t bindings=resolveBindings(keys,Enhanced,config);
  uint32_t follow=physical==FollowNative?RightClick:physical==6?LeftClick:0;
  if(bindings&~Shift)return {Enhanced,bindings|follow|PerFeatureMouse};
- if(buttons[MouseAttack]==uint32_t(physical))return {AttackMove,(keys[16]?uint32_t(Shift):0)|follow|PerFeatureMouse};
+ if(buttons[MouseAttack]==uint32_t(physical)&&attackHoldMatches(keys,allEnabled))return {AttackMove,(keys[16]?uint32_t(Shift):0)|follow|PerFeatureMouse};
  uint32_t sale=0;
  if(buttons[MouseSellDrained]==uint32_t(physical))sale|=SellDrainedInput;
  if(buttons[MouseSellVehicle]==uint32_t(physical))sale|=SellVehicleInput;
@@ -83,7 +88,7 @@ inline int resolveMouseMatches(const uint8_t*keys,int physical,const uint32_t*bu
  int count=0;
  for(int j=0;j<MouseCount;++j){if(buttons[j]!=uint32_t(physical))continue;
   if(j<MouseAttack){if((c.enabled&enables[j])&&matchesHold(keys,holds[j],Enhanced))out[count++]={Enhanced,bits[j]|common};}
-  else if(j==MouseAttack)out[count++]={AttackMove,common};
+  else if(j==MouseAttack){if(attackHoldMatches(keys,c.enabled))out[count++]={AttackMove,common};}
   else {uint32_t sale=j==MouseSellDrained?SellDrainedInput:SellVehicleInput;
    if((c.enabled&512)&&(saleEnabled&sale)&&matchesHold(keys,c.sell,Sell))out[count++]={Sell,Control|sale|common};}
  }
