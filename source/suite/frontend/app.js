@@ -603,7 +603,7 @@
       wanted.add(key);let line=lines.get(key);
       if(!line){line=document.createElement('div');line.className='settings-line';lines.set(key,line);}
       const compound=members.length>1,name=first.label || first.text;
-      const commandRow=first.type==='button'&&members.slice(1).some(c=>c.type==='hotkey');
+      const commandRow=first.type==='button'&&(!subsettings||members.slice(1).some(c=>c.type==='hotkey'));
       line.classList.toggle('action-command-row',commandRow);
       line.classList.toggle('compound-row',compound);line.classList.toggle('subsettings-line',subsettings);
       const hasPreset=members.some(control=>control.type==='choice' && control.options.includes('仅鼠标') && control.options.includes('自定义'));
