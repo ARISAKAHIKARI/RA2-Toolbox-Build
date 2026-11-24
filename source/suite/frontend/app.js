@@ -605,7 +605,7 @@
           feature.caption.prepend(document.createTextNode(block.title));
           feature.main.append(feature.caption);
         }
-        const scopes=block.title==='适用单位清单'?block.controls.filter(c=>c.type==='toggle'&&store.value(c,'toggle')).length:0;
+        const scopes=['适用单位清单','命令类型手动指定'].includes(block.title)?block.controls.filter(c=>c.type==='toggle'&&store.value(c,'toggle')).length:0;
         feature.activeScopes.hidden=!scopes;
         feature.activeScopes.textContent=scopes===1?'已限定范围':scopes>1?`${scopes} 项限制已启用`:'';
       }
