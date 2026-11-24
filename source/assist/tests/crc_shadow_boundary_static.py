@@ -63,6 +63,10 @@ assert audit["map_reveal_virtual_call"]["observed_default_singleton"]["target_by
 assert audit["null_house_helper_call"]["target_bytes"] == "C3"
 assert audit["vision_field"]["actual_read"] == "0x577E0F"
 assert binary["trampoline_codegen_probe"]["result"].startswith("PASS locally")
+outer_crc = audit["outer_crc_scheduler"]
+assert outer_crc["routine_entry"] == "0x647260"
+assert outer_crc["direct_compute_game_crc_call_sites"] == ["0x64731C", "0x647684"]
+assert "single-store design leaves House+0x241 physically unchanged" in outer_crc["relation_to_map_reveal"]
 
 # The separate map-range evidence agrees with the SHA-matched disassembly.
 reveal_range = next(
