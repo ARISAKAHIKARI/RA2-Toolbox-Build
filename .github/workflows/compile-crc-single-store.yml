@@ -1,0 +1,98 @@
+name: Compile CRC single-store Runtime (Win32)
+on:
+  push:
+    branches: [work/latest-ra2-integration]
+    paths:
+      - 'source/assist/source/bridge.cpp'
+      - 'source/assist/source/crc_shadow_bridge.h'
+      - 'source/assist/source/crc_shadow_single_store_policy.h'
+      - 'source/assist/source/guard.cpp'
+      - 'source/assist/source/main.cpp'
+      - 'source/shared/source/runtime_seh_scope.h'
+      - 'source/shared/source/game_entry_manager.cpp'
+      - 'source/build-zig-x64.sh'
+      - '.github/workflows/compile-crc-single-store.yml'
+  pull_request:
+    paths:
+      - 'source/assist/source/bridge.cpp'
+      - 'source/assist/source/crc_shadow_bridge.h'
+      - 'source/assist/source/crc_shadow_single_store_policy.h'
+      - 'source/assist/source/guard.cpp'
+      - 'source/assist/source/main.cpp'
+      - 'source/shared/source/runtime_seh_scope.h'
+      - 'source/shared/source/game_entry_manager.cpp'
+      - 'source/build-zig-x64.sh'
+      - '.github/workflows/compile-crc-single-store.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: crc-single-store-win32-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-x86-runtime:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force artifacts/x64,diagnostics | Out-Null
+      - name: Run focused CRC source and policy contracts
+        shell: pwsh
+        run: |
+          python source/assist/tests/crc_shadow_single_store_feasibility.cpp
+          if($LASTEXITCODE -eq 0){throw 'C++ fixture was invoked as Python unexpectedly'}
+          python source/assist/tests/crc_shadow_boundary_static.py
+          if($LASTEXITCODE -ne 0){throw 'CRC source/evidence contract failed'}
+          python source/assist/tests/exception_policy.py --zig "$env:ZIG_EXE" --out diagnostics/exception-policy
+          if($LASTEXITCODE -ne 0){throw 'x86 exception policy test failed'}
+          python source/assist/tests/runtime_scope_windows.py --zig "$env:ZIG_EXE" --out diagnostics/runtime-scope
+          if($LASTEXITCODE -ne 0){throw 'x86 RuntimeScopedCall finally test failed'}
+      - name: Compile x64 host with paired x86 Runtime and broker
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=native
+          export RA2_OUTPUT_DIR="$PWD/artifacts/x64"
+          bash source/build-zig-x64.sh > diagnostics/crc-single-store-build.log 2>&1 || { tail -120 diagnostics/crc-single-store-build.log; exit 1; }
+          tail -60 diagnostics/crc-single-store-build.log
+          python source/tools/verify_windows_outputs.py --root artifacts/x64 --host-arch x64
+      - name: Record paired build identity
+        shell: pwsh
+        run: |
+          $files=@()
+          foreach($name in 'RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe'){
+            $path="artifacts/x64/$name"
+            $files+=@{name=$name;bytes=(Get-Item $path).Length;sha256=(Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          @{commit=$env:GITHUB_SHA;branch=$env:GITHUB_REF_NAME;host='x64';runtime='x86';broker='x86';crc_shadow='single-site candidate';compile_only=$true;game_tested=$false;multiplayer_tested=$false;files=$files} | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 artifacts/x64/CRC_SINGLE_STORE_BUILD.json
+      - name: Upload paired binaries and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-CRC-Single-Store-Win32-Compile
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            artifacts/x64/RA2Toolbox.exe
+            artifacts/x64/GameRuntime.dll
+            artifacts/x64/GameRuntimeHost32.exe
+            artifacts/x64/BUILD_SOURCE_MANIFEST.json
+            artifacts/x64/BUILD_TARGET.json
+            artifacts/x64/WINDOWS_BUILD_ARTIFACTS.json
+            artifacts/x64/CRC_SINGLE_STORE_BUILD.json
+            diagnostics/crc-single-store-build.log
+            diagnostics/exception-policy/result.json
+            diagnostics/runtime-scope/result.json
