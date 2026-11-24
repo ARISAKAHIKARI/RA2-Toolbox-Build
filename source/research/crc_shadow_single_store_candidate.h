@@ -5,6 +5,16 @@ namespace assist { namespace crcshadowsingle {
 
 enum class Result : uint8_t { Idle, Armed, Busy, SuppressStore, NativeStore, FaultSuppressed, Ended };
 
+// Intended naked-leaf suffix after the guarded callback (research contract):
+//   pushfd
+//   cmp byte ptr [crcMapSkipStore],0
+//   jne skip_original_store
+//   mov byte ptr [ecx+241h],bl
+// skip_original_store:
+//   mov byte ptr [crcMapSkipStore],0
+//   popfd
+// The branch preserves the original MOV semantics when inactive, changes no
+// GPR, and restores EFLAGS because CMP itself changes flags.
 struct Scope {
  uint32_t epoch=0,house=0,houseID=0;
  bool active=false,skipStore=false,faulted=false;
