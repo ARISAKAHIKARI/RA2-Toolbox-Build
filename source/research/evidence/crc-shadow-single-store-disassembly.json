@@ -123,7 +123,7 @@
     "direct_House_plus_0x241_reads_after_store_in_MapReveal": [],
     "indirect_calls_and_transitive_call_graph_exhaustive": false
   },
-  "existing_fixture_limit": "crc_shadow_runtime.py deliberately returns at 0x577DB6 and jumps to 0x577F1E; it validates the flag leaf and CRC adapter but not the Cell/Visionary suffix of Map::Reveal.",
+  "existing_fixture_limit": "crc_shadow_runtime.py deliberately returns at 0x577DB6 and jumps to 0x577F1E; it validates the existing flag leaf and CRC adapter, not the full native Reveal suffix. The single-store design does not emulate or manage Cell or Visionary state. Its acceptance requirement is only to verify that skipping the MapIsClear store resumes at the original next instruction 0x577DB6 and that the unmodified native Reveal body continues to execute in the actual game.",
   "safety_limitations": [
     "This is static disassembly of the exact SHA-256-matched executable, not a live game run.",
     "The five direct callee windows were scanned for direct field/CRC references only; indirect calls, virtual targets and transitive callees are not exhausted.",
@@ -153,5 +153,19 @@
       "classification": "diagnostic logging read"
     }
   ],
-  "reader_scope_note": "The three direct read candidates in the existing linear PE scan are CRC serialization, global ComputeGameCRC, and diagnostic logging. This is not an exhaustive proof against indirect aliases, bulk copies, dynamically loaded modules, or runtime extension readers."
+  "reader_scope_note": "The three direct read candidates in the existing linear PE scan are CRC serialization, global ComputeGameCRC, and diagnostic logging. This is not an exhaustive proof against indirect aliases, bulk copies, dynamically loaded modules, or runtime extension readers.",
+  "scope_decision": {
+    "target_only": "House+0x241 MapIsClear store at 0x577DB0 during the tool-owned RevealMap call",
+    "untouched_native_state": [
+      "Cell exploration/shroud state",
+      "House+0x240 Visionary"
+    ],
+    "prohibited_changes": [
+      "No Cell sampling or mirroring",
+      "No Visionary sampling or mirroring",
+      "No Cell/Visionary writes or restoration",
+      "No additional hooks for these fields"
+    ],
+    "continuation": "After suppressing the single store, continue at original instruction 0x577DB6; all downstream native Reveal logic remains untouched."
+  }
 }
