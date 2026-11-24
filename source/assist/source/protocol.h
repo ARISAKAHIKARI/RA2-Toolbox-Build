@@ -98,7 +98,7 @@ struct Snapshot {
  int oreManual,oreYielded;
  uint32_t oreDelivered=0,oreUnverified=0; // Planner read-only evidence; not credit accounting.
  uint32_t magnetShots=0,magnetUnverified=0; // Read-only weapon/lift evidence, not hit attribution.
- uint32_t hookInstalled=0,hookConflicts=0; // Game-process inline patch registry only; includes explicit opt-in special patches.
+ uint32_t hookInstalled=0,hookConflicts=0; // Game-process patch registry: approved instruction and data-pointer sites, not Win32 message hooks.
  uint32_t queueSent,queueFull,queueTimingFailure,planDeferred;
  int megaQueueStatus=0; // 0=direct EventClass; 1=game native accepted; negative=reason
  uint32_t megaQueueAccepted=0,megaQueueRejected=0;
