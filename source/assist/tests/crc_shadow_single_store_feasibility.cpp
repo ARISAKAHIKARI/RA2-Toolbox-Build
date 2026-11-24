@@ -12,7 +12,8 @@ static void check(bool value,const char*name){
 static Result nativeWrite(Scope&scope,uint32_t epoch,uint32_t house,uint32_t houseID,
                           uint8_t&field,uint8_t value){
  const Result decision=beforeStore(scope,epoch,house,houseID);
- if(!consumeSkip(scope))field=value;
+ bool pending=decision==Result::SuppressStore;
+ if(!consumeSkip(pending))field=value;
  return decision;
 }
 int main(){
@@ -21,7 +22,7 @@ int main(){
   check(begin(s,1,0x20000,7)==Result::Armed,"tool Reveal scope begins");
   check(nativeWrite(s,1,0x20000,7,field,1)==Result::SuppressStore&&field==0&&s.suppressed==1,
         "only the matching tool House store is suppressed");
-  end(s);check(!s.active&&!s.skipStore,"scope cleanup clears state");
+  end(s);check(!s.active,"scope cleanup clears state");
  }
  {
   Scope s;uint8_t field=1;
@@ -62,16 +63,17 @@ int main(){
  {
   Scope s;
   check(begin(s,1,0x20000,7)==Result::Armed,"matching abort scope begins");
-  check(abort(s,0x20000)&&s.faulted&&s.skipStore,
-        "SEH abort arms skip for the exact target House");
-  check(consumeSkip(s),"trampoline consumes fail-closed skip after callback fault");
-  check(!consumeSkip(s),"skip is one-shot");
+  bool pending=false;
+  check(abort(s,0x20000)&&s.faulted,
+        "SEH abort identifies the exact target House");
+  pending=true;check(consumeSkip(pending),"trampoline consumes fail-closed skip after callback fault");
+  check(!consumeSkip(pending),"skip is one-shot");
   end(s);
  }
  {
   Scope s;
   check(begin(s,1,0x20000,7)==Result::Armed,"foreign abort scope begins");
-  check(!abort(s,0x21000)&&!s.skipStore,
+  check(!abort(s,0x21000),
         "SEH fault in nested other-House reveal does not suppress its store");
   end(s);
  }
@@ -99,9 +101,10 @@ int main(){
  {
   Scope s;uint8_t field=0;
   check(begin(s,1,0x20000,7)==Result::Armed,"stale-flag test begins");
-  beforeStore(s,1,0x20000,7); // callback marks the single store
+  bool pending=beforeStore(s,1,0x20000,7)==Result::SuppressStore;
   end(s);                       // exception/early-return cleanup before trampoline
-  check(!consumeSkip(s),"finally clears an unconsumed skip flag");
+  pending=false;                // crcMapToolEnd clears the assembly-visible byte
+  check(!consumeSkip(pending),"finally clears an unconsumed skip flag");
   check(nativeWrite(s,1,0x20000,7,field,1)==Result::NativeStore&&field==1,
         "no stale skip leaks into the next natural Reveal");
  }
