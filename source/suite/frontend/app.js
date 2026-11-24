@@ -257,6 +257,7 @@
   const hasFeatureConfig=block=>Boolean(block.title||block.headers.length)&&block.details.some(control=>!['label','heading'].includes(control.type));
   // Keep compound command rows intact and give each marked feature its own settings.
   function featureBlocks(controls) {
+    if(controls.flatFeatureBlocks)return controls.flatFeatureBlocks;
     const lines=settingLines(controls);
     // Legacy panels sometimes supplied a self-named master switch plus
     // independent child rows but no GroupHeader / Feature metadata. Infer
@@ -303,65 +304,23 @@
     }
     flush();return blocks;
   }
-  // Each native feature group is assigned to one stable semantic section.
-  // Never flatten every control/automatic feature into one enormous group:
-  // doing so loses the original feature boundary and doubles the fold layer.
-  const CONTROL_SECTIONS=['选兵与编组','移动、攻击与操作手势','队形、巡逻与飞机路径','进驻、装卸与超武目标选择','其他快捷操作'];
-  const AUTOMATIC_SECTIONS=['采矿、倒矿与防蜘蛛','维修与自动救援','自动战斗与防空','其他自动功能','适用单位清单'];
-  const RULE_SECTIONS=['单机速度与暂停','科技与建造','地图显示与揭示','操控与变卖','运行状态'];
-  const EXPERIMENT_SECTIONS=['视角与界面','剧情触发器','命令与兼容','规则实验','暂不可用'];
-  const SECTION_ORDER={3:CONTROL_SECTIONS,4:AUTOMATIC_SECTIONS,5:RULE_SECTIONS,6:EXPERIMENT_SECTIONS};
-  function semanticSection(name,controls,navigationIndex){
-    const hint=[name,...controls.map(c=>c.label||c.text||'')].join(' ').toLocaleLowerCase();
-    const ids=new Set(controls.map(item=>item.nativeId));
-    const has=(...values)=>values.some(v=>ids.has(v));
-    if(navigationIndex===3){
-      if(/选兵|编组|轮选|同类/.test(hint)||has(9608,441,443,444,445,449,467,724,853))return 0;
-      if(/队形|巡逻|路径|模糊下令|区域目标|快速占位/.test(hint)||has(9602,9615,9400,9401,9402))return 2;
-      if(/进驻|卸载|装车|超武目标/.test(hint)||has(9611,453,459,451,700,701))return 3;
-      if(/键鼠|高级移动|磁电|飞机分配|操作手势|攻击/.test(hint)||has(9601,9606,458,477,478,705))return 1;
-      return 4;
-    }
-    if(navigationIndex===5){
-      if(/速度|暂停|逐帧|帧率/.test(hint)||has(9494,9403))return 0;
-      if(/科技|建造|建筑放置|许可/.test(hint)||has(420,476,9097))return 1;
-      if(/地图|揭示|黑幕|迷雾/.test(hint)||has(808,9199,9492))return 2;
-      if(/操控|变卖|所属方/.test(hint)||has(860,9189))return 3;
-      return 4;
-    }
-    if(navigationIndex===6){
-      if(/暂不可用|未实现|尚未支持/.test(hint)||has(810,861,722))return 4;
-      if(/剧情|触发|镜头保护/.test(hint)||has(9536,9538))return 1;
-      if(/CRC|超武|自毁|规则实验/.test(hint)||has(9196,9490,9253))return 3;
-      if(/命令|入队|指令|Sticky|驻守|事件所属|兼容/.test(hint)||has(9750,9191,9187))return 2;
-      return 0;
-    }
-    if(/清单|单位类型/.test(hint)||has(9610))return 4;
-    if(/采矿|矿车|倒矿|蜘蛛|矿厂/.test(hint)||has(9605,832,833))return 0;
-    if(/维修|救援|炸弹|寄生/.test(hint)||has(312,780,9184))return 1;
-    if(/防空|战斗|攻击|低伤害|磁电|躲弹|索敌/.test(hint)||has(9182,9183,9042))return 2;
-    return 3;
-  }
+  // Navigation pages are the only category level. Keep the original native
+  // feature boundaries before flattening so parameter ownership survives.
+  const FLAT_PAGE_NAMES=['光标','渲染','监控视图','控制','自动功能','游戏规则','实验功能',null,'生产','生产'];
   function layoutGroups(controls,query='',navigationIndex=0){
     const groups=groupControls(controls,query);
-    const names=SECTION_ORDER[navigationIndex];
-    if(!names)return groups;
-    const combined=new Map();
+    const pageName=FLAT_PAGE_NAMES[navigationIndex];
+    if(!pageName||!groups.size)return groups;
+    const flat=[],blocks=[];
     for(const [name,items] of groups){
-      // A feature header owns its params; unheaded keyboard controls are
-      // independent action rows. Preserve compound shortcut rows as a unit.
       for(const block of featureBlocks(items)){
-        const pieces=(block.title||block.headers.length||block.controls.some(c=>c.groupHeader))?[block.controls]:settingLines(block.controls);
-        for(const piece of pieces){
-          // All tactical pages use one section grammar. Explicit native
-          // ownership wins; legacy free-form group names no longer add boxes.
-          const section=piece[0].section||names[semanticSection(name,piece,navigationIndex)];
-          if(!combined.has(section))combined.set(section,[]);
-          combined.get(section).push(...piece.map((control,i)=>({...control,layoutBreak:i===0})));
-        }
+        const key=name+':'+block.key;
+        blocks.push({...block,key});
+        flat.push(...block.controls);
       }
     }
-    return new Map([...names,...[...combined.keys()].filter(name=>!names.includes(name))].filter(name=>combined.has(name)).map(name=>[name,combined.get(name)]));
+    flat.flatFeatureBlocks=blocks;
+    return new Map([[pageName,flat]]);
   }
   const PRODUCTION_PAGE=8, PRODUCTION_NOTICES=9;
   function displayPageControls(controls,index){
@@ -590,7 +549,7 @@
           feature.caption.prepend(document.createTextNode(block.title));
           feature.main.append(feature.caption);
         }
-        const scopes=group.name==='适用单位清单'?block.controls.filter(c=>c.type==='toggle'&&store.value(c,'toggle')).length:0;
+        const scopes=block.title==='适用单位清单'?block.controls.filter(c=>c.type==='toggle'&&store.value(c,'toggle')).length:0;
         feature.activeScopes.hidden=!scopes;
         feature.activeScopes.textContent=scopes===1?'已限定范围':scopes>1?`${scopes} 项限制已启用`:'';
       }
@@ -644,6 +603,8 @@
       wanted.add(key);let line=lines.get(key);
       if(!line){line=document.createElement('div');line.className='settings-line';lines.set(key,line);}
       const compound=members.length>1,name=first.label || first.text;
+      const commandRow=first.type==='button'&&members.slice(1).some(c=>c.type==='hotkey');
+      line.classList.toggle('action-command-row',commandRow);
       line.classList.toggle('compound-row',compound);line.classList.toggle('subsettings-line',subsettings);
       const hasPreset=members.some(control=>control.type==='choice' && control.options.includes('仅鼠标') && control.options.includes('自定义'));
       let previous=null,parent=line;
@@ -653,13 +614,15 @@
           const next=makeRow(control);if(row)row.element.replaceWith(next.element);row=next;rows.set(control.id,row);
         }
         row.control=control;
+        row.commandAction=commandRow&&index===0;
         // An unowned choice, number or hotkey is a full feature row, not
         // a subordinate field simply because it is not a switch.
         row.element.dataset.settingLevel=control.type==='label'?'status':subsettings || (compound && index>0)?'secondary':'primary';
         row.inlineLabel=compound && index>0 && control.label===name?inlineLabel(control,hasPreset):null;
         row.element.classList.toggle('inline-hotkey',control.type==='hotkey'&&Boolean(row.inlineLabel));
         // A pushbutton already carries its action name. Do not print it twice.
-        if(control.type==='button' && control.label===control.text)row.inlineLabel='';
+        if(control.type==='button' && control.label===control.text&&!row.commandAction)row.inlineLabel='';
+        if(commandRow&&index>0&&control.type==='hotkey')row.inlineLabel='快捷键';
         patchRow(row);
         placeAfter(parent,row.element,previous);
         if(index===0&&row.companions){parent=row.companions;previous=null;}
@@ -788,9 +751,9 @@
   }
   function patchRow(row) {
     const control = row.control, error = store.error(control.id); row.element.dataset.pending = String(store.isPending(control.id)); row.element.classList.toggle('is-disabled',!control.enabled); row.element.classList.toggle('has-error',Boolean(error)||control.runtimeError);
-    let labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText;
+    let labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(row.commandAction)labelText=control.text||control.label||'操作'; else if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(!control.enabled)labelText=labelText.replace(/^\[此功能暂不可用\]\s*/,''); if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText;
     const optionHelp=control.type==='choice'&&(control.optionDescriptions||[]).some(Boolean);
-    row.element.title=control.type==='label'||optionHelp?'':control.hint;
+    row.element.title=control.type==='label'||optionHelp?'':(!control.enabled&&/^\[此功能暂不可用\]/.test(control.label)?['此功能暂不可用',control.hint].filter(Boolean).join('\n'):control.hint);
     if(control.type==='label'){
       row.description.hidden=true;
       row.label.hidden=!labelText;row.copy.hidden=!labelText;row.element.hidden=!labelText;
@@ -802,7 +765,7 @@
     row.element.classList.toggle('is-disabled',disabled);
     row.input.disabled = disabled; row.input.setAttribute('aria-label',row.inlineLabel?`${control.label} · ${row.inlineLabel}`:control.label || control.text || '设置');
     if (control.type === 'toggle') { row.input.checked = Boolean(store.value(control,'toggle'));row.toggleState.textContent=row.input.checked?'已开启':'已关闭'; }
-    else if (control.type === 'button') { row.input.textContent = control.text || control.label || '执行'; row.input.disabled = disabled || store.isPending(control.id); row.input.className=`setting-button action-${control.actionRole}`; }
+    else if (control.type === 'button') { row.input.textContent = row.commandAction?'执行':control.text || control.label || '执行'; row.input.disabled = disabled || store.isPending(control.id); row.input.className=`setting-button action-${control.actionRole}`; }
     else if (control.type === 'choice') { const optionSignature = JSON.stringify([control.options,control.optionEnabled,control.optionDescriptions]); if (row.optionSignature !== optionSignature) { row.optionSignature = optionSignature; row.input.replaceChildren(...control.options.map((text,index) => { const option = document.createElement('option'); option.value = String(index); option.textContent = text; option.title = control.optionDescriptions[index] || ''; option.disabled = control.optionEnabled[index] === false; return option; })); } const index = Number(store.value(control,'select')); if (row.input.selectedIndex !== index) row.input.selectedIndex = index; patchChoiceHelp(row,index); if (row.textInput) { row.textInput.disabled = disabled; if (document.activeElement !== row.textInput) row.textInput.value = String(store.value(control,'text')); } }
     else if (control.type === 'text' || control.type === 'number') { row.input.readOnly = control.readonly; if (document.activeElement !== row.input || control.readonly) row.input.value = String(store.value(control,'text')); }
     else if (control.type === 'range') { row.input.min = control.min; row.input.max = control.max; row.input.step = control.step; const value = store.value(control,'range'); if (document.activeElement !== row.input) row.input.value = value; row.output.textContent = String(value); }
