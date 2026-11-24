@@ -4,6 +4,7 @@
 #include "control_mode_policy.h"
 static void servicePointer(){
  static pointerinput::Intent leftCapture{};static bool leftCaptured=false;static uint32_t pointerCaptureGeneration=0;
+ static pointerinput::KeyOnlyEdges keyOnly;
  const DWORD capturedNow=GetTickCount();
  auto visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);});
  nativeviewportprojection::Transform viewport{};const bool viewportStable=nativeviewhost::sampleTransform(shared,viewport);
@@ -12,7 +13,7 @@ static void servicePointer(){
  if(pointerMatches.active()&&(!inputReady||!extra.allHotkeys||pointerMatches.revision!=settingsRevision||
     pointerMatches.capture.match!=commandMatch()||pointerMatches.capture.inputSerial!=gameinput::pointerCancelSerial(hook)))pointerMatches.clear();
  if(!inputReady)leftCaptured=false;
- if(!shared)return;
+ if(!shared){keyOnly.ready=false;return;}
  uint32_t allowed=0;const auto featureFlags=flags();
  if(featureFlags&AdvancedInput)allowed|=pointerinput::Advanced;
  if(featureFlags&MagnetronInput)allowed|=pointerinput::Magnetron;
@@ -24,6 +25,16 @@ static void servicePointer(){
  pointerinput::Bindings bindings{advancedKey,magnetronKey,csHoldKey,extra.enterKey,extra.airKey1,extra.airKey2,extra.diskKey,extra.sellKey,pointerinput::bindingOptions(allowed,extra.attackMoveKey)};
  InterlockedIncrement(&shared->pointerPolicySeq);shared->pointerPolicy={};shared->pointerPolicy.match=commandMatch();shared->pointerPolicy.enabled=inputReady;shared->pointerPolicy.overrideNative=extra.overrideNative;shared->pointerPolicy.bindings=bindings;memcpy(shared->pointerPolicy.buttons,extra.mouseButtons,sizeof extra.mouseButtons);MemoryBarrier();InterlockedIncrement(&shared->pointerPolicySeq);
  auto&box=shared->pointer;box.cancelSerial=gameinput::pointerCancelSerial(hook);static uint32_t ack=0;
+ uint32_t saleEnabled=0;
+ if(featureFlags&(SellDrained|SellEnemy))saleEnabled|=pointerinput::SellDrainedInput;
+ if(featureFlags&SellVehicles)saleEnabled|=pointerinput::SellVehicleInput;
+ // Reuse the one existing input sample; do not generate native mouse events.
+ uint8_t keyboard[256]{};uint32_t keySerials[256]{};
+ bool wantsKeyOnly=false;for(unsigned i=0;i<pointerinput::MouseCount;++i)if(!extra.mouseButtons[i]){wantsKeyOnly=true;break;}
+ if(inputReady&&wantsKeyOnly)gameinput::keySnapshot(hook,keyboard,keySerials);
+ pointerinput::MouseRoute keyboardRoutes[pointerinput::MouseCount+1]{};
+ const int keyboardCount=keyOnly.resolve(keyboard,keySerials,extra.mouseButtons,bindings,saleEnabled,extra.allHotkeys,
+   inputReady&&wantsKeyOnly,commandMatch(),settingsRevision,keyboardRoutes);
  if(ack!=box.ack){ack=box.ack;MemoryBarrier();
   if(box.intent.operation==pointerinput::C4Test){
    infantryEntryResultMatch=box.intent.match;
@@ -57,27 +68,35 @@ static void servicePointer(){
   shared->pointerViewportGeneration=pointerCaptureGeneration;box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();return;
  }
  gameinput::PointerPress e{};DWORD dropped=0;
- if(!gameinput::takePointer(hook,e,dropped)){if(dropped)notify(L"输入过密，部分增强请求未接收。");return;}
+ const bool hasMouse=gameinput::takePointer(hook,e,dropped);
+ if(dropped)notify(L"输入过密，部分增强请求未接收。");
+ const bool keyboardOnly=!hasMouse&&keyboardCount>0;
+ if(!hasMouse&&!keyboardOnly)return;
+ if(keyboardOnly){
+  DWORD hitPID=0;POINT hit{};RECT rect{};
+  if(!GetCursorPos(&hit))return;GetWindowThreadProcessId(WindowFromPoint(hit),&hitPID);
+  if(hitPID!=pid||!ScreenToClient(game,&hit)||!GetClientRect(game,&rect))return;
+  if(hit.x<0||hit.y<0||hit.x>=rect.right||hit.y>=rect.bottom)return;
+  e.tick=capturedNow;e.serial=box.cancelSerial;e.match=commandMatch();e.viewportGeneration=viewport.generation;
+  e.point=hit;e.width=rect.right;e.height=rect.bottom;memcpy(e.keys,keyboard,sizeof e.keys);
+ }
  if(!inputReady||e.viewportGeneration!=viewport.generation||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
  // Resolve captured down-edge keys too: Runtime preview publication may follow this edge.
- if(middleinput::ownsPointer(e.operation==7?6:e.operation,runtimeGesturePolicy(),runtimeGestureEnabled(),e.keys))return;
+ if(!keyboardOnly&&middleinput::ownsPointer(e.operation==7?6:e.operation,runtimeGesturePolicy(),runtimeGestureEnabled(),e.keys))return;
  // The explicit unload command owns this same chord. A polled native D/S/X
  // cancellation arriving afterwards must not erase its passenger follow-up.
  if(e.operation==5&&hookSmartUnload&&LOBYTE(unloadKey)&&
     pointerinput::matchesHold(e.keys,unloadKey,pointerinput::Enhanced))return;
- if(buildreserve::nativePointer(e)){leftCaptured=false;return;}
- airway::manual(e);
+ if(!keyboardOnly){if(buildreserve::nativePointer(e)){leftCaptured=false;return;}airway::manual(e);}
  // Native Z planning owns the original click; do not append another feature.
  if((airway::native()||airpathpolicy::direct(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork))&&airway::held(e.keys)&&airway::selectedAircraft()){leftCaptured=false;return;}
  RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height)return;
  DWORD now=GetTickCount();if(!commandFresh(now)||!foregroundGame()||DWORD(now-e.tick)>150||snap.chat)return;
  static pointerinput::Intent in;in={};in.tick=e.tick;in.inputSerial=e.serial;in.match=e.match;
- uint32_t saleEnabled=0;
- if(featureFlags&(SellDrained|SellEnemy))saleEnabled|=pointerinput::SellDrainedInput;
- if(featureFlags&SellVehicles)saleEnabled|=pointerinput::SellVehicleInput;
  pointerinput::MouseRoute routes[pointerinput::MouseCount+1]{};
- int routeCount=pointerinput::resolveMouseMatches(e.keys,e.operation==7?6:e.operation,extra.mouseButtons,
+ int routeCount=keyboardOnly?keyboardCount:pointerinput::resolveMouseMatches(e.keys,e.operation==7?6:e.operation,extra.mouseButtons,
   bindings,saleEnabled,extra.allHotkeys,routes);
+ if(keyboardOnly)memcpy(routes,keyboardRoutes,size_t(keyboardCount)*sizeof(routes[0]));
  if(airway::active()&&!airway::ended&&airway::selectedAircraft()&&airway::held(e.keys)&&(e.operation==4||e.operation==6||e.operation==7)){routes[0]={pointerinput::AirWaypoint,e.operation==4?uint32_t(pointerinput::RightClick):uint32_t(pointerinput::LeftClick)};routeCount=1;}
  if(extra.c4Test&&extra.c4Mouse&&uint32_t(e.operation==7?6:e.operation)==extra.c4Mouse&&pointerinput::matchesHold(e.keys,extra.c4Key,pointerinput::Enhanced)){
   pointerinput::MouseRoute test{pointerinput::C4Test,pointerinput::PerFeatureMouse|(extra.c4Mode==1?uint32_t(pointerinput::EntrySabotage):0)|(extra.c4Mouse==4?uint32_t(pointerinput::RightClick):extra.c4Mouse==6?uint32_t(pointerinput::LeftClick):0)};
@@ -87,7 +106,7 @@ static void servicePointer(){
  if(!routeCount)return;in.operation=routes[0].operation;in.bindings=routes[0].bindings;
  if(in.operation==pointerinput::Sell&&!(in.bindings&pointerinput::Control))return;
  // Plain native clicks also carry mining hand-back, even when Auto CS is off.
- if(e.keys[VK_CONTROL]||e.keys[VK_MENU])for(int n=0;n<routeCount;++n)routes[n].bindings|=pointerinput::NativeForced;
+ if(!keyboardOnly&&(e.keys[VK_CONTROL]||e.keys[VK_MENU]))for(int n=0;n<routeCount;++n)routes[n].bindings|=pointerinput::NativeForced;
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
  uint32_t tactical=0,items=0;int count=0,frameAfter=0;uint32_t houseAfter=0;
  if(!read(0xA83D4C,&in.house,4)||in.house<0x10000||!read(0xA8ED84,&in.frame,4)||
