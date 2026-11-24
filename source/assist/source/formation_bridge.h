@@ -288,7 +288,7 @@ static void formationTick(uint32_t house,int frame,DWORD now,bool indexedWorkRea
  if(formationFollow.down&&!formationFollow.dragged&&int32_t(sh->formationConsumedUntil-now)>0)sh->formationConsumedUntil=inputownership::afterGesture(now);
  formationContinue(now);
  int visited=0;while(formationJobCount&&visited++<32){if(formationJobCursor>=formationJobCount)formationJobCursor=0;int at=formationJobCursor++;auto&j=formationJobs[at];uint32_t p=worldByID(j.unit.id);
-  bool remove=j.epoch!=match||p!=j.unit.pointer||!formationActor(p,j.quick)||manualVersions.get(j.unit.id)!=j.unit.token||formation::taskExpired(frame,j.frame,now,j.issued);
+  bool remove=j.epoch!=match||p!=j.unit.pointer||!formationActor(p,j.quick)||manualVersions.get(j.unit.id)!=j.unit.token||formation::taskExpired(frame,j.frame,now,j.issued,(j.stage==1||j.stage==3)?formation::IssuedTaskTimeoutMs:formation::PendingTaskTimeoutMs);
   uint32_t cell=j.stage<2&&j.approach?j.approach:uint32_t(j.goal.y/256*1000+j.goal.x/256);int gx=int(cell%1000)*256+128,gy=int(cell/1000)*256+128;
   if(!remove){double dx=double(get<int>(p+0x9C))-gx,dy=double(get<int>(p+0xA0))-gy;bool arrived=dx*dx+dy*dy<=96.*96.;
    if(j.stage==1||j.stage==3){bool going=get<int>(p+0xAC)==2&&get<uint32_t>(p+0x5A4)==readMapCell(cell%1000,cell/1000);j.observed|=going;
