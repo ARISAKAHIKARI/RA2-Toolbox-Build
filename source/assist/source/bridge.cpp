@@ -133,7 +133,7 @@ static uint32_t typePointers[MaxTypes];
 static ManualVersions manualVersions;static ObjectIndexView worldObjects;static int indexedFrame=-1,indexedCount=-1;static uint32_t indexedItems;
 // Reuse the mandatory world-index traversal for global magnetron discovery.
 // Input and planning still revalidate identities and native eligibility.
-static int globalVehicleCandidateCount=0;static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
+static int globalVehicleCandidateCount=0;static uint32_t globalVehicleCandidates[16384]{};static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
 // The candidate list itself is worker-owned in async mode, not copied into
 // another 64 KiB main-thread array on every accepted command snapshot.
 static globalvehicle::Cursor globalVehicleScan;
@@ -207,12 +207,20 @@ static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21c
 // Its only lifetime is the currently sealed exact game logic frame. Every
 // native operation still verifies live UID, House, mission and eligibility.
 static bool commandRosterReady(){
- return worldFrameCommandWorker.enabled()&&worldFrameReady&&!worldFrameBoundaryOnly&&
-  worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
-  worldFrameCommandRoster.current(worldFrame.key)&&
-  worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal)&&
-  worldFrame.key.house==lastHouse;
+ if(worldFrameCommandWorker.enabled())
+  return worldFrameReady&&!worldFrameBoundaryOnly&&
+   worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
+   worldFrameCommandRoster.current(worldFrame.key)&&
+   worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal)&&
+   worldFrame.key.house==lastHouse;
+ // The synchronous Runtime index is built in this exact game callback.
+ // It proves membership only; every action still re-reads live UID, House,
+ // mission and current eligibility immediately before native execution.
+ return indexedFrame==snap.frame&&indexedCount>=0&&
+  indexedVehicleHouse==lastHouse&&
+  indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal);
 }
+
 // The production background worker builds a full world index off-thread.
 // Strict same-frame identity is still required for command SNAPSHOT authority,
 // but delayed complete results may be used as candidates for UID discovery.
@@ -261,40 +269,94 @@ static bool verifyCandidatePointer(uint32_t pointer){
         observed&&worldFrameCandidateRoster.objects&&
         worldFrameCandidateRoster.objects->byId(observed)==pointer;
 }
-static bool refreshWorldIndex(int frame){
- const bool strict=commandRosterReady()&&frame==worldFrame.key.frame;
- const bool candidate=!strict&&candidateRosterReady();
- if(!strict&&!candidate){
-  worldObjects.clear();indexedFrame=indexedCount=-1;indexedItems=0;
-  globalVehicleCandidateCount=0;return false;
+static void indexWorld(int frame){
+ Vec all{};
+ const auto unknown=[](){
+  worldObjects.unbind();worldObjects.clear();indexedFrame=indexedCount=-1;
+  indexedItems=0;globalVehicleCandidateCount=0;indexedGlobalVehicles=false;indexedVehicleHouse=0;
+ };
+ if(!read(0xA8EC78,&all,sizeof all)||all.count<0||all.count>16384||
+    all.capacity<all.count||all.capacity>262144||(all.count&&all.items<0x10000)){
+  unknown();return;
  }
- static uint32_t adoptedSerial=0;static bool previouslyCandidate=false;
- const uint32_t version=candidate?worldFrameCandidateVersion:worldFrame.key.serial;
- if(indexedFrame!=frame||adoptedSerial!=version||previouslyCandidate!=candidate){
-  if(candidate)
-   worldObjects.bindCandidate(&worldFrameCandidateRoster.objects,candidateRosterReady,
-                             verifyCandidateID,verifyCandidatePointer);
-  else worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady);
-  const auto&roster=candidate?worldFrameCandidateRoster:worldFrameCommandRoster;
-  indexedCount=roster.count;indexedItems=roster.items;
-  indexedGlobalVehicles=roster.global;indexedVehicleHouse=lastHouse;
-  globalVehicleCandidateCount=int(std::min<size_t>(16384,roster.globalVehicles.size()));
-  // A full UID hash is already worker-owned. Only its view is rebound here.
- // If strict same-frame authority is unavailable, command managers are paused
- // rather than falling back to a game-thread roster walk or stale membership.
-  indexedFrame=frame;adoptedSerial=version;previouslyCandidate=candidate;
+ if(indexedFrame==frame&&indexedCount==all.count&&indexedItems==all.items&&
+    indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal)&&indexedVehicleHouse==lastHouse)return;
+ // One bounded roster read. A failed header, item span or UID read is UNKNOWN,
+ // never an empty world and never permission to use a partial index.
+ static uint32_t pointers[16384];
+ if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}
+ worldObjects.unbind();worldObjects.clear();globalVehicleCandidateCount=0;
+ indexedGlobalVehicles=bool(sh&&sh->magnetronGlobal);indexedVehicleHouse=lastHouse;
+ bool complete=true;
+ for(int i=0;i<all.count;++i){
+  const uint32_t p=pointers[i];if(p<0x10000)continue;
+  uint32_t id=0;if(!read(p+0x10,&id,4)){complete=false;continue;}
+  if(id)worldObjects.add(p,id);
+  if(id&&indexedGlobalVehicles&&kind(p)==2){
+   uint32_t owner=0;
+   if(!read(p+0x21C,&owner,4)){complete=false;continue;}
+   if(owner==lastHouse)globalVehicleCandidates[globalVehicleCandidateCount++]=p;
+  }
  }
- // Periodic pruning is an index lookup over the immutable worker roster, not
- // a new native-memory walk. Candidate-only rosters do not prune command state.
+ if(!complete||(sampleReadDepth&&!sampleReadComplete)){unknown();return;}
+ indexedFrame=frame;indexedCount=all.count;indexedItems=all.items;
  static int prunedFrame=-100000;
- if(!candidate&&manualVersions.used>=ManualVersions::Size/2&&
+ if((!sampleReadDepth||sampleReadComplete)&&manualVersions.used>=ManualVersions::Size/2&&
     (frame<prunedFrame||frame-prunedFrame>=300)){
   static ManualVersions liveVersions;
   liveVersions.copyLive(manualVersions,[](uint32_t id){return worldObjects.byId(id)!=0;});
   minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
  }
- return true;
 }
+static bool refreshWorldIndex(int frame,bool executionGuards=true){
+ static uint32_t failedMatch=0,failedAt=0;static int failedFrame=-1;
+ if(worldFrameCommandWorker.enabled()){
+  const bool strict=commandRosterReady()&&frame==worldFrame.key.frame;
+  const bool candidate=!strict&&candidateRosterReady();
+  if(!strict&&!candidate){
+   worldObjects.clear();indexedFrame=indexedCount=-1;indexedItems=0;
+   globalVehicleCandidateCount=0;return false;
+  }
+  static uint32_t adoptedSerial=0;static bool previouslyCandidate=false;
+  const uint32_t version=candidate?worldFrameCandidateVersion:worldFrame.key.serial;
+  if(indexedFrame!=frame||adoptedSerial!=version||previouslyCandidate!=candidate){
+   if(candidate)
+    worldObjects.bindCandidate(&worldFrameCandidateRoster.objects,candidateRosterReady,
+                              verifyCandidateID,verifyCandidatePointer);
+   else worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady);
+   const auto&roster=candidate?worldFrameCandidateRoster:worldFrameCommandRoster;
+   indexedCount=roster.count;indexedItems=roster.items;
+   indexedGlobalVehicles=roster.global;indexedVehicleHouse=lastHouse;
+   globalVehicleCandidateCount=int(std::min<size_t>(16384,roster.globalVehicles.size()));
+   indexedFrame=frame;adoptedSerial=version;previouslyCandidate=candidate;
+  }
+  static int prunedFrame=-100000;
+  if(!candidate&&manualVersions.used>=ManualVersions::Size/2&&
+     (frame<prunedFrame||frame-prunedFrame>=300)){
+   static ManualVersions liveVersions;
+   liveVersions.copyLive(manualVersions,[](uint32_t id){return worldObjects.byId(id)!=0;});
+   minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
+  }
+  return true;
+ }
+ const uint32_t now=sampleClock(sh);
+ // Prefer a newly sealed same-frame Runtime sample even if a prior direct
+ // fallback failed less than 16ms ago. The throttle applies only to another
+ // expensive live-roster fallback, never to fresh authoritative evidence.
+ if(worldFrameReady&&!worldFrameBoundaryOnly){
+  bool complete=false;
+  {SampleReadScope sample;indexWorld(frame);complete=sample.complete();}
+  if(complete&&indexedFrame==frame)return true;
+ }
+ if(failedMatch==match&&failedFrame==frame&&uint32_t(now-failedAt)<16)return false;
+ worldObjects.unbind();worldObjects.clear();indexedFrame=indexedCount=-1;
+ indexedItems=0;globalVehicleCandidateCount=0;
+ if(!executionGuards)return false;
+ indexWorld(frame);
+ if(indexedFrame==frame)return true;
+ failedMatch=match;failedFrame=frame;failedAt=now;return false;
+}
+
 // Identity-index publication already checked every UID. Avoid a second
 // fallible live UID read when deciding whether an automatic lease still exists.
 static void sweepActiveLeases(int frame){
@@ -322,6 +384,7 @@ static gateway::MissionState observeMissionReceipt(uint32_t id){
 // Never dereference an old/stale worker roster from a native command path.
 static uint32_t globalVehicleCandidateAt(int index){
  if(index<0||index>=globalVehicleCandidateCount)return 0;
+ if(!worldFrameCommandWorker.enabled())return indexedFrame==snap.frame?globalVehicleCandidates[index]:0;
  const bool strict=commandRosterReady();
  if(!strict&&!candidateRosterReady())return 0;
  const auto&roster=strict?worldFrameCommandRoster:worldFrameCandidateRoster;
@@ -335,9 +398,11 @@ static uint32_t globalVehicleCandidateAt(int index){
 // command capture worker owns all graph reads. A missing worker index is
 // UNKNOWN: caller skips this observation; native game events stay untouched.
 static bool prepareWorldIndex(int frame){
- // No production live-roster fallback. A missing worker index is UNKNOWN.
- return refreshWorldIndex(frame);
+ if(worldFrameCommandWorker.enabled())return refreshWorldIndex(frame,false);
+ indexWorld(frame);
+ return indexedFrame==frame;
 }
+
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
 static void reset(bool retireHooks=true,bool preserveMissile=false){retireWorldFrame();restorePrivateOut();minerDefenseReset();restoreTriggerInput();restoreSinglePlayerFPS();resetOwnGround();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();nativePlacementReset();if(retireHooks)nativePlacementCompletionReset();restorePauseView();resetMoOrders();resetDirectAir();resetDirectSell();resetBombBoard();if(retireHooks){restoreSidebarView();resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restorePrivateOut();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
@@ -1858,16 +1923,26 @@ static void tick(){
  if(sharedWorldWanted&&worldFrameReady&&worldSample.valid()&&worldSample.scenario==worldFrame.key.scenario&&worldSample.cells==worldFrame.key.cells&&uint32_t(worldSample.count)==worldFrame.key.cellCount&&worldSample.session==worldFrame.key.session){uint32_t currentHouse=0;if(readLiveWorld(0xA83D4C,&currentHouse,4)&&currentHouse==worldFrame.key.house){auto observed=worldFrame.key;observed.frame=worldSample.frame;worldFrameServer.observe(observed);}}
  if(worldCleanupPending){reset();worldCleanupPending=!featureRestorationComplete();if(worldCleanupPending){snap.commandStatus=activation::CleanupPending;publishSnapshot(now);return;}}
  if(worldChange==worldlife::Change::Unknown){retireWorldFrame();snap.status=hookWorld.bound?1:0;snap.bridgeStatus=1;suspendedSnapshot(now,false,activation::WorldUnknown);return;}
- DWORD period=sh->foreground?sh->scanMs:((sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft)))?64:500);if(period<2)period=2;if(period>1000)period=1000;
- // Focus changes execution cadence, not Hook ownership. Explicitly disabling
- // the refresh option still wakes cleanup promptly.
- if(sh->foreground&&(scrollRefreshActive||sh->burstEnabled||sh->burstHeld||burstCount||sh->scrollRefreshHz))period=4;
+ const uint32_t runtimeActionFlags=AutoRepair|EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|MagnetronInput|AdvancedEnter|AircraftSpread|AirWaypoints|AntiTheft;
+ const bool runtimeActionDemand=(sh->flags&runtimeActionFlags)||sh->magnetronGlobal||sh->magnetronDrop||
+  sh->missileEnabled||sh->dodgeEnabled||sh->burstEnabled||sh->burstHoldEnabled||sh->burstHeld||
+  sh->minerDefenseEnabled||sh->bombBoardEnabled||sh->loadMode||sh->cooperativeFrameWanted||
+  sh->formationPolicy.enabled||sh->moFeatures||sh->runtimeTracking||sh->plannerTracking||
+  sh->privateOutMode||sh->keepInputUnlocked||sh->blockTriggerCamera;
+ const uint32_t runtimeFrameFlags=EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|MagnetronInput|AdvancedEnter|AircraftSpread|AntiTheft;
+ const bool runtimeFrameDemand=(sh->flags&runtimeFrameFlags)||sh->magnetronGlobal||sh->magnetronDrop||
+  sh->missileEnabled||sh->dodgeEnabled||sh->burstEnabled||sh->burstHoldEnabled||sh->burstHeld||
+  sh->minerDefenseEnabled||sh->bombBoardEnabled||sh->loadMode||sh->cooperativeFrameWanted||
+  sh->formationPolicy.enabled||sh->moFeatures||sh->runtimeTracking||sh->plannerTracking;
+ DWORD period=sh->foreground?sh->scanMs:((runtimeActionDemand||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending())?64:500);if(period<2)period=2;if(period>1000)period=1000;
+ // Runtime-owned actions bypass the ordinary display scan cadence. The game
+ // frame remains the scheduler; this only bounds waits between frame callbacks.
+ if(sh->foreground&&(runtimeActionDemand||scrollRefreshActive||sh->burstEnabled||sh->burstHeld||burstCount||sh->scrollRefreshHz))period=4;
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=worldSample.frame!=lastFrame&&
    (sharedWorldWanted||(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->keepInputUnlocked||sh->blockTriggerCamera||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||hostFrameCaptureWanted(now)||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||queuedUnload.count||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||loadLedger.count||repairAt<repairCount||manualRepairPending||pendingRepairs.count||entryReservationCount||cooperativeEffectCount||missionObserver.pending()||actorLeaseArbiter.count||ownground::job.pending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
-    (sh->plannerTracking&&(sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn)))||
-    sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
+    runtimeFrameDemand||sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
  bool resultsDue=(loadCalculationPending&&compute::newer(sh->loadComputed,loadTaskSeen))||(repairCalculationPending&&compute::newer(sh->repairComputed,repairTaskSeen))||((sh->missileEnabled||missileHoldCount)&&compute::newer(sh->missileComputed,missileApplied))||((sh->dodgeEnabled||dodgeCount)&&compute::newer(sh->dodgeComputed,dodgeApplied))||(unloadCount&&compute::newer(sh->unloadComputed,unloadApplied));
  bool soundPending=sh->uiSoundRequest!=sh->uiSoundAck;
  const uint64_t preciseNow=preciseclock::micros();static uint64_t fastSampleAt=0;
@@ -1946,9 +2021,12 @@ static void tick(){
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
  const bool hostDisplayOnly=sharedWorldWanted&&noCommandWork&&
   worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
- // Pure Host display subscriptions are suspended until their fields are
- // carried by the canonical Runtime snapshot; do not spend a full graph read.
- if(!hostDisplayOnly&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))
+ // Display-only demand publishes a zero-page world boundary. The Host
+ // VisualCache independently samples the read-only display graph; it never
+ // becomes a source of Runtime commands or action-planning authority.
+ if(hostDisplayOnly)
+  captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
+ else if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
  if(worldFrame.catalogue.attempted||worldFrameCandidate.catalogue.attempted){
   ObservationReadScope sample;

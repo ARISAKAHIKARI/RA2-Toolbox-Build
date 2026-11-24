@@ -1191,7 +1191,7 @@ static void serviceCalculationTasks(){
 static planner::Parameters plannerParameters(){
  planner::Parameters p;p.flags=compute::plannerFlags(shared->flags,shared->computeApplied,false);p.modes=compute::magnetronIntents(shared->computeApplied,false);
  p.veteran=veteranPercent;p.elite=elitePercent;p.timeout=pathTimeout;p.hz=advancedScanHz;p.priority=advancedTargetPriority;p.range=advancedRangeCells;
- p.drop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop);p.observeDrop=extra.magnetronDrop;return p;
+ p.drop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop);p.observeDrop=extra.magnetronDrop&&!compute::inside(shared->computeApplied,compute::MagnetronDrop);return p;
 }
 static void plannerStatistics(){
  shared->plannerTracking=plannerState.tracking;
@@ -2762,7 +2762,14 @@ static void tick(){
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();performanceDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
-  const bool frameSampling=enabled&&(shared->superweaponGrant||shared->externalDisplay||shared->computeApplied!=compute::All);
+  const uint32_t runtimeActionFlags=AutoRepair|EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|MagnetronInput|AdvancedEnter|AircraftSpread|AirWaypoints|AntiTheft;
+  const bool runtimeActionSampling=(shared->flags&runtimeActionFlags)||shared->magnetronGlobal||shared->magnetronDrop||
+   shared->missileEnabled||shared->dodgeEnabled||shared->burstEnabled||shared->burstHoldEnabled||shared->burstHeld||
+   shared->minerDefenseEnabled||shared->bombBoardEnabled||shared->loadMode||shared->cooperativeFrameWanted||
+   shared->formationPolicy.enabled||shared->moFeatures||shared->runtimeTracking||shared->plannerTracking||
+   shared->privateOutMode||shared->keepInputUnlocked||shared->blockTriggerCamera;
+  const bool frameSampling=enabled&&(shared->superweaponGrant||shared->externalDisplay||
+   shared->computeApplied!=compute::All||runtimeActionSampling);
   const bool fastLocal=simulationRate.update(frameSampling&&shared->foreground&&commandFresh(now)&&eventdelivery::isSingleplayer(snap.session),
     uint32_t(snap.match),snap.frame,now);
   gameinput::setFrameSampling(hook,frameSampling,false,fastLocal);

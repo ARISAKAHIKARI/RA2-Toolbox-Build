@@ -54,6 +54,7 @@ jobs:
           g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-misleading-indentation -Wno-class-memaccess -Wno-parentheses -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/display_capture_offthread.cpp -o /tmp/ra2-display-admission
           /tmp/ra2-display-admission
           python3 source/assist/tests/display_capture_runtime_wiring.py
+          python3 source/assist/tests/runtime_action_display_split.py
           g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/world_frame_page_sort.cpp -o /tmp/ra2-page-sort
           /tmp/ra2-page-sort
       - name: Verify demand lease expiry deadline and bounded maintenance at 16K capacity

@@ -40,6 +40,10 @@ def production():
                       "static bool rawOreCompatible(", "static bool rawDockBusy(", "static bool rawDockLinked("):
         add(function(orders, signature))
     add('#include "raw_combat.h"')
+    # The harness runs the worker-owned index path. Keep a trap stub so the
+    # synchronous Runtime fallback compiles but fails the existing no-live-scan
+    # counters if it is ever reached while the worker reports enabled.
+    add("static void indexWorld(int frame){(void)frame;++liveRosterReads;}")
     add(function(source["bridge.cpp"], "static bool refreshWorldIndex("))
     add(function(source["bridge.cpp"], "static void sweepActiveLeases("))
     add(function(source["bridge.cpp"], "static gateway::MissionState observeMissionReceipt("))
@@ -126,17 +130,22 @@ def main():
     run.check_returncode()
     negative = None
     if args.negative_control:
-        old = subprocess.check_output(["git", "show", "418347c5d753f5acb72026fcaf3c45935a65769d:source/assist/source/bridge.cpp"], cwd=SRC.parents[2], text=True)
-        legacy_index = function(old, "static void indexWorld(int frame){")
         current_bridge = (SRC / "bridge.cpp").read_text()
+        runtime = (SRC / "world_frame_runtime.h").read_text()
+        worker = (SHARED / "world_frame_command_worker_win.h").read_text()
+        prepare = function(current_bridge, "static bool prepareWorldIndex(")
+        async_capture = runtime.split("if(asyncCommand){", 1)[1].split(
+            "if(!worldFramePublication.begin(worldFrame))", 1
+        )[0]
         negative = {
-            "source_commit": "418347c5d753f5acb72026fcaf3c45935a65769d",
-            "legacy_index_sha256": hashlib.sha256(legacy_index.encode()).hexdigest(),
-            "legacy_full_roster_scan_removed": "static void indexWorld(" not in current_bridge,
-            "production_refresh_has_no_live_fallback": "indexWorld(" not in function(current_bridge, "static bool refreshWorldIndex("),
+            "runtime_sync_index_present": "static void indexWorld(int frame)" in current_bridge,
+            "worker_is_explicit_opt_in": 'GetEnvironmentVariableA("RA2TOOLBOX_ASYNC_COMMAND_CAPTURE"' in worker,
+            "worker_path_uses_immutable_roster": "if(worldFrameCommandWorker.enabled())return refreshWorldIndex(frame,false);" in prepare,
+            "sync_path_uses_Runtime_index": "indexWorld(frame);" in prepare,
+            "async_capture_never_live_scans": "indexWorld(" not in async_capture,
         }
-        negative["passed"] = negative["legacy_full_roster_scan_removed"] and negative["production_refresh_has_no_live_fallback"]
-        print("legacy live-roster fallback quarantined:", negative["passed"])
+        negative["passed"] = all(negative.values())
+        print("Runtime sync index / async worker isolation:", negative["passed"])
         assert negative["passed"], negative
     paths = [SRC / n for n in names] + [SRC / "planner_world_copy.h", SRC / "anti_theft_sample_bridge.h", SRC / "tactical_frame_read.h", SRC / "raw_combat.h",
             SRC / "combat_probe_bridge.h", SRC / "ore_harvest_bridge.h", SHARED / "world_frame.h",

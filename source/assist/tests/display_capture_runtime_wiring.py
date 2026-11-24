@@ -7,11 +7,17 @@ from pathlib import Path
 root=Path(__file__).resolve().parents[1]/"source"
 bridge=(root/"bridge.cpp").read_text(encoding="utf-8")
 runtime=(root/"world_frame_runtime.h").read_text(encoding="utf-8")
+shared=root.parent.parent/"shared"/"source"
+external=root.parent.parent/"external_reader"/"source"
+transport=(shared/"world_frame_transport.h").read_text(encoding="utf-8")
+reader=(external/"process_reader.h").read_text(encoding="utf-8")
 
 assert "capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)" in bridge
 assert "!cmd&&!resultsDue&&!newMatch&&!sh->flags" not in bridge
 assert "worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)" in bridge
 assert "sharedWorldWanted&&noCommandWork" in bridge
+assert "if(hostDisplayOnly)" in bridge
+assert "captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);" in bridge
 
 assert '#include "world_capture_requests.h"' in runtime
 assert "if(boundaryOnly)requests.clear(); // Do not even EVALUATE Server::requests()." in runtime
@@ -27,4 +33,10 @@ assert "const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled()
 assert "const bool stable=" in runtime and "before.same(after)" in runtime
 assert "worldFrameServer.retire()" in runtime
 
-print("PASS production capture gate: passive overlays and zero-page Host capture avoid Game-thread graph and request sorts; command leases and same-frame escalation remain strict")
+assert "worldClient_->visual(frame,worldDemand_" in reader
+assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in reader
+assert "VisualCache visuals_" in transport
+assert "Token visual(" in transport
+assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in reader
+assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in transport
+print("PASS production display split: Host VisualCache is live for display readers; passive overlays use boundary-only Runtime demand")

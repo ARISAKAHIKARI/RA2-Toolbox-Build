@@ -243,7 +243,8 @@ static void reset(){
  vectorAt(0xA8EC78,0x800000,{});vectorAt(0xA8ED40,0x810000,{});vectorAt(0xA8ECB8,0x820000,{});vectorAt(0x8B4108,0x830000,{});vectorAt(0xA8EB40,0x840000,{});vectorAt(0xA83CE0,0x850000,{});
 }
 static void testCooperative(){
- reset();const uint32_t tt=makeType(),bt=makeType();set<double>(tt+0x380,3.);set<bool>(tt+0xD2E,true);set<bool>(bt+0x16AB,true);std::memcpy(memory.data()+bt+0x24,"TEST",5);
+ // Exercise the legacy Host observation-only path explicitly; product policy fixes all action planners in Runtime.
+ reset();sh->computeApplied=0;const uint32_t tt=makeType(),bt=makeType();set<double>(tt+0x380,3.);set<bool>(tt+0xD2E,true);set<bool>(bt+0x16AB,true);std::memcpy(memory.data()+bt+0x24,"TEST",5);
  uint32_t p=object(tt,2,7,lastHouse,25600,25600),target=object(bt,3,8,lastHouse,25600,25600);vectorAt(0xA8EC78,0x800000,{p,target});seal();
  cooperative::Request request{};request.serial=1;request.match=match;request.target=8;request.type=bt;request.mode=cooperative::Enter;request.count=1;request.sources[0]={7,0};request.cameraX=-320;request.cameraY=2700;request.viewWidth=640;request.viewHeight=480;
  compute::QuotaConfig quotas{};quotas.count=1;std::memcpy(quotas.entries[0].id,"TEST",5);quotas.entries[0].quota.first=7;
@@ -252,7 +253,7 @@ static void testCooperative(){
  set<int>(p+0x6C,100);advance(bt);check(!collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets[0].quota.first==7,"cooperative missing page must preserve input");check(!missingLiveReads,"cooperative missing page fell back live");
  std::memcpy(memory.data()+bt+0x24,"TEST",5);seal();
  request.tick=clockNow;sh->cooperativeRequest=request;sh->quotaConfig=quotas;
- worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=true;worldFrameReady=false;
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateRoster.swap(worldFrameCommandRoster);worldFrameCandidateAvailable=true;worldFrameReady=false;
  ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
  captureCooperativeFrame(clockNow,false);
  auto&frame=sh->cooperativeInputFrame;
@@ -272,7 +273,7 @@ static void testCooperative(){
        "revised quota did not update the graph from the same sealed observation");
  ++snap.frame;++clockNow;set<int>(0xA8ED84,snap.frame);seal();
  const int secondSample=snap.frame;const DWORD secondTick=clockNow;
- worldFrameCandidate.swap(worldFrame);worldFrameReady=false;
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateRoster.swap(worldFrameCommandRoster);worldFrameReady=false;
  snap.frame+=9;clockNow+=10;set<int>(0xA8ED84,snap.frame);
  captureCooperativeFrame(clockNow,false);
  check(frame.frame==secondSample&&frame.tick==secondTick,
@@ -288,7 +289,7 @@ static void testCooperative(){
  std::puts("PASS cooperative sealed fields, quota bytes and missing-frame retention");
 }
 static void testDelayedAircraftPlan(){
- reset();cooperativeCaptures={};cooperativePlanSeen=cooperativeAt=0;cooperativeCandidateAt=0;cooperativeSubmitted=0;
+ reset();sh->computeApplied=0;cooperativeCaptures={};cooperativePlanSeen=cooperativeAt=0;cooperativeCandidateAt=0;cooperativeSubmitted=0;
  uint32_t type=makeType(),target=object(type,2,30,0x30000);
  cooperative::CapturedIdentities identities;
  identities.stamp={1,match,clockNow,snap.frame};identities.house=lastHouse;
@@ -366,9 +367,10 @@ static void testLoad(){
        !submissions,"candidate input did not retain the saved click");
  const uint32_t other=get<uint32_t>(0x820004);
  vectorAt(0xA8ECB8,0x820000,{other});
- worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=candidateReadyForCooperative=true;
- check(worldFrameCandidateRoster.build(worldFrameCandidate,false,worldFrameCaptureScratch.list),
-       "candidate load roster could not be assembled");
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateRoster.swap(worldFrameCommandRoster);
+ worldFrameCandidateAvailable=candidateReadyForCooperative=true;
+ check(worldFrameCandidateRoster.current(worldFrameCandidate.key),
+       "candidate load roster did not move with its sealed graph");
  worldFrameReady=false;++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
  check(refreshWorldIndex(snap.frame)&&!commandRosterReady(),"candidate load did not bind");
  liveRosterReads=0;
@@ -622,7 +624,8 @@ static void testUnload(){
  std::puts("PASS unload raw facts/native legality split, source-current guard and failed-source retention");
 }
 static void testPlanning(){
- reset();uint32_t type=makeType(),targetType=makeType(),p=object(type,2,20),q=object(targetType,2,30,0x30000,1200,1000),weapon=makeWeapon(type);nativeOrders[0]={20,0,0,planner::OrdinaryMove,false,p};nativeCount=1;sh->flags=AdvancedInput;vectorAt(0xA8EC78,0x800000,{p,q});seal();
+ // This test covers the read-only Host projection path, not Runtime action planning.
+ reset();sh->computeApplied=0;uint32_t type=makeType(),targetType=makeType(),p=object(type,2,20),q=object(targetType,2,30,0x30000,1200,1000),weapon=makeWeapon(type);nativeOrders[0]={20,0,0,planner::OrdinaryMove,false,p};nativeCount=1;sh->flags=AdvancedInput;vectorAt(0xA8EC78,0x800000,{p,q});seal();
  check(publishPlanningWorld(lastHouse,snap.frame,clockNow)&&planningWorld.count==2&&planningWorld.actors[0].x==1000,"planning raw capture");check(liveReads==0,"planning pure projection read live");const auto seq=sh->worldSeq;
  advance(p);check(!publishPlanningWorld(lastHouse,snap.frame,clockNow)&&sh->worldSeq==seq&&planningWorld.actors[0].x==1000,"incomplete planning input replaced world");check(!missingLiveReads,"planning missing source fell back live");
  set<bool>(weapon+0x15C,true);set<bool>(get<uint32_t>(weapon+0xAC)+0x15B,true);set<uint32_t>(p+0x2AC,q);sh->magnetronDrop=1;sh->nativeCombatQueries=1;
@@ -674,8 +677,8 @@ static void testOre(){
  std::puts("PASS ore Unit/Building observation, failed transaction/search retry and live admission guard");
 }
 static void testDelayedPlanning(){
- auto f=setupOre();const auto sourceFrame=snap.frame;const auto sourceTick=clockNow;
- worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=true;worldFrameReady=false;
+ auto f=setupOre();sh->computeApplied=0;const auto sourceFrame=snap.frame;const auto sourceTick=clockNow;
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateRoster.swap(worldFrameCommandRoster);worldFrameCandidateAvailable=true;worldFrameReady=false;
  ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
  set<int>(f.miner+0x9C,52*256);
  check(!commandRosterReady()&&publishPlanningWorld(lastHouse,snap.frame,clockNow,false),
@@ -694,7 +697,7 @@ static void testDelayedPlanning(){
  std::puts("PASS delayed planner observations keep source age and never use native enrichment before strict admission");
 }
 static void testDefenseIndex(){
- auto f=setupOre();check(publishPlanningWorld(lastHouse,snap.frame,clockNow)&&minerDefenseIndexRefineries()&&minerDefenseRefineryCount==1&&minerDefenseLinkedRefinery.at(20)==30&&!minerDefenseRefineryIncomplete,"defense shared radio index");
+ auto f=setupOre();sh->computeApplied=0;check(publishPlanningWorld(lastHouse,snap.frame,clockNow)&&minerDefenseIndexRefineries()&&minerDefenseRefineryCount==1&&minerDefenseLinkedRefinery.at(20)==30&&!minerDefenseRefineryIncomplete,"defense shared radio index");
  set<uint32_t>(f.links,0);check(minerDefenseIndexRefineries()&&minerDefenseLinkedRefinery.at(20)==30&&!liveReads,"defense recaptured radio links live");
  advance(f.links);planningWorld.frame=snap.frame;check(!minerDefenseIndexRefineries()&&minerDefenseRefineryIncomplete&&minerDefenseRefineryCount==1&&minerDefenseLinkedRefinery.at(20)==30&&!missingLiveReads,"defense missing radio index replaced prior facts");
  --planningWorld.frame;check(!minerDefenseIndexRefineries()&&minerDefenseLinkedRefinery.at(20)==30,"defense mixed prior planning world with a new frame");

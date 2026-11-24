@@ -16,15 +16,23 @@ assert "technoKey.serial!=key.serial" in capture
 assert "technoKey.tick!=key.tick" in capture
 worker=(root.parent.parent/"shared"/"source"/"world_frame_command_worker_win.h").read_text()
 index=(root.parent.parent/"shared"/"source"/"world_frame_command_index.h").read_text()
-refresh=bridge.split("static bool refreshWorldIndex(int frame){",1)[1].split("// Identity-index publication",1)[0]
+refreshStart=bridge.index("static bool refreshWorldIndex(int frame")
+refreshBody=bridge.index("{",refreshStart)+1
+refresh=bridge[refreshBody:bridge.index("// Identity-index publication",refreshBody)]
+workerRefresh=refresh.split("if(worldFrameCommandWorker.enabled()){",1)[1].split("\n const uint32_t now",1)[0]
 assert "self->stagingRoster_.build(self->staging_" in worker
 assert "snapshot.read(pointer+0x10,&id,4)" in index
 assert "objects->add(pointer,id)" in index
-assert "commandRosterReady()" in refresh
-assert "worldFrameCommandRoster.objects" in refresh
-assert "worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady)" in refresh
-assert "indexWorld(" not in refresh and "CaptureGraph" not in refresh
-assert "static void indexWorld(" not in bridge
+assert "commandRosterReady()" in workerRefresh
+assert "worldFrameCommandRoster.objects" in workerRefresh
+assert "worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady)" in workerRefresh
+assert "indexWorld(" not in workerRefresh and "CaptureGraph" not in workerRefresh
+# The shipped default is Runtime-synchronous; only the explicit worker mode
+# binds the worker-owned immutable roster and forbids a second live scan.
+assert "static void indexWorld(int frame)" in bridge
+assert "SampleReadScope sample;indexWorld(frame);complete=sample.complete();" in refresh
+assert "if(worldFrameCommandWorker.enabled())return refreshWorldIndex(frame,false);" in bridge
+assert "indexWorld(frame);" in bridge
 assert "readLiveWorld(pointer+0x10" in bridge, "Candidate UID must be checked against live identity"
 assert "manualVersions.get(id)" in bridge
 print("PASS native identity projection: Worker builds immutable UID index; Runtime binds strict/candidate provenance and performs live candidate UID proof; no game-thread roster scan")

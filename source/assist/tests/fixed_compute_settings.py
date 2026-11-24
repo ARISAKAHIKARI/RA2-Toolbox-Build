@@ -25,30 +25,31 @@ assert 'computeRequested=compute::Fixed;' in settings
 assert 'shared->computeRequested=compute::Fixed;' in settings
 assert 'value(L"Compute"' not in settings
 assert 'write(L"Compute"' not in settings
-assert 'constexpr uint32_t Fixed=Default;' in policy
+assert 'constexpr uint32_t Fixed=All;' in policy
 
 program=r"""
 #include "compute_policy.h"
 #include <cassert>
 using namespace assist;
-static_assert(compute::Fixed == compute::Default);
+static_assert(compute::Fixed == compute::All);
 static_assert((compute::Fixed & ~compute::All) == 0);
 static_assert(compute::Count == 15);
 int main(){
  for(int i=0;i<compute::Count;++i){
    auto kind=compute::Feature(i);
-   assert(compute::inside(compute::Fixed,kind)==compute::inside(compute::Default,kind));
+   assert(compute::inside(compute::Fixed,kind));
  }
  assert(compute::inside(compute::Fixed,compute::Load));
  assert(compute::inside(compute::Fixed,compute::Repair));
  assert(compute::inside(compute::Fixed,compute::Unload));
  assert(compute::inside(compute::Fixed,compute::Dodge));
- assert(!compute::inside(compute::Fixed,compute::Advanced));
- assert(!compute::inside(compute::Fixed,compute::Ore));
- assert(!compute::inside(compute::Fixed,compute::Aircraft));
+ assert(compute::inside(compute::Fixed,compute::Advanced));
+ assert(compute::inside(compute::Fixed,compute::Magnetron));
+ assert(compute::inside(compute::Fixed,compute::Ore));
+ assert(compute::inside(compute::Fixed,compute::Aircraft));
  // The old inner/outer pure planners remain available for regression tests.
- assert(compute::plannerFlags(8192u,compute::Fixed,false)==8192u);
- assert(compute::plannerFlags(8192u,compute::Fixed,true)==0u);
+ assert(compute::plannerFlags(8192u,compute::Fixed,false)==0u);
+ assert(compute::plannerFlags(8192u,compute::Fixed,true)==8192u);
 }
 """
 with tempfile.TemporaryDirectory(prefix="compute-policy-") as d:
