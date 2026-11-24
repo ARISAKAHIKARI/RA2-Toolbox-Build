@@ -12,7 +12,7 @@ int main(){
  Unit cargo{};cargo.type=0x50000;cargo.id=22;
  for(int i=0;i<10;++i){cargo.id=22+i;m.appendPassenger(cargo);}
  assert(p::expandable(m)&&!p::cargoVisible(m,false));
- // There is only the vehicle Cameo and HP tile until user explicitly expands.
+ // The folded panel shows only the vehicle Cameo and HP tile; the expanded panel includes cargo automatically.
  assert(p::entries(m,false)==0&&p::slots(m,false,0)==2&&p::pages(m,false)==1);
  assert(p::cargoVisible(m,true)&&p::entries(m,true)==10&&p::pages(m,true)==2);
  assert(p::slots(m,true,0)==9&&p::cols(p::slots(m,true,0))==3&&p::rows(p::slots(m,true,0))==3);
@@ -25,5 +25,5 @@ int main(){
  assert(p::slots(m,true,0)==m.groupCount&&p::pages(m,true)==1);
  m.reset(200,20);
  assert(!p::expandable(m)&&p::slots(m,false,0)==0);
- std::cout<<"PASS collapsed unit+HP only; passenger expand/pagination; 44x36 passenger Cameo; group list unaffected\n";
+ std::cout<<"PASS folded unit+HP only; expanded passenger pagination; 44x36 passenger Cameo; group list unaffected\n";
 }
