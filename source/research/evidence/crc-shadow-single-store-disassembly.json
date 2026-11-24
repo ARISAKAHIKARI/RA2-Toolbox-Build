@@ -129,5 +129,29 @@
     "The five direct callee windows were scanned for direct field/CRC references only; indirect calls, virtual targets and transitive callees are not exhausted.",
     "No Windows loader, live game, RA2OL/CnCNet peer, or multiplayer determinism test was performed.",
     "The single-store candidate remains research-only; production still uses the existing eight-site implementation."
-  ]
+  ],
+  "reader_classification": [
+    {
+      "address": "0x502FFF",
+      "bytes": "8A8E41020000",
+      "instruction": "mov cl,byte ptr [esi+0x241]",
+      "followup": "0x503008 calls 0x4A1CA0",
+      "classification": "CRC serializer input",
+      "evidence": "0x4A1CA0 appends the boolean byte to the CRC accumulator and updates the table-based CRC32 state; not an ordinary gameplay read"
+    },
+    {
+      "address": "0x64DCCA",
+      "bytes": "8A9941020000",
+      "instruction": "mov bl,byte ptr [ecx+0x241]",
+      "classification": "ComputeGameCRC House MapIsClear input"
+    },
+    {
+      "address": "0x64E250",
+      "bytes": "8A9741020000",
+      "instruction": "mov dl,byte ptr [edi+0x241]",
+      "followup": "value is passed to diagnostic formatter 0x7CA7D8",
+      "classification": "diagnostic logging read"
+    }
+  ],
+  "reader_scope_note": "The three direct read candidates in the existing linear PE scan are CRC serialization, global ComputeGameCRC, and diagnostic logging. This is not an exhaustive proof against indirect aliases, bulk copies, dynamically loaded modules, or runtime extension readers."
 }
