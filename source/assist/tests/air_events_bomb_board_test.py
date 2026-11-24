@@ -50,7 +50,7 @@ static void keyTable(){
  put(0x87F680,0x200000u);put(0x87F684,1u);put(0x87F688,1u);put(0x200000,uint32_t('Z'));put(0x200004,0x210000u);put(0x210000,0x220000u);put(0x220004,0x600000u);
  const uint8_t getName[]={0xB8,0,0,0x90,0,0xC3};std::memcpy(memory.data()+0x600000,getName,6);std::memcpy(memory.data()+0x900000,"PlanningMode",13);
 }
-static void airBegin(){begin();directair::reset();directair::planning={};beforeSubmit=nullptr;events.clear();posted=0;queueRoom=256;sh->moFeatures=0;sh->flags=NativeAirWaypoints;kinds.clear();kinds[actors[0]]=0;put<uint8_t>(actors[0]+0x74,1);put<uint8_t>(actors[0]+0x90,1);held['Z']=true;keyTable();put(0x87F7E8+0x11B3,true);}
+static void airBegin(){begin();directair::reset();directair::planning={};beforeSubmit=nullptr;events.clear();posted=0;queueRoom=256;sh->moFeatures=0;sh->flags=NativeAirWaypoints;kinds.clear();kinds[actors[0]]=0;put<uint32_t>(actors[0],0x7E22A4);put<uint8_t>(actors[0]+0x74,1);put<uint8_t>(actors[0]+0x90,1);held['Z']=true;keyTable();put(0x87F7E8+0x11B3,true);}
 static void airStep(){++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;sh->heartbeat=clockValue;directair::tick(lastHouse,snap.frame,clockValue);}
 static uint32_t unit(unsigned id,int k,int x,int y){uint32_t p=0x10000+id*0x1000,t=0x500000+id*0x2000;actors.push_back(p);kinds[p]=k;put(p+0x10,id);put(p+0x21C,lastHouse);put(p+0x6C,100);put(p+0x6C4,t);put(p+0x9C,x*256);put(p+0xA0,y*256);if(k==2)put(t+0x5E0,1);return p;}
 static void bombBegin(){begin();bombboard::reset();directair::reset();directair::planning={};beforeSubmit=nullptr;kinds.clear();actors.clear();selected.clear();events.clear();commands.clear();illegal.clear();entryReservationCount=loadLedger.count=0;queueRoom=256;SampleReadScope::available=true;sh->bombBoardEnabled=1;}
@@ -87,7 +87,7 @@ int main(){
  check(events.size()==1&&posted==1&&!directAirPending()&&sh->airEventReport.status==airevents::Partial);
  airBegin();check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));beforeSubmit=[](){++manualVersions.tokens[get<uint32_t>(actors[0]+0x10)];beforeSubmit=nullptr;};airStep();check(events.empty());airStep();check(!directAirPending());
  airBegin();airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);held['Z']=false;airMessage(WM_KEYUP,'Z');++match;airStep();check(posted==0&&events.empty());
- airBegin();kinds[actors[0]]=1;check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending()&&events.empty());
+ airBegin();put<uint32_t>(actors[0],0x7F5C70);check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending()&&events.empty());
  airBegin();airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);airMessage(WM_KEYDOWN,VK_ESCAPE);check(events.empty()&&!directAirPending());
  airBegin();held['Z']=false;held['S']=true;put(0x200000,uint32_t('S'));airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);airMessage(WM_KEYDOWN,'S');check(directAirPending());held['S']=false;check(airMessage(WM_KEYUP,'S'));airStep();check(events.size()==1&&posted==1);
  // Nearest legal vehicle; full and incompatible vehicles cannot absorb seats.
