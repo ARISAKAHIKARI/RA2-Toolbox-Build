@@ -16,6 +16,9 @@ dodge=(root/"dodge_bridge.h").read_text()
 dodge_policy=(root/"dodge_compute.h").read_text()
 autoload=(root/"autoload_bridge.h").read_text()
 autoload_policy=(root/"autoload.h").read_text()
+dodge_policy=(root/"dodge_compute.h").read_text()
+autoload=(root/"autoload_bridge.h").read_text()
+autoload_policy=(root/"autoload.h").read_text()
 assert "int64_t(frame)-snap.frame>6" not in formation
 assert "frame<snap.frame" in formation
 assert "const uint32_t hostGrace=preview?1000u:formationView.active?600u:150u;" in formation
