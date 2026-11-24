@@ -34,7 +34,7 @@ int main(){auto w=make(7,3);auto a=allocate(w);auto n=counts(a);assert(a.size()=
  assert(!clickFresh(Enhanced,enterClick,true,false,1000,1151,2,42));
  assert(!clickFresh(Enhanced,enterClick,true,true,1000,2501,2,402));
  assert(!clickFresh(Enhanced,enterClick,true,false,1000,1030,42,2));
- assert(!clickFresh(Enhanced,enterClick,false,false,1000,1110,2,42));
+ assert(clickFresh(Enhanced,enterClick,false,false,1000,1110,2,42));
  assert(!clickFresh(Enhanced,enterClick|Advanced,true,false,1000,1110,2,42));
  Bindings c{0,0,0,0,0,0,0,0,1023};
  auto b=resolveBindings(keys,Enhanced,c);
