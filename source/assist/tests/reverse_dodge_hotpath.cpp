@@ -69,38 +69,41 @@ static void addBullet(unsigned n,uint32_t target=Unit,uint32_t id=700){
  set<double>(p+0xE8,20.);set<double>(p+0xF0,0.);set<uint32_t>(p+0x10C,target);
  dodgeThreatRefs[dodgeThreatCount++]={p,target,true,id};
 }
-static void tick(int frame=100){if(frame!=currentFrame)++worldFrame.key.serial;currentFrame=frame;check(reverseDodgeTick(0x600000,frame,1000+uint32_t(frame))==sampleComplete,"continuation completion");}
-static uint32_t tableDigest(){uint32_t h=2166136261u;for(const auto&s:reverseShots)for(uint32_t v:{s.id,s.pointer,uint32_t(s.frame),uint32_t(s.handled)})h=(h^v)*16777619u;return h;}
+static void tick(int frame=100){if(frame!=currentFrame)++worldFrame.key.serial;currentFrame=frame;check(reverseDodgeTick(0x600000,frame,1000+uint32_t(frame-100)*17)==sampleComplete,"continuation completion");}
+static uint32_t tableDigest(){uint32_t h=2166136261u;for(const auto&s:reverseShots)for(uint32_t v:{s.id,s.pointer,uint32_t(s.frame),uint32_t(s.handled),s.tick})h=(h^v)*16777619u;return h;}
 int main(){
+ check(reversedodge::withinMergeWindow(1200,1000)&&!reversedodge::withinMergeWindow(1201,1000),"fixed 200ms merge lease");
+ check(!reversedodge::shotExpired(16000,1000)&&reversedodge::shotExpired(16001,1000),"15s handled-shot retention");
+ check(!reversedodge::processingExpired(1133,1000)&&reversedodge::processingExpired(1134,1000),"133ms pending-shot processing lease");
  reset();addBullet(0);tick();check(actorAttempts==1,"initial direct target");for(int n=0;n<99;++n)tick();check(actorAttempts==1&&continuations==100,"handled direct shot or ongoing maintenance repeated");seal(tableDigest());
  reset(512);for(unsigned n=0;n<64;++n)addBullet(n,Cell,700+n);dodgeCount=1;dodgeJobs[0]={Unit,1000,true};tick();
  const auto firstVisits=rosterVisits;const auto firstReads=readCount;for(int n=0;n<99;++n)tick();
  const auto repeatVisits=rosterVisits-firstVisits;const auto repeatReads=readCount-firstReads;
  const auto stressActors=actorAttempts;const auto stressContinuations=continuations;
  check(actorAttempts==64&&continuations==100&&observations==100&&sh->dodgeActive==1,"processed salvo must preserve continuing jobs");seal(tableDigest());
- reset();addBullet(0);actorAccept=false;tick();check(actorAttempts==1&&!reverseShot(Bullet,100)->handled,"failed admission remains pending");actorAccept=true;tick();tick();check(actorAttempts==2&&reverseShot(Bullet,100)->handled,"same-frame retry remains live");seal(tableDigest());
+ reset();addBullet(0);actorAccept=false;tick();check(actorAttempts==1&&!reverseShot(Bullet,100,1000)->handled,"failed admission remains pending");actorAccept=true;tick();tick();check(actorAttempts==2&&reverseShot(Bullet,100,1000)->handled,"same-frame retry remains live");seal(tableDigest());
  reset();addBullet(0);actorAccept=false;tick();actorAccept=true;tick(102);check(actorAttempts==2,"later-frame retry before expiry");seal(tableDigest());
  reset();addBullet(0);tick();set<uint32_t>(Bullet+0x10,701);dodgeThreatRefs[0].id=701;tick();check(actorAttempts==2,"new UniqueID at same pointer");seal(tableDigest());
  reset();addBullet(0);tick();set<uint32_t>(Bullet+0x10,701);tick();check(actorAttempts==1,"stale sampled projectile must not issue");dodgeThreatRefs[0].id=701;tick();check(actorAttempts==2,"later fresh identity must issue");seal(tableDigest());
  reset();addBullet(0);tick();++match;tick();check(actorAttempts==2,"world generation reset");seal(tableDigest());
  reset();addBullet(0);tick();reverseWasEnabled=false;tick();check(actorAttempts==2,"reenable reset");seal(tableDigest());
- reset();addBullet(0);const auto empty=tableDigest();sampleComplete=false;currentFrame=100;check(!reverseDodgeTick(0x600000,100,1100),"incomplete raw sample");check(tableDigest()==empty&&actorAttempts==0,"failed collection must not create or age a shot");sampleComplete=true;tick(109);check(actorAttempts==1&&reverseShot(Bullet,109)->frame==109,"expiry starts only after first successful collection");seal(tableDigest());
- reset();addBullet(0);actorAccept=false;tick();actorAccept=true;tick(109);check(actorAttempts==1&&reverseShot(Bullet,109)->handled,"pending shot expires after eight frames");tick(110);check(actorAttempts==1,"expired handled shot stays suppressed");seal(tableDigest());
- reset();addBullet(0);set<double>(Bullet+0xE8,0.);set<double>(Bullet+0xF0,0.);tick();tick();check(actorAttempts==0&&reverseShot(Bullet,100)->handled,"no vector marks the shot handled once");seal(tableDigest());
+ reset();addBullet(0);const auto empty=tableDigest();sampleComplete=false;currentFrame=100;check(!reverseDodgeTick(0x600000,100,1100),"incomplete raw sample");check(tableDigest()==empty&&actorAttempts==0,"failed collection must not create or age a shot");sampleComplete=true;tick(109);check(actorAttempts==1&&reverseShot(Bullet,109,1153)->frame==109,"expiry starts only after first successful collection");seal(tableDigest());
+ reset();addBullet(0);actorAccept=false;tick();actorAccept=true;tick(109);check(actorAttempts==1&&reverseShot(Bullet,109,1153)->handled,"pending shot expires after eight frames");tick(110);check(actorAttempts==1,"expired handled shot stays suppressed");seal(tableDigest());
+ reset();addBullet(0);set<double>(Bullet+0xE8,0.);set<double>(Bullet+0xF0,0.);tick();tick();check(actorAttempts==0&&reverseShot(Bullet,100,1000)->handled,"no vector marks the shot handled once");seal(tableDigest());
  reset();addBullet(0);tick();tick(1001);check(actorAttempts==1,"same exact handled record remains suppressed at age 901");seal(tableDigest());
  reset();addBullet(0);reverseWasEnabled=true;const unsigned slot=(700u*2654435761u)&16383u;
- reverseShots[slot]={700+16384,Bullet+0x10000,-1000,false};reverseShots[(slot+1)&16383u]={700,Bullet,100,true};
+ reverseShots[slot]={700+16384,Bullet+0x10000,-1000,false,uint32_t(1100-16000)};reverseShots[(slot+1)&16383u]={700,Bullet,100,true,1000};
  tick();check(actorAttempts==1&&reverseShots[slot].id==700,"earlier reusable collision slot preserves original insertion order");seal(tableDigest());
  reset();addBullet(0);reverseWasEnabled=true;
  for(unsigned n=0;n<16384;++n)reverseShots[n]={100000+n,0x600000+n*4,100,false};const auto full=tableDigest();
  tick();check(actorAttempts==0&&tableDigest()==full,"full table must not evict a pending record");seal(tableDigest());
  reset();addBullet(0);tick();addBullet(1,Unit,700);tick();check(actorAttempts==2,"same UniqueID with a different pointer is not the same shot");seal(tableDigest());
- reset();addBullet(0);set<uint32_t>(Bullet+0x10C,units[1]);tick();check(actorAttempts==0&&!reverseShot(Bullet,100)->handled,"changed current target defers the sampled candidate");dodgeThreatRefs[0].target=units[1];tick();check(actorAttempts==1,"updated target may retry in same frame");seal(tableDigest());
+ reset();addBullet(0);set<uint32_t>(Bullet+0x10C,units[1]);tick();check(actorAttempts==0&&!reverseShot(Bullet,100,1000)->handled,"changed current target defers the sampled candidate");dodgeThreatRefs[0].target=units[1];tick();check(actorAttempts==1,"updated target may retry in same frame");seal(tableDigest());
  reset();addBullet(0);dodgeThreatRefs[dodgeThreatCount++]={units[1],Unit,false,1001};dodgeCount=1;dodgeJobs[0]={Unit,1000,true};tick();tick();check(actorAttempts==1&&continuations==2&&sh->dodgeActive==1&&observations>=2,"nonprojectile and active-job input remain serviced");seal(tableDigest());
  reset();addBullet(0,Cell);sourceEnabled=false;tick();sourceEnabled=true;tick();check(actorAttempts==0,"completed no-candidate shot stays handled under existing contract");seal(tableDigest());
 #ifdef REVERSE_QUERY_BUDGET_GUARD
- reset();addBullet(0);queueReady=false;tick();check(!actorAttempts&&!reverseShot(Bullet,100)->handled&&reverseShot(Bullet,100)->frame==100,"full queue ran native placement or changed deadline");queueReady=true;tick(101);check(actorAttempts==1&&reverseShot(Bullet,101)->handled,"pending movement did not recover after room returned");
- reset();addBullet(0);queueReady=false;tick();queueReady=true;tick(109);check(!actorAttempts&&reverseShot(Bullet,109)->handled,"queue wait renewed original pending deadline");
+ reset();addBullet(0);queueReady=false;tick();check(!actorAttempts&&!reverseShot(Bullet,100,1000)->handled&&reverseShot(Bullet,100,1000)->frame==100,"full queue ran native placement or changed deadline");queueReady=true;tick(101);check(actorAttempts==1&&reverseShot(Bullet,101,1017)->handled,"pending movement did not recover after room returned");
+ reset();addBullet(0);queueReady=false;tick();queueReady=true;tick(109);check(!actorAttempts&&reverseShot(Bullet,109,1153)->handled,"queue wait renewed original pending deadline");
  reset();addBullet(0);sampleReady=false;candidateAvailable=true;sampleWorldSource=&worldFrame;
  worldFrame.key.frame=100;worldFrame.key.tick=1100;currentFrame=107;
  check(reverseDodgeTick(0x600000,107,1212,true)&&actorAttempts==1&&dodgeInput.frame==100,
