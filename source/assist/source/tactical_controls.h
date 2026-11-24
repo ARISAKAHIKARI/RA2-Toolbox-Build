@@ -49,7 +49,7 @@ button(454,L"停止所选单位的自动任务");next();
 label(L"组合选兵绑定",20,455);button(9608,L"展开设置",500,125);next();
 note(L"组合选兵：多个单位类型可使用同一快捷键；单按选屏幕内，双按选全图。",44);
 activeFoldGroup=9608;
-typeList=combo(440,20,315,300);typeKey=key(441,0,345,180);button(443,L"解除绑定",537,88);next();
+typeList=combo(440,20,315,300);SetPropW(typeList,L"RA2.Console.Label",const_cast<wchar_t*>(L"单位类型"));typeKey=key(441,0,345,180);SetPropW(typeKey,L"RA2.Console.Label",const_cast<wchar_t*>(L"选兵快捷键"));button(443,L"解除绑定",537,88);next();
 label(L"手动添加单位 ID",20,180);typeIdEdit=edit(467,L"",210,315);button(449,L"添加",537,88);next();
 tapEdit=number(444,L"选兵双按间隔 / 毫秒",doubleMs,L"20–5000");
 typeCS=toggle(445,L"此单位类型参与自动移动攻击（CS）",false);next();
@@ -128,7 +128,7 @@ label(L"超级武器目标选择",20,455);button(9611,L"展开设置",500,125);n
 activeFoldGroup=9611;
 columnHeading(L"超级武器",20,306);columnHeading(L"启用快捷键",345,280);next();
 for(int i:{9,10}){button(100+i,labels[i],20,306);keys[i]=key(200+i,hotkeys[i]);next();}
-swList=combo(410,20,315,260);swHotkey=key(411,0,345,280);next();
+swList=combo(410,20,315,260);SetPropW(swList,L"RA2.Console.Label",const_cast<wchar_t*>(L"超级武器类型"));swHotkey=key(411,0,345,280);SetPropW(swHotkey,L"RA2.Console.Label",const_cast<wchar_t*>(L"超级武器快捷键"));next();
 note(L"启用超级武器后，使用游戏内目标光标选择位置。",26);
 activeFoldGroup=0;
 
