@@ -49,5 +49,10 @@ jobs:
         run: |
           g++ -std=c++17 -O2 -Wall -Wextra -Werror source/assist/tests/crc_shadow_single_store_feasibility.cpp -o /tmp/crc-shadow-single-store
           /tmp/crc-shadow-single-store
+      - name: Compile and inspect the x86 one-site trampoline probe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang binutils
+          python3 source/assist/tests/crc_shadow_single_store_trampoline_contract.py
       - name: Verify the native source and xref evidence
         run: python3 source/assist/tests/crc_shadow_boundary_static.py
