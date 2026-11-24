@@ -19,9 +19,20 @@ static void reset(int status=airevents::Cancelled){
  down=submitting=false;count=pointCount=nodeAt=actorAt=button=accepted=0;lastProgress=releasedAt=0;planning.reset();
 }
 // The selection is a current game-thread input fact. Its world-index page
-// can lag the input frame; nativeMission still verifies UID->pointer on send.
-static bool valid(const Actor&a){return get<uint32_t>(a.pointer+0x10)==a.id&&own(a.pointer,lastHouse)&&kind(a.pointer)==0&&live(a.pointer)&&
- !get<bool>(a.pointer+0x81)&&!get<uint32_t>(a.pointer+0x11C)&&manualVersions.get(a.id)==a.token;}
+// can lag the input frame; never dereference a captured pointer until a guarded
+// live read proves the complete identity/mission fields are still readable.
+static bool aircraftState(uint32_t p,uint32_t&id){
+ uint8_t raw[0x220]{};if(!p||!readLiveWorld(p,raw,sizeof raw))return false;
+ uint32_t vtable=0,owner=0,mission=0;int32_t health=0;uint8_t active=0,limbo=0,alive=0;
+ memcpy(&vtable,raw,sizeof vtable);memcpy(&id,raw+0x10,sizeof id);
+ memcpy(&health,raw+0x6C,sizeof health);memcpy(&active,raw+0x74,sizeof active);
+ memcpy(&limbo,raw+0x81,sizeof limbo);memcpy(&alive,raw+0x90,sizeof alive);
+ memcpy(&mission,raw+0x11C,sizeof mission);memcpy(&owner,raw+0x21C,sizeof owner);
+ return id&&vtable==0x7E22A4&&owner==lastHouse&&health>0&&active&&!limbo&&alive&&!mission;
+}
+static bool valid(const Actor&a){
+ uint32_t id=0;return aircraftState(a.pointer,id)&&id==a.id&&manualVersions.get(id)==a.token;
+}
 static bool validate(const intent::EventOrder&o){
  if(!submitting)return true;
  return enabled()&&epoch==match&&house==lastHouse&&moOrdersContext()&&actorAt<count&&nodeAt<pointCount&&valid(actors[actorAt])&&
@@ -40,14 +51,16 @@ static bool held(){
 }
 static bool capture(MSG*msg){
  Vec selected=vec(0xA8ECB8);if(selected.count<=0||selected.count>int(airevents::MaxActors))return false;
- for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i),id=get<uint32_t>(p+0x10);
-  if(!p||id==0||!own(p,lastHouse)||kind(p)!=0||!live(p)||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!manualVersions.trackable(id))return false;
+ uint32_t ids[airevents::MaxActors]{};
+ for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i),id=0;
+  if(!aircraftState(p,id)||!manualVersions.trackable(id))return false;
+  ids[i]=id;
  }
  uint8_t editor=0;if(!read(0x87F7E8+0x11B3,&editor,1)||editor!=1||!planning.capture(msg))return false;
  if(!planning.native){planning.reset();return false;}
  epoch=match;house=lastHouse;started=lastProgress=sampleClock(sh);releasedAt=0;pointCount=nodeAt=actorAt=accepted=0;
  count=unsigned(selected.count);
- for(unsigned i=0;i<count;++i){uint32_t p=item(selected,int(i));cancelNative(p,false);uint32_t id=get<uint32_t>(p+0x10);actors[i]={p,id,manualVersions.get(id)};}
+ for(unsigned i=0;i<count;++i){uint32_t p=item(selected,int(i));cancelNative(p,false);actors[i]={p,ids[i],manualVersions.get(ids[i])};}
  return true;
 }
 static bool message(MSG*msg){
