@@ -51,8 +51,10 @@ jobs:
       - name: Run focused CRC source and policy contracts
         shell: pwsh
         run: |
-          python source/assist/tests/crc_shadow_single_store_feasibility.cpp
-          if($LASTEXITCODE -eq 0){throw 'C++ fixture was invoked as Python unexpectedly'}
+          & $env:ZIG_EXE c++ -target x86_64-windows-gnu -std=c++17 -O2 -Wall -Wextra -Werror source/assist/tests/crc_shadow_single_store_feasibility.cpp -o diagnostics/crc-single-store.exe
+          if($LASTEXITCODE -ne 0){throw 'CRC single-store policy fixture failed to compile'}
+          & diagnostics/crc-single-store.exe
+          if($LASTEXITCODE -ne 0){throw 'CRC single-store policy fixture failed'}
           python source/assist/tests/crc_shadow_boundary_static.py
           if($LASTEXITCODE -ne 0){throw 'CRC source/evidence contract failed'}
           python source/assist/tests/exception_policy.py --zig "$env:ZIG_EXE" --out diagnostics/exception-policy
