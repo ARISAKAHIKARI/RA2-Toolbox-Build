@@ -23,7 +23,7 @@ static bool collectCooperativeInput(const cooperative::Request&r,const compute::
  if(source)*source=sampleWorldSource->key;
  out=std::move(input);return true;
 }
-static uint32_t clickSerial,cooperativePlanSeen;static int cooperativeAt;
+static uint32_t clickSerial,cooperativePlanSeen,cooperativePointerRequest;static int cooperativeAt;
 static cooperative::CaptureHistory cooperativeCaptures;
 static uint64_t cooperativeCandidateAt=0;
 static constexpr uint64_t CooperativeCandidateIntervalUs=4000;
@@ -154,7 +154,7 @@ static void cancelCooperativePlan(int result){
  sh->cooperativeResult=result;MemoryBarrier();sh->cooperativeAck=sh->cooperativePlan;
 }
 static void resetRuntimeCooperative();
-static void resetCooperativeState(){resetRuntimeCooperative();cooperativeCaptures={};cooperativeCandidateAt=0;singleDamageSerial=singleDamageMatch=0;singleDamageCommitted=0;entryReservationCount=cooperativeEffectCount=0;cooperativeAt=0;cooperativePlanSeen=0;}
+static void resetCooperativeState(){resetRuntimeCooperative();cooperativeCaptures={};cooperativeCandidateAt=0;singleDamageSerial=singleDamageMatch=cooperativePointerRequest=0;singleDamageCommitted=0;entryReservationCount=cooperativeEffectCount=0;cooperativeAt=0;cooperativePlanSeen=0;}
 static void restoreClickHooks(){}
 static void clickHooksTick(uint32_t flags){sh->clickHookStatus=(flags&SpecialClickFlags)?1:0;}
 // Cross-feature seat reservations are read-only and never grant permission
