@@ -100,6 +100,11 @@ assert crc_bridge.count("gameentry::patch(") == 2  # one install, one restore
 assert "crcMapShadowTracked=crcMapInstalled?1u:0u" in crc_bridge
 assert "crcMapShadowSubstitutions=crcMapSuppressed" in crc_bridge
 assert "crcMapToolEnd(bool completed)" in crc_bridge
+abort_start = crc_bridge.index('extern "C" void __cdecl AssistMapCrcRevealAbort(')
+abort_end = crc_bridge.index("// Preserve the original machine state", abort_start)
+assert "crcMapFault(false)" in crc_bridge[abort_start:abort_end]
+assert "crcMapPublish" not in crc_bridge[abort_start:abort_end]
+assert "if(!crcMapFaulted)crcMapPublish()" in crc_bridge
 assert "crcshadowsingle::end(crcMapSingleScope)" in crc_bridge
 
 # The policy is the production implementation used by the compiled unit test.
