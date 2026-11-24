@@ -111,14 +111,19 @@ static void crcMapShadowTick(){
   return;
  }
  if(crcMapFaulted||crcMapUnsafeEpoch==match){
-  if(!restoreCrcMapShadow())return;
-  crcMapState=-4;crcMapPublish();return;
+  if(crcMapInstalled||crcMapActive){if(!restoreCrcMapShadow())return;}
+  else crcMapResetWorld();
+  if(crcMapState!=-4){crcMapState=-4;crcMapPublish();}return;
  }
  if(!(sh->flags&ExperimentalReveal)||sh->renderReveal||!eventdelivery::isMultiplayer(get<int>(0xA8B238))){
-  if(!restoreCrcMapShadow())return;crcMapState=-5;crcMapPublish();return;
+  if(crcMapInstalled||crcMapActive){if(!restoreCrcMapShadow())return;}
+  else crcMapResetWorld();
+  if(crcMapState!=-5){crcMapState=-5;crcMapPublish();}return;
  }
  if(GetModuleHandleW(L"Ares.dll")||GetModuleHandleW(L"Phobos.dll")){
-  if(!restoreCrcMapShadow())return;crcMapState=-6;crcMapPublish();return;
+  if(crcMapInstalled||crcMapActive){if(!restoreCrcMapShadow())return;}
+  else crcMapResetWorld();
+  if(crcMapState!=-6){crcMapState=-6;crcMapPublish();}return;
  }
  // No game data is changed by this adapter, so a retired/unreadable world can
  // safely drop the single code patch and capture a fresh identity.
