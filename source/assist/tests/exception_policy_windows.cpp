@@ -33,8 +33,14 @@ extern "C" int AssistNetworkSend(unsigned,unsigned,int,int,int){assert(false);re
 extern "C" void AssistNetworkSenderAbort(){assert(false);}
 extern "C" unsigned AssistBuildTimeTooltip(unsigned,unsigned original){assert(false);return original;}
 extern "C" void AssistBuildTimeTooltipFailed(){assert(false);}
-extern "C" unsigned AssistMapCrcShadow(unsigned,unsigned,unsigned value){assert(false);return value;}
-extern "C" void AssistMapCrcAbort(){assert(false);}
+extern "C" unsigned AssistMapCrcRevealStore(unsigned,unsigned value){return value;}
+extern "C" void AssistMapCrcRevealAbort(unsigned){assert(false);}
+extern "C" unsigned AssistReadObjectIdentity(unsigned){assert(false);return 0;}
+extern "C" int __cdecl AssistNativePipAction(unsigned,unsigned){assert(false);return 0;}
+extern "C" int __cdecl AssistNativePipRestore(){assert(false);return 0;}
+extern "C" void __cdecl AssistNativePipUnlock(){assert(false);}
+extern "C" void __cdecl AssistNativePipFailed(){assert(false);}
+extern "C" void __cdecl AssistNativePipEnd(){assert(false);}
 extern "C" unsigned AssistPauseViewMainGate(){assert(false);return 0;}
 extern "C" void AssistPauseViewFailed(){assert(false);}
 extern "C" unsigned AssistPauseViewNative(unsigned,unsigned,unsigned,unsigned){assert(false);return 0;}
