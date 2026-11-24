@@ -15,7 +15,8 @@ int main(){
  assert(resolve(s,true,false,false)==0);
  s.eject=false;s.autoCS=true;
  f=resolve(s,true,false,true);
- assert(f==AutoCS);
+ const uint32_t autoCS=featureavailability::AutoCS?uint32_t(AutoCS):0u;
+ assert(f==autoCS);
  s.autoCS=false;s.advanced=true;
  assert(resolve(s,false,false,false)==0);
  f=resolve(s,true,false,false);
@@ -23,7 +24,7 @@ int main(){
  s.smartUnload=true;s.eject=true;s.autoCS=true;
  f=resolve(s,true,true,true);
  assert((f&(AutoCS|NativeOrders|AdvancedInput|SmartUnloadOrders|EjectAssist)) ==
-  (AutoCS|NativeOrders|AdvancedInput|SmartUnloadOrders|EjectAssist));
+  (autoCS|NativeOrders|AdvancedInput|SmartUnloadOrders|EjectAssist));
  // Input flags are ordinary feature policy, not code-patch demand.
  // The source contract separately proves that their production paths install no detours.
  for(uint32_t flag:{uint32_t(AdvancedInput),uint32_t(MagnetronInput),uint32_t(CustomCS),uint32_t(AutoCS)}){
