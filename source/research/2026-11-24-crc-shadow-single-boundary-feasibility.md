@@ -139,7 +139,7 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 
 1. **非 CRC 读取者是否依赖临时值**：单点抑制让 +0x241 从写入点开始就保持原值，因此 CRC 在函数内重入或函数返回后执行都安全；不再需要证明“Reveal 返回前没有 CRC”。仍需排除原生后续逻辑通过间接别名读取 MapIsClear 并依赖它临时变为 1。已知直接读取候选均是 CRC/诊断，Map::Reveal 和已检查的直接 helper 函数体也没有直接读取；间接读取仍未穷尽。
 2. **函数内是否有其他 +0x241 写入**：当前静态扫描只看到 0x577DB0 位于函数范围内；仍需完整执行时对所有 House 的 +0x241 写入做 watch trace。
-3. **返回后的其他读取者**：现有线性扫描未发现非 CRC 读取，但它明确不覆盖间接别名、宽访问、批量初始化、载入/还原及运行时扩展。若存在依赖 MapIsClear=1 的非 CRC 逻辑，返回后恢复会改变其观察结果。
+3. **其他读取者的访问形式**：现有线性扫描未发现非 CRC 直接读取，但它明确不覆盖间接别名、宽访问、批量初始化、载入/还原及运行时扩展。需要确认没有依赖 MapIsClear 在本次工具 Reveal 中短暂变为 1 的非 CRC 逻辑；若存在，单点抑制同样不适用。
 4. **Reveal 的其他同步副作用**：Cell、Visionary 和特殊格条件 RNG 仍按原生路径执行；工具箱不复制、不镜像、不恢复这些状态。测试不需要重写或模拟它们，但真实游戏验收必须确认跳过单条 MapIsClear store 后，控制流仍从 0x577DB6 进入原生后续代码并正常返回。
 5. **异常与作用域清理**：合成测试验证了状态模型，但仍需在实际 Windows Runtime 的 SEH 边界与真实游戏调用中验证。异常时必须确保一次性 skip 标志只影响目标 House 的该次写入，外层 finally 清理作用域，不能把跳过状态泄漏到后续自然 Reveal。
 
@@ -157,14 +157,16 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 
 ## 本轮验证
 
-新增研究候选头文件和三类测试：
+当前生产单点策略与验证资产：
 
-- 零补丁事务模型：覆盖原值 0/1、原生不写、后续自然同值写入、House 身份复用、未知值冲突、写失败重试、读取/读回失败、嵌套阻止，以及原生调用在写入前后异常退出。当前本地使用 g++ -std=c++17 -O2 -Wall -Wextra -Werror 编译并运行，20 项断言全部通过。异常路径由可移植 finally 替身模拟，不代表 Windows SEH 或游戏实测。
-- 单点写入抑制模型：覆盖工具作用域内跳过写入、作用域外自然 Reveal、其他自然写入、多个 House 写入、回调异常兜底、嵌套阻止和 finally 清理。当前本地以 g++ -std=c++17 -O2 -Wall -Wextra -Werror 编译并运行，29 项断言全部通过；覆盖精确目标 House、嵌套其他 House 原生放行、同地址身份变化、epoch 变化、SEH abort 仅对目标生效、finally 清理和防止 skip 标志泄漏。它测试的是状态机模型，不是生产裸函数汇编。
-- 静态证据契约：核对 RevealMap 单一调用边界、0x577DB0 是函数范围内唯一的已知写入点、三个已知读取候选的 CRC 分类，并明确保留 xref 缺口。
-- x86 trampoline 代码生成契约：本地 clang++ 交叉编译 i686 Windows COFF 对象，检查完整寄存器/浮点状态保护、一次性分支只跳过原始 MOV、标志清理、0x577DB6 续接和重定位；本地通过，CI 已加入，仍不代表生产 SEH 或游戏实测。
+- **零补丁事务模型**：保留为历史比较，不参与生产实现。它覆盖原值 0/1、自然同值写入、身份复用、未知值冲突、恢复失败等；不再是当前方案的运行时依赖。
+- **生产单点策略单元测试**：直接编译 `crc_shadow_single_store_policy.h`，覆盖工具作用域、精确 House 指针/ID、其他 House 原生放行、同一作用域只抑制第一次匹配写入、身份/epoch 变化、SEH abort 和作用域结束清理。
+- **生产源码静态契约**：检查 `crc_shadow_bridge.h` 只选择 `Sites[6]`、不存在 `crcMapModel` / `restoreData()`、工具调用使用 `RuntimeScopedCall`，并检查 Guarded callback 的异常路径不写 Shared 内存。
+- **x86 trampoline 代码生成契约**：clang++ 交叉编译 i686 Windows COFF 对象，检查 GPR/EFLAGS/x87/SSE 保存恢复、只跳过原始 MOV、一次性标志清理、`0x577DB6` 精确续接及重定位；生产源码另有静态契约对照。
+- **Windows 配对构建门槛**：新增 workflow，编译 x64 Host + x86 Runtime/Broker，并运行 x86 `RuntimeScopedCall` finally 与单点策略测试。编译结果和步骤状态以 GitHub Actions 实际结果为准。
+- **真实 PE Runtime 夹具**：`crc_shadow_runtime.py` 已改为只验证一个写入点、工具作用域抑制、自然 Reveal 放行、CRC 输入、身份变化 fail-open 和卸载不回写；它在 `0x577DB6` 处停止，不模拟 Cell/Visionary 后半段。需要配对构建产物与原始游戏 PE 才能执行，不能替代真实游戏验收。
 
-以上证据分为静态/合成验证和运行时代码验证；它们都不是实际游戏执行、完整 Map::Reveal 验证或双机联机测试。CRC 专项 Ubuntu CI 已通过；Windows 完整构建和 SEH 验收仍在进行。
+Ubuntu CRC 专项 CI 已通过；Windows 完整配对构建、SEH 运行验证、完整原生 Map::Reveal 和双机联机验收仍待完成。
 
 交叉参考：固定 YRpp HouseClass 将 Visionary 与 MapIsClear 相邻声明（[HouseClass.h](https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/HouseClass.h#L869-L872)）；MapClass 将 Reveal 声明为 0x577D90（[MapClass.h](https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/MapClass.h#L477-L479)）；Phobos SyncLogging 将每个 House 的 MapIsClear 加入 CurrentFrameCRC（[SyncLogging.cpp](https://github.com/Phobos-developers/Phobos/blob/develop/src/Misc/SyncLogging.cpp#L653)）。这些只佐证字段布局和摘要用途，不证明完整可执行文件不存在其他读取者。
 
