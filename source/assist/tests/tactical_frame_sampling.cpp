@@ -403,7 +403,7 @@ static void testBoardingLedgerUnknown(){
  setupLoad(0);const uint32_t passenger=get<uint32_t>(0x820000),carrier=get<uint32_t>(0x800000),passengerID=get<uint32_t>(passenger+0x10),carrierID=get<uint32_t>(carrier+0x10);
  const int sourceKind=kind(passenger);
  loading::Reservation r{passenger,passengerID,carrier,carrierID,1,snap.frame};
- r.kind=sourceKind;r.initial=loadingObservation(passenger);r.lastSent=snap.frame;r.progress=snap.frame;r.retryAfter=snap.frame+30;
+ r.kind=sourceKind;r.initial=loadingObservation(passenger);r.lastSent=snap.frame;r.progress=snap.frame;r.lastSentAt=clockNow;r.progressAt=clockNow;r.retryAfterAt=clockNow+loading::RetryIntervalMs;
  check(loadLedger.add(r),"boarding ledger fixture did not reserve");
  interfacesReady=true;loadingFinished=loadingBoarded=loadingResends=0;
  // Unknown live UID/owner/motion must not cancel, send, or change the ledger.
