@@ -490,3 +490,33 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
   .page-info-actions .search-wrap { width:140px; flex-basis:140px; }
   .page-info-actions .search-wrap input { padding-left:30px; }
 }
+
+/* One keyboard editor geometry for commands, switches and expanded settings. */
+.settings-group .hotkey-capture {
+  inline-size: 112px;
+  min-inline-size: 112px;
+  max-inline-size: 112px;
+  min-height: 30px;
+  font-size: var(--text-control);
+  text-align: center;
+}
+.settings-group .hotkey-options > summary {
+  width: 28px;
+  height: 30px;
+}
+.settings-group .hotkey-editor { gap: 4px; justify-content: flex-end; }
+.settings-group .keyboard-setting-row.compound-row > .setting-row:first-child:not([data-type="toggle"]) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.settings-group .keyboard-setting-row.compound-row > .setting-row[data-type="hotkey"]:not(:first-child) {
+  margin-inline-start: auto;
+  flex: 0 1 auto;
+}
+.settings-group .keyboard-setting-row.compound-row > .setting-row[data-type="hotkey"]:first-child {
+  flex: 1 1 auto;
+}
+.settings-group .switch-companions .hotkey-editor { max-width: none; }
+@media (max-width: 650px) {
+  .settings-group .hotkey-capture { inline-size: 96px; min-inline-size: 96px; max-inline-size: 96px; }
+}
