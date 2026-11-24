@@ -35,7 +35,7 @@ assert "PlacementEvent=2,TechData=3,TechParameters=4" in building
 tech = read("assist/source/tech_ui_breakpoint_bridge.h")
 assert "FullGroup=1u" in tech and "mapvisibility::Address" in tech
 tech_ui = read("assist/source/tactical_controls.h")
-assert "参数拦截（不改指令／规则）" in tech_ui
+assert "参数拦截，不改指令／规则" in tech_ui
 assert "规则数据直接放宽建造规则，同时影响所有玩家和 AI" in tech_ui
 
 # Native sender adaptation is only requested for multiplayer sender mode,
