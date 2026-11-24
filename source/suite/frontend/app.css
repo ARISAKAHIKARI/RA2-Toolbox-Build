@@ -520,3 +520,28 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 @media (max-width: 650px) {
   .settings-group .hotkey-capture { inline-size: 96px; min-inline-size: 96px; max-inline-size: 96px; }
 }
+
+/* Compact shortcut launchers. The editors only exist visually when opened. */
+.settings-group .hotkey-options > summary {
+  width:auto; min-width:64px; height:28px; padding:0 8px;
+  font-size:var(--text-small); color:var(--soft); border-color:var(--border);
+  background:var(--field); white-space:nowrap;
+}
+.settings-group .hotkey-menu { width:min(280px,85vw); max-width:280px; }
+.settings-group .hotkey-menu .hotkey-keyboard { min-height:30px; }
+.settings-group .hotkey-menu .hotkey-capture { width:112px; min-width:112px; }
+.settings-group .hotkey-mouse-slot .setting-row {
+  display:flex; flex-direction:row; justify-content:space-between;
+  align-items:center; min-height:30px; padding:0; gap:8px;
+}
+.settings-group .hotkey-mouse-slot .setting-editor { width:auto; max-width:none; flex:0 1 auto; }
+.settings-group .hotkey-mouse-slot .setting-label { font-size:var(--text-small); font-weight:400; }
+.settings-group .hotkey-mouse-slot .setting-editor select { min-width:100px; max-width:145px; }
+.page-heading-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex:0 1 auto; }
+.page-heading-actions .search-wrap { flex:0 1 238px; min-width:0; width:238px; }
+.page-heading-actions .search-wrap input { width:100%; }
+@media(max-width:650px) {
+  .page-heading { flex-wrap:wrap; }
+  .page-heading-actions { margin-inline-start:auto; max-width:100%; }
+  .page-heading-actions .search-wrap { width:160px; flex-basis:160px; }
+}
