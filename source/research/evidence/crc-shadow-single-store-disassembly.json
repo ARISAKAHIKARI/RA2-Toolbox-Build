@@ -149,6 +149,9 @@
   "existing_fixture_limit": "crc_shadow_runtime.py deliberately returns at 0x577DB6 and jumps to 0x577F1E; it validates the existing flag leaf and CRC adapter, not the full native Reveal suffix. The single-store design does not emulate or manage Cell or Visionary state. Its acceptance requirement is only to verify that skipping the MapIsClear store resumes at the original next instruction 0x577DB6 and that the unmodified native Reveal body continues to execute in the actual game.",
   "safety_limitations": [
     "This is static disassembly of the exact SHA-256-matched executable, not a live game run.",
+    "The compiled x86 trampoline probe verifies COFF code generation and relocation shape only; it is not the production Runtime DLL and does not validate Windows SEH or live execution.",
+    "No Windows loader, live game, RA2OL/CnCNet peer, or multiplayer determinism test was performed.",
+    "The single-store candidate remains research-only; production still uses the existing eight-site implementation.",
     "The default singleton vtable at 0x7EED60 resolves the Map::Reveal indirect call at 0x577DF4 to 0x5C0E30 (xor al,al; ret); runtime object replacement or third-party vtable substitution is not ruled out.",
     "The exact direct callee bodies were scanned for direct field/CRC references, but Techno virtual calls, secondary indirect callbacks and the full transitive call graph are not exhausted.",
     "The compiled x86 trampoline probe verifies COFF code generation and relocation shape only; it is not the production Runtime DLL and does not validate Windows SEH or live execution.",
@@ -253,7 +256,17 @@
         "end_exclusive": "0x4F431E"
       }
     ],
-    "conclusion": "The default singleton's only direct virtual call in the Map::Reveal body resolves to a trivial false-return method. The exact direct helper bodies listed above contain no direct House+0x241 or ComputeGameCRC reference. Techno virtual calls and indirect callbacks inside the helper bodies remain a transitive-call-graph limitation."
+    "conclusion": "The default singleton's only direct virtual call in the Map::Reveal body resolves to a trivial false-return method. The exact direct helper bodies listed above contain no direct House+0x241 or ComputeGameCRC reference. Techno virtual calls and indirect callbacks inside the helper bodies remain a transitive-call-graph limitation.",
+    "outer_crc_scheduler": {
+      "routine_entry": "0x647260",
+      "direct_compute_game_crc_call_sites": [
+        "0x64731C",
+        "0x647684"
+      ],
+      "target": "0x64DAB0",
+      "relation_to_map_reveal": "These calls are in a separate frame/network-update routine, not in Map::Reveal. A tool-owned Reveal may occur before a later frame CRC, but the single-store design leaves House+0x241 physically unchanged, so either an in-function or later CRC reads the original byte.",
+      "implication": "The no-nested-CRC-before-return gate is required for post-call restoration, not for single-store suppression."
+    }
   },
   "trampoline_codegen_probe": {
     "source": "source/assist/tests/crc_shadow_single_store_trampoline_probe.cpp",
