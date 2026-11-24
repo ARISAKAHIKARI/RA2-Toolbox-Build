@@ -11,14 +11,14 @@
 
 // RA2 Toolbox's original unit panel implementation. No MO source/assets,
 // engine hooks, game events or game-memory reads live in this UI object.
-// Only page/collapse/cargo-expansion interactions are accepted. The popup
-// consumes panel clicks, unlike a WS_EX_TRANSPARENT world overlay.
+// Only page/collapse interactions are accepted. Expanded single-unit views
+// show passenger Cameos automatically; folding hides the cargo with the panel.
 namespace unitpanelhost {
 class Panel {
  HWND window_=nullptr;
  external::unitpanel::Model model_{};
  uint64_t signature_=0;DWORD lastGoodAt_=0;unitpanelcameo::Cache cameos_{};uint32_t cameoRevision_=0;
- bool folded_=false,details_=false;
+ bool folded_=false;
  int page_=0,focused_=-1,width_=390,height_=40;
  static constexpr int Header=38,Footer=30;
  static std::wstring name(const std::array<uint16_t,40>&src){
@@ -26,12 +26,11 @@ class Panel {
   return value.empty()?L"未知单位":value;
  }
  static constexpr int CellW=panelmetrics::CellW,CellH=panelmetrics::CellH,ButtonW=26,Pad=7,Gap=1;
- bool expandableCargo()const{return panelmetrics::expandable(model_);}
- bool showCargo()const{return panelmetrics::cargoVisible(model_,details_);}
- int entries()const{return panelmetrics::entries(model_,details_);}
+ bool showCargo()const{return panelmetrics::cargoVisible(model_,!folded_);}
+ int entries()const{return panelmetrics::entries(model_,!folded_);}
  int perPage()const{return panelmetrics::perPage(model_);}
- int pages()const{return panelmetrics::pages(model_,details_);}
- int slots()const{return panelmetrics::slots(model_,details_,page_);}
+ int pages()const{return panelmetrics::pages(model_,!folded_);}
+ int slots()const{return panelmetrics::slots(model_,!folded_,page_);}
  int cols()const{return panelmetrics::cols(slots());}
  int rows()const{return panelmetrics::rows(slots());}
  int wantedWidth()const{
@@ -84,23 +83,13 @@ class Panel {
   g.SetPixelOffsetMode(PixelOffsetModeHalf);
   g.Clear(Color(255,10,12,15));
   // Compact 60x48 vehicle cameo grid. Passenger icons use a smaller nested
-  // 44x36 raster, and are never drawn while the cargo expander is closed.
+  // 44x36 raster, and are never drawn while the panel is folded.
   const int fx=2,fy=height_-ButtonW-1;
   box(g,float(fx),float(fy),ButtonW-2,ButtonW-2,Color(255,47,55,66));
   outline(g,fx,fy,ButtonW-2,ButtonW-2,Color(255,159,165,175));
   label(g,folded_?L"▸":L"◂",float(fx+5),float(fy+2),17,
         Color(255,230,222,147),true);
   if(folded_)return;
-  if(expandableCargo()){
-   // Cargo expand is anchored at the TOP, so the button never jumps as rows
-   // appear/disappear; the independent whole-panel fold stays at the bottom.
-   const int dy=2;
-   box(g,float(fx),float(dy),ButtonW-2,ButtonW-2,
-       details_?Color(255,80,89,100):Color(255,40,47,57));
-   outline(g,fx,dy,ButtonW-2,ButtonW-2,Color(255,133,148,164));
-   label(g,details_?L"−":L"+",float(fx+6),float(dy+1),18,
-         Color(255,244,240,214),true);
-  }
   int bx=ButtonW+4,by=Pad-2;
   int gw=Pad*2+cols()*CellW+(cols()-1)*Gap;
   int gh=Pad*2+rows()*CellH+(rows()-1)*Gap;
@@ -124,7 +113,7 @@ class Panel {
     }else if(slot==0){
      const auto&u=model_.single;
      cameo(g,u.type,u.kind,x,y,u.name);
-    }else{ // Only expanded cargo receives its own smaller Cameo.
+    }else{ // Passenger Cameos are visible whenever the whole panel is expanded.
      const auto&u=model_.passenger[page_*panelmetrics::CargoPerPage+slot-2];
      cameo(g,u.type,u.kind,
        x+(CellW-panelmetrics::PassengerCameoW)/2,
@@ -158,12 +147,9 @@ class Panel {
  void click(int x,int y,bool /*right*/=false){
   if(x<ButtonW+3){
    const int foldY=height_-ButtonW-1;
-   // Only real button rectangles respond. A hidden cargo switch cannot
-   // receive clicks on a group or an empty transport.
-   if(!folded_&&expandableCargo()&&y>=2&&y<2+ButtonW-2){
-    details_=!details_;page_=0;focused_=-1;
-   }else if(y>=foldY&&y<foldY+ButtonW-2){
-    folded_=!folded_;page_=0;focused_=-1;if(folded_)details_=false;
+   // The single fold control collapses the whole panel, including cargo.
+   if(y>=foldY&&y<foldY+ButtonW-2){
+    folded_=!folded_;page_=0;focused_=-1;
    }
    InvalidateRect(window_,nullptr,FALSE);return;
   }
@@ -253,9 +239,8 @@ public:
   const uint64_t key=model.visualSignature();
   const bool differentUnit=model_.match!=model.match||model_.selected!=model.selected||
     (model.selected==1&&model_.single.id!=model.single.id);
-  if(differentUnit){page_=0;focused_=-1;details_=false;}
+  if(differentUnit){page_=0;focused_=-1;}
   if(key!=signature_){model_=model;signature_=key;InvalidateRect(window_,nullptr,FALSE);}
-  if(!expandableCargo())details_=false;
   page_=external::unitpanel::clampPage(page_,entries(),perPage());
   int newWidth=std::min(wantedWidth(),availableWidth);
   int newHeight=wantedHeight();
