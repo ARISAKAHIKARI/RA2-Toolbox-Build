@@ -22,6 +22,12 @@ static bool reverseDodgeTick(uint32_t h,int f,DWORD n,bool candidateOnly){++reve
 static void reset(int mode,bool internal){data={};sh=&data;data.dodgeMode=mode;data.computeApplied=internal?(1u<<compute::Dodge):0;externalInputFrame=readable=ready=true;reverseWasEnabled=dodgePending=false;dodgeCount=dodgeCursor=dodgeJobCursor=0;dodgeTask=dodgeApplied=notifies=applications=maintenance=reverseCalls=collections=candidateApplications=0;dodgeFrames.clear();sourceFrame=-1;snap.chat=false;}
 static void complete(){data.dodgeResult=dodgecompute::calculate(data.dodgeInput);data.dodgeComputed=data.dodgeTask;}
 int main(){unsigned cases=0;
+ dodgecompute::Source pending{};pending.frame=100;pending.active=1;pending.sentAt=1000;
+ assert(!dodgecompute::decide(pending,6000).release);
+ assert(dodgecompute::decide(pending,6001).release);
+ pending.observed=1;pending.quietFrame=99;
+ assert(!dodgecompute::decide(pending,9000).release);
+ pending.frame=101;assert(dodgecompute::decide(pending,9000).release);
  assert(!dodgecompute::retentionExpired(6000,1000));
  assert(dodgecompute::retentionExpired(6001,1000));
  assert(!dodgecompute::retentionExpired(0x20,0xfffffe28u));
