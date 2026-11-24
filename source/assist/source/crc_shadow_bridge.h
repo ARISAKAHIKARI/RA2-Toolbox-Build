@@ -48,12 +48,11 @@ extern "C" unsigned __cdecl AssistMapCrcRevealStore(unsigned house,unsigned save
  if(!crcMapActive||crcMapFaulted||!crcMapSingleScope.active||house!=crcMapSingleScope.house)return savedEBX;
  if(!crcMapWorld()){crcMapFault();return savedEBX;}
  crcshadow::Identity id;
- if(!crcMapIdentity(house,id)){crcMapFault();return savedEBX;}
+ if(!crcMapIdentity(house,id)||id.index!=unsigned(crcMapTargetIndex)){crcMapFault();return savedEBX;}
  const auto decision=crcshadowsingle::beforeStore(crcMapSingleScope,id.epoch,id.pointer,id.id);
  if(decision==crcshadowsingle::Result::SuppressStore){
   crcMapSkipStore=1;++crcMapSuppressed;
  }else if(decision==crcshadowsingle::Result::IdentityChanged)crcMapFault();
- else if(decision==crcshadowsingle::Result::NativeStore&&id.index!=unsigned(crcMapTargetIndex))crcMapFault();
  return savedEBX;
 }
 extern "C" void __cdecl AssistMapCrcRevealAbort(unsigned house){
