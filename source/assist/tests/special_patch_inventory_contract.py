@@ -62,6 +62,16 @@ frame = read("game_runtime/source/frame_signal_runtime.h")
 assert "const bool deselected=channel&&!(channel->enabled&framesignal::ExplicitDiagnostic);" in frame
 assert "if(!(channel->enabled&framesignal::ExplicitDiagnostic)){channel->state=framesignal::MessageFallback;" in frame
 
+# Native AirType is also a data-pointer slot (vtable entry); only AirArrival
+# is an executable branch patch in the explicit high-risk native mode.
+air = read("assist/source/air_path_policy.h")
+assert "requested&&(networkMode==1||networkMode==2)" in air
+air_patch = read("shared/source/experimental_patch_policy.h")
+assert "AirType=0x7E2908" in air_patch and "AirArrival=0x416AB6" in air_patch
+manager = read("shared/source/game_entry_manager.cpp")
+assert "address==experimentalpatch::AirType" in manager
+assert "pointerSlot?PAGE_READWRITE:PAGE_EXECUTE_READWRITE" in manager
+
 # Tooltip callbacks are data-pointer slots, not instruction detours.
 tooltip = read("game_runtime/source/native_tooltip_runtime.h")
 assert "Slot=0x7F74D8" in tooltip and "LayoutSlot=0x7F74C8" in tooltip
