@@ -38,17 +38,17 @@ static void crcMapResetWorld(){
  crcMapScenario=crcMapItems=crcMapLocal=crcMapLocalID=crcMapEpoch=0;
  crcMapMode=0;crcMapTargetIndex=32;
 }
-static void crcMapFault(){
+static void crcMapFault(bool publish=true){
  if(!crcMapFaulted)++crcMapFaults;
  crcMapFaulted=true;crcMapActive=false;crcMapUnsafeEpoch=crcMapEpoch;crcMapState=-3;
  if(crcMapSingleScope.active)crcMapSingleScope.faulted=true;
- crcMapPublish();
+ if(publish)crcMapPublish();
 }
 extern "C" unsigned __cdecl AssistMapCrcRevealStore(unsigned house,unsigned savedEBX){
  if(!crcMapActive||crcMapFaulted||!crcMapSingleScope.active||house!=crcMapSingleScope.house)return savedEBX;
- if(!crcMapWorld()){crcMapFault();return savedEBX;}
+ if(!crcMapWorld()){crcMapFault(false);return savedEBX;}
  crcshadow::Identity id;
- if(!crcMapIdentity(house,id)||id.index!=unsigned(crcMapTargetIndex)){crcMapFault();return savedEBX;}
+ if(!crcMapIdentity(house,id)||id.index!=unsigned(crcMapTargetIndex)){crcMapFault(false);return savedEBX;}
  const auto decision=crcshadowsingle::beforeStore(crcMapSingleScope,id.epoch,id.pointer,id.id);
  if(decision==crcshadowsingle::Result::SuppressStore){
   crcMapSkipStore=1;++crcMapSuppressed;
@@ -57,7 +57,7 @@ extern "C" unsigned __cdecl AssistMapCrcRevealStore(unsigned house,unsigned save
 }
 extern "C" void __cdecl AssistMapCrcRevealAbort(unsigned house){
  if(crcshadowsingle::abort(crcMapSingleScope,house))crcMapSkipStore=1;
- crcMapFault();
+ crcMapFault(false);
 }
 
 // Preserve the original machine state around the guarded callback. Only the
@@ -157,9 +157,10 @@ static bool crcMapToolBegin(uint32_t house){
  crcMapTargetIndex=int(id.index);return true;
 }
 static void crcMapToolEnd(bool completed){
- if(crcMapSingleScope.active&&(!completed||crcMapSingleScope.faulted))crcMapFault();
+ if(crcMapSingleScope.active&&(!completed||crcMapSingleScope.faulted))crcMapFault(false);
  crcshadowsingle::end(crcMapSingleScope);
- crcMapTargetIndex=32;crcMapSkipStore=0;crcMapPublish();
+ crcMapTargetIndex=32;crcMapSkipStore=0;
+ if(!crcMapFaulted)crcMapPublish();
 }
 static void crcMapShadowRewind(uint32_t nextEpoch){
  if(crcMapInstalled||crcMapActive||crcMapSingleScope.active){
