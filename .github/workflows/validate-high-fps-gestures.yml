@@ -21,6 +21,8 @@ on:
       - 'source/assist/source/reverse_dodge.h'
       - 'source/assist/source/reverse_dodge_bridge.h'
       - 'source/assist/tests/formation_switch_test.py'
+      - 'source/assist/tests/cooperative_read_only_recovery.py'
+      - 'source/assist/tests/cooperative_snapshot.cpp'
       - 'source/assist/tests/reverse_dodge_hotpath.cpp'
       - 'source/assist/tests/reverse_dodge_hotpath.py'
       - 'source/assist/tests/high_fps_input_freshness.cpp'
@@ -58,6 +60,9 @@ jobs:
           python3 source/assist/tests/reverse_dodge_hotpath.py --out /tmp/ra2-reverse-dodge
           python3 source/assist/tests/reverse_dodge_hotpath.py --out /tmp/ra2-reverse-dodge
           python3 source/assist/tests/tactical_frame_sampling.py
+          python3 source/assist/tests/cooperative_read_only_recovery.py --out /tmp/ra2-cooperative-readonly
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Wno-error=misleading-indentation -UNDEBUG source/assist/tests/cooperative_snapshot.cpp -o /tmp/ra2-cooperative-snapshot
+          /tmp/ra2-cooperative-snapshot
           python3 source/assist/tests/construction_delivery_test.py
       - name: Run native formation bridge fixture including high-FPS mouse hold
         run: |
