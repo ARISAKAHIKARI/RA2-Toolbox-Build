@@ -74,6 +74,14 @@ int main(){auto w=make(7,3);auto a=allocate(w);auto n=counts(a);assert(a.size()=
  independent.sell=0;assert(!resolveMouse(keys,3,buttons,independent,SellDrainedInput).operation);
  independent.cs=0;buttons[MouseCS]=4;auto right=resolveMouse(keys,4,buttons,independent,0);assert(right.operation==Enhanced&&(right.bindings&(CS|RightClick))==(CS|RightClick));
 
+ for(auto&v:buttons)v=0;buttons[MouseAttack]=2;
+ independent.enabled=bindingOptions(0,'G');MouseRoute matched[MouseCount+1]{};
+ assert(!resolveMouse(keys,2,buttons,independent,0).operation);
+ assert(resolveMouseMatches(keys,2,buttons,independent,0,true,matched)==0);
+ keys['G']=1;assert(resolveMouse(keys,2,buttons,independent,0).operation==AttackMove);
+ assert(resolveMouseMatches(keys,2,buttons,independent,0,true,matched)==1&&matched[0].operation==AttackMove);
+ keys['G']=0;independent.enabled=bindingOptions(0,0);
+ assert(resolveMouse(keys,2,buttons,independent,0).operation==AttackMove);
  }
  std::cout<<"PASS: both aircraft priorities, per-target caps/unlimited, AA/AG scarcity, garrison size best-fit, malformed request/viewport guards and defaults\n";
 }
