@@ -4,7 +4,7 @@
 // supplies the engine's default coordinate. Both dispatch Scatter(...,true,false).
 // Do not call Scatter locally: its destination/randomness must run on all peers.
 struct DodgeJob {
- uint32_t serial=0,id=0,pointer=0,token=0;int sentFrame=0,quietFrame=0,lastSeen=0,x=0,y=0;
+ uint32_t serial=0,id=0,pointer=0,token=0;int sentFrame=0,quietFrame=0,lastSeen=0,x=0,y=0;uint32_t lastSeenAt=0;
  bool active=false,observed=false,marker=false;uint32_t shots[32]{};unsigned shotNext=0;
  gateway::Receipt receipt{};
  int reverseFrame=-1;
@@ -79,8 +79,8 @@ static bool dodgeBusy(uint32_t p,int frame){
  return rotating||get<uint32_t>(p+0x5A4)||queued==2||queued==29;
 }
 static bool dodgeSeen(const DodgeJob&j,uint32_t id){for(auto shot:j.shots)if(shot==id)return true;return false;}
-static void dodgeRemember(DodgeJob&j,const dodgecompute::Source&s){
- if(s.count)j.lastSeen=s.frame;
+static void dodgeRemember(DodgeJob&j,const dodgecompute::Source&s,DWORD now){
+ if(s.count){j.lastSeen=s.frame;j.lastSeenAt=now;}
  for(int k=0;k<s.count;++k)if(s.shots[k]&&!dodgeSeen(j,s.shots[k]))j.shots[j.shotNext++%32]=s.shots[k];
 }
 static void dodgeObserve(uint32_t p,uint32_t house,dodgecompute::Source&s){
@@ -97,12 +97,12 @@ static void dodgeObserve(uint32_t p,uint32_t house,dodgecompute::Source&s){
   s.shots[s.count++]=id;if(j<0||!dodgeSeen(dodgeJobs[j],id))s.freshThreat=1;
  }
 }
-static int createDodge(const dodgecompute::Source&s){
+static int createDodge(const dodgecompute::Source&s,DWORD now){
  int n=dodgeIndex(s.id);if(n>=0)return n;
- if(dodgeCount==512){int oldest=-1;for(int k=0;k<dodgeCount;++k)if(!dodgeJobs[k].active&&(oldest<0||dodgeJobs[k].lastSeen<dodgeJobs[oldest].lastSeen))oldest=k;
+ if(dodgeCount==512){int oldest=-1;uint32_t oldestAge=0;for(int k=0;k<dodgeCount;++k)if(!dodgeJobs[k].active){uint32_t age=uint32_t(now-dodgeJobs[k].lastSeenAt);if(oldest<0||age>oldestAge){oldest=k;oldestAge=age;}}
   if(oldest<0)return -1;dodgeJobs[oldest]=dodgeJobs[--dodgeCount];}
  n=dodgeCount++;auto&j=dodgeJobs[n];j={};j.serial=++dodgeSerial;if(!j.serial)j.serial=++dodgeSerial;
- j.id=s.id;j.pointer=s.pointer;j.token=s.token;j.lastSeen=s.frame;return n;
+ j.id=s.id;j.pointer=s.pointer;j.token=s.token;j.lastSeen=s.frame;j.lastSeenAt=now;return n;
 }
 // A missing sealed page is not evidence that a live dodge owner disappeared.
 // Return -1 only after a complete same-frame source observation; 0 is unknown.
@@ -121,7 +121,7 @@ static void updateDodgeJobs(uint32_t house,int frame,DWORD now,bool candidateOnl
   // A complete index can prove absence. worldByID adds another fallible
   // live UID read; its failure cannot retire an otherwise owned job.
   const uint32_t p=worldObjects.byId(j.id);
-  if((p!=j.pointer&&(!candidateOnly||p))||manualVersions.get(j.id)!=j.token||(!j.active&&(!sh->dodgeEnabled||frame-j.lastSeen>300))){
+  if((p!=j.pointer&&(!candidateOnly||p))||manualVersions.get(j.id)!=j.token||(!j.active&&(!sh->dodgeEnabled||dodgecompute::retentionExpired(now,j.lastSeenAt)))){
    cancelDodge(j.id);continue;
   }
   if(!p){++n;continue;}
@@ -172,14 +172,14 @@ static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int fra
   if(s.token!=old.token||d.scatter!=liveDecision.scatter||d.release!=liveDecision.release)continue;
   if(d.scatter){
    if(!planningRoom(4)||!outgoingRoom())break;
-   j=createDodge(s);if(j<0)continue;
+   j=createDodge(s,now);if(j<0)continue;
    gateway::Receipt receipt;
    if(!nativeObjectEvent(get<int>(house+0x30),0x07,s.id,OrderAuthority::Local,&receipt))continue;
    consumePlanning(4);++sh->dodgeIssued;cancelBurst(s.id);
    auto&job=dodgeJobs[j];job.active=true;job.observed=false;job.sentFrame=job.quietFrame=frame;
    job.x=get<int>(p+0x9C);job.y=get<int>(p+0xA0);job.marker=get<bool>(p+0x6B2);job.receipt=receipt;
-  }else if(j<0&&(s.busy&&s.count))j=createDodge(s);
-  if(j>=0){dodgeRemember(dodgeJobs[j],s);if(d.release)finishDodge(dodgeJobs[j]);}
+  }else if(j<0&&(s.busy&&s.count))j=createDodge(s,now);
+  if(j>=0){dodgeRemember(dodgeJobs[j],s,now);if(d.release)finishDodge(dodgeJobs[j]);}
  }
 }
 // Both dodge modes use the same Host calculation/publication path. The third
