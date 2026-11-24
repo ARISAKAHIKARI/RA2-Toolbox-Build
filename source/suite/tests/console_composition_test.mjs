@@ -412,6 +412,29 @@ test('ordinary settings never expose native numeric fallback or duplicate status
  assert.ok(ids.includes(4)&&ids.includes(7)&&ids.includes(8)&&ids.includes(9));
  assert.ok([...core.layoutGroups(controls,'',7).values()].flat().some(c=>c.id===5));
 });
+test('participant filters share their master feature and never create a duplicate card',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ const controls=[];
+ for(const [master,key,policy,scope,title] of [[885,9507,895,9236,'自动躲弹'],[880,9508,9040,9230,'防空火控'],[705,0,9195,9200,'飞机分配攻击']]){
+  const row=(id,type,label,y,x,extra={})=>core.canonical({id:id+60000,nativeId:id,type,label,row:y,column:x,group:title,featureId:master,...extra});
+  controls.push(row(master,'toggle',title,master,20,{groupHeader:true}));
+  if(key)controls.push(row(key,'hotkey',title,master,345));
+  controls.push(row(policy,'choice','运行方式',master+1,290));
+  controls.push(row(scope,'toggle','限定参与单位',master+2,380));
+  controls.push(row(scope+1,'text','单位类型 ID',master+3,20,{text:'E1'}));
+ }
+ const groups=core.layoutGroups(controls,'',4);
+ const blocks=core.featureBlocks([...groups.values()][0]);
+ assert.equal(blocks.length,3);
+ for(const block of blocks){
+  assert.equal(block.headers.filter(c=>c.type==='toggle').length,1);
+  assert.ok(block.details.some(c=>c.type==='text'));
+  assert.ok(block.details.some(c=>c.type==='choice'));
+ }
+ const searched=core.featureBlocks([...core.layoutGroups(controls,'单位类型 ID',4).values()][0]);
+ assert.equal(searched.length,3);
+ assert.ok(searched.every(b=>b.headers.some(c=>c.type==='toggle')));
+});
 let failures=0;
 for(const {name,run} of cases){try{run();console.log(`PASS ${name}`)}catch(error){failures++;console.error(`FAIL ${name}\n${error.stack}`)}}
 console.log(JSON.stringify({suite:'console_composition',checks:cases.length,failures,level:'production listeners with controlled DOM event fixture'}));
