@@ -14,7 +14,7 @@
 
 - **规则/所有权/建造**：BuildAnywhere（`0x4A8EB0`，另有 direct placement 两处 `0x4A8EC3`、`0x4A918E`）；ControlAll/所有权判定（`0x50B6F0`、`0x6339BA`、`0x637E40`、`0x646EF5`、`0x646FD2`、`0x6FFC93`、`0x6FFE2B`）；科技规则/科技栏（`0x44574A`、`0x445795`、`0x4457D0`、`0x445810`、`0x6AA788`、`0x6A97D2`、`0x6AA781`）；LowDamage（`0x6F7D44`）。
 - **联机协议/发送端适配**：7 个 NetworkSender 补丁点，定义在 `assist/source/network_sender_policy.h`（`0x649CA0`、`0x649E1E`、`0x64B660`、`0x64B9D4`、`0x64B4EA`、`0x649D61`、`0x649DBC`）。
-- **CRC Shadow**：当前生产仍是 8 个补丁点（`0x64DCCA`、`0x4F576B`、`0x4FC328`、`0x577ACA`、`0x577BC7`、`0x577CA7`、`0x577DB0`、`0x577F48`）。单点 `Map::Reveal` 写入抑制目前只是研究候选，尚未替换生产实现。
+- **CRC Shadow**：当前源码实现已切为单点 `0x577DB0`，只在工具箱同步 `Map::Reveal` 作用域内，对匹配的 House 指针/ID/索引抑制一次 `MapIsClear` 写入；自然 Reveal、其他 House 和其余六个自然/构造写入继续原生执行。没有 CRC 读替换、字段镜像或事后数据恢复；`Cell` / `Visionary` 不由工具箱采样或维护。旧八点表仍留在 `crc_shadow_policy.h` 供地址/原始指令识别，但运行时只安装 `Sites[6]`。当前仍待 Windows 完整构建和真实游戏/双机验收，不能视为已发布或已认证。
 - **地图/显示**：direct Map 5 点（`0x508E60`、`0x508EBA`、`0x508F8F`、`0x577B3A`、`0x6D88FC`）；Shroud/Fog 绘制（`0x47F038`、`0x47F274`）；CameraClamp/ScrollMap（`0x6D8640`、`0x4A9840`）；PauseLoop/FrameCommitted（`0x55D360`、`0x55DE81`）。
 - **特殊原生动作**：NativeSell（`0x6929E5`、`0x4AC179`）、NativeMegaSuccess（`0x646F4E`）及其 ControlAll 所有权分支。
 
