@@ -1796,6 +1796,7 @@ static bool hostFrameCaptureWanted(DWORD now){
  // raw capture. Idle repair intervals do not add a full capture every frame.
  if((sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)))return true;
  if(sh->flags&AutoOreReturn)return true;
+ if(sh->pointer.request!=sh->pointer.ack)return false;
  const auto&r=sh->cooperativeRequest;
  const auto&captured=sh->cooperativeInputFrame;
  const bool admitted=captured.frame>=0&&captured.request.serial==r.serial&&captured.match==r.match;
