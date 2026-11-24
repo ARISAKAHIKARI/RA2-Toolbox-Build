@@ -1,0 +1,43 @@
+name: CRC single-boundary feasibility
+on:
+  push:
+    branches: [work/latest-ra2-integration]
+    paths:
+      - 'source/research/crc_shadow_boundary_candidate.h'
+      - 'source/assist/tests/crc_shadow_boundary_feasibility.cpp'
+      - 'source/assist/tests/crc_shadow_boundary_static.py'
+      - 'source/assist/source/bridge.cpp'
+      - 'source/assist/source/crc_shadow_bridge.h'
+      - 'source/assist/source/crc_shadow_policy.h'
+      - 'source/research/evidence/crc-shadow-research.json'
+      - 'source/research/evidence/trainer-map-cheatcheck.json'
+      - '.github/workflows/crc-shadow-boundary-feasibility.yml'
+  pull_request:
+    paths:
+      - 'source/research/crc_shadow_boundary_candidate.h'
+      - 'source/assist/tests/crc_shadow_boundary_feasibility.cpp'
+      - 'source/assist/tests/crc_shadow_boundary_static.py'
+      - 'source/assist/source/bridge.cpp'
+      - 'source/assist/source/crc_shadow_bridge.h'
+      - 'source/assist/source/crc_shadow_policy.h'
+      - 'source/research/evidence/crc-shadow-research.json'
+      - 'source/research/evidence/trainer-map-cheatcheck.json'
+      - '.github/workflows/crc-shadow-boundary-feasibility.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: crc-shadow-boundary-\${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  feasibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run the synthetic transaction fixture
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror source/assist/tests/crc_shadow_boundary_feasibility.cpp -o /tmp/crc-shadow-boundary
+          /tmp/crc-shadow-boundary
+      - name: Verify the native source and xref evidence
+        run: python3 source/assist/tests/crc_shadow_boundary_static.py
