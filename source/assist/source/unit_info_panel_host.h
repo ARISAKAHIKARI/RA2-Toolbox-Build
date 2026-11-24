@@ -26,7 +26,6 @@ class Panel {
   return value.empty()?L"未知单位":value;
  }
  static constexpr int CellW=panelmetrics::CellW,CellH=panelmetrics::CellH,ButtonW=26,Pad=7,Gap=1;
- bool showCargo()const{return panelmetrics::cargoVisible(model_,!folded_);}
  int entries()const{return panelmetrics::entries(model_,!folded_);}
  int perPage()const{return panelmetrics::perPage(model_);}
  int pages()const{return panelmetrics::pages(model_,!folded_);}
