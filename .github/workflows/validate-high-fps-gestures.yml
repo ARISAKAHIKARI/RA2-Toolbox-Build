@@ -18,11 +18,15 @@ on:
       - 'source/assist/source/dodge_bridge.h'
       - 'source/assist/source/reverse_dodge.h'
       - 'source/assist/source/reverse_dodge_bridge.h'
+      - 'source/assist/source/reverse_dodge.h'
+      - 'source/assist/source/reverse_dodge_bridge.h'
       - 'source/assist/tests/formation_switch_test.py'
       - 'source/assist/tests/reverse_dodge_hotpath.cpp'
       - 'source/assist/tests/reverse_dodge_hotpath.py'
       - 'source/assist/tests/high_fps_input_freshness.cpp'
       - 'source/assist/tests/high_fps_gesture_contract.py'
+      - 'source/assist/tests/reverse_dodge_hotpath.cpp'
+      - 'source/assist/tests/reverse_dodge_hotpath.py'
       - '.github/workflows/validate-high-fps-gestures.yml'
   push:
     branches: [fix/watch-pin-and-control-ui-20261123]
@@ -51,6 +55,7 @@ jobs:
             /tmp/ra2-$test
           done
           python3 source/assist/tests/dodge_compute_routing.py
+          python3 source/assist/tests/reverse_dodge_hotpath.py --out /tmp/ra2-reverse-dodge
           python3 source/assist/tests/reverse_dodge_hotpath.py --out /tmp/ra2-reverse-dodge
           python3 source/assist/tests/tactical_frame_sampling.py
           python3 source/assist/tests/construction_delivery_test.py
