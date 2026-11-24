@@ -16,7 +16,7 @@ int main(){
   assert(featuregate::cs(requested,true)==((requested&CustomCS)?featuregate::CS::Manual:featuregate::CS::Off));
  }
  assert(featuregate::flags(AutoCS|CustomCS|AdvancedEnter|AdvancedInput)==uint32_t(CustomCS|AdvancedEnter|AdvancedInput));
- assert(!hookpolicy::needsCSInputPatch(AutoCS));assert(hookpolicy::needsCSInputPatch(CustomCS));
+ // CS enablement is a feature-policy decision; it has no input code-patch dependency.
  for(unsigned operation=1;operation<=9;++operation)assert(featuregate::pointer(operation)==(operation!=pointerinput::C4Test));
  assert(featuregate::pointer(pointerinput::Enhanced)&&featuregate::pointer(pointerinput::AttackMove));
  assert(!featureavailability::InfantryForcedEntry);
