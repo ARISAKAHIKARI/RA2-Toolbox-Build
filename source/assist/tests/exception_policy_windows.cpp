@@ -35,7 +35,9 @@ extern "C" unsigned AssistBuildTimeTooltip(unsigned,unsigned original){assert(fa
 extern "C" void AssistBuildTimeTooltipFailed(){assert(false);}
 extern "C" unsigned AssistMapCrcRevealStore(unsigned,unsigned value){return value;}
 extern "C" void AssistMapCrcRevealAbort(unsigned){assert(false);}
+#ifndef RUNTIME_SCOPE_FIXTURE
 extern "C" unsigned AssistReadObjectIdentity(unsigned){assert(false);return 0;}
+#endif
 extern "C" int __cdecl AssistNativePipAction(unsigned,unsigned){assert(false);return 0;}
 extern "C" int __cdecl AssistNativePipRestore(){assert(false);return 0;}
 extern "C" void __cdecl AssistNativePipUnlock(){assert(false);}
