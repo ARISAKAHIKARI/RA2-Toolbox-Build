@@ -407,11 +407,11 @@ button(428,L"使用 INI 许可清单",20,285);button(814,L"取消所选类型的
 note(L"原生面板两种模式均请在游戏建造栏生产或取消；此清单只设置许可，不从工具箱下单。旧三种模式保留工具箱生产。完成建筑也可使用上方独立的原生事件放置。",65);
 item(L"STATIC",L"生产进度：等待游戏",20,605,815,0,105);next(105);
 activeFoldGroup=0;
-label(L"操控入队实现",20,180);choices(combo(9750,210,415),{L"原实现（默认）",L"高危实验：私有队列 Hook",L"高危实验：私有队列硬件断点（3 槽）"},extra.privateOutMode);next();
-note(L"将原生和工具箱操控指令交给私有队列处理。单机提交本地任务，联机交给游戏传输层；下方可选择 Hook 或硬件断点实现。切换模式时清空尚未发送的指令。",85);
+label(L"操控入队实现",20,180);choices(combo(9750,210,415),{L"原生指令（无功能 Hook）"},0);EnableWindow(GetDlgItem(ui,9750),FALSE);next();
+note(L"普通控制命令在 Runtime 游戏线程执行，不启用私有队列 Hook 或硬件断点。",85);
 item(L"STATIC",L"操控私有队列：原实现",20,605,9751,0,65);next(65);
-toggle(9191,L"高危：原生 MegaMission 成功入口观察",extra.nativeMegaGateway);next();
-note(L"扩展手动下令识别，在原生命令成功发送后登记玩家操作，取消与其冲突的自动任务。普通输入继续由现有消息与任务观察处理。",65);
+toggle(9191,L"原生命令入口观察（已停用）",false);EnableWindow(GetDlgItem(ui,9191),FALSE);next();
+note(L"普通输入由公共消息入口与任务观察处理，不安装额外的命令观察 Hook。",65);
 item(L"STATIC",L"原生命令仲裁：等待对局",20,605,9192,0,44);next(44);
 toggle(9198,L"精确原生战斗查询（实验）",extra.nativeCombatQueries);next();
 note(L"使用游戏原生查询选择武器、检查射程和空中状态，供移动攻击、防空与飞机分配等功能使用。关闭时由工具箱读取字段计算。",85);

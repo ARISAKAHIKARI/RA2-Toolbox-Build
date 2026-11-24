@@ -39,6 +39,7 @@ jobs:
           python source/assist/tests/variant_selection_entry_test.py
           python source/assist/tests/high_fps_gesture_contract.py
           python source/assist/tests/unit_info_panel_host_contract.py
+          python source/assist/tests/control_no_feature_hook_contract.py
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/unit_info_panel_layout.cpp -o /tmp/unitpanel-layout
           /tmp/unitpanel-layout
       - name: Compile x64 Host and matched x86 Runtime and Broker

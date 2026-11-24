@@ -123,8 +123,8 @@ static bool autoSettingChanged(int id,int notification){
   if(id==9187)extra.networkHousePreserve=on;else extra.nativeSellCursor=on;
   pointerMatches.clear();changedSetting();syncAdditional();updatePlayerTestUI(true);return true;
  }
- if(id==9750&&notification==CBN_SELCHANGE){extra.privateOutMode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();syncAdditional();return true;}
- if(id==9191&&notification==BN_CLICKED){extra.nativeMegaGateway=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
+ if(id==9750&&notification==CBN_SELCHANGE){extra.privateOutMode=0;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,0,0);syncAdditional();return true;}
+ if(id==9191&&notification==BN_CLICKED){extra.nativeMegaGateway=false;SendMessageW(GetDlgItem(ui,id),BM_SETCHECK,BST_UNCHECKED,0);syncAdditional();return true;}
  if(id==9198&&notification==BN_CLICKED){extra.nativeCombatQueries=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9193&&notification==BN_CLICKED){extra.controlCommandOwner=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();syncAdditional();return true;}
  if(id==9250&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode<0||mode>2)return true;

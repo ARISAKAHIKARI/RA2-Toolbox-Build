@@ -78,10 +78,11 @@ static void loadAdditionalSettings(){
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.destructSelectedOwner=value(L"Experimental",L"DestructSelectedOwner",0)!=0;
  extra.destructSelectedOwnerKey=uint32_t(value(L"Hotkeys",L"DestructSelectedOwner",0))&65535;
- extra.privateOutMode=std::clamp(value(L"Experimental",L"PrivateOutMode",0),0,2);
+ // Legacy command interception preferences are retired in the normal product.
+ extra.privateOutMode=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
  extra.nativeSellCursor=value(L"Experimental",L"NativeSellCursor",0)!=0;
- extra.nativeMegaGateway=explicitPatchPreferences&&value(L"Experimental",L"NativeMegaGateway",0)!=0;
+ extra.nativeMegaGateway=false;
  extra.nativeCombatQueries=value(L"Experimental",L"NativeCombatQueries",0)!=0;
  extra.controlCommandOwner=value(L"Experimental",L"ControlCommandOwner",0)!=0;
  // Slot 0 now selects hardware parameters; retain native slot 1 and legacy Master slot 2
@@ -326,7 +327,8 @@ static void syncAdditional(){
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;
  shared->networkHousePreserve=extra.networkHouseRequested();shared->nativeSellCursor=extra.nativeSellCursor;
- shared->nativeMegaGateway=extra.nativeMegaGateway;shared->privateOutMode=extra.privateOutMode;
+ // Do not publish a command-interception request, even from stale UI settings.
+ shared->nativeMegaGateway=0;shared->privateOutMode=0;
  shared->nativeCombatQueries=extra.nativeCombatQueries;
  shared->controlCommandOwner=extra.commandOwnerRequested();
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
