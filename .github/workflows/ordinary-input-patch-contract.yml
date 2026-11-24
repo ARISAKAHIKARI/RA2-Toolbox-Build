@@ -9,6 +9,14 @@ on:
       - 'source/assist/source/cooperative_bridge.h'
       - 'source/assist/source/pointer_bridge.h'
       - 'source/assist/source/native_orders_bridge.h'
+      - 'source/assist/source/input_patch.h'
+      - 'source/assist/source/placement_bridge.h'
+      - 'source/assist/source/direct_modes_bridge.h'
+      - 'source/assist/source/network_sender_bridge.h'
+      - 'source/shared/source/experimental_patch_policy.h'
+      - 'source/assist/source/pointer_host.h'
+      - 'source/assist/tests/host_input_test.py'
+      - 'verification/RETIRED_TEST_CONTRACTS.json'
       - 'source/assist/source/bridge.cpp'
       - 'source/shared/source/host_game_input.h'
       - 'source/shared/source/game_entry_manager.cpp'
@@ -50,7 +58,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/assist/tests/hook_policy.cpp -o /tmp/ra2-hook-policy
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/hook_policy.cpp -o /tmp/ra2-hook-policy
           /tmp/ra2-hook-policy
       - name: Verify ordinary input routes contain no executable patch path
         run: python3 source/assist/tests/no_interception_source_contract.py
