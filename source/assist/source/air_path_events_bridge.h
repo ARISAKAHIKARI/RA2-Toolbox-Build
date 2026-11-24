@@ -105,15 +105,18 @@ static void tick(uint32_t currentHouse,int frame,DWORD now){
   }
  }
  if(!moOrdersContext())return;
- for(unsigned i=0;i<count;++i)if(!valid(actors[i])){reset();return;}
+ // Validate each actor only at its own native submission boundary. Re-reading
+ // every selected object on every fast game frame multiplies RPM traffic by
+ // selection size; key-up and final commit still validate the whole cohort.
  while(nodeAt<pointCount&&outgoingRoom()>0){
   auto&a=actors[actorAt];uint32_t cell=cells[nodeAt];
   bool sent=false;runtimeunwind::run([&]{submitting=true;sent=nativeMission(currentHouse,a.id,2,0,cell,11,cell,11,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::Local,true);},[&]{submitting=false;});
-  if(!sent)break;
+  if(!sent){if(!valid(a)){reset();return;}break;}
   lastProgress=now;++accepted;if(!actorAt)inputFeedback(a.pointer,0,false); // once per clicked node, never on arrival
   if(++actorAt==count){actorAt=0;++nodeAt;}report(airevents::Sending);
  }
  if(!down&&nodeAt==pointCount&&planning.count&&!planning.physicalHeld()){
+  for(unsigned i=0;i<count;++i)if(!valid(actors[i])){reset();return;}
   // Nodes are already in the normal ordered SP/MP transport. The unchanged
   // real key-up now lets native UI enqueue its one House-wide PlanCommit.
   if(!planning.finish(currentHouse))return;
