@@ -156,6 +156,7 @@ static void cancelCooperativePlan(int result){
 static void resetRuntimeCooperative();
 static void resetCooperativeState(){resetRuntimeCooperative();cooperativeCaptures={};cooperativeCandidateAt=0;singleDamageSerial=singleDamageMatch=0;singleDamageCommitted=0;entryReservationCount=cooperativeEffectCount=0;cooperativeAt=0;cooperativePlanSeen=0;}
 static void restoreClickHooks(){}
+// Legacy clickHookStatus reports enabled click policies; no click detour is installed.
 static void clickHooksTick(uint32_t flags){sh->clickHookStatus=(flags&SpecialClickFlags)?1:0;}
 // Cross-feature seat reservations are read-only and never grant permission
 // to issue a native order: live UID, token and capacity are checked again.
