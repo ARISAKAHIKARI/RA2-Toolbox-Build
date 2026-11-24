@@ -38,13 +38,13 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 
 ### 3. 当前静态扫描中的读取者
 
-既有固定 PE 扫描列出三个 +0x241 读取候选：
+既有固定 PE 线性扫描列出三个 +0x241 读取候选，进一步反汇编后分类为：
 
-- 0x502FFF：CRCEngine bool 输入
-- 0x64DCCA：全局 ComputeGameCRC 的 House 字节读取
-- 0x64E250：CRC 诊断路径
+- `0x502FFF`：读取 House+0x241 后调用 `0x4A1CA0`；该 helper 把布尔字节加入 CRC 累积器并更新查表 CRC32 状态，是 CRC 序列化输入。
+- `0x64DCCA`：全局 ComputeGameCRC 的 House 字节读取。
+- `0x64E250`：读取 MapIsClear 与 Visionary 后传给 `0x7CA7D8` 诊断格式化路径。
 
-目前没有在这份静态候选清单中发现普通游戏逻辑读取者。YRpp 的 HouseClass 将 Visionary 与 MapIsClear 相邻声明；MapClass 将 Reveal 声明为 0x577D90。Phobos 的 SyncLogging 也把每个 House 的 MapIsClear 加入 CurrentFrameCRC。这些是字段与摘要关系的交叉佐证，不等于证明整个可执行文件不存在其他读取者。
+因此当前三个直接读取候选均属于 CRC 输入或诊断，不是已知普通游戏玩法读取者。YRpp 的 HouseClass 将 Visionary 与 MapIsClear 相邻声明；MapClass 将 Reveal 声明为 0x577D90。Phobos 的 SyncLogging 也把每个 House 的 MapIsClear 加入 CurrentFrameCRC。这些是字段与摘要关系的交叉佐证，不等于证明整个可执行文件不存在间接别名、批量拷贝、动态模块或扩展读取者。
 
 ## 候选机制：保存 → 原生 Reveal → 比较恢复
 
