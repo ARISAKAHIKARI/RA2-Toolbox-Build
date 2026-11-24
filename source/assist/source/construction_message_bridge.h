@@ -11,7 +11,7 @@ static bool reservationContext(construction::InputPolicy&policy,DWORD now){
  // context without requiring snap.frame == current frame; no event is sent.
  int frame=get<int>(0xA8ED84);uint32_t house=get<uint32_t>(0xA83D4C);
  if(house!=lastHouse||house==get<uint32_t>(0xAC1198)||get<bool>(house+0x1F5)||get<bool>(house+0x1F6)||get<bool>(house+0x1F8)||
-    !get<bool>(0xA8E9A0)||frame<snap.frame||int64_t(frame)-snap.frame>6||frame<0||frame>=INT32_MAX||
+    !get<bool>(0xA8E9A0)||frame<0||frame>=INT32_MAX||frame<snap.frame||
     get<int>(0xA8B238)!=snap.session||!eventdelivery::mayQueue(snap.session)||get<bool>(0xA8BC60+25)||
     !external::display::inspect([](uint32_t at,void*out,size_t n){return read(at,out,n);}).visible())return false;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);if(foreground!=GetCurrentProcessId())return false;
