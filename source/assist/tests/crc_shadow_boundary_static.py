@@ -93,6 +93,8 @@ assert "crcMapSkipStore" in crc_bridge
 assert "push 577DB6h" in crc_bridge
 assert "mov byte ptr [ecx+241h],bl" in crc_bridge
 assert "crcMapTargetIndex" in crc_bridge
+assert "memcmp(actual,crcMapSite.patch,site.size)!=0" in crc_bridge
+assert "!crcMapInstalled" in crc_bridge
 assert "crcMapModel" not in crc_bridge
 assert "crcMapSites[crcshadow::SiteCount]" not in crc_bridge
 assert "crcshadow::restoreData" not in crc_bridge
