@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstdint>
-#include "../../research/crc_shadow_single_store_candidate.h"
+#include "../source/crc_shadow_single_store_policy.h"
 
 using namespace assist::crcshadowsingle;
 static unsigned checks=0;
