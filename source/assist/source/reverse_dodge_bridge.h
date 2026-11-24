@@ -34,7 +34,7 @@ static bool reverseDodgeActor(uint32_t p,uint32_t q,uint32_t house,int frame,DWO
  // Nearby shots, including later frames, belong to the accepted dodge. Consume
  // them now, not as deferred turns. Suppression does not extend the window.
  if(j>=0&&dodgeJobs[j].reverseFrame>=0&&frame>=dodgeJobs[j].reverseFrame&&
-    frame-dodgeJobs[j].reverseFrame<=reversedodge::MergeFrames){dodgeRemember(dodgeJobs[j],s);return true;}
+    frame-dodgeJobs[j].reverseFrame<=reversedodge::MergeFrames){dodgeRemember(dodgeJobs[j],s,now);return true;}
  if(!outgoingRoom())return false;
  uint32_t cell=reversedodge::destination(get<int>(p+0x9C),get<int>(p+0xA0),delta,[&](int x,int y,int direction){
   uint32_t c=readMapCell(x,y);if(!c)return false;
@@ -43,17 +43,17 @@ static bool reverseDodgeActor(uint32_t p,uint32_t q,uint32_t house,int frame,DWO
   return call<int>(get<uint32_t>(get<uint32_t>(p)+0x1AC),p,c,direction,call<int>(0x5F5F00,p),0,1)==0;
  });
  if(!cell)return true; // No nearby passable cell in the requested direction.
- j=createDodge(s);if(j<0)return false;
+ j=createDodge(s,now);if(j<0)return false;
  uint32_t ticket=0;
  if(!nativeMission(house,s.id,2,0,cell,11,0,0,taskarbiter::Owner::Dodge,&ticket))return false;
  auto&job=dodgeJobs[j];if(job.active)finishDodge(job,true);
  gateway::Receipt receipt{};
  for(int k=0;k<missionObserver.count;++k)if(missionObserver.tickets[k].receipt.serial==ticket){receipt=missionObserver.tickets[k].receipt;break;}
  missionObserver.dismissTicket(match,ticket); // Dodge observer owns this receipt now.
- job.active=true;job.observed=false;job.sentFrame=job.quietFrame=frame;
+ job.active=true;job.observed=false;job.sentFrame=job.quietFrame=frame;job.sentAt=now;
  job.reverseFrame=frame;
  job.x=get<int>(p+0x9C);job.y=get<int>(p+0xA0);job.marker=get<bool>(p+0x6B2);job.receipt=receipt;
- dodgeRemember(job,s);++sh->dodgeIssued;cancelBurst(s.id);return true;
+ dodgeRemember(job,s,now);++sh->dodgeIssued;cancelBurst(s.id);return true;
 }
 struct ReverseTarget {uint32_t pointer,id,token;};
 static ReverseTarget reverseTargets[16384];static int reverseTargetCount;
