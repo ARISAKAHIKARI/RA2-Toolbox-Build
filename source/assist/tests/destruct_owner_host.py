@@ -24,8 +24,8 @@ inc=out/'production-routes.inc';inc.write_text(generated,encoding='utf-8')
 assert 'if(c==DestructPlayer)return false;' in block(main,'static bool queueCommand(')
 assert 'destructownerhost::exclusive(hotkeyRegistry,extra.destructSelectedOwnerKey)' in block(main,'static void registerKeys()')
 assert 'bool destructSelectedOwner=false;uint32_t destructSelectedOwnerKey=0;' in texts['additional_settings.h']
-assert '原生武器／射程查询与 CRC 原值镜像不标高危' not in texts['tactical_controls.h']
-assert '高危：全图 CRC 原值镜像' in texts['tactical_controls.h']
+assert '精确原生战斗查询仍不标高危' not in texts['tactical_controls.h']
+assert '高危：工具揭示 CRC 单点保护' in texts['tactical_controls.h']
 assert 'send(DestructPlayer,int(selected.pointer)' not in main
 results={}
 for arch in ('x86_64','x86'):
