@@ -7,7 +7,7 @@ struct DodgeJob {
  uint32_t serial=0,id=0,pointer=0,token=0;int sentFrame=0,quietFrame=0,lastSeen=0,x=0,y=0;uint32_t sentAt=0,lastSeenAt=0;
  bool active=false,observed=false,marker=false;uint32_t shots[32]{};unsigned shotNext=0;
  gateway::Receipt receipt{};
- int reverseFrame=-1;
+ uint32_t reverseAt=0;
 };
 static DodgeJob dodgeJobs[512];static int dodgeCursor,dodgeJobCursor;static uint32_t dodgeSerial,dodgeTask;static bool dodgePending;
 struct DodgeThreatRef {uint32_t pointer,target;bool projectile;uint32_t id;};static DodgeThreatRef dodgeThreatRefs[8192];static int dodgeThreatCount;
