@@ -105,17 +105,17 @@ int main(){
 
  // Originally unassigned candidates must survive replan as replacements;
  // only an actually processed identity with its original token is removed.
- Request original{};original.serial=7;original.match=9;original.tick=100;original.mode=AirSingle;original.count=4;original.centerObject=0x123400;
+ Request original{};original.serial=7;original.match=9;original.tick=100;original.pointerRequest=77;original.mode=AirSingle;original.count=4;original.centerObject=0x123400;
  for(int i=0;i<4;++i)original.sources[i]={uint32_t(1+i),uint32_t(20+i)};
  Request remaining{};assert(retrySourcePool(remaining,original,{{1,20,100,1000,60}})&&remaining.count==3&&remaining.sources[0].id==2&&remaining.sources[1].id==3&&remaining.sources[2].id==4);
- assert(remaining.serial==original.serial&&remaining.tick==original.tick&&remaining.centerObject==original.centerObject);
+ assert(remaining.serial==original.serial&&remaining.tick==original.tick&&remaining.pointerRequest==original.pointerRequest&&remaining.centerObject==original.centerObject);
  assert(retrySourcePool(remaining,original,{{1,999,100,1000,60}})&&remaining.count==4&&"a different manual token is a different source identity");
  assert(!retrySourcePool(remaining,original,{{1,20,0,0},{2,21,0,0},{3,22,0,0},{4,23,0,0}})&&remaining.count==0);
 
  // The shared FrameInput path must carry the click-time parameters on every
  // cross-process publication, restriction, retry and unpack, independently of
  // the current Host UI values.
- Request frozen{};frozen.serial=1;frozen.match=2;frozen.mode=AirDamage;
+ Request frozen{};frozen.serial=1;frozen.match=2;frozen.pointerRequest=33;frozen.mode=AirDamage;
  frozen.target=100;frozen.type=1000;frozen.centerObject=0x123400;
  frozen.count=1;frozen.viewWidth=640;frozen.viewHeight=480;
  frozen.airRadiusCells=7;frozen.airDamagePercent=175;
