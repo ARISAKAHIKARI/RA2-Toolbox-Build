@@ -39,9 +39,12 @@ assert "frame>=sourceFrame" in pointer and "now-created" in pointer
 assert "int64_t(frame)-snap.frame>6" not in construction and "frame-snap.frame>6" not in construction
 assert "frame<snap.frame" in construction and "DWORD(now-policy.tick)>150" in construction
 assert "sameInputRequest" in cooperative_types and "cooperative::sameInputRequest" in cooperative
+assert "r.pointerRequest&&r.count>=0" in cooperative_types
+assert "sh->cooperativeRequest.pointerRequest!=sh->pointer.request" in cooperative
 assert "r.frame==frame" not in cooperative and "r.tick=now;r.sources" not in cooperative
 assert "if(sh->pointer.request!=sh->pointer.ack)return;" in cooperative
 assert "if(shared->pointer.request!=shared->pointer.ack)return;" in extra
+assert "request.pointerRequest!=shared->pointer.request" in extra
 assert "if(sh->pointer.request!=sh->pointer.ack)return false;" in bridge
 assert "sh->cooperativeRequest.pointerRequest==b.request" in pointer_bridge and "memset(&sh->cooperativeRequest,0" in pointer_bridge
 assert "formation::taskExpired(frame,j.frame,now,j.issued,(j.stage==1||j.stage==3)?formation::IssuedTaskTimeoutMs:formation::PendingTaskTimeoutMs)" in formation
