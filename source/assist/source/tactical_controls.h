@@ -425,7 +425,7 @@ toggle(9193,L"高危：命令使用单位所属方",extra.controlCommandOwner);n
 note(L"构造操控命令时使用单位当前所属方，配合原生判定 Hook 保留跨方指令的归属。联机同时开启事件所属方保留；硬件和 Master 模式使用各自的控制路径。",65);
 item(L"STATIC",L"控制命令所属方：关闭",20,605,9194,0,44);next(44);
 toggle(9196,L"高危：工具揭示 CRC 单点保护",extra.crcMapShadow,20,455);button(9613,L"展开设置",500,125);next();
-note(L"仅影响工具箱手动地图揭示命令。联机实验模式下，对目标 House 的 MapIsClear 写入只抑制一次，让 CRC 继续看到原值；自然揭示和其他 House 仍执行原生写入。可局中启用；MOD、Ares/Phobos 和直接全图模式不支持。Cell 与 Visionary 始终由游戏原生处理。",85);
+note(L"仅影响工具箱手动地图揭示。联机实验模式下，只抑制目标 House 的一次 MapIsClear 写入，保持 CRC 原值；自然揭示和其他 House 不受影响。可局中启用；MOD/Ares/Phobos/直接全图模式不支持。Cell 与 Visionary 继续由游戏原生处理。",85);
 activeFoldGroup=9613;
 item(L"STATIC",L"高危 · 工具揭示 CRC 单点保护：关闭",20,605,9197,0,60);next(60);
 activeFoldGroup=0;
