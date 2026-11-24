@@ -139,6 +139,9 @@ static void drainExact(const formation::Preview&preview){
 }
 int main(){
  int cases=0;
+ // A transient null entry in the selected vector must be rejected before
+ // the bridge reads an object's vtable or identity.
+ setup();activate();selected[0]=0;assert(!formationSelectionMatchesPreview());++cases;
  // No WM_MOUSEMOVE or clock advancement occurs between distinct shape keys.
  setup();activate();std::set<Geometry> shapes;
  for(int shape=0;shape<6;++shape){auto before=sh->formationPreview;int samples=selections;message(WM_SYSKEYDOWN,shapeKeys[shape]);auto p=sh->formationPreview;
