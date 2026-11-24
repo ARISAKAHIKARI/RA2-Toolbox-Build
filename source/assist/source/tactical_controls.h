@@ -351,7 +351,7 @@ label(L"右侧建造栏",20,260);choices(combo(9404),{L"完整侧栏",L"只保�
 label(L"切换侧栏快捷键",20,306);{auto h=key(9453,extra.sidebarKey);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
 note(L"实验性：开启实验后默认 F11 循环切换完整／只保留雷达／隐藏。完整绘制一轮后，在安全点调整原生地图范围和显示表面；遇到其他程序改写或不兼容版本会拒绝启用。",44);item(L"STATIC",L"侧边栏：完整",20,605,9407);next();
 toggle(9492,L"硬件黑幕显示（1 槽 · 实验性）",extra.mapVisibility);next();
-note(L"使用一个共享硬件断点开放黑幕显示判断，保留地图探索状态。请与其他黑幕显示、手动揭示方式分别使用。",85);
+note(L"使用一个共享硬件断点开放本地画面的黑幕显示判断，只影响显示，不修改 Cell／House 探索状态；不等价于真正全图揭示、雷达或侦察卫星。请与其他黑幕显示、手动揭示方式分别使用。",85);
 item(L"STATIC",L"硬件黑幕显示：关闭",20,605,9493,0,44);next(44);
 
 toggle(9490,L"高危：每帧持续授予全部超武（实验性）",extra.superweaponGrant);next();
