@@ -375,6 +375,7 @@ static void serviceCooperative(){
  // Do not allocate from a partial prefix of a pointer cohort that is still
  // being admitted/retried by Runtime.
  if(shared->pointer.request!=shared->pointer.ack)return;
+ if(request.pointerRequest!=shared->pointer.request){cooperativeDelivered=request.serial;retryCooperative=false;return;}
  // Read the immutable game-thread frame capture; never independently scan
  // another game frame from the host/UI while preparing this command.
  shared->cooperativeFrameWanted=request.serial;
@@ -392,7 +393,7 @@ static void serviceCooperative(){
  if(retry)cooperative::reserveAccepted(input,acceptedCooperative);
  auto assignments=cooperative::allocate(input);
  if(!freshness::valid(request.match,shared->computeFrameMatch,acquired,frameBefore,GetTickCount(),shared->computeFrame,freshness::Cooperative)||
-    (!retry&&!freshness::intentAlive(request.tick,GetTickCount()))||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeSeq!=seq){wakeGame();return;}
+    (!retry&&!freshness::intentAlive(request.tick,GetTickCount()))||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeRequest.pointerRequest!=request.pointerRequest||shared->pointer.request!=request.pointerRequest||shared->pointer.ack!=request.pointerRequest||shared->cooperativeSeq!=seq){wakeGame();return;}
  // An older sample can propose a target, but cannot prove there are none now.
  if(candidate&&assignments.empty()){wakeGame();return;}
  shared->cooperativeFrameWanted=0;
