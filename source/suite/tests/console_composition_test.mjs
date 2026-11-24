@@ -393,6 +393,25 @@ test('ordinary Escape still cancels an editor and clears search',()=>{
  assert.equal(fixture.actions().length,0);assert.equal(fixture.store.drafts.size,0);
  const search=fixture.document.getElementById('search');search.value='搜索';fixture.dispatch(search,'keydown',{key:'Escape',keyCode:27});assert.equal(search.value,'');
 });
+test('ordinary settings never expose native numeric fallback or duplicate status rows',()=>{
+ const f=setup(),core=f.context.RA2ConsoleCore;
+ const field=(id,type,label,extra={})=>core.canonical({id,type,label,...extra});
+ assert.equal(core.displaySettingLabel(field(1,'hotkey','设置 441')),'快捷键');
+ assert.equal(core.displaySettingLabel(field(2,'choice','设置 410')),'选项');
+ assert.equal(core.displaySettingLabel(field(3,'number','搜索半径')),'搜索半径');
+ const controls=[
+  field(4,'toggle','保持操作权限',{group:'实验功能'}),
+  field(5,'label','保持操作权限：关闭',{nativeId:9537,group:'实验功能'}),
+  field(6,'label','操控私有队列：原实现',{nativeId:9751,group:'实验功能'}),
+  field(7,'label','保持操作权限：未能解除输入锁',{nativeId:9537,group:'实验功能',runtimeError:true}),
+  field(8,'label','当前：60 Hz',{nativeId:9161,group:'实验功能'}),
+  field(9,'label','小图相机：入口冲突或还原未完成',{nativeId:9464,group:'实验功能'})
+ ];
+ const ids=[...core.layoutGroups(controls,'',6).values()].flat().map(c=>c.id);
+ assert.ok(!ids.includes(5)&&!ids.includes(6));
+ assert.ok(ids.includes(4)&&ids.includes(7)&&ids.includes(8)&&ids.includes(9));
+ assert.ok([...core.layoutGroups(controls,'',7).values()].flat().some(c=>c.id===5));
+});
 let failures=0;
 for(const {name,run} of cases){try{run();console.log(`PASS ${name}`)}catch(error){failures++;console.error(`FAIL ${name}\n${error.stack}`)}}
 console.log(JSON.stringify({suite:'console_composition',checks:cases.length,failures,level:'production listeners with controlled DOM event fixture'}));
