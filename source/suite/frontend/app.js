@@ -239,6 +239,29 @@
       return false;
     }));
   }
+  // Dependency captions are a legacy native representation. Keep saved values
+  // in the store, but do not render controls that cannot currently apply.
+  const dependencyPrefix=/^\[(?:需先|需开启|需选择|需要 |当前模式不|此功能暂不可用|当前控制实现不能|规则数据模式)[^\]]*\]\s*/;
+  const dependencyHidden=c=>!c.runtimeError&&dependencyPrefix.test(c.label||c.text||'');
+  function applicableSettings(items,allControls){
+    const aircraft=allControls.find(c=>c.nativeId===9195||c.id===9195);
+    const policy=aircraft?.selected;
+    const quotaIds=new Set([710,711,712,713,714,715,716,717,718,751]);
+    const damageIds=new Set([9794,9795]);
+    return settingLines(items).flatMap(line=>{
+      const ids=line.map(c=>c.nativeId||c.id),first=line[0];
+      if(Number.isInteger(policy)&&policy>=0){
+        if(policy!==0&&(ids.some(id=>quotaIds.has(id))||line.some(c=>c.type==='label'&&/^(?:\[[^\]]+\]\s*)?飞机分配攻击数量$/.test(c.label||c.text))))return [];
+        if(policy!==1&&ids.some(id=>damageIds.has(id)))return [];
+      }
+      if(dependencyHidden(first))return [];
+      const visible=line.filter(c=>!dependencyHidden(c));
+      // A disabled legacy editor may share a label with its caption. Do not
+      // leave that caption stranded if all of its editors were hidden.
+      if(visible.length<line.length&&visible.every(c=>c.type==='label'))return [];
+      return visible;
+    });
+  }
   function groupControls(controls, query = '') {
     const groups=new Map(),needle=query.trim().toLocaleLowerCase();let heading='常用设置';
     for(const control of controls) {
@@ -248,6 +271,7 @@
       const name=control.group || heading;
       if(!groups.has(name))groups.set(name,[]);groups.get(name).push(control);
     }
+    for(const [name,items] of groups){const visible=applicableSettings(items,controls);if(visible.length)groups.set(name,visible);else groups.delete(name);}
     if(needle)for(const [name,items] of groups) {
       const matches=[];
       for(const block of featureBlocks(items)){
@@ -368,7 +392,7 @@
     }
     return {number:'数值',range:'数值',text:'内容'}[control.type] || '';
   }
-  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, fuzzyMatch, groupControls, settingLines, featureBlocks, hasFeatureConfig, layoutGroups, displayPageControls, targetFor, restoredIndex, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
+  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, fuzzyMatch, applicableSettings, groupControls, settingLines, featureBlocks, hasFeatureConfig, layoutGroups, displayPageControls, targetFor, restoredIndex, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
   if (typeof document === 'undefined') return;
 
   const $ = id => document.getElementById(id);
@@ -618,6 +642,7 @@
       const compound=members.length>1,name=first.label || first.text;
       const commandRow=first.type==='button'&&(!subsettings||members.slice(1).some(c=>c.type==='hotkey'));
       line.classList.toggle('action-command-row',commandRow);
+      line.classList.toggle('keyboard-setting-row',members.some(c=>c.type==='hotkey'));
       line.classList.toggle('compound-row',compound);line.classList.toggle('subsettings-line',subsettings);
       const hasPreset=members.some(control=>control.type==='choice' && control.options.includes('仅鼠标') && control.options.includes('自定义'));
       let previous=null,parent=line;
@@ -632,10 +657,10 @@
         // a subordinate field simply because it is not a switch.
         row.element.dataset.settingLevel=control.type==='label'?'status':subsettings || (compound && index>0)?'secondary':'primary';
         row.inlineLabel=compound && index>0 && control.label===name?inlineLabel(control,hasPreset):null;
-        row.element.classList.toggle('inline-hotkey',control.type==='hotkey'&&Boolean(row.inlineLabel));
         // A pushbutton already carries its action name. Do not print it twice.
         if(control.type==='button' && control.label===control.text&&!row.commandAction)row.inlineLabel='';
         if(commandRow&&index>0&&control.type==='hotkey')row.inlineLabel='快捷键';
+        row.element.classList.toggle('inline-hotkey',control.type==='hotkey'&&Boolean(row.inlineLabel));
         patchRow(row);
         placeAfter(parent,row.element,previous);
         if(index===0&&row.companions){parent=row.companions;previous=null;}
