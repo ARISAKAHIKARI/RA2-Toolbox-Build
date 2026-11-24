@@ -155,7 +155,12 @@ static void crcMapShadowTick(){
 }
 static bool crcMapToolBegin(uint32_t house){
  if(!sh||!sh->crcMapShadow)return !crcMapSingleScope.active&&!crcMapSkipStore;
- if(!crcMapActive||crcMapFaulted||crcMapSingleScope.active||crcMapSkipStore||!crcMapWorld())return false;
+ if(!crcMapActive||!crcMapInstalled||crcMapFaulted||crcMapSingleScope.active||crcMapSkipStore||!crcMapWorld())return false;
+ crcMapPrepare();uint8_t actual[7]{};
+ const auto&site=crcMapSite.spec;
+ if(!codeHookRegistry.active(site.address)||!read(site.address,actual,site.size)||memcmp(actual,crcMapSite.patch,site.size)!=0){
+  crcMapFault();return false;
+ }
  crcshadow::Identity id;
  if(!crcMapIdentity(house,id)){crcMapFault();return false;}
  const auto result=crcshadowsingle::begin(crcMapSingleScope,id.epoch,id.pointer,id.id);
