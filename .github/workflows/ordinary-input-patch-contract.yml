@@ -28,6 +28,7 @@ on:
       - 'source/assist/tests/disabled_feature_policy.cpp'
       - 'source/assist/tests/debug_patch_manager.cpp'
       - 'source/assist/tests/debug_patch_manager.py'
+      - 'source/assist/tests/special_patch_inventory_contract.py'
       - 'source/assist/tests/no_interception_source_contract.py'
       - 'source/tools/audit_architecture.py'
       - '.github/workflows/ordinary-input-patch-contract.yml'
@@ -87,6 +88,8 @@ jobs:
         run: python3 source/assist/tests/debug_patch_manager.py --out /tmp/ra2-manager-fixture
       - name: Verify ordinary input routes contain no executable patch path
         run: python3 source/assist/tests/no_interception_source_contract.py
+      - name: Verify special patch inventory and explicit opt-in boundaries
+        run: python3 source/assist/tests/special_patch_inventory_contract.py
       - name: Exercise the host message-hook and polling manager
         run: python3 source/assist/tests/host_input_test.py
       - name: Verify permitted opt-in patch ownership and source boundaries
