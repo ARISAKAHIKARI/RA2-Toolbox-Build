@@ -90,7 +90,7 @@ def run(ROOT, OUT, old_header=None):
      state=std::make_unique<Shared>();sh=state.get();resetRuntimeCooperative();submissions=collects=0;admissionResult=1;
      sh->computeApplied=compute::All;sh->flags=AdvancedEnter;
      auto&r=sh->cooperativeRequest;r.serial=5;r.match=match;r.tick=1000;r.target=20;r.type=30;
-     r.frame=100;r.mode=cooperative::Enter;r.count=1;r.viewWidth=1024;r.viewHeight=768;r.sources[0]={10,0};
+     r.pointerRequest=1;r.mode=cooperative::Enter;sh->pointer.request=sh->pointer.ack=1;r.count=1;r.viewWidth=1024;r.viewHeight=768;r.sources[0]={10,0};
      observedNow=1008;observedFrame=100;
     }
     static void pauseResume(){
@@ -118,7 +118,7 @@ def run(ROOT, OUT, old_header=None):
      init();const auto freshRequest=sh->cooperativeRequest;pauseResume();runtimeCooperativeTick(0x10000,observedFrame,observedNow);
      std::cout<<"OBSERVED unconsumed-request submissions-after-resume="<<submissions<<" shared-serial="<<sh->cooperativeRequest.serial<<'\n';
      check(submissions==0,"unconsumed old cooperative click must be cancelled by pause");
-     sh->cooperativeRequest=freshRequest;sh->cooperativeRequest.serial=6;sh->cooperativeRequest.tick=observedNow;
+     sh->cooperativeRequest=freshRequest;sh->cooperativeRequest.serial=6;sh->cooperativeRequest.tick=observedNow;sh->cooperativeRequest.pointerRequest=2;sh->pointer.request=sh->pointer.ack=2;
      runtimeCooperativeTick(0x10000,observedFrame,observedNow);
      check(sh->runtimeCoopDone==6,"new explicit click after resume remains admissible");
      init();admissionResult=-2;runtimeCooperativeTick(0x10000,observedFrame,observedNow);
@@ -138,7 +138,7 @@ def run(ROOT, OUT, old_header=None):
      init();sh->computeApplied=0;
      const auto& request=sh->cooperativeRequest;
      check(!hostFrameCaptureWanted(7000),"an uncaptured Host request still expires");
-     sh->cooperativeInputFrame.frame=request.frame;
+     sh->cooperativeInputFrame.frame=observedFrame;
      sh->cooperativeInputFrame.match=request.match;
      sh->cooperativeInputFrame.request=request;
      check(!hostFrameCaptureWanted(7000),"a captured request without a retry does not demand new graphs");
