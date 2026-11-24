@@ -1798,6 +1798,7 @@ static bool hostFrameCaptureWanted(DWORD now){
  if(sh->flags&AutoOreReturn)return true;
  if(sh->pointer.request!=sh->pointer.ack)return false;
  const auto&r=sh->cooperativeRequest;
+ if(r.pointerRequest!=sh->pointer.request)return false;
  const auto&captured=sh->cooperativeInputFrame;
  const bool admitted=captured.frame>=0&&captured.request.serial==r.serial&&captured.match==r.match;
  if(compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)||
