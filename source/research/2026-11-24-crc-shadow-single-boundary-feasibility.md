@@ -176,6 +176,6 @@ bridge.cpp 的 RevealMap 分支当前顺序是：
 2. 验证回调只对工具命令指定的 House 设置一次性 skip；其他 House、自然 Reveal 和身份变化均执行原生写入。确认 Map::Reveal 后续没有依赖 MapIsClear 临时变为 1 的非 CRC 读取者；不再把“没有嵌套 CRC”作为门槛，因为单点抑制在 CRC 执行前就保持原值。
 3. 补充 MapIsClear 读取者审计，特别是宽访问、间接地址和扩展模块；不扩大到 Cell/Visionary 状态审计。
 4. 在实际 Runtime 的游戏线程 SEH/finally 边界中验证正常返回、异常退出、作用域清理、House 身份变化和嵌套 Reveal；不引入事后内存恢复流程。
-5. 最后才把八个 detour 改为单点 MapIsClear 写入抑制，并保留原八点实现作为可回退基线，完成新旧方案 CRC 输入逐帧对照。
+5. 最后才把八个 detour 改为单点 MapIsClear 写入抑制，并完成新旧方案 CRC 输入逐帧对照。**不能只把 SiteCount 从 8 改成 1：当前 `restoreCrcMapShadow()` 仍调用 `crcshadow::restoreData()`，可能在卸载时写回 `House+0x241`；单点抑制版从不改数据，卸载时必须只撤销唯一 detour、清理作用域，彻底移除这条事后数据恢复路径。** 原八点实现保留在 Git 历史中作为回退基线，不在新运行时里并存。
 
 如果任一门槛不通过，继续保留现有八点实现，不强行缩减。
