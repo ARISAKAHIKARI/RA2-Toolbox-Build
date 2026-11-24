@@ -62,11 +62,13 @@ for n,p in FILES.items():
   if n!='external_reader/source/process_reader.h':assert 'ReadProcessMemory(GetCurrentProcess(),' in s,n
  if re.search(r'\bSendInput\s*\(|\bSendMessageTimeout[AW]?\s*\(',s):assert n=='shared/source/host_game_input.h',n
  if re.search(r'\bLoadLibrary(?:Ex)?[AW]?\s*\(',s):
-  assert n in ('shared/source/host_game_input.h','cursor/source/main.cpp','external_reader/source/vulkan_compute.h','assist/source/platform_hook_probe_ui.h'),n
+  assert n in ('shared/source/host_game_input.h','shared/source/host_crash.h','cursor/source/main.cpp','external_reader/source/vulkan_compute.h','assist/source/platform_hook_probe_ui.h'),n
   if n=='cursor/source/main.cpp':assert re.findall(r'LoadLibraryW\(([^)]+)\)',s)==['L"shcore.dll"'],n
   if n=='external_reader/source/vulkan_compute.h':assert 'GetSystemDirectoryW(system,MAX_PATH)' in s and 'vulkan-1.dll' in s
   if n=='assist/source/platform_hook_probe_ui.h':
    assert 'LoadLibraryExW(L"comdlg32.dll",nullptr,LOAD_LIBRARY_SEARCH_SYSTEM32)' in s and 'GetProcAddress(dialog,"GetOpenFileNameW")' in s,n
+  if n=='shared/source/host_crash.h':
+   assert 'LoadLibraryExW(L"dbghelp.dll",nullptr,LOAD_LIBRARY_SEARCH_SYSTEM32)' in s and 'GetProcAddress(module,"MiniDumpWriteDump")' in s,n
  if 'gameentry::patch(' in s:assert n in ('assist/source/placement_bridge.h','assist/source/direct_modes_bridge.h','assist/source/network_sender_bridge.h','assist/source/crc_shadow_bridge.h','game_runtime/source/frame_signal_runtime.h','game_runtime/source/native_tooltip_runtime.h'),n
  if re.search(r'\bVirtualProtect\s*\(',s):assert n=='shared/source/game_entry_manager.cpp',n
  if 'constructors::fill(' in s or re.search(r'\benqueue\(',s):assert n=='assist/source/bridge.cpp',n
