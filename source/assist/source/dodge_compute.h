@@ -8,7 +8,7 @@ inline bool retentionExpired(uint32_t now,uint32_t lastSeenAt){return int32_t(no
 // Scatter is selected here; the synchronized native receiver owns movement.
 struct Source {
  uint32_t id=0,pointer=0,token=0,job=0,active=0,busy=0,observed=0,freshThreat=0;
- int frame=0,quietFrame=0,count=0;uint32_t sentAt=0;
+ int frame=0;uint32_t sentAt=0;int quietFrame=0,count=0;
  uint32_t shots[MaxThreats]{};
 };
 struct Decision {uint32_t scatter=0,release=0;};
