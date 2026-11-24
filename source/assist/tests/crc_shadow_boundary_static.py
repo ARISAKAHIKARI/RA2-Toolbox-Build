@@ -66,4 +66,11 @@ assert "if(live!=1)" in candidate and "Result::Conflict" in candidate
 assert "Result::WriteFailed" in candidate and "Result::VerifyFailed" in candidate
 assert "Result::IdentityChanged" in candidate
 
-print("PASS: one existing tool Reveal boundary; one writer in Map::Reveal; three CRC-classified readers; xref gaps retained")
+single = read("research/crc_shadow_single_store_candidate.h")
+assert "scope.skipStore=true" in single
+assert "inline bool consumeSkip" in single
+assert "inline void abort" in single
+assert "pushfd" in single and "popfd" in single
+assert "mov byte ptr [ecx+241h],bl" in single
+
+print("PASS: one existing tool Reveal boundary; one writer in Map::Reveal; three CRC-classified readers; one-site fail-closed store candidate; xref gaps retained")
