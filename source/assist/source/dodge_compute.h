@@ -2,6 +2,8 @@
 #include <cstdint>
 namespace assist { namespace dodgecompute {
 constexpr int MaxSources=128,MaxThreats=128;
+constexpr uint32_t RetentionMs=5000;
+inline bool retentionExpired(uint32_t now,uint32_t lastSeenAt){return uint32_t(now-lastSeenAt)>RetentionMs;}
 // No destinations, trajectory scoring or replacement Attack/Guard orders.
 // Scatter is selected here; the synchronized native receiver owns movement.
 struct Source {
