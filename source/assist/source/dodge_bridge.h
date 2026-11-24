@@ -4,7 +4,7 @@
 // supplies the engine's default coordinate. Both dispatch Scatter(...,true,false).
 // Do not call Scatter locally: its destination/randomness must run on all peers.
 struct DodgeJob {
- uint32_t serial=0,id=0,pointer=0,token=0;int sentFrame=0,quietFrame=0,lastSeen=0,x=0,y=0;uint32_t lastSeenAt=0;
+ uint32_t serial=0,id=0,pointer=0,token=0;int sentFrame=0,quietFrame=0,lastSeen=0,x=0,y=0;uint32_t sentAt=0,lastSeenAt=0;
  bool active=false,observed=false,marker=false;uint32_t shots[32]{};unsigned shotNext=0;
  gateway::Receipt receipt{};
  int reverseFrame=-1;
@@ -85,7 +85,7 @@ static void dodgeRemember(DodgeJob&j,const dodgecompute::Source&s,DWORD now){
 }
 static void dodgeObserve(uint32_t p,uint32_t house,dodgecompute::Source&s){
  s.id=get<uint32_t>(p+0x10);s.pointer=p;s.token=manualVersions.get(s.id);s.frame=get<int>(0xA8ED84);s.busy=dodgeBusy(p,s.frame);
- int j=dodgeIndex(s.id);if(j>=0){const auto&job=dodgeJobs[j];s.job=job.serial;s.active=job.active;s.sentFrame=job.sentFrame;s.quietFrame=job.quietFrame;s.observed=job.observed;}
+ int j=dodgeIndex(s.id);if(j>=0){const auto&job=dodgeJobs[j];s.job=job.serial;s.active=job.active;s.sentAt=job.sentAt;s.quietFrame=job.quietFrame;s.observed=job.observed;}
  int px=get<int>(p+0x9C),py=get<int>(p+0xA0);
  if(sh->dodgeEnabled)for(int n=0;n<dodgeThreatCount&&s.count<dodgecompute::MaxThreats;++n){const auto&ref=dodgeThreatRefs[n];uint32_t q=ref.pointer;if(!dodgeThreatCurrent(ref))continue;
   if(!ref.projectile){if(dodgeThreat(p,q,house)){++s.count;s.freshThreat=1;}continue;}
@@ -168,7 +168,7 @@ static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int fra
   if(eligible<0&&!candidateOnly){cancelDodge(old.id);continue;}
   if(eligible<=0||(candidateOnly&&!dodgeSource(p,house)))continue;
   if((old.job&&(j<0||dodgeJobs[j].serial!=old.job))||(!old.job&&j>=0))continue;
-  dodgecompute::Source s{};dodgeObserve(p,house,s);auto liveDecision=dodgecompute::decide(s);auto d=r.decisions[n];
+  dodgecompute::Source s{};dodgeObserve(p,house,s);auto liveDecision=dodgecompute::decide(s,now);auto d=r.decisions[n];
   if(s.token!=old.token||d.scatter!=liveDecision.scatter||d.release!=liveDecision.release)continue;
   if(d.scatter){
    if(!planningRoom(4)||!outgoingRoom())break;
@@ -176,7 +176,7 @@ static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int fra
    gateway::Receipt receipt;
    if(!nativeObjectEvent(get<int>(house+0x30),0x07,s.id,OrderAuthority::Local,&receipt))continue;
    consumePlanning(4);++sh->dodgeIssued;cancelBurst(s.id);
-   auto&job=dodgeJobs[j];job.active=true;job.observed=false;job.sentFrame=job.quietFrame=frame;
+   auto&job=dodgeJobs[j];job.active=true;job.observed=false;job.sentFrame=job.quietFrame=frame;job.sentAt=now;
    job.x=get<int>(p+0x9C);job.y=get<int>(p+0xA0);job.marker=get<bool>(p+0x6B2);job.receipt=receipt;
   }else if(j<0&&(s.busy&&s.count))j=createDodge(s,now);
   if(j>=0){dodgeRemember(dodgeJobs[j],s,now);if(d.release)finishDodge(dodgeJobs[j]);}
