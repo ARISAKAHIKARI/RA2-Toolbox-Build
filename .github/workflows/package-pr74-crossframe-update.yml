@@ -1,4 +1,4 @@
-name: Package 1.0.52-pre.23 PR77 Update (paired x64 Host / x86 Runtime)
+name: Package 1.0.52-pre.24 PR77 Update (paired x64 Host / x86 Runtime)
 on:
   pull_request:
     paths:
@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 40
     env:
       PYTHONUTF8: "1"
-      UPDATE_FILENAME: RA2Toolbox-1.0.52-pre.23-x64-Update.zip
+      UPDATE_FILENAME: RA2Toolbox-1.0.52-pre.24-x64-Update.zip
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -57,15 +57,15 @@ jobs:
           set -euo pipefail
           python source/tools/package_automation_no_deadlines.py --root update-candidate --sha "$GITHUB_SHA" \
             --output-name "$UPDATE_FILENAME" \
-            --label "1.0.52-pre.23 PR77 synchronous Runtime commands, one-press camera, weapon selection and compact UI" | tee checks/package.log
+            --label "1.0.52-pre.24 PR77 high-FPS input, cooperative, AutoLoad, dodge and Runtime/UI fixes" | tee checks/package.log
       - uses: actions/upload-artifact@v4
         with:
-          name: RA2Toolbox-1.0.52-pre.23-x64-Update
+          name: RA2Toolbox-1.0.52-pre.24-x64-Update
           retention-days: 30
           if-no-files-found: error
           path: update-candidate/${{ env.UPDATE_FILENAME }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pre23-Update-Compile-Evidence
+          name: pre24-Update-Compile-Evidence
           path: checks/
