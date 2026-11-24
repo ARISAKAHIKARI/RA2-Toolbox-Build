@@ -425,7 +425,7 @@ static void testBoardingLedgerUnknown(){
  // A UID replacement cannot retain or complete the predecessor's reservation.
  setupLoad(0);const uint32_t p2=get<uint32_t>(0x820000),v2=get<uint32_t>(0x800000);
  loading::Reservation old{p2,get<uint32_t>(p2+0x10),v2,get<uint32_t>(v2+0x10),1,snap.frame};
- old.kind=kind(p2);old.initial=loadingObservation(p2);old.lastSent=snap.frame;old.retryAfter=snap.frame+30;
+ old.kind=kind(p2);old.initial=loadingObservation(p2);old.lastSent=snap.frame;old.progress=snap.frame;old.lastSentAt=clockNow;old.progressAt=clockNow;old.retryAfterAt=clockNow+loading::RetryIntervalMs;
  check(loadLedger.add(old),"replacement fixture ledger missing");
  loadingFinished=loadingBoarded=loadingResends=0;
  set<uint32_t>(p2+0x10,old.id+1000);advance();autoLoadTick(lastHouse,snap.frame);
