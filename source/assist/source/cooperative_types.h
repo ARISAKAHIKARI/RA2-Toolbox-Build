@@ -16,6 +16,15 @@ struct Source {uint32_t id,token;};
 // retain their original click-time screen projection and viewport bounds.
 struct Request {uint32_t serial,match,tick,target,type;int frame,mode,count,cameraX,cameraY,viewWidth,viewHeight;Source sources[MaxSources];uint32_t centerObject=0;uint32_t airRadiusCells=0,airDamagePercent=0; // frozen at click; zero decodes as legacy 5/120 for older tests
 };
+// One pointer mailbox is processed on the game thread and may need more than
+// one frame when some selected actors are temporarily unresolved. Its request
+// serial, not the simulation frame, defines the click-scoped source batch.
+inline bool sameInputRequest(const Request&r,uint32_t previousInput,uint32_t currentInput,
+                             uint32_t match,uint32_t target,int mode,uint32_t radius,uint32_t percent){
+ return currentInput&&previousInput==currentInput&&r.serial&&r.match==match&&
+  r.target==target&&r.mode==mode&&
+  (mode!=AirDamage||(r.airRadiusCells==radius&&r.airDamagePercent==percent));
+}
 struct Assignment {uint32_t id,token,target,type;double expectedDamage=0;};
 struct Quota {int first=1,second=2,maximum=0;}; // zero maximum = no limit
 // Keep only the unprocessed suffix, preserving the original click timestamp,
