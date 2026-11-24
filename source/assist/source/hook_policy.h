@@ -1,7 +1,7 @@
 #pragma once
 #include "protocol.h"
 #include "disabled_feature_policy.h"
-// Pure flag composition: executable unit tests intentionally do not need Win32.
+// Pure feature-flag composition only; this policy never requests executable code patches.
 namespace assist { namespace hookpolicy {
 struct Switches { bool advanced,smartUnload,eject,autoCS; };
 inline uint32_t resolve(Switches v,bool advancedKeyBound,bool ejectRunning,bool csRunning){
@@ -13,7 +13,5 @@ inline uint32_t resolve(Switches v,bool advancedKeyBound,bool ejectRunning,bool 
  if(r&(AdvancedInput|SmartUnloadOrders|EjectAssist))r|=NativeOrders;
  return r;
 }
-inline bool needsCSInputPatch(uint32_t flags){return (featuregate::flags(flags)&(AutoCS|AdvancedInput|MagnetronInput|CustomCS))!=0;}
-inline bool needsNativeInputPatch(uint32_t flags){return (flags&(AdvancedInput|MagnetronInput|CustomCS))!=0;}
 inline bool needsWorldIndex(bool command,bool activeJobs,uint32_t flags,bool repairDue){return command||activeJobs||repairDue||(flags&(AutoOreReturn|EjectAssist|AntiTheft|SmartUnloadOrders));}
 }}
