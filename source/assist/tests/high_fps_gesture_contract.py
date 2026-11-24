@@ -16,6 +16,8 @@ dodge=(root/"dodge_bridge.h").read_text()
 dodge_policy=(root/"dodge_compute.h").read_text()
 autoload=(root/"autoload_bridge.h").read_text()
 autoload_policy=(root/"autoload.h").read_text()
+reverse=(root/"reverse_dodge_bridge.h").read_text()
+reverse_policy=(root/"reverse_dodge.h").read_text()
 assert "int64_t(frame)-snap.frame>6" not in formation
 assert "frame<snap.frame" in formation
 assert "const uint32_t hostGrace=preview?1000u:formationView.active?600u:150u;" in formation
@@ -54,4 +56,9 @@ assert "RetentionMs=5000" in dodge_policy
 assert "retentionExpired(now,s.sentAt)" in dodge_policy
 assert "frame-s.sentFrame>=300" not in dodge_policy
 assert "dodgecompute::decide(s,now)" in dodge
+assert "reversedodge::withinMergeWindow(now,dodgeJobs[j].reverseAt)" in reverse
+assert "reversedodge::processingExpired(now,shot->tick)" in reverse
+assert "frame-dodgeJobs[j].reverseFrame" not in reverse
+assert "MergeMs=200,ProcessingMs=133,ShotRetentionMs=15000" in reverse_policy
+assert "frame-shot->frame>8" not in reverse
 print("PASS high-FPS input guard: real-time freshness, click-scoped multi-frame cohort, safe cancellation and wall-clock task lease")
