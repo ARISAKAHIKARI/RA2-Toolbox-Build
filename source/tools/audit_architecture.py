@@ -67,7 +67,7 @@ for n,p in FILES.items():
   if n=='shared/source/host_crash.h':
    assert 'LoadLibraryExW(L"dbghelp.dll",nullptr,LOAD_LIBRARY_SEARCH_SYSTEM32)' in s and 'GetProcAddress(module,"MiniDumpWriteDump")' in s,n
   if n=='shared/source/gpu_surface_win32.h':
-   assert 'GetSystemDirectoryW(path,MAX_PATH)' in s and 'LoadLibraryW((std::wstring(path,n)+L"\\\\ "+name).c_str())' not in s
+    assert 'GetSystemDirectoryW(path,MAX_PATH)' in s and 'std::wstring(path,n)' in s and r'L"\\' in s and 'LoadLibraryW(' in s,n
   if n=='cursor/source/main.cpp':assert re.findall(r'LoadLibraryW\(([^)]+)\)',s)==['L"shcore.dll"'],n
   if n=='external_reader/source/vulkan_compute.h':assert 'GetSystemDirectoryW(system,MAX_PATH)' in s and 'vulkan-1.dll' in s
   if n=='external_reader/source/process_file_description.h':assert 'LoadLibraryExW(L"version.dll",nullptr,LOAD_LIBRARY_SEARCH_SYSTEM32)' in s,n
