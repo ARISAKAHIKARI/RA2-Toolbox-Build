@@ -82,6 +82,9 @@ assert "currentHouse!=scope.house" in single[single.index("inline bool abort"):]
 assert "inline bool consumeSkip" in single
 assert "pushfd" in single and "popfd" in single
 assert "mov byte ptr [ecx+241h],bl" in single
+assert "resume at the original next instruction 0x577DB6" in single
+assert "Do not read," in single and "Visionary state" in single
+assert "Cell" not in single and "0x240" not in single
 assert "actual naked trampoline and Win32 SEH wiring are not implemented" in single
 
 # Keep the zero-patch post-call restoration candidate as a comparison only.
