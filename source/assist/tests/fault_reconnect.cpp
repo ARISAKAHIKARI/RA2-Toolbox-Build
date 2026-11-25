@@ -43,6 +43,8 @@ static uint32_t inputMatch,indexedInputMatch;static int inputFrame,indexedInputF
 static bool throwTick,throwFilter,callbackOwnsLease,sampleInput;
 static unsigned filterCalls;
 static unsigned publications;
+static unsigned sampleReadDepth;
+static bool sampleReadComplete=true,runtimeDirectActions=false;
 static LONG InterlockedExchange(volatile LONG*p,LONG v){LONG old=*p;*p=v;return old;}
 static LONG InterlockedCompareExchange(volatile LONG*p,LONG v,LONG expected){LONG old=*p;if(old==expected)*p=v;return old;}
 static LONG InterlockedIncrement(volatile LONG*p){return ++*p;}
@@ -203,8 +205,8 @@ static bool publicationUnwind(){
  withInputPublication(&storage,42,5001,99,false,[]{});
  const bool unchanged=storage.computeFrameSeq==12&&storage.computeFrameSerial==1&&storage.computeFrameTick==5000;
  bool forwarded=false;
- try{withInputPublication(&storage,42,5002,100,true,[]{throw 9;});}catch(int value){forwarded=value==9;}
- const bool invalid=forwarded&&storage.computeFrameSeq==14&&storage.computeFrameSerial==1&&!storage.computeFrameMatch&&!storage.computeFrameTick&&storage.computeFrame==-1&&inputMatch==0&&inputFrame==-1&&indexedInputMatch==0&&indexedInputFrame==-1&&!externalInputFrame&&storage.request==9&&storage.ack==8;
+ try{withInputPublication(&storage,42,5002,100,true,[]{runtimeDirectActions=true;throw 9;});}catch(int value){forwarded=value==9;}
+ const bool invalid=forwarded&&!runtimeDirectActions&&storage.computeFrameSeq==14&&storage.computeFrameSerial==1&&!storage.computeFrameMatch&&!storage.computeFrameTick&&storage.computeFrame==-1&&inputMatch==0&&inputFrame==-1&&indexedInputMatch==0&&indexedInputFrame==-1&&!externalInputFrame&&storage.request==9&&storage.ack==8;
  withInputPublication(&storage,42,5003,100,true,[]{});
  return normal&&unchanged&&invalid&&storage.computeFrameSeq==16&&storage.computeFrameSerial==2&&storage.computeFrame==100&&storage.computeFrameMatch==42;
 }
