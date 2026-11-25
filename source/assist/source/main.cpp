@@ -153,7 +153,7 @@ static int labelScalePercent=100,constructionScalePercent=100;
 static visual::Motion motion;static visual::LabelView labelViews[MaxLabels];
 #include "enemy_clusters.h"
 static external::enemies::Frame clusteredEnemies;
-static std::vector<enemyclusters::Group> enemyGroups;
+static enemyclusters::GroupCache enemyGroups;
 static visual::LabelView clusteredEnemyViews[MaxLabels];
 static visual::Motion enemyMotion;static Snapshot enemySample{};static visual::LabelView enemyViews[MaxLabels];
 static_assert(external::enemies::Maximum<=MaxLabels,"Enemy markers reuse the existing display Motion capacity");
@@ -1518,7 +1518,6 @@ static void updateEnemyDisplay(const Snapshot&source){
  enemySample.cameraX=source.cameraX;enemySample.cameraY=source.cameraY;
  for(int i=0;i<f.count;++i){const auto&m=f.items[i];enemySample.label[i]={m.id,m.x,m.y,0,0,0,0,0,m.color,0};}
  enemyMotion.update(enemySample,f.frame);
- enemyGroups=enemyclusters::group(f);
  // Count-specific text is shared across equal groups; bound historical counts.
  if(enemyRasters.size()>4096)enemyRasters.clear();
 }
@@ -1912,7 +1911,7 @@ static std::shared_ptr<const Frame> rasterize(const Job&j){
  // Each raster worker owns its pool; published pixels remain immutable until
  // all consumers release them. Bound retained buffers to normal HUD sizes.
  static thread_local asyncwork::FramePool<Frame,3> pool;
- auto out=uint64_t(j.w)*j.h<=4*1024*1024?pool.acquire():std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->projection=j.projection;out->sourceTick=j.sourceTick;out->pixels.resize(size_t(j.w)*j.h);std::fill(out->pixels.begin(),out->pixels.end(),0u);
+ auto out=uint64_t(j.w)*j.h<=4*1024*1024?pool.acquire():std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->projection=j.projection;out->sourceTick=j.sourceTick;const auto retained=std::min(out->pixels.size(),size_t(j.w)*j.h);out->pixels.resize(size_t(j.w)*j.h);std::fill_n(out->pixels.begin(),retained,0u);
  Bitmap bm(j.w,j.h,j.w*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(out->pixels.data()));{Graphics g(&bm);j.draw(g);}return out;
 }
 static asyncwork::Latest<Job,Frame> worker(rasterize);
@@ -2014,7 +2013,7 @@ static void paint(){
  const auto&rawEnemyFrame=enemyTextFrame();
  for(int i=0;i<statusCount;++i)nativeviewhost::localPoint(viewportTransform,statusViews[i].x,statusViews[i].y);
  int rawEnemyCount=enemyTextEnabled()&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
- int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups,clusteredEnemies,clusteredEnemyViews):0;
+ int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups.update(rawEnemyFrame),clusteredEnemies,clusteredEnemyViews):0;
  std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
  for(int i=0;i<enemyCount;++i)nativeviewhost::localPoint(viewportTransform,enemyViews[i].x,enemyViews[i].y);
  const auto&enemyFrame=clusteredEnemies;
