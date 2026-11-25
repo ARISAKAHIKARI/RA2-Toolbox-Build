@@ -10,10 +10,10 @@
 #include <cstring>
 
 int main(int argc,char**argv){
-    consolemodel::Snapshot snapshot;snapshot.module=2;snapshot.generation=1;snapshot.revision=1;snapshot.page="tactical/5";snapshot.title=u8"调试";
+    consolemodel::Snapshot snapshot;snapshot.module=2;snapshot.generation=1;snapshot.revision=1;snapshot.page="tactical/7";snapshot.title=u8"调试";
     std::set<std::uint32_t> ids;std::size_t checks=0;
     auto check=[&](bool okay,const char*what){++checks;if(!okay){std::cerr<<"FAIL "<<what<<'\n';std::exit(1);}};
-    check(suite::categories::Debug==5&&suite::categories::Count==6,"six categories preserve debug index");
+    check(suite::categories::Debug==7&&suite::categories::Count==8,"eight categories preserve debug index");
     const int oldExtra[]={123};check(suite::categories::row(5,oldExtra,1)==suite::categories::Automatic,"legacy native section 5 retains automatic classification");
     for(const char*label:{u8"入口调试：用途、影响特性与实时安装状态",u8"每项独立保存。关闭校验不启用对应功能；调用、补丁、断点各自控制。"}){
         consolemodel::Control c;c.id=std::uint32_t(snapshot.controls.size()+1);c.type="label";c.label=c.text=label;c.readonly=true;snapshot.controls.push_back(c);
