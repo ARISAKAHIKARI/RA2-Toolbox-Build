@@ -230,6 +230,20 @@ void graphs(){
   CHECK(s.read(unitProduct+0x10,&uid,4)&&uid==62);
   CHECK(s.read(unitProduct+0x6C0,&unitType,4)&&unitType==type);
   CHECK(s.read(unitQueue,&unitType,4)&&unitType==type);
+  // The real passive Host acquisition must preserve the Resources profile.
+  // Verify the own factory products and queue without demand-page retries.
+  m.put(unitQueue,type);m.put(unitProduct+0x6C0,type);
+  auto boundary=std::make_shared<worldframe::Snapshot>();auto k=key();
+  k.demand=worldframe::BoundaryOnlyKeyBit;boundary->reset(k);CHECK(boundary->seal());
+  worldframe::VisualCache cache;Read live{&m};
+  auto observed=cache.acquire(boundary,worldframe::Resources,200,live);
+  CHECK(observed&&observed->controlSource==boundary);
+  CHECK(observed->read(product+0x10,&uid,4)&&uid==61);
+  CHECK(observed->read(unitQueue,&unitType,4)&&unitType==type);
+  CHECK(observed->read(unitProduct+0x6C0,&unitType,4)&&unitType==type);
+  const auto calls=m.calls.size();
+  CHECK(cache.acquire(boundary,worldframe::Resources,201,live)==observed);
+  CHECK(m.calls.size()==calls&&cache.statistics.captures==1);
  }
  {Memory m;setup(m);
   constexpr uint32_t type=0x721100,counts=0x725100,factory=0x727100,product=0x729100,queue=0x72C100;

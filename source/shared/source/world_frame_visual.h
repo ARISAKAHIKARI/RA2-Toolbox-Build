@@ -61,7 +61,7 @@ class VisualCache {
  CaptureScratch scratch_;DemandLeases leases_;std::vector<uint32_t>requests_;
  VisualStamp latestStamp_;
  uint64_t revision_=0,builtRevision_=0,serial_=0;uint32_t builtDemand_=0,attemptedAt_=0;Token attempted_;
- static constexpr std::array<uint32_t,7> VisualGraphDemands{Base,Combat,Passengers,Ore,Bullets,Visual,MonitorStats};
+ static constexpr std::array<uint32_t,8> VisualGraphDemands{Base,Combat,Passengers,Ore,Bullets,Visual,Resources,MonitorStats};
  std::array<uint32_t,VisualGraphDemands.size()>demandTicks_{};uint32_t demanded_=0;
 public:
  struct Statistics {uint64_t captures=0,reused=0,failed=0;};Statistics statistics;
@@ -76,11 +76,11 @@ public:
   // read-only Host cache expands them into actor/passenger/combat graph
   // ranges; the published game-thread boundary remains small.
   const uint32_t visualDetails=demand&uint32_t(HostVisualPassengers|HostVisualCombat|HostVisualOre);
-  demand=(demand&~uint32_t(Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre))|Base;
+  demand=(demand&~uint32_t(HostVisualPassengers|HostVisualCombat|HostVisualOre))|Base;
   if(visualDetails&HostVisualPassengers)demand|=Passengers;
   if(visualDetails&HostVisualCombat)demand|=Combat;
   if(visualDetails&HostVisualOre)demand|=Ore;
-  // MonitorStats is a sparse flag, not one of the first six bits.
+  // Resources and MonitorStats are explicit Host graph profiles, not Runtime demand.
   // Retain it in the same lease union so repeated panel reads do not fault
   // the same factory/count pages back into the next visual capture.
   uint32_t combined=0;for(size_t bit=0;bit<VisualGraphDemands.size();++bit){const uint32_t flag=VisualGraphDemands[bit];if(demand&flag){demanded_|=flag;demandTicks_[bit]=now;}if((demanded_&flag)&&uint32_t(now-demandTicks_[bit])<=250)combined|=flag;}
