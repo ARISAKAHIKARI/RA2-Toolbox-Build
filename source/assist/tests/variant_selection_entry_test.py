@@ -17,7 +17,7 @@ expectations={
     "saved shortcut": "variantKey='T'|(2<<8)" in settings,
     "editable input": 'extraControls[VariantKey]=key(724,extra.variantKey);' in ui,
     "visible caption": 'label(L"按当前武器选择同类单位",20,306);' in ui,
-    "dedicated UI owner": '{724,categories::Control,L"选兵与编组",L"按当前武器选择同类单位",true,{724}}' in layout,
+    "dedicated UI owner": '{724,categories::Keyboard,L"键鼠与选兵",L"按当前武器选择同类单位",true,{724}}' in layout,
     "registered shortcut": "registerKey(1700,WORD(extra.variantKey))" in host,
     "host activation": "sendSelection(-2,global)" in actions,
     "runtime handler": "static int selectVariant(uint32_t house,bool global)" in runtime,
