@@ -100,7 +100,7 @@ def production():
     add(function(reverse, "static bool reverseVector("))
     add(reverse[reverse.index("struct ReverseTarget"):reverse.index("static bool reverseDodgeTick(")])
     scope = source["world_frame_runtime.h"]
-    scope_text = "static worldframe::DemandLeases runtimeDemandLeases;\nstatic bool worldFrameBoundaryOnly=false;\nstatic bool(*runtimeDirectReader)(uint32_t,void*,size_t)=nullptr;\nstatic bool sampleDirectRead=false;\nstatic void rememberMissingWorldSpan(uint32_t,size_t){}\n" + "\n".join(
+    scope_text = "static worldframe::DemandLeases runtimeDemandLeases;\nstatic bool worldFrameBoundaryOnly=false;\nstatic bool runtimeDirectActions=false;\nstatic void rememberMissingWorldSpan(uint32_t,size_t){}\n" + "\n".join(
         function(scope, signature) + (";" if signature.startswith("class ") else "")
         for signature in ("static void requestWorldRange(", "static bool readWorldSample(",
                           "class SampleReadScope", "class ObservationReadScope")) + "\n"
