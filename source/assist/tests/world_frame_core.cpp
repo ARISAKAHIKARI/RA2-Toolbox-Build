@@ -710,8 +710,11 @@ void hostIsolation(){
  Read live{&m};worldframe::CaptureGraph<Read>graph(*raw,live);CHECK(graph.capture(worldframe::Base,{}));CHECK(raw->seal());server.observe(raw->key);server.publish(*raw);
  currentPid=HostPid;CHECK(reader.beginWorldFrame(7));auto derived=reader.worldFrameToken();CHECK(derived&&derived->controlSource);
   CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
- constexpr uint32_t extra=0x760100;m.put(extra,0x12345678u);uint32_t value=0;const auto before=rpmCalls;CHECK(!reader.read(extra,&value,4)&&rpmCalls==before&&!reader.worldFrameComplete());reader.endWorldFrame();
- CHECK(server.requests().empty());clock+=16;CHECK(reader.beginWorldFrame(7));derived=reader.worldFrameToken();CHECK(reader.read(extra,&value,4)&&value==0x12345678u);reader.endWorldFrame();CHECK(server.requests().empty());
+ constexpr uint32_t extra=0x760100;m.put(extra,0x12345678u);uint32_t value=0;const auto before=rpmCalls;CHECK(!reader.read(extra,&value,4)&&rpmCalls==before&&!reader.worldFrameComplete());
+ // Changing the next requested profile must not send this display miss
+ // into the producer's dependency queue.
+ reader.setWorldDemand(worldframe::Base);reader.endWorldFrame();
+ CHECK(server.requests().empty());reader.setWorldDemand(worldframe::Resources);clock+=16;CHECK(reader.beginWorldFrame(7));derived=reader.worldFrameToken();CHECK(reader.read(extra,&value,4)&&value==0x12345678u);reader.endWorldFrame();CHECK(server.requests().empty());
  // A command scope unwraps the frozen authoritative source. It cannot read
  // an additional display page, nor can it fall back to live memory.
  reader.setWorldDemand(worldframe::Base);CHECK(reader.beginWorldFrame(7,derived));
