@@ -368,7 +368,7 @@ public:
                 s.module = static_cast<unsigned>(n);
                 if (!integer("category", 0, 7, n)) return false;
                 s.category = static_cast<int>(n);
-                if (s.category == 7 && s.module != 2) return fail("Debug category requires tactical module");
+                if (s.module != 2 && s.category != 0) return fail("Tactical category requires tactical module");
                 if (field("pageIndex")) {
                     if (!integer("pageIndex", 0, 10, n)) return false;
                     s.pageIndex = static_cast<int>(n);
