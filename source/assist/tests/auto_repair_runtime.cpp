@@ -50,6 +50,7 @@ static bool autoWas;static DWORD lastAuto;
 static repairdelivery::Pending<> pendingRepairs;
 static worldframe::Snapshot worldFrame;
 static bool worldFrameReady=false,sampleReadComplete=true,sampleAvailable=true;
+static bool runtimeDirectActions=false;
 static unsigned sampleReadDepth=0;static uint32_t missingSamplePage=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};static std::vector<uint32_t> runtimeWorldDemands;
 static bool runtimeDemandOverflow=false,runtimeDemandBufferPrepared=false;
