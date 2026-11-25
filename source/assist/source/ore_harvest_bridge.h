@@ -125,7 +125,20 @@ static int oreHarvestCell(int x,int y,int speed,uint32_t*pointer=nullptr){
 struct OreHarvestState {double cargo=-1;int mission=-1,queued=-1;bool unloading=false,onMap=false,limbo=true;uint32_t destination=0;};
 static int oreHarvestState(const OreHarvestJob&j,uint32_t house,OreHarvestState&out){
  uint32_t vt=0,id=0,type=0,typeID=0,owner=0,carrier=0;int hp=0;uint8_t alive=0,disabled=0,unloading=0,onMap=0,limbo=1;float storage[4]{};
- if(!oreHarvestRead(j.pointer,vt)||!oreHarvestRead(j.pointer+0x10,id)||!oreHarvestRead(j.pointer+0x6C,hp)||
+ if(runtimeDirectActions&&!sampleReadDepth){
+  // Nearby native fields can be copied in small contiguous groups. Keep
+  // these facts callback-local; no whole-object snapshot or page lease.
+  uint8_t identity[0x14],state[0x4C],typeState[0xE];
+  if(!read(j.pointer,identity,sizeof identity)||!read(j.pointer+0x6C,state,sizeof state)||
+     !read(j.pointer+0x6C4,typeState,sizeof typeState)||
+     !oreHarvestRead(j.pointer+0x21C,owner)||!oreHarvestRead(j.pointer+0x1C8,disabled)||
+     !oreHarvestRead(j.pointer+0x11C,carrier)||!read(j.pointer+0x33C,storage,sizeof storage)||
+     !oreHarvestRead(j.pointer+0x5A4,out.destination))return 0;
+  memcpy(&vt,identity,4);memcpy(&id,identity+0x10,4);
+  memcpy(&hp,state,4);onMap=state[0x74-0x6C];limbo=state[0x81-0x6C];alive=state[0x90-0x6C];
+  memcpy(&out.mission,state+0xAC-0x6C,4);memcpy(&out.queued,state+0xB4-0x6C,4);
+  memcpy(&type,typeState,4);unloading=typeState[0x6D1-0x6C4];
+ }else if(!oreHarvestRead(j.pointer,vt)||!oreHarvestRead(j.pointer+0x10,id)||!oreHarvestRead(j.pointer+0x6C,hp)||
     !oreHarvestRead(j.pointer+0x21C,owner)||!oreHarvestRead(j.pointer+0x6C4,type)||!oreHarvestRead(j.pointer+0x90,alive)||
     !oreHarvestRead(j.pointer+0x1C8,disabled)||!oreHarvestRead(j.pointer+0x11C,carrier)||!oreHarvestRead(j.pointer+0x6D1,unloading)||
     !oreHarvestRead(j.pointer+0x74,onMap)||!oreHarvestRead(j.pointer+0x81,limbo)||!read(j.pointer+0x33C,storage,sizeof storage)||
@@ -136,7 +149,14 @@ static int oreHarvestState(const OreHarvestJob&j,uint32_t house,OreHarvestState&
 }
 static int oreHarvestRefinery(const OreHarvestJob&j,uint32_t house){
  uint32_t id=0,owner=0,type=0,typeID=0,links=0;int hp=0,count=0;uint8_t alive=0,onMap=0,limbo=1;
- if(!oreHarvestRead(j.refineryPointer+0x10,id)||!oreHarvestRead(j.refineryPointer+0x21C,owner)||!oreHarvestRead(j.refineryPointer+0x520,type)||
+ if(runtimeDirectActions&&!sampleReadDepth){
+  uint8_t state[0x25];uint32_t radio[2];
+  if(!oreHarvestRead(j.refineryPointer+0x10,id)||!oreHarvestRead(j.refineryPointer+0x21C,owner)||
+     !oreHarvestRead(j.refineryPointer+0x520,type)||!read(j.refineryPointer+0x6C,state,sizeof state)||
+     !read(j.refineryPointer+0xE4,radio,sizeof radio))return -2;
+  memcpy(&hp,state,4);onMap=state[0x74-0x6C];limbo=state[0x81-0x6C];alive=state[0x90-0x6C];
+  links=radio[0];memcpy(&count,&radio[1],4);
+ }else if(!oreHarvestRead(j.refineryPointer+0x10,id)||!oreHarvestRead(j.refineryPointer+0x21C,owner)||!oreHarvestRead(j.refineryPointer+0x520,type)||
     !oreHarvestRead(j.refineryPointer+0x6C,hp)||!oreHarvestRead(j.refineryPointer+0x90,alive)||!oreHarvestRead(j.refineryPointer+0x74,onMap)||
     !oreHarvestRead(j.refineryPointer+0x81,limbo)||!oreHarvestRead(j.refineryPointer+0xE8,count)||!oreHarvestRead(j.refineryPointer+0xE4,links))return -2;
  if(id!=j.refinery||owner!=house||type!=j.refineryType||hp<=0||!alive||!onMap||limbo)return -1;
