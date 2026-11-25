@@ -119,7 +119,7 @@ void hostVisual(){
  CHECK(visual->find(actorPage)&&visual->find(actorPage)->full);
  CHECK(!cache.request({actorPage},101,false,visual));
  CHECK(cache.acquire(raw,worldframe::Resources,101,live)==visual&&m.calls.size()==calls);
- CHECK(cache.statistics.captures==1);
+ CHECK(cache.statistics.captures==1&&cache.statistics.buildInitial==1&&cache.statistics.coveredLeases==1);
  CHECK(worldframe::authoritative(visual)==raw&&!worldframe::sameObservation(raw,visual));
  CHECK(worldframe::visualDemand(worldframe::Resources|worldframe::Visual));
  CHECK(!worldframe::visualDemand(worldframe::Resources|worldframe::Combat));
@@ -140,6 +140,7 @@ void hostVisual(){
  CHECK(!cache.request({extra&~4095u},117,true,visual));
  CHECK(cache.acquire(raw,worldframe::Resources,117,live)==extended);
  CHECK(m.calls.size()==repairedCalls);
+ CHECK(cache.statistics.buildRevision==1&&cache.statistics.buildSameSource==1&&cache.statistics.repairedReports==1);
  CHECK(cache.request({extra&~4095u},117,true,extended));
  CHECK(!cache.acquire(extended,worldframe::Visual,133,live));
  // Independent world/frame guards, including a mutation during collection.
@@ -194,7 +195,7 @@ void hostVisual(){
  const auto worldCalls=m.calls.size();const auto worldCaptures=fast.statistics.captures;
  CHECK(!fast.request({0xE80000},235,true,rewindCapture));
  CHECK(fast.acquire(changedWorld,worldframe::Resources,235,live)==freshWorld);
- CHECK(m.calls.size()==worldCalls&&fast.statistics.captures==worldCaptures);
+ CHECK(m.calls.size()==worldCalls&&fast.statistics.captures==worldCaptures&&fast.statistics.retiredReports==1);
  CHECK(fast.request({0xE80000},235,true,freshWorld));
  std::printf("PASS Host visual isolation: control %u reads/%u bytes/%zu pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection\n",rawCalls,rawBytes,rawPages);
 }

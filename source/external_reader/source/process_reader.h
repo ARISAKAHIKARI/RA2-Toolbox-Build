@@ -159,6 +159,7 @@ public:
    ((uint64_t(frame->key.connectionHigh)<<32)|frame->key.connectionLow)==generation()&&
    uint32_t(now-worldSubscribedAt_)<50&&worldClient_->unchanged(worldframe::authoritative(frame),now);
  }
+ bool tryVisualStatistics(worldframe::VisualCache::Statistics&out){return worldClient_&&worldClient_->tryVisualStatistics(out);}
  std::shared_ptr<void> worldPublicationSignal(){return worldClient_?worldClient_->publicationSignal():std::shared_ptr<void>{};}
  void endWorldFrame(){
   if(worldClient_&&!worldDemands_.empty()){

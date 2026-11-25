@@ -528,6 +528,35 @@ static void logSamplingHealth(DWORD now){
   L" capturedThroughFrame="+std::to_wstring(d.workerLastFrame)+
   L" scope=worker-aggregates;not-per-frame-atomic");
  prior=values;
+ // Connection-shared Host cache, without blocking on a capture or changing IPC.
+ worldframe::VisualCache::Statistics v{};
+ if(externalReader.tryVisualStatistics(v)){
+  static worldframe::VisualCache::Statistics old{};
+  static uint64_t visualGeneration=0;static uint32_t visualMatch=0,visualAt=0;
+  const bool resetVisual=visualGeneration!=externalReader.generation()||visualMatch!=incoming.match||
+    v.captures<old.captures||v.failed<old.failed||v.reused<old.reused||
+    v.buildInitial<old.buildInitial||v.buildRevision<old.buildRevision||v.buildProfile<old.buildProfile||
+    v.buildRefresh<old.buildRefresh||v.buildSameSource<old.buildSameSource||
+    v.coveredLeases<old.coveredLeases||v.repairedReports<old.repairedReports||v.retiredReports<old.retiredReports;
+  if(resetVisual)old=v;
+  autolog::write(L"sampling-visual-cache pid="+std::to_wstring(pid)+
+   L" match="+std::to_wstring(incoming.match)+
+   L" warmup="+std::to_wstring(resetVisual)+
+   L" windowMs="+std::to_wstring(resetVisual?0u:uint32_t(now-visualAt))+
+   L" captures="+std::to_wstring(v.captures-old.captures)+
+   L" reused="+std::to_wstring(v.reused-old.reused)+
+   L" failed="+std::to_wstring(v.failed-old.failed)+
+   L" buildInitial="+std::to_wstring(v.buildInitial-old.buildInitial)+
+   L" buildRevision="+std::to_wstring(v.buildRevision-old.buildRevision)+
+   L" buildProfile="+std::to_wstring(v.buildProfile-old.buildProfile)+
+   L" buildRefresh="+std::to_wstring(v.buildRefresh-old.buildRefresh)+
+   L" buildSameSource="+std::to_wstring(v.buildSameSource-old.buildSameSource)+
+   L" coveredLeases="+std::to_wstring(v.coveredLeases-old.coveredLeases)+
+   L" repairedReports="+std::to_wstring(v.repairedReports-old.repairedReports)+
+   L" retiredReports="+std::to_wstring(v.retiredReports-old.retiredReports)+
+   L" scope=shared-host-visual-cache;build-reasons-exclusive-except-same-source");
+  old=v;visualGeneration=externalReader.generation();visualMatch=incoming.match;visualAt=now;
+ }
 }
 static void logBridgeHealth(bool force=false){
  // Independent five-second interval, even when bridge-health logs more often

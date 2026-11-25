@@ -279,6 +279,12 @@ public:
  template<class Live>Token visual(const Token&source,uint32_t demand,Live live){
   std::lock_guard<std::mutex>lock(visualMutex_);return visuals_.acquire(source,demand,GetTickCount(),live);
  }
+ // Diagnostics never wait for another Host task's capture.
+ bool tryVisualStatistics(VisualCache::Statistics&out){
+  std::unique_lock<std::mutex>lock(visualMutex_,std::try_to_lock);
+  if(!lock.owns_lock())return false;
+  out=visuals_.statistics;return true;
+ }
  void requestVisual(const std::vector<uint32_t>&pages,bool retry,const Token&reported={}){
   std::lock_guard<std::mutex>lock(visualMutex_);visuals_.request(pages,GetTickCount(),retry,reported);
  }

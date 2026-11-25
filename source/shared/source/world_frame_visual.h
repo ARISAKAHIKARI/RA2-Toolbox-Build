@@ -64,7 +64,11 @@ class VisualCache {
  static constexpr std::array<uint32_t,8> VisualGraphDemands{Base,Combat,Passengers,Ore,Bullets,Visual,Resources,MonitorStats};
  std::array<uint32_t,VisualGraphDemands.size()>demandTicks_{};uint32_t demanded_=0;
 public:
- struct Statistics {uint64_t captures=0,reused=0,failed=0;};Statistics statistics;
+ struct Statistics {
+  uint64_t captures=0,reused=0,failed=0;
+  uint64_t buildInitial=0,buildRevision=0,buildProfile=0,buildRefresh=0,buildSameSource=0;
+  uint64_t coveredLeases=0,repairedReports=0,retiredReports=0;
+ };Statistics statistics;
  // Report whether this request invalidated the built visual observation.
  // A full lease table can evict an expired page and admit a new one without
  // changing size; the insertion status, not the count, proves new demand.
@@ -73,7 +77,7 @@ public:
   // Ignore its obsolete visual dependencies before touching the lease table.
   // Keep explicit requests and reports without an older visual serial intact.
   if(reported&&reported->controlSource&&latest_&&
-     reported->visualSerial<latest_->visualSerial&&!reported->key.sameWorld(latest_->key))return false;
+     reported->visualSerial<latest_->visualSerial&&!reported->key.sameWorld(latest_->key)){++statistics.retiredReports;return false;}
   bool added=false;
   const bool sameVisualWorld=reported&&reported->controlSource&&latest_&&
     reported->key.sameWorld(latest_->key);
@@ -83,7 +87,7 @@ public:
    // Keep its lease for future observations without rebuilding this one.
    // Explicit requests without a visual token retain the previous behavior.
    const auto*covered=sameVisualWorld?latest_->find(page):nullptr;
-   if(!covered||!covered->full)added=true;
+   if(!covered||!covered->full)added=true;else ++statistics.coveredLeases;
   }
   // A delayed display reader may report a miss after another reader has
   // already repaired it. Suppress only retry reports from an older sealed
@@ -96,7 +100,7 @@ public:
    for(uint32_t page:pages){const auto*old=reported->find(page);const auto*next=latest_->find(page);
     repaired|=!old||!old->full;covered&=next&&next->full;if(!covered)break;
    }
-   if(repaired&&covered)retry=false;
+   if(repaired&&covered){retry=false;++statistics.repairedReports;}
   }
   if(added||retry){++revision_;return true;}
   return false;
@@ -136,6 +140,13 @@ public:
    if(boundaryOnlySource(source->key))validatedReuseSource_=source;
    ++statistics.reused;return latest_;
   }
+  // Actual graph build attempts: mutually exclusive reasons, with same-source
+  // counted independently. Guard failures before this point are not builds.
+  if(!latest_)++statistics.buildInitial;
+  else if(builtRevision_!=revision_)++statistics.buildRevision;
+  else if(demand&~builtDemand_)++statistics.buildProfile;
+  else ++statistics.buildRefresh;
+  if(base_==source)++statistics.buildSameSource;
   attempted_=source;attemptedAt_=now;
   auto next=SnapshotPool::acquire(pool_);if(!next->extendVisual(source)){++statistics.failed;return {};}
   requests_.clear();leases_.append(now,requests_);std::sort(requests_.begin(),requests_.end());
