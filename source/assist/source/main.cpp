@@ -2223,7 +2223,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
   setConsoleFeedback(GetDlgItem(ui,9176),message);setConsoleRuntimeError(GetDlgItem(ui,9176),r<0);notify(message);return;
  }
  if(c==PlaceCompletedBuilding){
-  notify(r==2?(shared->placementPreview.active?L"已自动匹配当前栏的完成建筑：地基预览已开启，左键放置，右键或 Esc 取消。":L"已取消放置预览。"):r>0&&n==1?L"建筑放置事件已提交；是否落地以游戏结果为准。":L"预览未开启：请先退出原生建造／维修／出售／超武光标，确认当前建筑／防御栏有已完成产品。");
+  notify(r==2?(shared->placementPreview.active?L"已自动匹配当前栏的完成建筑：地基预览已开启，左键放置，右键或 Esc 取消。":L"已取消放置预览。"):r>0&&n==1?L"建筑放置事件已提交；是否落地以游戏结果为准。":L"预览未开启：请先退出原生建造／维修／出售／超武鼠标指针，确认当前建筑／防御栏有已完成产品。");
   updatePlacementEventUI();return;
  }
  if(c==OpenTech&&r==-45){if(shared&&shared->techParameterStatus<0)notify(L"参数拦截未能启用；请查看下方参数拦截状态与错误。其他工具占用的硬件断点不会被覆盖。");else notify(L"正在等待硬件断点安装或还原，完成后自动继续；请查看下方参数拦截状态。");return;}
@@ -2489,7 +2489,7 @@ static void updateModeStatus(DWORD now){
    state==1?(requested?L"已启用（实验性）":L"正在关闭"):requested?L"等待适配启用":L"关闭";};
   std::wstring network=L"高危 · 事件所属方保留：";if(shared&&shared->networkHouseStatus<0)network+=stateText(extra.networkHouseRequested(),shared->networkHouseStatus);else if(extra.basicControlRequested()){network+=L"当前控制模式下不请求启用";if(shared&&shared->networkHouseStatus)network+=L"（旧状态待还原或检查）";}else network+=stateText(extra.networkHouseRequested(),shared?shared->networkHouseStatus:0);
   SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
-  std::wstring sell=L"高危 · 原生变卖光标：";
+  std::wstring sell=L"高危 · 原生变卖鼠标指针：";
   if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
   else if(shared&&nativesell::failureText(shared->nativeSellCursorStatus))sell+=nativesell::failureText(shared->nativeSellCursorStatus);
   else sell+=stateText(extra.nativeSellCursor,shared?shared->nativeSellCursorStatus:0);
