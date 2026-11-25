@@ -653,6 +653,18 @@ static void testRepair(){
  worldFrameReady=false;check(collectRepairs(lastHouse,clockNow,true)==-6&&sh->repairTask==task&&repairCount==2,"repair absent sample published empty work");
  std::puts("PASS repair internal/Host outputs, pending-toggle facts and failed refresh retention");
 }
+static void testDodgeThreatIndex(){
+ static dodgecompute::ThreatIndex index;index.clear();
+ check(index.add(100,4)&&index.add(200,2)&&index.add(100,2)&&index.add(200,5)&&index.add(300,1)&&index.add(100,0),"threat index admission");
+ index.seal();int seen[8]{},count=0;
+ index.visit(100,200,[&](int n){seen[count++]=n;return true;});
+ check(count==4&&seen[0]==0&&seen[1]==2&&seen[2]==4&&seen[3]==5,"threat index must preserve collection order and deduplicate two keys");
+ count=0;index.visit(100,100,[&](int n){seen[count++]=n;return count<2;});
+ check(count==2&&seen[0]==0&&seen[1]==2,"same-key query or threat cap");
+ count=0;index.visit(400,500,[&](int){++count;return true;});check(!count,"unrelated threats visited");
+ index.clear();index.seal();index.visit(100,200,[&](int){++count;return true;});check(!count,"old threats survived callback reset");
+ std::puts("PASS ordered native dodge index, duplicate keys, cap and callback reset");
+}
 static void testDirectCombatDodge(){
  reset();sh->computeApplied=compute::All;sh->flags=AdvancedInput;sh->dodgeEnabled=1;
  const uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),
@@ -815,5 +827,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDirectCombatDodge();testDirectMissileLoad();testOre();testDirectOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDodgeThreatIndex();testDirectCombatDodge();testDirectMissileLoad();testOre();testDirectOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
