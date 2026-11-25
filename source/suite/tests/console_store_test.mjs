@@ -613,35 +613,52 @@ if (!failed && process.argv.includes('--browser')) {
     const compactState=(patch={})=>({kind:'state',protocol:1,module:0,generation:6,revision:revision++,page:'cursor',controls:compound,status:'',...patch});
     await receive(compactState());await page.setViewportSize({width:1240,height:880});await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
     const line=page.locator('.compound-row');await line.waitFor();
-    assert.equal(await line.count(),1);assert.equal(await line.locator('.setting-row').count(),4);
+    // The preset is represented by the same native hotkey value. The legacy
+    // four tokens now render as a switch plus one keyboard/mouse options menu.
+    assert.equal(await line.count(),1);
+    assert.equal(await line.locator('.setting-row').count(),3);
+    assert.equal(await line.locator('#control-0-703').count(),0,'no redundant preset editor');
     const compoundHotkey=line.locator('.setting-row[data-type="hotkey"]');
-    const compoundHotkeyLayout=await compoundHotkey.evaluate(element=>({basis:getComputedStyle(element).flexBasis,row:element.getBoundingClientRect(),editor:element.querySelector('.setting-editor').getBoundingClientRect()}));
-    assert.equal(compoundHotkeyLayout.basis,'auto','compound shortcuts keep a stable compact intrinsic width instead of forcing a full-width line');
-    assert.ok(Math.abs(compoundHotkeyLayout.row.right-compoundHotkeyLayout.editor.right)<2,'compound shortcut editors share the right alignment');
+    const options=compoundHotkey.locator('.hotkey-options summary');
+    const compactKey=compoundHotkey.locator('.hotkey-capture');
+    const mouse=line.locator('#control-0-740');
     assert.equal(await line.locator('.setting-label').filter({hasText:/^高级进驻$/}).count(),1);
     assert.equal(await line.locator('[data-setting-level="primary"]').count(),1);
-    assert.equal(await line.locator('[data-setting-level="secondary"]').count(),3);
-    const hierarchy=await line.evaluate(element=>{const labels=[...element.querySelectorAll('.setting-label')],main=getComputedStyle(labels[0]),sub=getComputedStyle(labels[1]),name=labels[0].getBoundingClientRect(),toggle=element.querySelector('.toggle').getBoundingClientRect();return{mainSize:parseFloat(main.fontSize),subSize:parseFloat(sub.fontSize),mainWeight:Number(main.fontWeight),subWeight:Number(sub.fontWeight),mainColor:main.color,subColor:sub.color,switchOffset:element.getBoundingClientRect().right-toggle.right,switchCenterDelta:(toggle.top+toggle.height/2)-(name.top+name.height/2)};});
-    assert.ok(hierarchy.mainSize>hierarchy.subSize && hierarchy.mainWeight>hierarchy.subWeight,'feature names must read above their smaller subsettings');
-    assert.notEqual(hierarchy.mainColor,hierarchy.subColor,'secondary captions must use their quieter color');
-    console.log('COMPOUND_HIERARCHY',JSON.stringify(hierarchy));
+    assert.equal(await line.locator('[data-setting-level="secondary"]').count(),2);
+    assert.equal(await options.isVisible(),true);
+    assert.equal(await compactKey.isVisible(),false,'keyboard editor starts in the closed menu');
+    assert.equal(await mouse.isVisible(),false,'mouse editor starts in the closed menu');
+    const hierarchy=await line.evaluate(element=>{
+      const name=element.querySelector('[data-setting-level="primary"] > .setting-copy > .setting-label');
+      const toggle=element.querySelector('.toggle').getBoundingClientRect(),box=name.getBoundingClientRect();
+      return {switchOffset:element.getBoundingClientRect().right-toggle.right,switchCenterDelta:(toggle.top+toggle.height/2)-(box.top+box.height/2)};
+    });
     assert.ok(Math.abs(hierarchy.switchOffset)<2 && Math.abs(hierarchy.switchCenterDelta)<3,'the feature name and fixed right switch share one line');
-    assert.ok((await line.boundingBox()).height<=96,'the complete feature must fit in at most two compact lines on desktop');
-    await page.getByLabel('高级进驻 · 鼠标',{exact:true}).selectOption('1');
+    assert.ok((await line.boundingBox()).height<=96,'closed feature fits at most two compact lines on desktop');
+    await options.click();await mouse.waitFor();await compactKey.waitFor();
+    assert.equal(await mouse.inputValue(),'5');
+    assert.equal(await compactKey.getAttribute('data-bound'),'true');
+    await mouse.selectOption('1');
     action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,740);assert.equal(action.action,'select');assert.equal(action.value,1);
-    const compactKey=page.getByRole('button',{name:'高级进驻 · 自定义键',exact:true});await compactKey.click();
+    await compactKey.click();
     await compactKey.evaluate(element=>{window.__compactKey=element;});await receive(compactState({controls:compound.map(c=>c.id===702?{...c,checked:false}:c)}));
     await page.waitForFunction(()=>!document.getElementById('control-0-702').checked);
     assert.equal(await compactKey.evaluate(element=>element===window.__compactKey && document.activeElement===element),true,'background revisions preserve the focused editor node');
-    await page.keyboard.press('Escape');
+    await page.keyboard.down('Control');await page.keyboard.press('k');await page.keyboard.up('Control');
+    action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,704);assert.equal(action.action,'hotkey');assert.equal(action.value,0x224b);
+    await page.keyboard.press('Escape');assert.equal(await mouse.isVisible(),false);
     for(const viewport of [{width:1794,height:900},{width:1240,height:880},{width:720,height:780},{width:390,height:720}]) {
       await page.setViewportSize(viewport);await assertFits();
       await page.screenshot({path:diagnosticsPrefix+'-compact-'+viewport.width+'.png',fullPage:false});
+      await options.click();await mouse.waitFor();await assertFits();
+      await page.keyboard.press('Escape');assert.equal(await mouse.isVisible(),false);
     }
-    await page.setViewportSize({width:1240,height:880});await page.getByLabel('高级进驻',{exact:true}).click();
+    await page.setViewportSize({width:1240,height:880});await page.locator('#control-0-702').click();
     action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,702);assert.equal(action.action,'toggle');
     await page.locator('#search').fill('左键');await page.waitForFunction(()=>document.getElementById('resultCount').textContent==='找到 4 项设置');
-    assert.equal(await line.locator('.setting-row').count(),4,'search retains sibling editors and the feature switch');await page.locator('#search').fill('');
+    assert.equal(await options.isVisible(),true,'search retains the unified editor and the feature switch');
+    await options.click();await mouse.waitFor();await compactKey.waitFor();
+    await page.keyboard.press('Escape');await page.locator('#search').fill('');
     const pairedShortcut=[
       {id:9042,type:'toggle',label:'磁电全局无限吸',checked:true,row:120,column:20},
       {id:9511,type:'hotkey',label:'磁电全局无限吸',selected:0,options:['press','release'],row:120,column:345}
