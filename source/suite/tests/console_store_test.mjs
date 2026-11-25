@@ -526,7 +526,7 @@ if (!failed && process.argv.includes('--browser')) {
     await directory.press('Enter'); assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),'C:\\RA2');
     const list=page.getByLabel('常驻单位类型',{exact:true}); await list.selectOption('2'); await list.press('Enter');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).action),'activate'); assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),2);
-    const hotkeyRow=page.locator('.setting-row[data-type="hotkey"]').first();await hotkeyRow.scrollIntoViewIfNeeded();const hotkey=hotkeyRow.locator('.hotkey-capture');await hotkey.click();await page.keyboard.down('Control'); await page.keyboard.press('k'); await page.keyboard.up('Control');
+    const hotkeyRow=page.locator('.setting-row[data-type="hotkey"]').first();await hotkeyRow.scrollIntoViewIfNeeded();await hotkeyRow.locator('.hotkey-options summary').click();const hotkey=hotkeyRow.locator('.hotkey-capture');await hotkey.click();await page.keyboard.down('Control'); await page.keyboard.press('k'); await page.keyboard.up('Control');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).action),'hotkey'); assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),0xb24b,'hold and double flags must survive chord capture');
     await receive({kind:'shell',protocol:1,config:{pending:1,busy:true,failed:false},error:''});
     await page.waitForFunction(()=>document.getElementById('saveState').textContent!=='已保存');
