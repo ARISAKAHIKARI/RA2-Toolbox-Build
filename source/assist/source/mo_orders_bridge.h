@@ -14,7 +14,7 @@ static moorders::Point moStroke[moorders::Nodes],moRoute[moorders::Waypoints];
 static moorders::Point moCurrent;
 static int moStrokeCount=0,moRouteCount=0,moMode=0,moStage=0,moNodeAt=0,moActorAt=0;
 static uint32_t moEpoch=0,moHouse=0,moStarted=0,moPreviewAt=0,moOutlineAt=0,moHover=0;
-static bool moOutlineDirty=false;
+static bool moOutlineDirty=false,moPreviewTargetRetry=false;
 static int moStageFrame=0,moStartFrame=0;static bool moHolding=false,moFeedback=false,moWaitingForTargets=false;
 static inputownership::ReleaseWatch moReleaseWatch;
 static bool moWaypointSubmitted=false;static mopatrol::Path moPaths[moorders::Actors];
@@ -50,7 +50,7 @@ static void resetMoOrders(){
  moReleaseWatch.clear();
  if(moWaypointSubmitted&&sh)sh->moOrderStatus=uint32_t(-16);moWaypointSubmitted=false;
  moHolding=moWaitingForTargets=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;
- moFlightCount=moFlightCursor=0;moFlightSample=0;moPreview={};moCurrent={};moOutlineDirty=false;moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
+ moFlightCount=moFlightCursor=0;moFlightSample=0;moPreview={};moCurrent={};moOutlineDirty=moPreviewTargetRetry=false;moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
 }
 static bool moOrdersContext(bool preview=false){
  // A brief host render stall must not destroy a read-only captured preview.
@@ -304,7 +304,7 @@ static void moUpdateOutline(){
 }
 static void moBuildPreview(){
  moPreview={};moPreview.active=moHolding;moPreview.mode=moMode;
- if(moMode!=int(moorders::Patrol))moAssignments(true);
+ moPreviewTargetRetry=moMode!=int(moorders::Patrol)&&!moAssignments(true);
  moUpdateOutline();moPreviewAt=sampleClock(sh);moOrdersPublish();
 }
 static void moSamplePreview(moorders::Point point){
@@ -434,7 +434,8 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now,bool indexedWorkRead
  if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext(moHolding)||!moCapturedPolicy(true)){resetMoOrders();return;}
  if(moHolding){
   if(!moCapturedHold()){resetMoOrders();return;}
-  if(indexedWorkReady&&DWORD(now-moPreviewAt)>=400)moBuildPreview();
+  // The first gesture after a zero-page idle boundary may lack target data.
+  if(indexedWorkReady&&DWORD(now-moPreviewAt)>=(moPreviewTargetRetry?16u:400u))moBuildPreview();
   else if((moOutlineDirty&&DWORD(now-moOutlineAt)>=16)||DWORD(now-moPreview.tick)>=400){moUpdateOutline();moOrdersPublish();}
   return;
  }
