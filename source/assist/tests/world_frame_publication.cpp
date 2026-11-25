@@ -13,6 +13,19 @@ static void fill(Snapshot&frame,uint32_t serial,unsigned pages=8){
 }
 static bool bytes(const Publication&job){for(size_t p=0;p<job.pages.size();++p)for(auto byte:job.pages.data()[p].bytes)if(byte!=uint8_t(job.key.serial))return false;return true;}
 int main(){
+ {PublicationPool pool;Snapshot frame;bool queued=true;Publication job;
+  assert(!pool.submit(frame,&queued)&&!queued);
+  assert(pool.begin(frame));fill(frame,1);
+  assert(pool.submit(frame,&queued)&&queued);
+  for(unsigned i=0;i<1000;++i)assert(pool.submit(frame,&queued)&&!queued);
+  assert(pool.take(job)&&job.key.serial==1&&bytes(job));
+  for(unsigned i=0;i<1000;++i)assert(pool.submit(frame,&queued)&&!queued);
+  Publication extra;assert(!pool.take(extra));pool.finish(job);
+  // An actual retry after the previous ownership ends must still signal.
+  assert(pool.submit(frame,&queued)&&queued);assert(pool.take(job)&&bytes(job));pool.finish(job);
+  assert(pool.submit(frame,&queued)&&queued);pool.invalidate();assert(!pool.take(job));
+  assert(pool.submit(frame,&queued)&&queued);assert(pool.take(job)&&pool.current(job));pool.finish(job);
+ }
  {PublicationPool pool;Snapshot frame;assert(pool.begin(frame));fill(frame,1);assert(pool.submit(frame));Publication held;assert(pool.take(held)&&pool.current(held));const auto*original=held.pages.data();
   std::set<const Page*>addresses{original};
   for(uint32_t i=2;i<=10000;++i){assert(pool.begin(frame));fill(frame,i);addresses.insert(frame.pages.data());assert(pool.submit(frame));assert(bytes(held)&&held.pages.data()==original&&held.key.tick==101);}

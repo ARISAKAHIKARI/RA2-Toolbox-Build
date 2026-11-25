@@ -18,5 +18,9 @@ jobs:
           python-version: '3.12'
       - name: Exercise production snapshot and Host display cache headers
         run: python3 source/assist/tests/world_frame_core_test.py
+      - name: Verify bounded publication handoff and duplicate submission
+        run: |
+          g++ -std=c++17 -O2 -UNDEBUG -pthread -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/world_frame_publication.cpp -o /tmp/publication-pool
+          /tmp/publication-pool
       - name: Check read-only display wiring
         run: python3 source/assist/tests/display_capture_runtime_wiring.py

@@ -29,7 +29,8 @@ public:
    }
   }return false;
  }
- bool submit(const Snapshot&frame){
+ bool submit(const Snapshot&frame,bool*queued=nullptr){
+  if(queued)*queued=false;
   if(!frame.sealed()||frame.overflow()||frame.controlSource)return false;
   auto&slot=slots_[current_];
   // An already pending/in-flight view is immutable; never rewrite its metadata.
@@ -38,6 +39,7 @@ public:
   slot.job.epoch=epoch_.load(std::memory_order_acquire);slot.job.slot=current_;
   slot.pins.fetch_add(1,std::memory_order_relaxed);
   const int replaced=pending_.exchange(current_,std::memory_order_acq_rel);if(replaced>=0)release(replaced);
+  if(queued)*queued=true;
   return true;
  }
  bool take(Publication&out){

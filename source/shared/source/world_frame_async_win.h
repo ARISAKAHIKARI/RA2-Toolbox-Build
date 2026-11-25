@@ -102,7 +102,12 @@ public:
   // reachable. Restart a worker and let its own Server verify/rebuild the map.
   if(thread_&&control.published(frame))return true;
   if(attemptSerial_.load(std::memory_order_acquire)==frame.key.serial&&attemptEpoch_.load(std::memory_order_relaxed)==epoch&&uint32_t(GetTickCount()-attemptAt_.load(std::memory_order_relaxed))<16)return false;
-  if(!launch()||!pool_.submit(frame))return false;SetEvent(event_);return true;
+  // A pinned view is already pending or in flight. Waking its worker
+  // repeatedly on the same logic frame does not publish another byte.
+  bool queued=false;
+  if(!launch()||!pool_.submit(frame,&queued))return false;
+  if(queued)SetEvent(event_);
+  return true;
  }
  // Poll only. Ordinary Runtime detach cannot acknowledge stop or unload while
  // the worker still uses a source lease or executes module code. No join here.
