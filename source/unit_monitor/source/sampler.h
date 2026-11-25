@@ -57,7 +57,12 @@ template<class Read,class Resolve> class Sampler {
     char cameo[25]={};Type pending{};int level=0;uint32_t owners=0;uint8_t insignificant=0,spawned=0;
     if(!required(p+1750,cameo,24)||!required(p+36,pending.id,23)||!required(p+1588,&level,4)||
        !required(p+1740,&owners,4)||!required(p+562,&insignificant,1)||!required(p+3412,&spawned,1))return false;
-    pending.ptr=p;pending.category=c;pending.index=int(ix);pending.id[23]=0;memcpy(pending.cameo,cameo,sizeof cameo);if(resolveCameo)resolveCameo(pending,state.match);
+    pending.ptr=p;pending.category=c;pending.index=int(ix);pending.id[23]=0;memcpy(pending.cameo,cameo,sizeof cameo);if(resolveCameo){
+     resolveCameo(pending,state.match);
+     // Keep a nonempty original name if resolution is temporarily unavailable.
+     // Explicit None still participates in the existing exclusion below.
+     if(!pending.cameo[0]&&cameo[0])memcpy(pending.cameo,cameo,sizeof cameo);
+    }
     bool has=pending.cameo[0]&&!sameAscii(pending.cameo,"none")&&!sameAscii(pending.cameo,"<none>");
     if(!buildable(level,owners,insignificant!=0,spawned!=0,has))continue;
     if(state.typeCount==MaxTypes){state.truncated++;continue;}
@@ -88,10 +93,12 @@ template<class Read,class Resolve> class Sampler {
   }
   sidebarKnown=true;
   auto less=[&](const Type&a,const Type&b){
-   if(a.category!=b.category)return a.category<b.category;
+   const auto group=[](int category){return category==0?0:category==3?2:1;};
+   if(group(a.category)!=group(b.category))return group(a.category)<group(b.category);
    const int ar=a.index>=0&&a.index<4096?ranks[a.category][a.index]:300;
    const int br=b.index>=0&&b.index<4096?ranks[b.category][b.index]:300;
-   return ar==br?a.index<b.index:ar<br;
+   if(ar!=br)return ar<br;
+   return a.category==b.category?a.index<b.index:a.category<b.category;
   };
   if(!std::is_sorted(state.types,state.types+state.typeCount,less)){
    std::sort(state.types,state.types+state.typeCount,less);
