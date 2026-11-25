@@ -567,7 +567,7 @@ if (!failed && process.argv.includes('--browser')) {
     await page.getByLabel('主开关 9601',{exact:true}).waitFor();
     assert.equal(await page.locator('button.group-summary').count(),0);
     assert.equal(await page.locator('#foldAll').textContent(),'全部展开');
-    const first=page.locator('.settings-group').filter({has:page.getByText('参数组 9601',{exact:true})});
+    const first=page.locator('.feature-card').filter({has:page.getByLabel('主开关 9601',{exact:true})});
     const firstConfig=first.locator('.feature-config-toggle');
     await page.locator('#foldAll').click();await page.getByLabel('子参数 9601',{exact:true}).waitFor();
     assert.equal(await firstConfig.getAttribute('aria-expanded'),'true');
@@ -577,18 +577,21 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await first.locator('.feature-main-control .setting-row').getAttribute('title'),'只在悬停时显示说明');
     assert.equal(await first.locator('.setting-description:visible').count(),0,'ordinary help must not occupy a row');
     const failing=new Set([9607,9612,9613,9614]);await receive(foldedState(folded.map(c=>failing.has(Math.floor(c.id/10))&&c.type==='label'?{...c,label:'错误待还原 '+Math.floor(c.id/10),runtimeError:true}:c)));
+    const pageGroup=page.locator('.settings-group').first();
+    const status=pageGroup.locator('.group-status[data-tone="error"]');
     for(const n of failing){
-      const section=page.locator('.settings-group').filter({has:page.getByText('参数组 '+n,{exact:true})});await section.scrollIntoViewIfNeeded();
-      const status=section.locator('.group-status[data-tone="error"]');await status.waitFor();assert.ok((await status.textContent()).includes('错误待还原 '+n));
-      const config=section.locator('.feature-config-toggle');
+      const feature=page.locator('.feature-card').filter({has:page.getByLabel('主开关 '+n,{exact:true})});await feature.scrollIntoViewIfNeeded();
+      await status.waitFor();assert.ok((await status.textContent()).includes('错误待还原 '+n));
+      const config=feature.locator('.feature-config-toggle');
       assert.equal(await config.getAttribute('aria-expanded'),'false','errors do not silently reopen parameters');
       await config.click();assert.equal(await config.getAttribute('aria-expanded'),'true');
       await config.click();assert.equal(await config.getAttribute('aria-expanded'),'false');
-      assert.equal(await status.isVisible(),true,'error text stays outside the collapsed parameters');
+      assert.equal(await status.isVisible(),true,'error text stays outside the collapsed feature card');
     }
     await page.locator('#foldAll').click();await page.waitForFunction(()=>document.getElementById('foldAll').textContent==='全部收起');
     await page.locator('#foldAll').click();await page.waitForFunction(()=>document.getElementById('foldAll').textContent==='全部展开');
-    assert.equal(await page.locator('.group-status[data-tone="error"]:visible').count(),4,'bulk folding retains every error');
+    assert.equal(await page.locator('.group-status[data-tone="error"]:visible').count(),1,'page-level status retains every error');
+    for(const n of failing)assert.ok((await status.textContent()).includes('错误待还原 '+n));
     await receive(foldedState(folded));await page.waitForFunction(()=>[...document.querySelectorAll('.group-status[data-tone="error"]')].every(element=>!element.getClientRects().length));
     await page.locator('#search').fill('子参数 9601');await page.getByLabel('子参数 9601',{exact:true}).waitFor();
     assert.equal(await page.locator('.settings-group').count(),1);
