@@ -394,7 +394,15 @@ public:
   const Key observed=channel_->observed;const uint32_t tick=channel_->observedTick;MemoryBarrier();
   return seq==channel_->observationSeq&&tick&&uint32_t(GetTickCount()-tick)<=1000&&key.sameWorld(observed)&&key.frame<=observed.frame;
  }
- void observe(const Key&key){if(role_!=Role::Control||!needed(GetTickCount()))return;InterlockedIncrement(&channel_->observationSeq);channel_->observed=key;channel_->observedTick=GetTickCount();MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);}
+ void observe(const Key&key,bool coalesceDisplayBoundary=false){
+  const uint32_t now=GetTickCount();if(role_!=Role::Control||!needed(now))return;
+  // Passive display metadata needs a heartbeat, not a new write on every
+  // high-refresh callback. World/frame changes and retired slots bypass this.
+  if(coalesceDisplayBoundary&&hasPublication()&&channel_->observedTick&&
+     !(channel_->observationSeq&1)&&channel_->observed.sameFrame(key)&&
+     uint32_t(now-channel_->observedTick)<16)return;
+  InterlockedIncrement(&channel_->observationSeq);channel_->observed=key;channel_->observedTick=now;MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);
+ }
  template<class Frame>bool published(const Frame&frame)const{
   if(!channel_||!connectionMatches(channel_,frame.key.connectionLow,frame.key.connectionHigh))return false;
   const LONG active=channel_->active;if(active<0||active>1)return false;const auto&slot=channel_->slots[active];const LONG seq=slot.seq;if(seq&1)return false;
