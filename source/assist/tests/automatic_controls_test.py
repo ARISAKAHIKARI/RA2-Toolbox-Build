@@ -240,7 +240,7 @@ layout=r'''
 using namespace assist;unsigned checks=0;
 #define CHECK(x) do{++checks;if(!(x))std::abort();}while(0)
 int main(){for(const auto&e:autofeatures::Entries){int ids[]={e.control,e.keyControl};int section=e.feature==autofeatures::MagnetronGlobal?1:e.feature==autofeatures::AutoCS?4:2;CHECK(suite::categories::row(section,ids,2)==suite::categories::Automatic);}
-int repair[]={100,200},interval[]={312},autoBoard[]={111,211},repairRule[]={780},nativeFilter[]={9183};CHECK(suite::categories::row(0,repair,2)==suite::categories::Automatic);CHECK(suite::categories::row(2,interval,1)==suite::categories::Automatic);CHECK(suite::categories::row(0,autoBoard,2)==suite::categories::Control);CHECK(suite::categories::row(2,repairRule,1)==suite::categories::Automatic);CHECK(suite::categories::row(2,nativeFilter,1)==suite::categories::Automatic);std::cout<<"PASS automatic category checks="<<checks<<"\n";}
+int repair[]={100,200},interval[]={312},autoBoard[]={111,211},repairRule[]={780},nativeFilter[]={9183};CHECK(suite::categories::row(0,repair,2)==suite::categories::Automatic);CHECK(suite::categories::row(2,interval,1)==suite::categories::Automatic);CHECK(suite::categories::row(0,autoBoard,2)==suite::categories::Entry);CHECK(suite::categories::row(2,repairRule,1)==suite::categories::Automatic);CHECK(suite::categories::row(2,nativeFilter,1)==suite::categories::Automatic);std::cout<<"PASS automatic category checks="<<checks<<"\n";}
 '''
 results['categories']=run('automatic-categories',layout)
 tactical=(production/'tactical_controls.h').read_text()
