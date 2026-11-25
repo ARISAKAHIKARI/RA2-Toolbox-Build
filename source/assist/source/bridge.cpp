@@ -1120,8 +1120,8 @@ static int findIdle(uint32_t house,int mode){
 static void requestTypeCatalogue(){
  catalogueReady=false;catalogueRequestedAt=GetTickCount();worldFrameCatalogueProbeAt=0;
 }
-static bool scanTypes(){
- if(!sampleReadDepth||!sampleReadComplete)return false;
+static bool scanTypes(bool direct=false){
+ if(direct?sampleReadDepth!=0:(!sampleReadDepth||!sampleReadComplete))return false;
  struct Projection {Type types[MaxTypes];uint32_t pointers[MaxTypes];uint8_t allowed[MaxTypes];};
  static Projection next;
  int count=0;
@@ -1131,6 +1131,7 @@ static bool scanTypes(){
   const Vec types=vec(arrays[k],4096);
   for(int i=0;i<types.count&&count<MaxTypes;++i){
    const uint32_t type=item(types,i);
+   if(type<0x10000)return false;
    const int level=get<int>(type+0x634);
    const bool insignificant=get<bool>(type+0x232)&&!techEnhancementCatalogueIncludesInsignificant(type,arrays[k],i,level);
    if(!validType(techEnhancementCatalogueLevel(type,level),insignificant,get<bool>(type+0xD54),get<uint32_t>(type+0x6CC)))continue;
@@ -1144,7 +1145,7 @@ static bool scanTypes(){
    ++count;
   }
  }
- if(!sampleReadComplete)return false;
+ if(!direct&&!sampleReadComplete)return false;
  std::copy_n(next.types,count,snap.types);std::copy_n(next.pointers,count,typePointers);
  std::fill(std::begin(techAllowed),std::end(techAllowed),0);std::copy_n(next.allowed,count,techAllowed);
  snap.typeCount=count;catalogueDirty=true;return true;
@@ -2023,8 +2024,22 @@ static void tick(){
  commandDormant=false;
  techEnhancementTick(now);techEnhanceParametersTick(house,now);mapVisibilityParametersTick(house);
  const bool catalogueDue=newMatch||!worldFrameCatalogueProbeAt||DWORD(now-worldFrameCatalogueProbeAt)>=DWORD(catalogueReady?500:100);
+ // Ordinary catalogue publication is a bounded type-metadata walk, not a
+ // tactical graph consumer. Enhancement policies still consult the legacy
+ // sealed catalogue until their independent discovery is migrated.
+ const bool nativeCatalogue=!worldFrameCommandWorker.enabled()&&!sh->techEnhance&&
+  sh->computeApplied==compute::All&&gameentry::active(gameentry::Client::Assist);
+ const bool graphCatalogueDue=catalogueDue&&!nativeCatalogue;
+ if(catalogueDue&&nativeCatalogue){
+  external::catalogue::Stamp stamp{};
+  if(external::catalogue::capture(readLiveWorld,stamp)&&
+     ((catalogueReady&&catalogueHash==stamp.hash)||scanTypes(true))){
+   catalogueHash=stamp.hash;catalogueReady=true;catalogueAt=now;
+   catalogueRequestedAt=0;worldFrameCatalogueProbeAt=now;
+  }
+ }
  uint32_t worldDemand=worldframe::Base;
- if(catalogueDue)worldDemand|=worldframe::TypeCatalogue;
+ if(graphCatalogueDue)worldDemand|=worldframe::TypeCatalogue;
  if(sharedWorldWanted)worldDemand|=worldFrameServer.demandMask();
  if(sh->dodgeEnabled||dodgeCount)worldDemand|=worldframe::Bullets|worldframe::Combat;
  if(sh->missileEnabled||missileHoldCount||sh->minerDefenseEnabled||minerDefensePending()||sh->magnetronGlobal||sh->magnetronDrop||(sh->flags&(AdvancedInput|MagnetronInput|AircraftSpread|AdvancedEnter|AntiTheft))||nativeCount||runtimeCoopPending||unloadCount||queuedUnload.count)worldDemand|=worldframe::Combat;
@@ -2061,7 +2076,7 @@ static void tick(){
  // retain their old path. Pointer admission is independent of visual publication.
  const bool directCommand=sh->request==sh->ack||
   sh->command==Repair||sh->command==AutoBoard||sh->command==SmartUnload||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
- const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&!catalogueDue&&
+ const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&!graphCatalogueDue&&
   !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
   !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread|AutoOreReturn|AntiTheft))&&
   !selectionPending&&!planPending&&!cooperativePending&&
@@ -2077,7 +2092,7 @@ static void tick(){
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldframe::Base|worldframe::HostDisplayOnly,true);
  else if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
- if(worldFrame.catalogue.attempted||worldFrameCandidate.catalogue.attempted){
+ if(!nativeCatalogue&&(worldFrame.catalogue.attempted||worldFrameCandidate.catalogue.attempted)){
   ObservationReadScope sample;
   if(sample&&sampleWorldSource->catalogue.complete){
    const auto sourceTick=sampleWorldSource->key.tick;
