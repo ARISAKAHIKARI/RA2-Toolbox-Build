@@ -653,6 +653,38 @@ static void testRepair(){
  worldFrameReady=false;check(collectRepairs(lastHouse,clockNow,true)==-6&&sh->repairTask==task&&repairCount==2,"repair absent sample published empty work");
  std::puts("PASS repair internal/Host outputs, pending-toggle facts and failed refresh retention");
 }
+static void testDirectCombatDodge(){
+ reset();sh->computeApplied=compute::All;sh->flags=AdvancedInput;sh->dodgeEnabled=1;
+ const uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),
+  target=object(type,2,30,0x30000,1200,1000),owner=object(airType,0,21,0x30000),bullet=alloc();
+ makeWeapon(type);nativeOrders[0]={20,0,0,planner::OrdinaryMove,false,p};nativeCount=1;
+ set<uint32_t>(bullet,0x7E46E4);set<uint32_t>(bullet+0x10,50);set<int>(bullet+0x6C,25);
+ set<bool>(bullet+0x90,true);set<uint32_t>(bullet+0xB0,owner);set<uint32_t>(bullet+0x10C,p);
+ set<int>(bullet+0x140,1000);set<int>(bullet+0x144,1000);set<double>(bullet+0xE8,5.);
+ vectorAt(0xA8EC78,0x800000,{p,target,owner});vectorAt(0xA8ED40,0x810000,{bullet});
+ // Model the dispatcher-local native index without copying a single page.
+ worldObjects.unbind();worldObjects.clear();worldObjects.add(p,20);worldObjects.add(target,30);worldObjects.add(owner,21);
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct combat boundary");
+ worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ int a=0,b=0;
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count>=2&&planningWorld.actors[0].x==1000,
+       "native planner required a copied graph");
+ check(collectDodgeThreats()&&collectDodgeInput(lastHouse,snap.frame,clockNow,a,b)&&dodgeInput.count==1&&dodgeInput.sources[0].shots[0]==50,
+       "native dodge required a copied graph");
+ reversedodge::Point delta{};
+ check(collectReverseTargets(dodgeThreatRefs[0],lastHouse,delta)&&reverseTargetCount==1&&reverseTargets[0].id==20,
+       "native reverse targets required a copied graph");
+ ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);set<int>(p+0x9C,1100);set<uint32_t>(bullet+0x10,51);
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.frame==snap.frame&&planningWorld.actors[0].x==1100,
+       "native planner did not use current game frame");
+ check(collectDodgeThreats()&&collectDodgeInput(lastHouse,snap.frame,clockNow,a,b)&&dodgeInput.sources[0].shots[0]==51,
+       "native dodge reused old projectile facts");
+ check(worldFrame.pages.empty()&&runtimeWorldDemands.empty()&&!sampleReadDepth,
+       "direct tactical collectors copied pages or registered dependencies");
+ runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
+ std::puts("PASS direct native combat and dodge collectors without copied world pages");
+}
 static void testDirectRuntimeRepair(){
  reset();const uint32_t type=makeType(),p=object(type,3,20);
  set<int>(type+0xA0,200);set<uint8_t>(type+0x157A,1);
@@ -732,5 +764,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDirectCombatDodge();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
