@@ -57,7 +57,7 @@ inline bool coherentVisualCapture(const VisualStamp&before,const VisualStamp&aft
 // Failed attempts keep the independent 16 ms recovery throttle.
 inline uint32_t visualReuseWindow(size_t pages){return pages<=256?10u:16u;}
 class VisualCache {
- Token base_,latest_;std::shared_ptr<SnapshotPool>pool_=std::make_shared<SnapshotPool>();
+ Token base_,latest_;std::weak_ptr<const Snapshot> validatedReuseSource_;std::shared_ptr<SnapshotPool>pool_=std::make_shared<SnapshotPool>();
  CaptureScratch scratch_;DemandLeases leases_;std::vector<uint32_t>requests_;
  VisualStamp latestStamp_;
  uint64_t revision_=0,builtRevision_=0,serial_=0;uint32_t builtDemand_=0,attemptedAt_=0;Token attempted_;
@@ -70,7 +70,7 @@ public:
  }
  template<class Live>Token acquire(const Token&source,uint32_t demand,uint32_t now,Live live){
   if(!source||source->controlSource||!source->sealed())return {};
-  if((base_&&!base_->key.sameWorld(source->key))||(!base_&&attempted_&&!attempted_->key.sameWorld(source->key))){latest_.reset();base_.reset();attempted_.reset();leases_.clear();revision_=builtRevision_=0;builtDemand_=demanded_=0;}
+  if((base_&&!base_->key.sameWorld(source->key))||(!base_&&attempted_&&!attempted_->key.sameWorld(source->key))){latest_.reset();base_.reset();attempted_.reset();validatedReuseSource_.reset();leases_.clear();revision_=builtRevision_=0;builtDemand_=demanded_=0;}
   // Host visual profiles are NOT Runtime command demand. Only this
   // read-only Host cache expands them into actor/passenger/combat graph
   // ranges; the published game-thread boundary remains small.
@@ -82,6 +82,11 @@ public:
   uint32_t combined=0;for(unsigned bit=0;bit<6;++bit){const uint32_t flag=1u<<bit;if(demand&flag){demanded_|=flag;demandTicks_[bit]=now;}if((demanded_&flag)&&uint32_t(now-demandTicks_[bit])<=250)combined|=flag;}
   const bool compatible=latest_&&builtRevision_==revision_&&(demand&~builtDemand_)==0;
   if(compatible&&base_==source){++statistics.reused;return latest_;}
+  // Only zero-page read-only boundaries may share a successful guard result.
+  // Do not extend the original visual age or retain another full snapshot.
+  if(compatible&&boundaryOnlySource(source->key)&&validatedReuseSource_.lock()==source&&
+     uint32_t(now-latest_->visualTick)<visualReuseWindow(latest_->pages.size())){++statistics.reused;return latest_;}
+  validatedReuseSource_.reset();
   if(attempted_==source&&uint32_t(now-attemptedAt_)<16)return {};
   const auto started=std::chrono::steady_clock::now();
   const auto before=visualStamp(live,*source);
@@ -92,6 +97,7 @@ public:
   if(compatible&&base_&&base_->key.sameWorld(source->key)&&
       source->key.frame>=base_->key.frame&&before.frame>=latestStamp_.frame&&
       uint32_t(now-latest_->visualTick)<visualReuseWindow(latest_->pages.size())&&latestStamp_.sameWorld(before)){
+   if(boundaryOnlySource(source->key))validatedReuseSource_=source;
    ++statistics.reused;return latest_;
   }
   attempted_=source;attemptedAt_=now;
