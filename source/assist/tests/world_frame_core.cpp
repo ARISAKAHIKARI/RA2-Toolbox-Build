@@ -807,6 +807,22 @@ void hostBoundaryCommandGuard(){
  // CaptureGraph. Host VisualCache must still decode its independent view.
  CHECK(shallow->seal()&&shallow->pages.size()==0&&shallow->counters.calls==0);
  server.observe(shallow->key);CHECK(server.publish(*shallow));
+ // Repeated passive wakeups neither rewrite the observation sequence nor
+ // retag its actual timestamp. A periodic heartbeat and changed frame do.
+ auto* observation=channel();CHECK(observation);
+ const auto firstSeq=observation->observationSeq;
+ const auto firstTick=observation->observedTick;
+ ++clock;server.observe(shallow->key,true);
+ CHECK(observation->observationSeq==firstSeq&&observation->observedTick==firstTick);
+ clock+=15;server.observe(shallow->key,true);
+ CHECK(observation->observationSeq==firstSeq+2&&observation->observedTick==clock);
+ auto changedBoundary=shallow->key;++changedBoundary.frame;
+ server.observe(changedBoundary,true);
+ CHECK(observation->observationSeq==firstSeq+4&&observation->observed.frame==changedBoundary.frame);
+ server.observe(shallow->key,true);
+ CHECK(observation->observationSeq==firstSeq+6&&observation->observed.frame==shallow->key.frame);
+ server.observe(shallow->key); // non-display observation is never throttled
+ CHECK(observation->observationSeq==firstSeq+8);
  currentPid=HostPid;CHECK(reader.beginWorldFrame(7));
  CHECK(reader.worldFrameToken()->controlSource);
  reader.endWorldFrame();reader.setWorldDemand(worldframe::Base);
