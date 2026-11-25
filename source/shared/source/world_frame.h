@@ -16,17 +16,18 @@ namespace worldframe {
 constexpr uint32_t Version=1,PageSize=4096,MaxPages=16384,IndexSize=32768;
 enum Demand:uint32_t {
  Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64,HostDisplayOnly=128,
- HostVisualPassengers=256,HostVisualCombat=512,HostVisualOre=1024,MonitorStats=2048,TypeCatalogue=4096
+ HostVisualPassengers=256,HostVisualCombat=512,HostVisualOre=1024,MonitorStats=2048,TypeCatalogue=4096,
+ HostVisualBase=8192 // Host-only base graph, without factory product/queue expansion.
 };
 // Explicit Host-only visual requirements never grant command authority.
 // Unknown or mixed native demand remains on the full authoritative path.
 inline bool visualDemand(uint32_t demand){
- constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre|MonitorStats);
- return (demand&uint32_t(Visual|Resources|MonitorStats))!=0&&(demand&~displayFlags)==0;
+ constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre|MonitorStats|HostVisualBase);
+ return (demand&uint32_t(Visual|Resources|MonitorStats|HostVisualBase))!=0&&(demand&~displayFlags)==0;
 }
 inline uint32_t runtimeDemand(uint32_t demand){
  return visualDemand(demand)?uint32_t(Base):
- ((demand&~uint32_t(Visual|Resources|HostDisplayOnly|HostVisualPassengers|HostVisualCombat|HostVisualOre|MonitorStats))|uint32_t(Base));
+ ((demand&~uint32_t(Visual|Resources|HostDisplayOnly|HostVisualPassengers|HostVisualCombat|HostVisualOre|MonitorStats|HostVisualBase))|uint32_t(Base));
 }
 inline uint32_t canonicalHostDemand(uint32_t demand){
  uint32_t capture=runtimeDemand(demand);

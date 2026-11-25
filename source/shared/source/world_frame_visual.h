@@ -112,7 +112,7 @@ public:
   // read-only Host cache expands them into actor/passenger/combat graph
   // ranges; the published game-thread boundary remains small.
   const uint32_t visualDetails=demand&uint32_t(HostVisualPassengers|HostVisualCombat|HostVisualOre);
-  demand=(demand&~uint32_t(HostVisualPassengers|HostVisualCombat|HostVisualOre))|Base;
+  demand=(demand&~uint32_t(HostVisualPassengers|HostVisualCombat|HostVisualOre|HostVisualBase))|Base;
   if(visualDetails&HostVisualPassengers)demand|=Passengers;
   if(visualDetails&HostVisualCombat)demand|=Combat;
   if(visualDetails&HostVisualOre)demand|=Ore;

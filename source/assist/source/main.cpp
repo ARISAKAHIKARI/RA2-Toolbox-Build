@@ -1611,7 +1611,10 @@ static void sampleExternal(DWORD now){
   // This sampler only feeds display/UI. Explicit visual tags prevent
   // passenger/combat overlays from requesting a synchronous Runtime graph.
   // Command readers retain their own authoritative subscriptions and guards.
-  uint32_t displayDemand=worldframe::Resources;
+  // The tactical summary reads factory headers from Base and local sidebar
+  // UI through the separate live UI path. Full product/queue discovery is
+  // requested by actual resource consumers, not the high-rate main display.
+  uint32_t displayDemand=worldframe::HostVisualBase;
   if((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)
    displayDemand|=worldframe::HostVisualPassengers;
   if(passengerOverlay||extra.enemyMarkers||extra.enemySpecialOnly)

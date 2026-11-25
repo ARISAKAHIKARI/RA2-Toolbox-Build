@@ -54,7 +54,7 @@ assert "worldFrameServer.retire()" in runtime
 main=(root/"main.cpp").read_text(encoding="utf-8-sig")
 passenger=(root/"passenger_draw.h").read_text(encoding="utf-8-sig")
 display=main.split("uint32_t displayDemand=",1)[1].split("externalReader.setWorldDemand(displayDemand);",1)[0]
-assert display.startswith("worldframe::Resources;")
+assert display.startswith("worldframe::HostVisualBase;")
 assert "worldframe::HostVisualPassengers" in display
 assert "worldframe::HostVisualCombat" in display
 assert "worldframe::Passengers" not in display

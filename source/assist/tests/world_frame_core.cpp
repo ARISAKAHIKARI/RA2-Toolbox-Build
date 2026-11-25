@@ -286,8 +286,25 @@ void graphs(){
   auto boundary=std::make_shared<worldframe::Snapshot>();auto k=key();
   k.demand=worldframe::BoundaryOnlyKeyBit;boundary->reset(k);CHECK(boundary->seal());
   worldframe::VisualCache cache;Read live{&m};
+  // The lightweight Host profile retains normal factory summary fields,
+  // while full reservation/product data is requested only by its consumer.
+  CHECK(worldframe::visualDemand(worldframe::HostVisualBase));
+  CHECK(worldframe::runtimeDemand(worldframe::HostVisualBase)==worldframe::Base);
+  CHECK(worldframe::canonicalHostDemand(worldframe::HostVisualBase)==worldframe::Base);
+  CHECK(!worldframe::visualDemand(worldframe::HostVisualBase|worldframe::Combat));
+  CHECK(worldframe::visualDemand(worldframe::HostVisualBase|worldframe::HostVisualPassengers));
+  worldframe::VisualCache leanCache;
+  auto lean=leanCache.acquire(boundary,worldframe::HostVisualBase,200,live);
+  CHECK(lean&&lean->controlSource==boundary);
+  uint32_t factoryProduct=0;
+  CHECK(lean->read(factory+0x58,&factoryProduct,4)&&factoryProduct==product);
+  CHECK(!lean->read(unitQueue,&unitType,4));
+  CHECK(!lean->read(product+0x10,&uid,4));
+  const auto leanCalls=m.calls.size();
+  CHECK(leanCache.acquire(boundary,worldframe::HostVisualBase,201,live)==lean&&m.calls.size()==leanCalls);
   auto observed=cache.acquire(boundary,worldframe::Resources,200,live);
   CHECK(observed&&observed->controlSource==boundary);
+  CHECK(lean->pages.size()<observed->pages.size());
   CHECK(observed->read(product+0x10,&uid,4)&&uid==61);
   CHECK(observed->read(unitQueue,&unitType,4)&&unitType==type);
   CHECK(observed->read(unitProduct+0x6C0,&unitType,4)&&unitType==type);
