@@ -349,7 +349,11 @@ public:
  // The transport copies one producer publication. Reject malformed, duplicate
  // or unaligned page keys before exposing any bytes to another process.
  bool import(const Key&source,const Counters&stats,const Page*input,size_t count){
-  reset(source);if(count>MaxPages)return capacityFailure();if(!input&&count)return false;
+  // Importing a zero-page observation need not clear 128 KiB of lookup
+  // storage. find() rejects old indices until a subsequent full import
+  // or the first added page initializes them again.
+  if(!count){resetBoundary(source);counters=stats;return seal();}
+  reset(source);if(count>MaxPages)return capacityFailure();if(!input)return false;
   if(!pages.reserve(count))return capacityFailure();
   for(size_t i=0;i<count;++i){const auto&p=input[i];
    if((p.address&(PageSize-1))||!range(p.address,PageSize)||p.full>1||find(p.address)){reset(source);return false;}

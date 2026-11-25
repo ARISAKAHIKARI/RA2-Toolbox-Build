@@ -226,6 +226,15 @@ void overlap(){
  std::vector<worldframe::Page>pages(s.pages.data(),s.pages.data()+s.pages.size());pages[1].address=pages[0].address;CHECK(!imported.import(s.key,{},pages.data(),pages.size()));CHECK(!imported.sealed());
  pages.assign(s.pages.data(),s.pages.data()+s.pages.size());pages[0].address++;CHECK(!imported.import(s.key,{},pages.data(),pages.size()));pages.assign(s.pages.data(),s.pages.data()+s.pages.size());pages[0].full=2;CHECK(!imported.import(s.key,{},pages.data(),pages.size()));
  CHECK(!imported.import(s.key,{},nullptr,1));CHECK(!imported.import(s.key,{},s.pages.data(),size_t(worldframe::MaxPages)+1));CHECK(imported.import(s.key,{},nullptr,0));CHECK(!imported.read(0x10000,out.data(),4));
+ // Reuse one snapshot across full -> empty -> full imports. A zero-page
+ // boundary must hide old indices and preserve the empty read-set semantics.
+ CHECK(imported.import(s.key,s.counters,s.pages.data(),s.pages.size()));
+ auto emptyKey=s.key;emptyKey.demand|=worldframe::BoundaryOnlyKeyBit;
+ CHECK(imported.import(emptyKey,{},nullptr,0));
+ CHECK(imported.sealed()&&imported.pages.size()==0&&!imported.find(0x10000));
+ CHECK(!imported.observed(0x10FF8,24));
+ CHECK(imported.import(s.key,s.counters,s.pages.data(),s.pages.size()));
+ CHECK(imported.read(0x10FF8,out.data(),24));
 }
 void partial(){
  Memory m;for(uint32_t i=0x20000;i<0x21000;++i)m.bytes[i]=uint8_t(i);m.partialPages.insert(0x20000);m.denied.push_back({0x20020,8});
