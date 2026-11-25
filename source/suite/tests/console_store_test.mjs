@@ -140,10 +140,10 @@ test('unsupported controls remain visible as readonly explanatory entries', () =
   assert.equal(result.type,'label'); assert.equal(result.readonly,true); assert.ok(result.hint);
 });
 test('group filtering includes labels, hints, options and respects native visibility', () => {
-  const controls = [{id:1,type:'heading',label:'画面'},canonical({id:2,type:'toggle',label:'渲染',hint:'GPU',checked:true}),canonical({id:3,type:'choice',group:'光标',label:'样式',options:['琥珀','冰蓝']}),canonical({id:4,type:'text',label:'隐藏',visible:false})];
+  const controls = [{id:1,type:'heading',label:'画面'},canonical({id:2,type:'toggle',label:'渲染',hint:'GPU',checked:true}),canonical({id:3,type:'choice',group:'鼠标',label:'样式',options:['琥珀','冰蓝']}),canonical({id:4,type:'text',label:'隐藏',visible:false})];
   assert.equal(groupControls(controls).size,2);
   assert.equal(groupControls(controls,'gpu').get('画面')[0].id,2);
-  assert.equal(groupControls(controls,'冰蓝').get('光标')[0].id,3);
+  assert.equal(groupControls(controls,'冰蓝').get('鼠标')[0].id,3);
   assert.equal(groupControls(controls,'隐藏').size,0);
 });
 test('gesture capture preserves release/hold/double and exact native modifier bits', () => {
@@ -415,11 +415,11 @@ if (!failed && process.argv.includes('--browser')) {
       {id:5,type:'range',label:'覆盖层透明度',group:'渲染',text:'80',selected:80,min:0,max:100,step:1},
       {id:6,type:'button',label:'显示设备',group:'渲染',hint:'重新读取可用设备与刷新率。',text:'重新检测'},
       {id:101,type:'heading',label:'操作与资源'},
-      {id:7,type:'text',label:'游戏目录',group:'光标',text:'C:\\Games\\Red Alert 2',hint:'素材与地图将从此目录读取。'},
-      {id:8,type:'choice',label:'常驻单位类型',group:'光标',selected:0,options:['步兵','坦克','矿车','基地车'],presentation:'list',readonly:true,hint:'双击列表项可执行原有对应操作。'},
-      {id:9,type:'hotkey',label:'队形预览快捷键',group:'光标',selected:0xb34a,options:['hold'],hint:'支持 Ctrl、Shift、Alt 与双击按住。'},
-      {id:10,type:'label',label:'设置会自动保存；每项功能独立启用。',group:'光标'},
-      {id:11,type:'toggle',label:'未连接时的功能',group:'光标',checked:false,enabled:false,hint:'连接游戏后可用。'}
+      {id:7,type:'text',label:'游戏目录',group:'鼠标',text:'C:\\Games\\Red Alert 2',hint:'素材与地图将从此目录读取。'},
+      {id:8,type:'choice',label:'常驻单位类型',group:'鼠标',selected:0,options:['步兵','坦克','矿车','基地车'],presentation:'list',readonly:true,hint:'双击列表项可执行原有对应操作。'},
+      {id:9,type:'hotkey',label:'队形预览快捷键',group:'鼠标',selected:0xb34a,options:['hold'],hint:'支持 Ctrl、Shift、Alt 与双击按住。'},
+      {id:10,type:'label',label:'设置会自动保存；每项功能独立启用。',group:'鼠标'},
+      {id:11,type:'toggle',label:'未连接时的功能',group:'鼠标',checked:false,enabled:false,hint:'连接游戏后可用。'}
     ];
     let revision=1;
     const snapshot=(patch={})=>({kind:'state',protocol:1,module:0,generation:1,revision:revision++,page:'cursor',title:'显示',status:'已连接 · 170 Hz',controls,...patch});
@@ -460,7 +460,7 @@ if (!failed && process.argv.includes('--browser')) {
     await page.keyboard.press('Enter');
     await page.waitForFunction(()=>document.getElementById('pageTitle').textContent==='监控视图');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),1,'Monitor remains the separate native service module');
-    await openPage('光标');
+    await openPage('鼠标');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),0);
     const noteHelp=page.locator('.page-title-bar .label-help');
     assert.equal(await noteHelp.locator('summary').textContent(),'ⓘ');
@@ -487,7 +487,7 @@ if (!failed && process.argv.includes('--browser')) {
     await page.locator('#search').focus();await page.keyboard.press('Escape');
     await page.waitForFunction(()=>document.getElementById('search').value==='');
     await page.getByLabel('绘制方式',{exact:true}).waitFor();
-    await openPage('光标');
+    await openPage('鼠标');
     for(const viewport of [{width:720,height:780},{width:540,height:720},{width:390,height:720}]){
       await page.setViewportSize(viewport);await page.getByRole('button',{name:'队形预览快捷键',exact:true}).scrollIntoViewIfNeeded();await assertFits();
       await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
@@ -495,7 +495,7 @@ if (!failed && process.argv.includes('--browser')) {
     }
     await page.setViewportSize({width:1240,height:880});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
-    assert.equal(await page.getByRole('heading',{name:'光标',exact:true}).count(),1);
+    assert.equal(await page.getByRole('heading',{name:'鼠标',exact:true}).count(),1);
     assert.equal(await page.getByLabel('未连接时的功能',{exact:true}).isDisabled(),true);
     await openPage('渲染');
     const switchBox=await page.getByLabel('增强渲染',{exact:true}).boundingBox();assert.ok(switchBox.width>=24 && switchBox.height>=24,'accessible switch owns a full pointer target');
@@ -517,7 +517,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),33);
     await page.getByRole('button',{name:'显示设备',exact:true}).click();
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).action),'press');
-    await openPage('光标');
+    await openPage('鼠标');
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=700;});
     const directory=page.getByLabel('游戏目录',{exact:true}); await directory.waitFor();
     await directory.fill('C:\\RA2');
@@ -536,12 +536,12 @@ if (!failed && process.argv.includes('--browser')) {
     await page.screenshot({path:diagnosticsPrefix+'-save-error.png',fullPage:false});
     await receive({kind:'shell',protocol:1,error:'',config:{pending:0,busy:false,failed:false}});
     await page.getByRole('button',{name:'自动功能',exact:true}).click();
-    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2); assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),2);
-    await receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/2',title:'自动功能',controls:[{id:1,type:'toggle',label:'自动维修',checked:true}],status:''});
+    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2); assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),4);
+    await receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/4',title:'自动功能',controls:[{id:1,type:'toggle',label:'自动维修',checked:true}],status:''});
     await page.getByLabel('自动维修',{exact:true}).waitFor();
     assert.equal(await page.getByRole('heading',{name:'自动功能',exact:true}).count(),1);
     assert.equal(await page.locator('#foldAll').isVisible(),false);
-    await openPage('光标');
+    await openPage('鼠标');
     const large=Array.from({length:3000},(_,index)=>({id:index+1,type:'text',label:`设置 ${index+1}`,text:String(index),group:'全部设置'}));
     await receive({kind:'state',protocol:1,module:0,generation:2,revision:1,page:'cursor',title:'显示',controls:large,status:'受控虚拟化检查'});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
