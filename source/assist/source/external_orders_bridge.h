@@ -86,17 +86,15 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  uint32_t nextMode=0;
  static uint32_t lastMode;static bool lastNativeEnrichment=false;
  bool nativeEnrichment=false;
- // Pure planner conversion may consume a recent sealed background graph.
- // The native EventClass gateway must still recheck all actor/target IDs.
- // A strict AntiTheft presence probe is handled independently below.
- {ObservationReadScope frameRead;if(!frameRead)return false;
- const auto&source=sampleWorldSource->key;
+ // Runtime-native conversion reads the current game objects directly.
+ // Keep immutable observation provenance only for the legacy graph lane.
+ const auto collect=[&](const worldframe::Key&source,bool native)->bool{
  if(planningWorld.match==match&&source.frame<planningWorld.frame)return false;
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
  bool ore=((sh->flags|sh->plannerTracking|sh->runtimeTracking)&AutoOreReturn)!=0;
  bool minerDefense=sh->minerDefenseEnabled||minerDefensePending();
  const bool defenseRequested=(sh->flags&AntiTheft)!=0;
- const bool strictDefenseSource=allowNativeRead&&worldFrameReady&&!worldFrameBoundaryOnly&&
+ const bool strictDefenseSource=!native&&allowNativeRead&&worldFrameReady&&!worldFrameBoundaryOnly&&
       worldFrame.sealed()&&worldFrame.key.match==match&&worldFrame.key.frame==frame;
  bool defense=false,drop=sh->magnetronDrop!=0;
  worldframe::Key defenseSource{};long defenseRevision=-1;
@@ -201,12 +199,21 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  for(int i=0;i<nativeCount&&w.intentCount<planner::MaxIntents;++i){const auto&o=nativeOrders[i];w.intents[w.intentCount++]={o.id,o.cell,o.token,o.mode,uint32_t(o.global)};}
  queryCombat=allowNativeRead&&advanced&&sh->nativeCombatQueries;
  if(advanced&&!queryCombat)collectCombatProbes(w,true);
- if(!frameRead.complete()||(defenseProven&&!antiTheftSourceCurrent(defenseSource,defenseRevision))){
+ if((!native&&!sampleReadComplete)||(defenseProven&&!antiTheftSourceCurrent(defenseSource,defenseRevision))){
   // An incomplete observation must neither replace a valid input nor poison
   // the existing metadata caches with values returned by failed reads.
   memcpy(weaponCache,cacheBefore,sizeof weaponCache);dockFrame=-100000;dockCount=-1;return false;
  }
- } // sealed facts only; native queries and publication follow outside scope
+ return true;
+ };
+ // AntiTheft, ore and miner defense still have separate graph-dependent
+ // collectors. Dispatcher admission excludes them from the native lane.
+ if(runtimeDirectActions&&allowNativeRead){
+  worldframe::Key source{};source.match=match;source.frame=frame;source.tick=now;source.house=house;
+  if(!collect(source,true))return false;
+ }else{
+  ObservationReadScope frameRead;if(!frameRead||!collect(sampleWorldSource->key,false)||!frameRead.complete())return false;
+ }
  for(int n=0;n<dropCount;++n){const auto&candidate=dropCandidates[n];auto&a=w.actors[candidate.actor];
   if(worldByID(a.id)==candidate.pointer&&rawMagnetronDrop(candidate.pointer,candidate.victim,house))a.flags|=planner::DropHazard;
  }
