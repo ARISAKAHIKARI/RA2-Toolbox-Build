@@ -5,6 +5,21 @@
 using namespace assist;using namespace assist::planner;
 int main(){
  auto storage=std::make_unique<World>();auto&w=*storage;Planner planner;
+ // The pre-computation guard must agree with step(), including a same-frame
+ // settings edit, a new input, a different match, and a receipt retry.
+ w.match=1;w.frame=1;
+ assert(!planner.alreadyProcessed(w,0,200,300,90));
+ assert(planner.step(w,0,200,300,90).empty());
+ assert(planner.alreadyProcessed(w,0,200,300,90));
+ assert(!planner.alreadyProcessed(w,0,200,300,91));
+ assert(planner.step(w,0,200,300,91).empty());
+ assert(planner.alreadyProcessed(w,0,200,300,91));
+ ++w.inputSerial;assert(!planner.alreadyProcessed(w,0,200,300,91));
+ assert(planner.step(w,0,200,300,91).empty());
+ planner.expired(Order{});assert(!planner.alreadyProcessed(w,0,200,300,91));
+ assert(planner.step(w,0,200,300,91).empty());
+ ++w.match;assert(!planner.alreadyProcessed(w,0,200,300,91));
+ planner.reset();w.inputSerial=0;
  w.match=1;w.frame=1;w.count=5;w.refineryCount=1;
  for(int i=0;i<2;++i){auto&a=w.actors[i];a.id=uint32_t(i+1);a.type=200;a.kind=2;a.flags=Own|Harvester;a.mission=10;a.x=3000+i*100;a.y=3000;a.storageLimit=28;a.storage[0]=28;a.dockTypes[0]=900;}
  auto&ref=w.actors[2];ref.id=50;ref.type=900;ref.kind=3;ref.flags=Own;ref.x=4000;ref.y=4000;ref.radioIDs[0]=80;
