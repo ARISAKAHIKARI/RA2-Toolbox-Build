@@ -373,7 +373,7 @@ public:
                     if (!integer("pageIndex", 0, 10, n)) return false;
                     s.pageIndex = static_cast<int>(n);
                     if ((s.module == 0 && s.pageIndex > 1) || (s.module == 1 && s.pageIndex != 2 && s.pageIndex != 9) ||
-                        (s.module == 2 && (s.category < 1 || (s.pageIndex != s.category + 2 && !(s.pageIndex == 7 && s.category == 4))))) return fail("Page index and module disagree");
+                        (s.module == 2 && !((s.category >= 1 && s.category <= 4 && (s.pageIndex == s.category + 2 || (s.category == 4 && s.pageIndex == 7))) || (s.category >= 5 && s.category <= 7 && s.pageIndex == s.category + 3)))) return fail("Page index and module disagree");
                 }
                 n = 0; if (!integer("width", 320, 16384, n, false)) return false; s.width = static_cast<unsigned>(n);
                 n = 0; if (!integer("height", 200, 16384, n, false)) return false; s.height = static_cast<unsigned>(n);
