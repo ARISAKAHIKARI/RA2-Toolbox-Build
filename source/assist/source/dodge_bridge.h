@@ -12,8 +12,8 @@ struct DodgeJob {
 static DodgeJob dodgeJobs[512];static int dodgeCursor,dodgeJobCursor;static uint32_t dodgeSerial,dodgeTask;static bool dodgePending;
 struct DodgeThreatRef {uint32_t pointer,target;bool projectile;uint32_t id;};static DodgeThreatRef dodgeThreatRefs[8192];static int dodgeThreatCount;
 static bool collectDodgeThreats(){
- ObservationReadScope frameRead;if(!frameRead)return false;
  static DodgeThreatRef next[8192];int count=0;
+ const auto collect=[&]()->bool{
  // BulletClass::Array and fields are checked against YRpp and native
  // Construct 4664C0: owner B0, target 10C, damage 6C, type AC.
  Vec bullets{};if(!sampleRoster(0xA8ED40,bullets))return false;
@@ -26,7 +26,10 @@ static bool collectDodgeThreats(){
  }
  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;for(int n=0;n<all.count&&count<8192;++n){uint32_t q=item(all,n);if(kind(q)!=2)continue;
   uint32_t t=get<uint32_t>(q+0x2B4);if(!worldObjects.contains(t))t=get<uint32_t>(q+0x5A4);if(worldObjects.contains(t))next[count++]={q,t,false,get<uint32_t>(q+0x10)};}
- if(!frameRead.complete())return false;
+ return true;
+ };
+ if(runtimeDirectActions){if(!collect())return false;}
+ else {ObservationReadScope frameRead;if(!frameRead||!collect()||!frameRead.complete())return false;}
  memcpy(dodgeThreatRefs,next,size_t(count)*sizeof(next[0]));dodgeThreatCount=count;return true;
 }
 // A sealed roster is a candidate list, not current permission to dereference a
@@ -108,6 +111,7 @@ static int createDodge(const dodgecompute::Source&s,DWORD now){
 // Return -1 only after a complete same-frame source observation; 0 is unknown.
 static int dodgeSourceKnowledge(uint32_t p,uint32_t house,bool candidateOnly=false){
  if(!p)return -1;
+ if(runtimeDirectActions&&!candidateOnly)return dodgeSource(p,house)?1:-1;
  SampleReadScope sample(candidateOnly);if(!sample)return 0;
  const bool eligible=dodgeSource(p,house);
  return sample.complete()?(eligible?1:-1):0;
@@ -196,9 +200,10 @@ static void dispatchDodgeCalculation(uint32_t house,int frame,DWORD now,int next
 // Capture only facts. Native events, identity/lease checks and receipt changes
 // run after this scope has restored live reads.
 static bool collectDodgeInput(uint32_t house,int frame,DWORD now,int&nextCursor,int&nextJobCursor){
- ObservationReadScope frameRead;if(!frameRead)return false;
- auto&i=dodgeCapture;memset(&i,0,sizeof i);i.match=match;
- // Preserve the real acquisition age of an off-thread observation.
+ auto&i=dodgeCapture;
+ const auto collect=[&]()->bool{
+ memset(&i,0,sizeof i);i.match=match;
+ // Native capture uses the current dispatch time; legacy samples retain provenance.
  i.tick=sampleWorldSource&&sampleWorldSource->key.tick?sampleWorldSource->key.tick:now;
  i.frame=sampleWorldSource?sampleWorldSource->key.frame:frame;
  int checkedJobs=0;
@@ -211,7 +216,10 @@ static bool collectDodgeInput(uint32_t house,int frame,DWORD now,int&nextCursor,
   dodgecompute::Source source{};dodgeObserve(p,house,source);if(source.count)i.sources[i.count++]=source;
  }
  nextCursor=all.count?(dodgeCursor+visited)%all.count:0;
- if(!frameRead.complete())return false;
+ return true;
+ };
+ if(runtimeDirectActions){if(!collect())return false;}
+ else {ObservationReadScope frameRead;if(!frameRead||!collect()||!frameRead.complete())return false;}
  dodgeInput=i;return true;
 }
 static bool dodgeControlTick(uint32_t house,int frame,DWORD now,bool candidateOnly=false){
