@@ -653,6 +653,33 @@ static void testRepair(){
  worldFrameReady=false;check(collectRepairs(lastHouse,clockNow,true)==-6&&sh->repairTask==task&&repairCount==2,"repair absent sample published empty work");
  std::puts("PASS repair internal/Host outputs, pending-toggle facts and failed refresh retention");
 }
+static void testDirectRuntimeRepair(){
+ reset();const uint32_t type=makeType(),p=object(type,3,20);
+ set<int>(type+0xA0,200);set<uint8_t>(type+0x157A,1);
+ set<int>(p+0x6C,100);vectorAt(0xA8EB40,0x840000,{p});
+ sh->computeApplied=1u<<compute::Repair;
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct boundary seal");
+ worldFrameReady=worldFrameBoundaryOnly=true;runtimeDirectReader=liveRead;
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ {SampleReadScope legacy;check(!legacy,"unmigrated collector accepted direct boundary");}
+ check(collectRepairs(lastHouse,clockNow)==1&&repairOrders[0].id==20&&liveReads&&!hostNotifies,
+       "direct repair did not collect native facts");
+ set<int>(p+0x6C,200);
+ check(collectRepairs(lastHouse,clockNow)==0,"direct repair reused stale object fields");
+ set<int>(p+0x6C,100);
+ check(collectRepairs(lastHouse,clockNow)==1,"direct repair missed native change");
+ missingPage=p&~4095u;denyLivePage=true;
+ check(collectRepairs(lastHouse,clockNow)==-6&&repairCount==1&&repairOrders[0].id==20,
+       "failed direct read destroyed previous candidate list");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth&&!sampleDirectRead,
+       "direct collector copied pages, created dependencies or leaked scope");
+ denyLivePage=false;missingPage=0;
+ ++snap.frame;
+ check(collectRepairs(lastHouse,clockNow)==-6,"direct read accepted stale frame boundary");
+ runtimeDirectReader=nullptr;worldFrameBoundaryOnly=false;worldFrameReady=false;
+ std::puts("PASS direct repair: native changes, failed-read retention, explicit admission and zero copied pages");
+}
 struct OreFixture {uint32_t miner,type,refinery,refineryType,links,resource,distant;};
 static uint32_t resource(int x,int y){uint32_t cell=alloc();set<int16_t>(cell+0x24,int16_t(x));set<int16_t>(cell+0x26,int16_t(y));set<int>(cell+0x44,0);set<int>(cell+0xEC,0);set<uint32_t>(0x400000+uint32_t(y*512+x)*4,cell);return cell;}
 static OreFixture setupOre(){
@@ -704,5 +731,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
