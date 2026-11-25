@@ -1466,7 +1466,7 @@ static void command(uint32_t house,DWORD now,commandsampling::Sample sample=comm
  const int c=sh->command,arg=sh->arg;
  // A command posted after direct-lane admission must wait for its own full
  // graph; never acknowledge an unmigrated command against a zero-page source.
- if(runtimeDirectActions&&c!=Repair&&((c!=AutoBoard&&(c<CombatSelection||c>IdleTransport))||!commandRosterReady()))return;
+ if(runtimeDirectActions&&c!=Repair&&((c!=AutoBoard&&c!=SmartUnload&&(c<CombatSelection||c>IdleTransport))||!commandRosterReady()))return;
  const bool candidateOnly=sample!=commandsampling::Sample::Exact;
  int result=1,n=0;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
@@ -1764,7 +1764,9 @@ static void consumeSubmittedIntents(uint32_t house,int frame,DWORD now){
  csHooksTick(inputFlags);nativeHooksTick(inputFlags);clickHooksTick(inputFlags);
  snap.inputPatchMask=0;if(!runtimeDirectActions)pointerTick();
  ownGroundTick(house,frame,now);command(house,now);if(playerContextChanged)return;reservedSidebarTick(house,now);
- if(!runtimeDirectActions){externalOrdersTick(house,frame,now);cooperativeTick(house,frame,now);}placementTick();
+ if(!runtimeDirectActions)externalOrdersTick(house,frame,now);
+ if(!runtimeDirectActions||commandRosterReady())cooperativeTick(house,frame,now);
+ placementTick();
 }
 // A suspended command context retains selected code/vtable ownership. Only
 // explicit option changes retire command sites here; no command installer or
@@ -2029,36 +2031,36 @@ static void tick(){
  // game thread may publish a small scene boundary only if ALL Host readers
  // are display-only and no local native command feature has any pending work.
  // A same-frame hotkey later upgrades this boundary to a full graph.
- const bool noGraphJobs=!sh->moFeatures&&!sh->cooperativeFrameWanted&&
+ const bool noGraphJobs=!sh->moFeatures&&
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
   !sh->minerDefenseEnabled&&!minerDefensePending()&&!sh->superweaponGrant&&
   !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput))&&!sh->plannerTracking&&
   !sh->burstEnabled&&
   !sh->burstHoldEnabled&&!sh->burstHeld&&!sh->scrollRefreshHz&&
   !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&
-  !burstCount&&!unloadCount&&!queuedUnload.count&&
-  !loadCalculationPending&&!entryReservationCount&&
-  !cooperativeEffectCount&&
+  !burstCount&&!loadCalculationPending&&
   !ownground::job.pending&&!nativePlacementCompletionPending()&&!scrollRefreshActive&&
-  !runtimeCoopPending&&!oreHarvestNeedsWork()&&!moOrdersPending()&&
+  !oreHarvestNeedsWork()&&!moOrdersPending()&&
   !directAirPending()&&!directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
  const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&noGraphJobs&&
    !sh->runtimeTracking&&!sh->magnetronGlobal&&!sh->magnetronDrop&&!sh->dodgeEnabled&&!dodgeCount&&!nativeCount&&
    !sh->missileEnabled&&!missileHoldCount&&!missileSendCount&&!loadLedger.count&&
+   !unloadCount&&!queuedUnload.count&&!entryReservationCount&&!cooperativeEffectCount&&
+   !runtimeCoopPending&&!sh->cooperativeFrameWanted&&
    !actorLeaseArbiter.count&&!missionObserver.pending()&&
    !capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)&&
    !repairCalculationPending&&!manualRepairPending&&!(repairAt<repairCount)&&!pendingRepairs.count;
  const bool hostDisplayOnly=sharedWorldWanted&&noCommandWork&&
   worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
- // Direct Runtime lane: native repair, selection, combat, dodge, missile defense and boarding.
+ // Direct Runtime lane: native repair, selection, combat, dodge, missile defense, boarding, unload and cooperative planning.
  // Graph-dependent collectors and explicit command mailboxes retain their
  // old path until migrated. A visual subscription never grants action authority.
  const bool directCommand=sh->request==sh->ack||
-  sh->command==Repair||sh->command==AutoBoard||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
+  sh->command==Repair||sh->command==AutoBoard||sh->command==SmartUnload||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
  const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&!catalogueDue&&
   !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
-  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS))&&
+  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread))&&
   !selectionPending&&!planPending&&!cooperativePending&&sh->pointer.request==sh->pointer.ack&&
   directCommand&&!repairCalculationPending&&!manualVersions.pausedCount&&
   sh->computeApplied==compute::All&&
@@ -2096,7 +2098,7 @@ static void tick(){
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;pauseViewTick();buildTimeTooltipTick();
  snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();inputLockTick();
  if(worldChange==worldlife::Change::Same&&lastHouse)oreHarvestObserve(lastHouse,frame,now);
- bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missileSendCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||manualRepairPending||ownground::job.pending||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
+ bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missileSendCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||sh->cooperativeFrameWanted||(cooperative::valid(sh->cooperativeRequest)&&sh->cooperativeRequest.serial!=runtimeCoopRequest.serial)||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||manualRepairPending||ownground::job.pending||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
   sh->flags|sh->plannerTracking|((sh->cooperativePlan!=sh->cooperativeAck)?AutoOreReturn:0),(sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)));
  const bool deferIndexedWork=needsIndex&&(!refreshWorldIndex(frame)||!commandRosterReady());
  indexedWorkDeferred=deferIndexedWork;
