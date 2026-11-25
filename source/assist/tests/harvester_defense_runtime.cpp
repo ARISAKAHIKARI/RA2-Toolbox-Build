@@ -70,8 +70,15 @@ static bool commandRosterReady(){
 }
 static void captureRoster(){
  fixtureCaptureWorld(clockNow);
- if(worldFrameReady)worldFrameCommandRoster.build(worldFrame,false,rosterScratch);
- else worldFrameCommandRoster.invalidate();
+ if(worldFrameReady&&worldFrameCommandRoster.build(worldFrame,false,rosterScratch)){
+  // Model the production dispatcher's strict roster adoption. The fixture's
+  // independent ObjectIndex used to accumulate IDs from object() forever,
+  // even when the sealed roster proved deletion or UID reuse. Copy only in
+  // this portable fixture; production binds the worker's immutable index.
+  worldObjects=*worldFrameCommandRoster.objects;
+ }else worldFrameCommandRoster.invalidate();
+ // On failure keep the previous fixture index for live actor observations,
+ // but commandRosterReady() stays false: it cannot prove victim retirement.
 }
 static bool readFixtureLive(uint32_t at,void*out,size_t n){
  assert(!sampleReadDepth);
@@ -706,9 +713,12 @@ int main(int argc,char**argv){
     if(mode==0)memset(memory(Drone,0x800),0,0x800);
     if(mode==1)failRead=Drone;
     // mode 3 leaves stale live-looking bytes and an old worldObjects entry.
-    // Only the sealed worker roster establishes that the target is gone.
+    // Only the new sealed worker roster establishes that the target is gone.
    }
-   observeGuard();step(12,350);CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
+   CHECK(worldObjects.byId(DroneID)==Drone);
+   observeGuard();step(12,350);
+   CHECK(commandRosterReady()&&worldObjects.byId(DroneID)==0);
+   CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
    CHECK(get<int>(Miner+0xAC)==5);step();CHECK(events.size()==2&&minerDefensePending());
    failRead=0;observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==10);
    for(const auto&e:events)CHECK(e.mission!=1||e.b==DroneID);
@@ -729,9 +739,11 @@ int main(int argc,char**argv){
    if(mode==0)failRead=NativeTechnoItems;
    else{object(Drone2,0x7F5C70,999,MinerType,EnemyHouse);position(Drone2,90*256,90*256);actors.push_back(Drone2);failRead=Drone2+0x10;}
    observeGuard();step(12,350);CHECK(events.size()==1&&minerDefensePending());
+   CHECK(!commandRosterReady());
    step();CHECK(events.size()==1&&minerDefensePending());
    // A later complete roster can establish retirement and recover the work.
-   failRead=0;step();CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
+   failRead=0;step();CHECK(commandRosterReady()&&worldObjects.byId(DroneID)==0);
+   CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
    observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==10);
   }
  });
