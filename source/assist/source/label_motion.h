@@ -32,6 +32,19 @@ public:
    camSpan=0;camTick=now; // camera offsets belong to the current viewport
    camFromX=cameraX;camFromY=cameraY;camX=s.cameraX;camY=s.cameraY;
   }
+  // The Host can merge the same immutable display observation hundreds of
+  // times per second. Do not rebuild the identity hash or copy the motion
+  // banks when neither the camera nor any label payload changed.
+  if(!newFrame&&camX==s.cameraX&&camY==s.cameraY&&count==std::clamp(s.labels,0,MaxLabels)){
+   bool same=true;
+   for(int i=0;i<count;++i){
+    const auto&a=banks[bank][i].to;const auto&b=s.label[i];
+    if(a.id!=b.id||a.x!=int(float(b.x)+s.cameraX)||a.y!=int(float(b.y)+s.cameraY)||
+       a.used!=b.used||a.capacity!=b.capacity||a.ironFrames!=b.ironFrames||a.shield!=b.shield||
+       a.advanced!=b.advanced||a.ownerColor!=b.ownerColor||a.frozenFrames!=b.frozenFrames){same=false;break;}
+   }
+   if(same)return;
+  }
   for(int&i:hash)i=-1;
   if(!reset)for(int i=0;i<count;++i){unsigned h=slot(banks[bank][i].to.id);while(hash[h]!=-1)h=(h+1)&(MaxLabels*2-1);hash[h]=i;}
   int next=1-bank,n=std::clamp(s.labels,0,MaxLabels);
