@@ -267,7 +267,7 @@ static void applyMissileResult(const missilecompute::Result&r,uint32_t house,int
 // after an optional native query only decodes that same immutable sample; it
 // cannot acquire new bytes or extend a sample across the native boundary.
 static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourceCursor,int&nextTargetCursor,int&nextManagedCursor){
- auto&i=missileCapture;missilecompute::reset(i);i.match=match;i.tick=now;i.frame=frame;i.mode=sh->missileAllocation|(sh->missileReserve?missilecompute::ReserveSleep:0);
+ auto&i=missileCapture;missilecompute::beginCapture(i);i.match=match;i.tick=now;i.frame=frame;i.mode=sh->missileAllocation|(sh->missileReserve?missilecompute::ReserveSleep:0);
  const bool native=sh->nativeCombatQueries!=0,deferredAir=native&&sh->missileScope!=0;
  struct Candidate {missilecompute::Target target;int after;};
  static Candidate candidates[16384]{};int candidateCount=0,allCount=0,visited=0;
@@ -307,7 +307,7 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
   auto add=[&](uint32_t p){if(i.count>=missilecompute::MaxSources||!p)return;for(int n=0;n<i.count;++n)if(i.sources[n].pointer==p)return;
    uint32_t id=get<uint32_t>(p+0x10);int at=missileRecord(id);bool held=at>=0&&missileSends[at].held,managed=at>=0&&missileSends[at].controlled;
    const bool source=missileSource(p,house,true,native);if(!held&&!managed&&!source)return;
-   int n=i.count++;eligible[n]=source;auto&s=i.sources[n];s={id,p,manualVersions.get(id),rawObjectID(get<uint32_t>(p+0x2B4)),0};
+   int n=i.count++;missilecompute::resetActiveRow(i,n);eligible[n]=source;auto&s=i.sources[n];s={id,p,manualVersions.get(id),rawObjectID(get<uint32_t>(p+0x2B4)),0};
    s.cooldown=remaining(get<int>(p+0x2EC),get<int>(p+0x2F4),frame);s.held=held;s.managed=managed;
    if(at>=0){const auto&record=missileSends[at];s.pending=record.target;s.pendingMission=record.mission;s.advanceFrames=record.advanceStart>=0?std::max(0,frame-record.advanceStart):-1;s.releaseFrames=record.releasedAt>=0?std::max(0,missilecompute::ReleaseGraceFrames-(frame-record.releasedAt)):0;s.committedTarget=record.shotTarget;s.committedDamage=record.shotDamage;}
    if((held||managed)&&s.pendingMission<0){planner::Actor firing{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),firing,true,true);if(firing.flags&planner::BurstFiring)s.pendingMission=missilecompute::TransientBusy;}
