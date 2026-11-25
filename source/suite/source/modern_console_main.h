@@ -196,7 +196,7 @@ static DWORD WINAPI prepareSettings(void*){
    result.pageIndex=migrate[savedPage];
   }else{
    constexpr int legacyCategoryPage[]={0,3,6,8,9,10};
-   result.pageIndex=legacyCategoryPage[oldCategory];
+   result.pageIndex=oldCategory?legacyCategoryPage[oldCategory]:(result.video?2:0);
   }
   if(result.pageIndex<0||result.pageIndex>10)result.pageIndex=0;
   if(result.pageIndex<3){result.category=0;result.video=result.pageIndex==2?1:0;}
