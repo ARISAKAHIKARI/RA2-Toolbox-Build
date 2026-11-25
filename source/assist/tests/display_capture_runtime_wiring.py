@@ -70,4 +70,10 @@ assert "VisualCache visuals_" in transport
 assert "Token visual(" in transport
 assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in reader
 assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in transport
+assert runtime.index("++d.syncGraphAttempts") < runtime.index("worldframe::CaptureGraph<Live>capture(")
+assert runtime.index("++sh->sampling.boundaryAttempts") < runtime.index("++sh->sampling.boundaryCompleted")
+assert runtime.index("++sh->sampling.reuseHits") < runtime.index("++d.syncGraphAttempts")
+assert "sampling-admission pid=" in main
+for counter in ("syncGraphAttempts", "syncGraphCompleted", "boundaryAttempts", "boundaryCompleted", "reuseHits", "graphHostDemand", "graphDisplayOnly", "graphNoHost", "graphCatalogue", "graphRequestedPages"):
+    assert counter in runtime and counter in main
 print("PASS production display split: Host VisualCache is live for display readers; passive overlays use boundary-only Runtime demand")

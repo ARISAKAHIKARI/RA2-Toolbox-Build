@@ -306,6 +306,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    // The async worker owns Host-only transport, including same-frame
    // republishing; never interleave the older strict publisher in its slot.
    if(!asyncCommand)worldFramePublication.publish(worldFrame,worldFrameServer);
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+   if(sh)++sh->sampling.reuseHits;
+#endif
    return true;
   }
   // A hotkey/manual order admitted in the same logic frame after a display
@@ -463,6 +466,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
             (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
  if(boundaryOnly)worldFrame.resetBoundary(key);else worldFrame.reset(key);
  if(boundaryOnly){
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+  if(sh)++sh->sampling.boundaryAttempts;
+#endif
   // Truly zero-page Host display boundary. The independent Host VisualCache
   // acquires its own image, unit/Type graph and map geometry. No CaptureGraph,
   // page discovery, page requests, UID scan or native EventClass authority
@@ -481,6 +487,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    return false;
   }
   captureRetryDelay=0;worldFrameBoundaryOnly=true;worldFrameReady=true;
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+  if(sh)++sh->sampling.boundaryCompleted;
+#endif
   // A later native command in this same logic frame must bypass the reuse
   // path above and build a separate fully sealed sample with a new serial.
   worldFramePublication.publish(worldFrame,worldFrameServer);
@@ -521,6 +530,17 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
     (!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
   if(worldFramePublication.requestRecovery(key,candidates.data(),candidateCount))lastRecoverySubmitAt=key.tick;
  }
+ #if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+ if(sh){
+  auto&d=sh->sampling;++d.syncGraphAttempts;
+  const uint32_t subscribed=worldFrameServer.demandMask();
+  if(!subscribed)++d.graphNoHost;
+  else if(subscribed==uint32_t(worldframe::Base|worldframe::HostDisplayOnly))++d.graphDisplayOnly;
+  else ++d.graphHostDemand;
+  if(graphDemand&worldframe::TypeCatalogue)++d.graphCatalogue;
+  if(!requests.empty()||verifiedCount)++d.graphRequestedPages;
+ }
+ #endif
  worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
  bool complete=capture.capture(captureDemand,requests,verified.data(),verifiedCount);
  // These checks deliberately bypass the read set. Cached self-comparison is
@@ -536,6 +556,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(sh)++sh->worldSampleFailures;return false;
  }
  captureRetryDelay=0;
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+ if(sh)++sh->sampling.syncGraphCompleted;
+#endif
  if(graphDemand&worldframe::TypeCatalogue){
   worldFrameCatalogueProbeAt=key.tick;
   worldframe::stampTypeCatalogue(worldFrame);

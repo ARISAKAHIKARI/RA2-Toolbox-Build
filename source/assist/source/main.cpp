@@ -474,14 +474,16 @@ static void logSamplingHealth(DWORD now){
  // the x86 worker is running, so deltas are approximate diagnostic evidence.
  if(!shared)return;
  const auto&d=shared->sampling;
- const std::array<uint32_t,18> values={
+ const std::array<uint32_t,28> values={
   d.captureCalls,d.gateDeferred,d.workerDeferred,d.requestsQueued,
   d.strictAdopted,d.candidateAdopted,d.indexUnavailable,d.strictWorldRejected,
   d.workerStarted,d.workerPublished,d.workerExact,d.workerCandidate,
   d.workerStale,d.workerWorldChanged,d.workerBudget,d.workerRosterFailed,
-  d.workerGraphIncomplete,d.workerRejected
+  d.workerGraphIncomplete,d.workerRejected,
+  d.syncGraphAttempts,d.syncGraphCompleted,d.boundaryAttempts,d.boundaryCompleted,d.reuseHits,
+  d.graphHostDemand,d.graphDisplayOnly,d.graphNoHost,d.graphCatalogue,d.graphRequestedPages
  };
- static std::array<uint32_t,18> prior{};
+ static std::array<uint32_t,28> prior{};
  static uint32_t previousPID=0,previousMatch=0;
  const bool reset=previousPID!=pid||previousMatch!=incoming.match;
  if(reset){prior=values;previousPID=pid;previousMatch=incoming.match;}
@@ -527,6 +529,21 @@ static void logSamplingHealth(DWORD now){
   L" capturedFromFrame="+std::to_wstring(d.workerFirstFrame)+
   L" capturedThroughFrame="+std::to_wstring(d.workerLastFrame)+
   L" scope=worker-aggregates;not-per-frame-atomic");
+ autolog::write(L"sampling-admission pid="+std::to_wstring(pid)+
+  L" match="+std::to_wstring(incoming.match)+
+  L" warmup="+std::to_wstring(reset)+
+  L" syncGraphAttempts="+std::to_wstring(delta(18))+
+  L" syncGraphCompleted="+std::to_wstring(delta(19))+
+  L" boundaryAttempts="+std::to_wstring(delta(20))+
+  L" boundaryCompleted="+std::to_wstring(delta(21))+
+  L" reuseHits="+std::to_wstring(delta(22))+
+  L" graphHostDemand="+std::to_wstring(delta(23))+
+  L" graphDisplayOnly="+std::to_wstring(delta(24))+
+  L" graphNoHost="+std::to_wstring(delta(25))+
+  L" graphCatalogue="+std::to_wstring(delta(26))+
+  L" graphRequestedPages="+std::to_wstring(delta(27))+
+  L" asyncJobsQueued="+std::to_wstring(delta(3))+
+  L" scope=sync-graph-attempts;subscription-context-exclusive;catalogue-requests-overlap");
  prior=values;
  // Connection-shared Host cache, without blocking on a capture or changing IPC.
  worldframe::VisualCache::Statistics v{};
