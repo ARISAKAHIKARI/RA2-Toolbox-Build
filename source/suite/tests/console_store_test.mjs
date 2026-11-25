@@ -311,12 +311,14 @@ test('named semantic sections retain stable feature boundaries and do not depend
     canonical({id:9182,type:'toggle',group:'低伤害自动过滤',label:'过滤低伤害自动目标'}),
     canonical({id:9183,type:'toggle',group:'低伤害自动过滤',label:'原生索敌'})
   ];
-  const control=layoutGroups(input.slice(0,4),'',3);
-  assert.deepEqual([...control.keys()],['选兵与编组','移动、攻击与操作手势']);
-  assert.deepEqual([...control.get('选兵与编组')].map(x=>x.id),[80,81]);
-  assert.deepEqual([...control.get('移动、攻击与操作手势')].map(x=>x.id),[82,83]);
-  const automatic=layoutGroups(input.slice(4),'',4);
-  assert.deepEqual([...automatic.keys()],['自动战斗与防空']);
+  const keyboard=layoutGroups(input.slice(0,2),'',3);
+  assert.deepEqual([...keyboard.keys()],['键鼠与选兵']);
+  assert.deepEqual([...keyboard.get('键鼠与选兵')].map(x=>x.id),[80,81]);
+  const tactical=layoutGroups(input.slice(2,4),'',4);
+  assert.deepEqual([...tactical.keys()],['战术操作']);
+  assert.deepEqual([...tactical.get('战术操作')].map(x=>x.id),[82,83]);
+  const automatic=layoutGroups(input.slice(4),'',6);
+  assert.deepEqual([...automatic.keys()],['自动功能']);
   assert.deepEqual(Array.from(automatic.get('自动战斗与防空'),x=>x.id),[9182,9183]);
 });
 
@@ -430,7 +432,7 @@ if (!failed && process.argv.includes('--browser')) {
       await item.click();
       await page.waitForFunction(name=>document.querySelector('#navigation [aria-current="page"]')?.getAttribute('aria-label')===name,name);
     };
-    assert.deepEqual(await nav.getByRole('button').evaluateAll(buttons=>buttons.slice(0,3).map(button=>button.getAttribute('aria-label'))),['控制','自动功能','生产'],'navigation retains the current product-first section order');
+    assert.deepEqual(await nav.getByRole('button').evaluateAll(buttons=>buttons.slice(0,3).map(button=>button.getAttribute('aria-label'))),['键鼠与选兵','战术操作','进驻与装卸'],'navigation starts with the three split control pages');
     assert.equal(await page.getByRole('tab').count(),0);
     await openPage('渲染');
     await page.getByLabel('增强渲染',{exact:true}).waitFor();
@@ -686,8 +688,8 @@ if (!failed && process.argv.includes('--browser')) {
     await receive(compactState({generation:7,controls:pinned.map(control=>control.id===880?{...control,checked:action.value}:control)}));
     // A clean, correctly routed acceptance view: ordinary saved settings,
     // two complete feature rows, and an expanded master/detail group.
-    await page.getByRole('button',{name:'控制',exact:true}).click();
-    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2);assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),1);
+    await page.getByRole('button',{name:'战术操作',exact:true}).click();
+    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2);assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),2);
     const hierarchyControls=[
       ...compound.map(control=>control.type==='hotkey'?{...control,selected:0x3012}:control),
       {id:477,type:'toggle',label:'磁电轮换攻击',checked:true,row:164,column:20,group:'键鼠组合操作'},
@@ -698,7 +700,7 @@ if (!failed && process.argv.includes('--browser')) {
       {id:751,type:'choice',label:'目标优先级',selected:0,options:['当前目标','剩余生命','距离最近'],readonly:true,group:'飞机分配攻击',collapsible:true},
       {id:752,type:'label',label:'设置已保存 · 进入对局后生效',group:'飞机分配攻击',collapsible:true}
     ];
-    const controlPage=(revision,controls=hierarchyControls)=>({kind:'state',protocol:1,module:2,generation:2,revision,page:'tactical/1',title:'控制',controls,status:'设置已保存 · 可在进入游戏前调整'});
+    const controlPage=(revision,controls=hierarchyControls)=>({kind:'state',protocol:1,module:2,generation:2,revision,page:'tactical/2',title:'战术操作',controls,status:'设置已保存 · 可在进入游戏前调整'});
     await receive(controlPage(1));await page.getByLabel('飞机分配攻击',{exact:true}).waitFor();
     await page.getByLabel('飞机分配攻击',{exact:true}).click();action=await page.evaluate(()=>window.__sent.at(-1));
     assert.equal(action.module,2);assert.equal(action.id,705);assert.equal(action.value,true);
@@ -712,7 +714,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.getByText('设置已保存 · 进入对局后生效',{exact:true}).isVisible(),true);
     await aircraftHelp.click();
     await page.locator('#toast').waitFor({state:'hidden',timeout:10000});
-    assert.equal(await page.getByRole('button',{name:'控制',exact:true}).getAttribute('aria-current'),'page');
+    assert.equal(await page.getByRole('button',{name:'战术操作',exact:true}).getAttribute('aria-current'),'page');
     await page.locator('.settings-group').filter({hasText:'飞机分配攻击'}).locator('.feature-config-toggle').first().click();
     await page.getByLabel('每个目标分配上限',{exact:true}).waitFor();await page.mouse.move(0,0);
     for(const viewport of [{width:1240,height:880},{width:720,height:780},{width:390,height:720}]) {
