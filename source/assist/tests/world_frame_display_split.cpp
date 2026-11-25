@@ -34,6 +34,22 @@ int main(){
  assert(display->read(Type,&actorType,sizeof actorType));
  assert(!shallow->read(ActorA+0x6C,&hp,sizeof hp));
  assert(shallow->key.serial==baseSerial);
+ // A steady-state visual reader already knows these three Type pages from
+ // the previous observation. Warm the run before discovery, not after
+ // actor() has made three separate page calls. No authority or bytes change.
+ worldframe::VisualCache warmHost;
+ const uint32_t typePage=Type&~4095u;
+ warmHost.request({typePage,typePage+4096,typePage+8192},104,false);
+ auto warmDisplay=warmHost.acquire(shallow,worldframe::Visual|worldframe::Passengers,104,read);
+ assert(warmDisplay&&warmDisplay->controlSource==shallow);
+ assert(warmDisplay->counters.calls+2<=display->counters.calls);
+ assert(warmDisplay->counters.bytes==display->counters.bytes);
+ assert(warmDisplay->pages.size()==display->pages.size());
+ assert(warmDisplay->read(ActorA+0x6C,&hp,sizeof hp)&&hp==100);
+ assert(warmDisplay->read(Type,&actorType,sizeof actorType));
+ assert(!shallow->read(Type,&actorType,sizeof actorType));
+ std::printf("PASS Host leased Type warmup: %u -> %u reads, equal bytes/pages\\n",
+   display->counters.calls,warmDisplay->counters.calls);
  // Raw Base requests never enter the boundary-only lane. Command readers
  // receive their own full actor and object type data in the native sample.
  worldframe::Snapshot full;
