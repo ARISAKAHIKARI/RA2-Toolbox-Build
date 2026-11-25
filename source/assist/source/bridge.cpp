@@ -338,6 +338,12 @@ static bool refreshWorldIndex(int frame,bool executionGuards=true){
   }
   return true;
  }
+ if(runtimeDirectActions){
+  // A current native roster can be reused within the same frame; no world
+  // graph or page lease is needed to resolve the IDs of live command actors.
+  if(!executionGuards)return false;
+  indexWorld(frame);return indexedFrame==frame&&commandRosterReady();
+ }
  const uint32_t now=sampleClock(sh);
  // Prefer a newly sealed same-frame Runtime sample even if a prior direct
  // fallback failed less than 16ms ago. The throttle applies only to another
@@ -2021,41 +2027,43 @@ static void tick(){
  const bool noGraphJobs=!sh->moFeatures&&!sh->cooperativeFrameWanted&&
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
   !sh->minerDefenseEnabled&&!minerDefensePending()&&!sh->superweaponGrant&&
-  !sh->placementPreview.active&&!sh->runtimeTracking&&!sh->plannerTracking&&
-  !sh->magnetronGlobal&&!sh->magnetronDrop&&!sh->dodgeEnabled&&!sh->burstEnabled&&
+  !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput))&&!sh->plannerTracking&&
+  !sh->burstEnabled&&
   !sh->burstHoldEnabled&&!sh->burstHeld&&!sh->missileEnabled&&!sh->scrollRefreshHz&&
-  !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&!dodgeCount&&
-  !burstCount&&!missileHoldCount&&!nativeCount&&!unloadCount&&!queuedUnload.count&&
+  !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&
+  !burstCount&&!missileHoldCount&&!unloadCount&&!queuedUnload.count&&
   !loadLedger.count&&!loadCalculationPending&&!entryReservationCount&&
-  !cooperativeEffectCount&&!actorLeaseArbiter.count&&!missionObserver.pending()&&
+  !cooperativeEffectCount&&
   !ownground::job.pending&&!nativePlacementCompletionPending()&&!scrollRefreshActive&&
   !runtimeCoopPending&&!oreHarvestNeedsWork()&&!moOrdersPending()&&
   !directAirPending()&&!directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
  const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&noGraphJobs&&
+   !sh->runtimeTracking&&!sh->magnetronGlobal&&!sh->magnetronDrop&&!sh->dodgeEnabled&&!dodgeCount&&!nativeCount&&
+   !actorLeaseArbiter.count&&!missionObserver.pending()&&
    !capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)&&
    !repairCalculationPending&&!manualRepairPending&&!(repairAt<repairCount)&&!pendingRepairs.count;
  const bool hostDisplayOnly=sharedWorldWanted&&noCommandWork&&
   worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
- // First direct-read lane: repair and simple selection/filter commands.
- // Other consumers, async results, rule work and pending jobs retain the
- // existing sealed graph until individually migrated and tested.
+ // Direct Runtime lane: native repair, selection, combat and dodge.
+ // Graph-dependent collectors and explicit command mailboxes retain their
+ // old path until migrated. A visual subscription never grants action authority.
  const bool directCommand=sh->request==sh->ack||
   sh->command==Repair||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
- const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&
+ const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&!catalogueDue&&
   !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
-  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable))&&
+  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS))&&
   !selectionPending&&!planPending&&!cooperativePending&&sh->pointer.request==sh->pointer.ack&&
   directCommand&&!repairCalculationPending&&!manualVersions.pausedCount&&
-  compute::inside(sh->computeApplied,compute::Repair)&&
-  worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
+  sh->computeApplied==compute::All&&
+  worldFrameServer.demandMask()==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  // Display-only demand publishes a zero-page world boundary. The Host
  // VisualCache independently samples the read-only display graph; it never
  // becomes a source of Runtime commands or action-planning authority.
  if(hostDisplayOnly)
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
  else if(directRuntime)
-  captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
+  captureWorldFrame(readLiveWorld,worldSample,house,now,worldframe::Base|worldframe::HostDisplayOnly,true);
  else if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
  if(worldFrame.catalogue.attempted||worldFrameCandidate.catalogue.attempted){
@@ -2076,8 +2084,7 @@ static void tick(){
  if(observationFrame){inputMatch=match;inputFrame=frame;}
  bool finishSnapshot=false;
  withInputPublication(sh,match,now,frame,observationFrame,[&]{
- if(directRuntime&&worldFrameReady&&worldFrameBoundaryOnly&&worldFrame.key.match==match&&
-    worldFrame.key.frame==frame&&worldFrame.key.house==house&&gameentry::active(gameentry::Client::Assist))
+ if(directRuntime&&gameentry::active(gameentry::Client::Assist))
   runtimeDirectActions=true;
  // Control time belongs to the dispatcher, never to the optional display scan.
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;pauseViewTick();buildTimeTooltipTick();
