@@ -23,7 +23,7 @@
     }
     return true;
   }
-  const stateCategory = message => message.module === 2 ? Number(String(message.page || '').match(/(?:^|\/)([1-5])$/)?.[1] || message.category || 0) : 0;
+  const stateCategory = message => message.module === 2 ? Number(String(message.page || '').match(/(?:^|\/)([1-7])$/)?.[1] || message.category || 0) : 0;
   const DEBUG_STATES = new Set(['ready','blocked','unknown','unused']);
   const DEBUG_HOOKS = new Set(['na','inactive','installed','pending','conflict','unknown']);
   const DEBUG_STALE_MS = 5000;
@@ -91,7 +91,7 @@
     emit(message) { this.send({ ...message, protocol: PROTOCOL }); }
     ready() { this.emit({ kind: 'ready' }); }
     navigate(module, category = 0, pageIndex = null) {
-      if (!Number.isInteger(module) || module < 0 || module > 2 || (module === 2 && (!Number.isInteger(category) || category < 1 || category > 5))) return false;
+      if (!Number.isInteger(module) || module < 0 || module > 2 || (module === 2 && (!Number.isInteger(category) || category < 1 || category > 7))) return false;
       this.current = { module, category: module === 2 ? category : 0 };
       this.emit({ kind: 'navigate', ...this.current, ...(Number.isInteger(pageIndex) ? {pageIndex} : {}) }); this.changed('navigate'); return true;
     }
@@ -112,7 +112,7 @@
       if (message.kind === 'state') {
         if (!safeInteger(message.module) || message.module > 2 || !safeInteger(message.generation) || !message.generation || !safeInteger(message.revision) || !Array.isArray(message.controls) || message.controls.length > 10000) return false;
         if (message.generation < (this.generation.get(message.module) || 0)) return false;
-        const category = stateCategory(message); if (message.module === 2 && (category < 1 || category > 5)) return false;
+        const category = stateCategory(message); if (message.module === 2 && (category < 1 || category > 7)) return false;
         const key = pageKey(message.module, category), previous = this.pages.get(key);
         if (previous && previous.generation === message.generation && previous.revision >= message.revision) return false;
         const controls = message.controls.map(canonical);
@@ -362,9 +362,9 @@
   }
   // Navigation pages are the only category level. Keep the original native
   // feature boundaries before flattening so parameter ownership survives.
-  const FLAT_PAGE_NAMES=['鼠标','渲染','监控视图','控制','自动功能','游戏规则','实验功能',null,'生产','生产'];
+  const FLAT_PAGE_NAMES=['鼠标','渲染','监控视图','键鼠与选兵','战术操作','进驻与装卸','自动功能','生产','游戏规则','实验功能',null];
   function layoutGroups(controls,query='',navigationIndex=0){
-    const groups=groupControls(navigationIndex===7?controls:controls.filter(c=>!redundantStatus(c)),query);
+    const groups=groupControls(navigationIndex===10?controls:controls.filter(c=>!redundantStatus(c)),query);
     const pageName=FLAT_PAGE_NAMES[navigationIndex];
     if(!pageName||!groups.size)return groups;
     const flat=[],blocks=[];
@@ -378,17 +378,16 @@
     flat.flatFeatureBlocks=blocks;
     return new Map([[pageName,flat]]);
   }
-  const PRODUCTION_PAGE=8, PRODUCTION_NOTICES=9;
+  const PRODUCTION_PAGE=7;
   function displayPageControls(controls,index){
     if(index<2)return controls.filter(control=>(control.group==='渲染')===(index===1));
-    if(index===2||index===PRODUCTION_NOTICES)
-      return controls.filter(control=>(control.group==='生产提醒')===(index===PRODUCTION_NOTICES));
-    if(index===4||index===PRODUCTION_PAGE)
+    if(index===2)return controls;
+    if(index===6||index===PRODUCTION_PAGE)
       return controls.filter(control=>(control.group==='生产预定')===(index===PRODUCTION_PAGE));
     return controls;
   }
-  const targetFor=index=>index===PRODUCTION_PAGE?{module:2,category:2}:index===PRODUCTION_NOTICES?{module:1,category:0}:index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:index-2};
-  const restoredIndex=(category,section)=>category===0?(section===1?2:0):category+2;
+  const targetFor=index=>index===PRODUCTION_PAGE?{module:2,category:4}:index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:index-2};
+  const restoredIndex=(category,section)=>category===0?(section===1?2:0):({1:3,2:4,3:5,4:6,5:8,6:9,7:10}[category]??0);
   // The adapter already exports the original logical row. Keep its related
   // editors together instead of turning every native widget into a full row.
   // Missing/default coordinates must never combine unrelated settings.
@@ -416,16 +415,17 @@
 
   const $ = id => document.getElementById(id);
   const CATEGORIES = [
-    ['鼠标','管理鼠标外观、刷新率与位置。','<circle cx="12" cy="12" r="8"></circle><path d="M12 6v6l4 4"></path>'],
+    ['鼠标','管理鼠标外观、刷新率与位置。','<path d="M7 3v11m0 0 4-4m-4 4-4-4M14 5h6v14h-6z"></path>'],
     ['渲染','画面效果、GPU 加速与帧率。','<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m7 14 4-4 3 3 3-4"></path>'],
-    ['监控视图','副相机、小地图与战场信息。','<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 10h10M9 15h6"></path>'],
-    ['控制','键鼠操作、选兵、移动与下令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'],
+    ['监控视图','副相机、小地图、生产提醒与战场信息。','<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 10h10M9 15h6"></path>'],
+    ['键鼠与选兵','快捷键、组合操作、选兵与编组。','<rect x="3" y="7" width="18" height="12" rx="3"></rect><path d="M7 11h2m-1-1v2m4-1h2m4-1v2"></path>'],
+    ['战术操作','移动攻击、目标分配、巡逻与路径点。','<path d="M4 18 18 4m-8 0h8v8"></path><circle cx="6" cy="6" r="2"></circle>'],
+    ['进驻与装卸','高级进驻、智能卸载与自动装车。','<path d="M3 12h18M13 4l8 8-8 8"></path><rect x="3" y="5" width="7" height="14" rx="1"></rect>'],
     ['自动功能','自动战斗、资源管理与辅助操作。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'],
+    ['生产','生产预定、队列与面板设置。','<path d="M3 20V9l6 3V7l6 4V4h4l2 16H3Zm4-4h2m3 0h2m3 0h2"></path>'],
     ['游戏规则','游戏速度、科技、地图与操控权限。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'],
     ['实验功能','原生视图、剧情触发与兼容设置。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'],
     ['调试','运行状态与平台兼容性。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect>']
-    ,['生产','设置生产预定、批量队列和面板大小。','<path d="M3 20V9l6 3V7l6 4V4h4l2 16H3Zm4-4h2m3 0h2m3 0h2"></path>'],
-    ['生产','设置各类生产队列提醒和建造时间提示。','']
   ];
   const navigationButtons=new Map();
   let selectedCategory = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, userNavigated = false, restoredNavigation = false;
@@ -448,9 +448,9 @@
     else store.navigate(target.module,target.category,index);
     $('contentScroll').scrollTop=0;
   }
-  const navGroups={0:'显示',3:'对局工具',5:'高级'};
+  const navGroups={0:'显示',3:'对局工具',8:'高级'};
   // Product-first ordering without changing the backend module/category IDs.
-  const navOrder=[3,4,PRODUCTION_PAGE,0,1,2,5,6,7];
+  const navOrder=[3,4,5,6,PRODUCTION_PAGE,0,1,2,8,9,10];
   for(const index of navOrder){
     if(navGroups[index]){const group=document.createElement('div');group.className='nav-group-label';group.textContent=navGroups[index];$('navigation').append(group);}
     const button=document.createElement('button');button.className='nav-button';button.type='button';button.dataset.pageIndex=String(index);
@@ -458,12 +458,10 @@
     button.querySelector('span').textContent=CATEGORIES[index][0];button.setAttribute('aria-label',CATEGORIES[index][0]);button.title=CATEGORIES[index][0];
     button.addEventListener('click',()=>navigate(index));$('navigation').append(button);navigationButtons.set(index,button);
   }
-  $('productionQueue').addEventListener('click',()=>navigate(PRODUCTION_PAGE));
-  $('productionNotices').addEventListener('click',()=>navigate(PRODUCTION_NOTICES));
   $('search').setAttribute('aria-keyshortcuts','Control+f');
   $('search').addEventListener('input', event => { setSearch(event.target.value); schedule(); });
   $('search').addEventListener('keydown', event => { if (!composingKey(event) && event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = ''; setSearch(''); schedule(); } });
-  $('clearSearch').addEventListener('click', () => { $('search').value = ''; setSearch(''); if(selectedCategory===7){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
+  $('clearSearch').addEventListener('click', () => { $('search').value = ''; setSearch(''); if(selectedCategory===10){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
   $('debugGroup').addEventListener('change',event=>{debugGroup=event.target.value;schedule();});
   $('debugFilter').addEventListener('change',event=>{debugFilter=event.target.value;schedule();});
   $('moduleToggle').addEventListener('change', event => store.enable(targetFor(selectedCategory).module, event.target.checked));
@@ -956,15 +954,12 @@
       for(const row of debugRows.values())row.element.remove();
       debugRows.clear();renderedPage=currentPage;
     }
-    const navIndex=selectedCategory===PRODUCTION_NOTICES?PRODUCTION_PAGE:selectedCategory;
-    $('productionViews').hidden=navIndex!==PRODUCTION_PAGE;
-    $('productionQueue').setAttribute('aria-pressed',String(selectedCategory===PRODUCTION_PAGE));
-    $('productionNotices').setAttribute('aria-pressed',String(selectedCategory===PRODUCTION_NOTICES));
+    const navIndex=selectedCategory;
     navigationButtons.forEach((button,index) => { if (index === navIndex) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     $('breadcrumb').textContent=category[0];$('pageTitle').textContent=category[0];
     $('pageDescription').textContent=category[1];
     $('version').textContent=store.shell.version||'正在连接…';
-    const debugging=selectedCategory===7;
+    const debugging=selectedCategory===10;
     $('settings').hidden=!state;$('debugTools').hidden=!debugging;
     $('debugPanel').hidden=!debugging||!state;
     $('search').placeholder=debugging?'搜索入口、地址或影响功能…':'搜索当前页面…';
@@ -1007,7 +1002,7 @@
     if(message.kind==='shell'&&message.servicesReady&&!restoredNavigation){
       restoredNavigation=true;
       if(!userNavigated){
-        const native=Number.isInteger(message.selectedCategory)?Math.max(0,Math.min(5,message.selectedCategory)):0;
+        const native=Number.isInteger(message.selectedCategory)?Math.max(0,Math.min(7,message.selectedCategory)):0;
         navigate(Number.isInteger(message.pageIndex) && message.pageIndex>=0 && message.pageIndex<CATEGORIES.length
           ? message.pageIndex : restoredIndex(native,message.videoSection),true);
       }
@@ -1015,6 +1010,6 @@
   });
   global.addEventListener('beforeunload',() => stopCapture());
   // Relative sample age keeps advancing if the owner/game stops publishing.
-  global.setInterval(()=>{if(selectedCategory===7 && store.state)schedule();},1000);
+  global.setInterval(()=>{if(selectedCategory===10 && store.state)schedule();},1000);
   store.ready(); schedule();
 })(globalThis);
