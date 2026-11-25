@@ -88,7 +88,14 @@ public:
   auto next=SnapshotPool::acquire(pool_);if(!next->extendVisual(source)){++statistics.failed;return {};}
   requests_.clear();leases_.append(now,requests_);std::sort(requests_.begin(),requests_.end());
   CaptureGraph<Live>capture(*next,live,scratch_);
-  const bool collected=capture.capture(combined,requests_);
+  // Recently demanded visual pages often overlap the graph's Type/House/
+  // Cell discovery. Warm their contiguous runs BEFORE pointer traversal so
+  // those pages do not each incur a separate RPM followed by a cache hit.
+  // Only this Host-owned unsealed visual capture uses the warmup. Failed
+  // speculative spans publish no bytes; graph and final requested-page
+  // recovery still use the existing per-page/partial-range policy.
+  next->prefetchPages(live,requests_,scratch_.pageScratch.data(),scratch_.pageScratch.size(),false,32);
+  const bool collected=!next->overflow()&&capture.capture(combined,requests_);
   const auto after=visualStamp(live,*source);
   if(!collected||!coherentVisualCapture(before,after,uint32_t(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-started).count()))||!next->seal()){++statistics.failed;return {};}
   next->visualFrame=after.frame;next->visualTick=now;next->visualSerial=++serial_;
