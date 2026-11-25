@@ -18,23 +18,23 @@ struct Feature {
 // card, and only a primary control stays visible when its settings are folded.
 inline constexpr Feature Features[]={
  // Each gesture owns its shortcut / mouse choice under the same settings fold.
- {458,categories::Control,L"移动、攻击与操作手势",L"高级移动攻击",true,{458,450,729,787,818,802}},
- {705,categories::Control,L"移动、攻击与操作手势",L"飞机分配攻击",true,{705,706,707,708,709,710,711,712,713,714,715,716,717,718,733,734,751,9195,9794,9795}},
- {459,categories::Control,L"进驻、装卸与超武目标选择",L"智能卸载",true,{459,451,453}},
- {477,categories::Control,L"移动、攻击与操作手势",L"磁电轮换攻击",true,{477,478,730}},
- {702,categories::Control,L"移动、攻击与操作手势",L"高级进驻",true,{702,703,704,732}},
- {719,categories::Control,L"移动、攻击与操作手势",L"飞碟主武器攻击",true,{719,725,726,735}},
- {720,categories::Control,L"移动、攻击与操作手势",L"出售被吸取目标",true,{720,727,728,737}},
- {721,categories::Control,L"移动、攻击与操作手势",L"出售战车",true,{721,789,738}},
- {795,categories::Control,L"移动、攻击与操作手势",L"Shift 五连点",true,{795,796,797}},
- {724,categories::Control,L"选兵与编组",L"按当前武器选择同类单位",true,{724}},
+ {458,categories::Tactical,L"移动、攻击与操作手势",L"高级移动攻击",true,{458,450,729,787,818,802}},
+ {705,categories::Tactical,L"移动、攻击与操作手势",L"飞机分配攻击",true,{705,706,707,708,709,710,711,712,713,714,715,716,717,718,733,734,751,9195,9794,9795}},
+ {459,categories::Entry,L"进驻、装卸与超武目标选择",L"智能卸载",true,{459,451,453}},
+ {477,categories::Tactical,L"移动、攻击与操作手势",L"磁电轮换攻击",true,{477,478,730}},
+ {702,categories::Entry,L"移动、攻击与操作手势",L"高级进驻",true,{702,703,704,732}},
+ {719,categories::Tactical,L"移动、攻击与操作手势",L"飞碟主武器攻击",true,{719,725,726,735}},
+ {720,categories::Tactical,L"移动、攻击与操作手势",L"出售被吸取目标",true,{720,727,728,737}},
+ {721,categories::Tactical,L"移动、攻击与操作手势",L"出售战车",true,{721,789,738}},
+ {795,categories::Keyboard,L"移动、攻击与操作手势",L"Shift 五连点",true,{795,796,797}},
+ {724,categories::Keyboard,L"选兵与编组",L"按当前武器选择同类单位",true,{724}},
  // The legacy "下令与巡逻参数" button is only a Win32 presentation fold.
  // Each command owns its own switch, key, mouse and related parameters.
- {9400,categories::Control,L"队形、巡逻与飞机路径",L"模糊下令",true,{9400,9440,9441,9480,9481}},
- {9401,categories::Control,L"队形、巡逻与飞机路径",L"区域目标分配",true,{9401,9442,9443}},
- {9402,categories::Control,L"队形、巡逻与飞机路径",L"自定义巡逻圈",true,{9402,9444,9445,9482,9483,9484,9485,9486}},
- {803,categories::Control,L"队形、巡逻与飞机路径",L"飞机路径点",true,{803,894,866}},
- {111,categories::Control,L"进驻、装卸与超武目标选择",L"自动装车",true,{111,211,700,701}},
+ {9400,categories::Tactical,L"队形、巡逻与飞机路径",L"模糊下令",true,{9400,9440,9441,9480,9481}},
+ {9401,categories::Tactical,L"队形、巡逻与飞机路径",L"区域目标分配",true,{9401,9442,9443}},
+ {9402,categories::Tactical,L"队形、巡逻与飞机路径",L"自定义巡逻圈",true,{9402,9444,9445,9482,9483,9484,9485,9486}},
+ {803,categories::Tactical,L"队形、巡逻与飞机路径",L"飞机路径点",true,{803,894,866}},
+ {111,categories::Entry,L"进驻、装卸与超武目标选择",L"自动装车",true,{111,211,700,701}},
  {100,categories::Automatic,L"维修与自动救援",L"自动维修",true,{100,200,312,780}},
  {455,categories::Automatic,L"维修与自动救援",L"载员自动逃生",true,{455,456}},
  {899,categories::Automatic,L"自动战斗与防空",L"磁电全局自动摔落",true,{899,9502}},
@@ -118,7 +118,7 @@ inline const TypeScope* typeScope(int index){
 
 // Optional type restrictions are advanced configuration, not feature cards.
 // Preserve the original control IDs and settings owners.
-inline constexpr Feature ManualCommandTypes{9610,categories::Control,L"命令类型手动指定",L"命令类型手动指定",false,{781,782,783,784}};
+inline constexpr Feature ManualCommandTypes{9610,categories::Tactical,L"命令类型手动指定",L"命令类型手动指定",false,{781,782,783,784}};
 inline const Feature* ownerFeature(int id){
  if(id>=9200&&id<9200+2*assist::featuretypes::Count)
   return typeScope((id-9200)/2)?&ManualCommandTypes:nullptr;
