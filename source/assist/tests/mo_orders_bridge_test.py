@@ -115,7 +115,12 @@ int main(){
  begin();held.fill(false);held[17]=true;sh->moFeatures=1;sampleAvailable=false;
  const uint32_t target=0x180000;actors.push_back(target);put(target+0x10,900u);put(target+0x21C,lastHouse+0x1000u);put(target+0x6C,100);put(target+0x6C4,0x190000u);
  sampleAddress=readMapCell(30,30)+0xE4;put(sampleAddress,0u);sampleValue=target;
- check(messageMo(WM_MBUTTONDOWN)&&moHolding);
+ check(messageMo(WM_MBUTTONDOWN)&&moHolding&&moPreviewTargetRetry);
+ const auto firstPreview=moPreviewAt;
+ sampleAvailable=true;step();
+ check(!moPreviewTargetRetry&&moPreviewAt-firstPreview==30&&events.empty());
+ // Release still waits if its own fresh observation is unavailable.
+ sampleAvailable=false;
  check(messageMo(WM_MBUTTONUP)&&moWaitingForTargets&&sh->moOrderStatus==3&&events.empty());
  sampleAvailable=true;sampleMissing=sampleAddress;step();check(moWaitingForTargets&&events.empty());
  snap.frame+=1900;sampleMissing=0;step();
