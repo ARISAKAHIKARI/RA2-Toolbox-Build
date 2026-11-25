@@ -90,7 +90,11 @@ static void collectCombatProbes(planner::World&w,bool rawOnly=false){
 }
 static bool advancedTargetInRange(uint32_t id,uint32_t house){
  struct Candidate {uint32_t pointer,id;};static Candidate candidates[16384];
- int count=0;SampleReadScope frameRead;if(!frameRead)return false;
+ int count=0;
+ // Runtime's synchronous command lane already owns the game callback.
+ // Only the legacy observation lane needs a sealed graph to discover IDs.
+ // Keep native selectors outside the observation scope in both cases.
+ const auto collect=[&]()->bool{
  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
  for(int n=0;n<all.count&&count<16384;++n){
   const uint32_t q=item(all,n);if(!q||!nativeEnemy(q,house)||
@@ -99,8 +103,13 @@ static bool advancedTargetInRange(uint32_t id,uint32_t house){
   if(k<0||!targetID)continue;
   candidates[count++]={q,targetID};
  }
- if(!frameRead.complete())return false;
- frameRead.finish(); // Native weapon selectors and range queries are game-thread-only.
+ return true;
+ };
+ if(runtimeDirectActions&&!sampleReadDepth){
+  if(!commandRosterReady()||!collect())return false;
+ }else{
+  SampleReadScope frameRead;if(!frameRead||!collect()||!frameRead.complete())return false;
+ } // Native weapon selectors and range queries are game-thread-only.
  uint32_t p=worldByID(id);if(!p||!own(p,house))return false;
  planner::Actor source{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),source,true);
  for(int n=0;n<count;++n){
