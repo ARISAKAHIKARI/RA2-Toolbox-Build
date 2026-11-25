@@ -362,13 +362,13 @@ note(L"仅单机／战役：暂停后按一次前进一帧。此项修改原生�
 item(L"STATIC",L"逐帧操作：关闭",20,605,9406,0,44);next(44);
 item(L"STATIC",L"视角缩放：关闭",20,605,9093,0,48);next(48);
 #ifdef RA2_UNIFIED
-{auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",886,CBS_DROPDOWNLIST);choices(h,{L"仅光标",L"光标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);}
+{auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",886,CBS_DROPDOWNLIST);choices(h,{L"仅鼠标",L"鼠标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);}
 #else
-label(L"高刷策略（实验性）",20,260);choices(combo(886),{L"仅光标",L"光标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);next();
+label(L"高刷策略（实验性）",20,260);choices(combo(886),{L"仅鼠标",L"鼠标＋拖屏",L"全部",L"强制高刷（实验性 · 联机待验证）"},extra.scrollRefreshMode);next();
 number(887,L"画面目标刷新率 / 帧每秒",extra.scrollRefreshHz,L"30–500 · 默认 120");
 EnableWindow(GetDlgItem(ui,886),FALSE);EnableWindow(GetDlgItem(ui,887),FALSE);
-note(L"当前仅保留光标高刷；拖屏、全部及强制高刷暂不可用。",44);
-item(L"STATIC",L"高刷策略：仅光标",20,605,888);next();
+note(L"当前仅保留鼠标高刷；拖屏、全部及强制高刷暂不可用。",44);
+item(L"STATIC",L"高刷策略：仅鼠标",20,605,888);next();
 #endif
 
 anywhereCheck=toggle(476,buildingmodes::placementCaption(extra.placementImplementation),buildAnywhereMode);next();
