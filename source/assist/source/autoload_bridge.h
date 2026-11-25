@@ -94,16 +94,15 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
   uint32_t type=typeOf(v.object,2),q=get<uint32_t>(v.object+0x118);room[j]=type?get<int>(type+0x5E0):0;int steps=0;
   while(q>=0x10000&&steps++<256){int size=passengerSlots(q);if(!size){room[j]=0;break;}room[j]-=size;uint32_t next=get<uint32_t>(q+0x30);if(next==q){room[j]=0;break;}q=next;}if(q>=0x10000)room[j]=0;
  }
- {
-  // Capacity reservations are derived from the canonical sealed Runtime
-  // graph. Never enumerate the live Techno vector during a delayed load submit.
-  SampleReadScope frameRead(candidateOnly);if(!frameRead)return -30;
-  Vec all{};if(!sampleRoster(0xA8EC78,all))return -30;
+ const auto reserveIncoming=[&]()->bool{
+  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
   for(int n=0;n<all.count;++n){uint32_t other=item(all,n);int k=other?kind(other):-1;if((k!=1&&k!=2)||!own(other,house))continue;uint32_t target=incomingVehicle(other);if(!target)continue;
    for(int j=0;j<nv;++j)if(vehicles[j].object==target){int size=passengerSlots(other);room[j]-=size?size:1024;break;}
   }
-  if(!frameRead.complete())return -30;
- }
+  return true;
+ };
+ if(runtimeDirectActions&&!candidateOnly){if(!reserveIncoming())return -30;}
+ else {SampleReadScope frameRead(candidateOnly);if(!frameRead||!reserveIncoming()||!frameRead.complete())return -30;}
  for(int n=0;n<loadLedger.count;++n){auto&r=loadLedger.records[n];if(!worldObjects.contains(r.object)||incomingVehicle(r.object))continue;for(int j=0;j<nv;++j)if(r.vehicleID==vehicles[j].id){room[j]-=r.slots;break;}}
  // Outstanding cooperative Enter packets reserve seats before native fields
  // reflect their destination. Do not let AutoLoad overbook the same carrier.
@@ -180,8 +179,8 @@ static bool collectLoadFacts(uint32_t house,int frame){
  for(int n=0;n<loadCarrierSelectionCount;++n){const auto&v=loadCarrierSelection[n];uint32_t id=0;if(!read(v.pointer+0x10,&id,sizeof id))return false;
   carriers[n]=id==v.id?v.pointer:0;if(carriers[n]&&worldObjects.byId(v.id)!=v.pointer)return false;
  }
- ObservationReadScope frameRead;if(!frameRead)return false;
- // Background snapshot is a candidate only. Keep the original click cohort,
+ const auto collect=[&]()->bool{
+ // Keep the original click cohort,
  // match exact UIDs in the frozen pages, and revalidate live UID/manual
  // versions before any native Enter action. No sampled command authority.
  for(int n=0;n<loadSelectionCount;++n)if(selected[n]&&get<uint32_t>(selected[n]+0x10)!=loadSelection[n].id)return false;
@@ -216,13 +215,19 @@ static bool collectLoadFacts(uint32_t house,int frame){
  for(int n=0;n<all.count;++n){uint32_t p=item(all,n);int k=p?kind(p):-1;if((k!=1&&k!=2)||!loadingObject(p,house,k))continue;uint32_t target=incomingVehicle(p);if(!target)continue;
   for(int j=0;j<in.nv;++j)if(in.vehicles[j].object==target){int size=passengerSlots(p);in.vehicles[j].reserved+=size?size:in.vehicles[j].capacity;++in.vehicles[j].passengers;in.composition.add(j,typeOf(p,k));break;}
  }
- for(int n=0;n<loadLedger.count;++n){const auto&r=loadLedger.records[n];if(incomingVehicle(r.object))continue;
+ for(int n=0;n<loadLedger.count;++n){const auto&r=loadLedger.records[n];
+  // An invalid retained pointer cannot be dereferenced on the native lane.
+  if(runtimeDirectActions&&worldObjects.byId(r.id)!=r.object)continue;
+  if(incomingVehicle(r.object))continue;
   for(int j=0;j<in.nv;++j)if(in.vehicles[j].id==r.vehicleID){in.vehicles[j].reserved+=r.slots;++in.vehicles[j].passengers;in.composition.add(j,typeOf(r.object,r.kind));break;}
  }
  for(int j=0;j<in.nv;++j){int pending=cooperativePendingSlots(in.vehicles[j].id,in.vehicles[j].object);
   if(pending>0){in.vehicles[j].reserved+=pending;++in.vehicles[j].passengers;}
  }
- return frameRead.complete();
+ return true;
+ };
+ if(runtimeDirectActions)return collect();
+ ObservationReadScope frameRead;return frameRead&&collect()&&frameRead.complete();
 }
 static int autoLoad(uint32_t house,const compute::LoadInput*cohort,bool candidateOnly){
  using namespace loading;
