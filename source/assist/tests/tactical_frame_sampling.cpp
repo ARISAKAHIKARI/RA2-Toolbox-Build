@@ -773,6 +773,13 @@ static void testDirectOre(){
  worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  oreHarvestObserve(lastHouse,snap.frame,clockNow);check(oreHarvestPending()&&!oreHarvestNeedsWork(),"native ore failed to detect unloading");
+ const auto&job=oreHarvestJobs[0];
+ OreHarvestState observed{};const auto readsBefore=liveReads;
+ check(oreHarvestState(job,lastHouse,observed)==1&&observed.unloading,"batched native miner facts changed");
+ check(liveReads-readsBefore==9,"native miner field grouping did not reduce read count");
+ const auto refineryReads=liveReads;
+ check(oreHarvestRefinery(job,lastHouse)==1,"batched refinery radio facts changed");
+ check(liveReads-refineryReads==7,"native refinery field grouping did not reduce read count");
  unloaded(f);++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
  oreHarvestTick(lastHouse,snap.frame,clockNow);
  check(harvestEvents==1&&harvestLast.destination==62056&&!oreHarvestPending(),"native ore failed to find and submit exact nearest resource");
