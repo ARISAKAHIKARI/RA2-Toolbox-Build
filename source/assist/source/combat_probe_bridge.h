@@ -59,9 +59,16 @@ static void collectCombatProbes(planner::World&w,bool rawOnly=false){
  // Scratch storage avoids a large game-thread stack allocation. Validity is
  // reset for every publication; no object sample survives into a later batch.
  static CombatProbeTargetSample targetSamples[planner::MaxActors];
- for(int n=0;n<w.count;++n)targetSamples[n].epoch=0;
+ // Eligibility is derived from immutable actor flags for this publication.
+ // Retain actor order and original indices, but never walk friendly actors
+ // again for every source. A native selector can change live fields, so UID
+ // lookup, selector calls and batch invalidation below remain per pair.
+ static int enemyIndices[planner::MaxActors];
+ int enemies=0;
+ for(int n=0;n<w.count;++n)if(combatCandidate(w.actors[n])){
+  enemyIndices[enemies++]=n;targetSamples[n].epoch=0;
+ }
  CombatProbeBatch batch{targetSamples};
- int enemies=0;for(int n=0;n<w.count;++n)enemies+=combatCandidate(w.actors[n]);
  int visited=0,queries=0,sources=0;
  // Finish a source atomically within this fresh world. At least one source
  // fits even at MaxActors; never publish half a candidate set as "no target".
@@ -71,7 +78,7 @@ static void collectCombatProbes(planner::World&w,bool rawOnly=false){
   if(order<0||nativeOrders[order].mode!=planner::OrdinaryMove||burstOwns(a.id)||dodgeOwns(a.id))continue;
   if(queries+enemies>planner::MaxCombatProbes||w.combatCount+enemies>planner::MaxCombatProbes)break;
   ++sources;const int first=w.combatCount;bool faulted=false;
-  for(int n=0;n<w.count;++n){const auto&t=w.actors[n];if(!combatCandidate(t))continue;++queries;uint32_t q=worldByID(t.id);if(!q)continue;
+  for(int at=0;at<enemies;++at){const int n=enemyIndices[at];const auto&t=w.actors[n];++queries;uint32_t q=worldByID(t.id);if(!q)continue;
    auto probe=probeCombatPair(p,q,a,t,int(std::min(uint32_t(sh->advancedRangeCells),30u))*256,&batch,n,rawOnly);
    if(probe.flags&4){faulted=true;break;}
    if(probe.flags)w.combat[w.combatCount++]=probe;
