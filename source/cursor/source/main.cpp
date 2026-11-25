@@ -394,7 +394,7 @@ static void updatePrimaryAction(){
  suite::reportEnabled(0,enabled);
 #endif
  textIfChanged(primaryAction,enabled?L"暂停":L"开启");
- textIfChanged(subTitleLabel,mode==L"hide"?L"隐藏原鼠标指针 · 保留名称和价格提示":mode==L"sha"?L"透明 SHA · 外置鼠标":L"保留原鼠标指针 · 外置鼠标");
+ textIfChanged(subTitleLabel,mode==L"hide"?L"隐藏原鼠标指针 · 保留名称和价格提示":mode==L"sha"?L"透明 SHA · 外置鼠标指针":L"保留原鼠标指针 · 外置鼠标指针");
  std::wstring state=manualCursorPause?L"鼠标已暂停（F9 恢复）":!autoStart?L"已关闭":autoPaused?L"需要检查 · 展开高级设置":running?L"运行中":L"等待游戏启动";
  if(running&&enabled&&!manualCursorPause&&mode==L"hide"){
   if(!shared||shared->state==0)state=L"等待游戏执行隐藏原鼠标指针";
