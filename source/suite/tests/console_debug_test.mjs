@@ -18,14 +18,14 @@ function entry(id,patch={},debug={}){return {id,type:'toggle',label:'CanBuild',g
 function setup(controls=[entry(9001)]){
   const messages=[],store=new ConsoleStore(message=>messages.push(message),()=>{},{initialSeq:0});
   const state=(patch={})=>({kind:'state',protocol:1,module:2,generation:3,revision:1,page:'tactical/7',controls,...patch});
-  store.navigate(2,5);store.receive(state());return {store,messages,state};
+  store.navigate(2,7);store.receive(state());return {store,messages,state};
 }
 const normalize=(...items)=>items.map(canonical);
 
-test('debug navigation is category 5 and preserves independent category caches',()=>{
+test('debug navigation is category 7 and preserves independent category caches',()=>{
   const {store,messages}=setup();assert.equal(messages[0].module,2);assert.equal(messages[0].category,5);
   assert.equal(store.getControl(9001).debug.address,0x4f7870);store.navigate(2,4);assert.equal(store.state,null);
-  store.navigate(2,5);assert.equal(store.getControl(9001).label,'CanBuild');assert.equal(store.navigate(2,6),false);
+  store.navigate(2,7);assert.equal(store.getControl(9001).label,'CanBuild');assert.equal(store.navigate(2,8),false);
 });
 test('typed optional metadata is immutable and ordinary controls remain ordinary',()=>{
   const c=canonical(entry(9001));assert.ok(Object.isFrozen(c.debug));assert.equal(c.debug.siteId,0);assert.equal(c.debug.sampled,true);
@@ -94,7 +94,7 @@ test('toggle rejection restores observed setting and displays an explicit error'
   assert.equal(store.value(store.getControl(9001),'toggle'),true);assert.equal(store.error(9001),'当前入口不可修改');assert.equal(store.getControl(9001).debug.state,'ready');
 });
 test('cached previous-generation diagnostics cannot submit or claim current readiness',()=>{
-  const {store,state}=setup();store.navigate(2,4);store.receive(state({generation:4,page:'tactical/4',controls:[]}));store.navigate(2,5);
+  const {store,state}=setup();store.navigate(2,4);store.receive(state({generation:4,page:'tactical/4',controls:[]}));store.navigate(2,7);
   assert.equal(store.act(9001,'toggle',false),false);assert.equal(debugStatus(store.getControl(9001),store.state.receivedAt,Date.now(),false).label,'等待当前页状态');
 });
 test('new snapshot owns its local receipt time and refreshes an expired observation',()=>{
@@ -111,7 +111,7 @@ test('same address call and breakpoint retain independent controls and settings'
 const catalogIndex=process.argv.indexOf('--catalog');
 if(catalogIndex>=0)test('entire production-encoded catalogue is accepted by the real store',()=>{
   const snapshot=JSON.parse(fs.readFileSync(process.argv[catalogIndex+1],'utf8')),store=new ConsoleStore(()=>{},()=>{},{initialSeq:0});
-  assert.equal(store.navigate(2,5),true);assert.equal(store.receive(snapshot),true);
+  assert.equal(store.navigate(2,7),true);assert.equal(store.receive(snapshot),true);
   const rows=store.state.controls.filter(c=>c.debug?.present);assert.ok(rows.length>=144);assert.equal(rows.length,snapshot.controls.filter(c=>c.debug?.present).length);
   assert.equal(filterDebugControls(store.state.controls,{receivedAt:store.state.receivedAt,now:store.state.receivedAt}).length,rows.length);
   assert.equal(new Set(rows.map(c=>c.id)).size,rows.length);assert.equal(new Set(rows.map(c=>c.debug.siteId)).size,rows.length);
@@ -143,7 +143,7 @@ if(!failed && process.argv.includes('--browser')){
     const receive=m=>page.evaluate(m=>window.__receive(m),m);
     await receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:7,version:'debug fixture',modules:[{module:2,ready:true,enabled:true}]});await receive(snapshot());
     await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===8);
-    assert.equal(await page.locator('#pageTitle').textContent(),'调试');assert.equal(await page.locator('.nav-button').count(),6);
+    assert.equal(await page.locator('#pageTitle').textContent(),'调试');assert.equal(await page.locator('.nav-button').count(),11);
     const scanButton=page.getByRole('button',{name:'开始只读扫描',exact:true}),cancelButton=page.getByRole('button',{name:'取消扫描',exact:true}),reportButton=page.getByRole('button',{name:'打开 HTML 报告',exact:true});
     assert.equal(await scanButton.isVisible(),true);assert.equal(await cancelButton.isDisabled(),true);assert.equal(await reportButton.isDisabled(),true);
     const pidInput=page.getByRole('textbox',{name:'进程 PID（留空自动识别）',exact:true});await pidInput.fill('3210');await pidInput.press('Enter');
