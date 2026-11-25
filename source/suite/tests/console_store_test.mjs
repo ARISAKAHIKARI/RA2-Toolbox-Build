@@ -489,7 +489,7 @@ if (!failed && process.argv.includes('--browser')) {
     await page.getByLabel('绘制方式',{exact:true}).waitFor();
     await openPage('鼠标');
     for(const viewport of [{width:720,height:780},{width:540,height:720},{width:390,height:720}]){
-      await page.setViewportSize(viewport);await page.getByRole('button',{name:'队形预览快捷键',exact:true}).scrollIntoViewIfNeeded();await assertFits();
+      await page.setViewportSize(viewport);await page.locator('.setting-row[data-type="hotkey"]').first().scrollIntoViewIfNeeded();await assertFits();
       await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
       await page.screenshot({path:diagnosticsPrefix+'-'+viewport.width+'.png',fullPage:false});
     }
