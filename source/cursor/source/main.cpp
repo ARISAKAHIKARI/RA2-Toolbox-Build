@@ -983,7 +983,7 @@ static void draw(){
  if(noCursorMode){
   ShowWindow(overlay,SW_HIDE);diagAnimation=L"无鼠标诊断：不发布鼠标图像";
   if(!manualCursorPause&&shared&&shared->state!=1&&uint32_t(GetTickCount()-nativeStartAt)>2000){
-   autoPaused=true;stop();status(L"无鼠标模式：隐藏未确认，已停止并请求恢复");
+   autoPaused=true;stop();status(L"无鼠标指针模式：隐藏未确认，已停止并请求恢复");
   }
   return;
  }
@@ -1308,7 +1308,7 @@ static void diagnosticHud(){
    if(ss==shared->sampleSeq){frame=sf;hx=sx;hy=sy;gw=sw;gh=sh;age=now-stamp;}
   }
  }
- const wchar_t* kind=noCursorMode?L"无鼠标指针":mappedCursorPresentation?L"全屏映射外置鼠标":nativeCursorPresentation()&&mode==L"hide"?L"原生鼠标":L"外部图层";
+ const wchar_t* kind=noCursorMode?L"无鼠标指针":mappedCursorPresentation?L"全屏映射外置鼠标指针":nativeCursorPresentation()&&mode==L"hide"?L"原生鼠标指针":L"外置鼠标指针图层";
  const wchar_t* ares=!aresKnown?L"检测未知":nativeFive?L"已检测到":L"未检测到";
  const wchar_t* runText=running?(manualCursorPause?L"手动暂停":L"运行中"):
    (!autoStart?L"已关闭":autoPaused?L"已暂停自动连接":L"等待自动连接");
@@ -1320,7 +1320,7 @@ static void diagnosticHud(){
  wchar_t message[1800];
  swprintf(message,1800,L"高刷鼠标 v" RA2_RELEASE_VERSION_W L" 诊断  |  心跳 #%u  |  %ls / %ls\n"
  L"PID=%lu HWND=%p 前台PID=%lu  客户区=%ld×%ld\n"
- L"Hook=%ld (%ls)  错误=%ld  原生鼠标确认=%ld\n"
+ L"Hook=%ld (%ls)  错误=%ld  原生鼠标指针确认=%ld\n"
  L"Frame=%ls  热点=%ls  游戏=%d×%d  样本年龄=%ls  %ls\n"
  L"图像序号=%ld 已接收=%ld  提交=%.1f/s  补间=%.1f/s（非游戏FPS）\n"
  L"Hook采样=%ld 有效=%ld 读帧错误=%ld  原帧换帧=%.1f/s\n"
@@ -1762,7 +1762,7 @@ static void pollPrepare(){
 
 static bool cursorCloseAllowed(){
  if(mode==L"sha"&&live()&&(exists(gameDir+L"\\mouse.sha.cursor-preview-state")||manuallyBlankSHA()))
-  return cursorDialog(L"游戏正在使用透明鼠标指针。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明鼠标文件",MB_YESNO|MB_ICONWARNING)==IDYES;
+  return cursorDialog(L"游戏正在使用透明鼠标指针。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明鼠标指针文件",MB_YESNO|MB_ICONWARNING)==IDYES;
  return true;
 }
 #include "refresh_settings_ui.h"
@@ -1908,7 +1908,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  statusw=CreateWindowW(L"STATIC",L"等待游戏",WS_CHILD|WS_VISIBLE,15,115,735,44,mainw,NULL,inst,NULL);SendMessageW(statusw,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  HWND labelMode=CreateWindowW(L"STATIC",L"鼠标模式",WS_CHILD|WS_VISIBLE,15,172,90,22,mainw,NULL,inst,NULL);SendMessageW(labelMode,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  modeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS,105,168,380,110,mainw,NULL,inst,NULL);
- for(const wchar_t* text:{L"保留原鼠标指针",L"隐藏原鼠标指针",L"透明鼠标文件",L"无鼠标模式（高级）"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
+ for(const wchar_t* text:{L"保留原鼠标指针",L"隐藏原鼠标指针",L"透明鼠标指针文件",L"无鼠标指针模式（高级）"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
  SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);SendMessageW(modeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  disabledchoices::set(modeBox,0x0b);modernui::tip(modeBox,L"透明鼠标指针替换已停用；不会修改游戏原文件。");
 
@@ -1952,7 +1952,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  nativeGameRefresh=mode==L"hide"&&GetPrivateProfileIntW(L"Display",L"GameThreadRefresh",0,ini().c_str())!=0;
  if(wcsstr(cmd,L"--game-refresh")&&mode==L"hide")nativeGameRefresh=true;
  nativeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,114,174,226,130,mainw,(HMENU)12,inst,NULL);
- SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置鼠标");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"游戏内鼠标指针（需隐藏模式）");
+ SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置鼠标指针");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"游戏内鼠标指针（需隐藏模式）");
  SendMessageW(nativeBox,CB_SETCURSEL,nativeGameRefresh?1:0,0);
  hudEnabled=GetPrivateProfileIntW(L"Display",L"HUD",0,ini().c_str())!=0;hudBox=CreateWindowW(L"BUTTON",L"状态面板",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,540,705,210,26,mainw,(HMENU)9,inst,NULL);SendMessageW(hudBox,BM_SETCHECK,hudEnabled?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(hudBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  // Keep the existing settings intact, but move them into an initially hidden
@@ -1972,7 +1972,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   else if(child!=nativeBox){logical.y+=advancedOffsetY;advancedControls.push_back(child);ShowWindow(child,SW_HIDE);}
   controlOrigins.push_back({child,logical});
  }
- titleLabel=CreateWindowW(L"STATIC",L"显示设置",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
+ titleLabel=CreateWindowW(L"STATIC",L"鼠标设置",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
  subTitleLabel=CreateWindowW(L"STATIC",L"调整鼠标样式与画面效果。",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
  primaryAction=CreateWindowW(L"BUTTON",L"暂停",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,20,128,132,34,mainw,(HMENU)101,inst,nullptr);
  advancedAction=CreateWindowW(L"BUTTON",L"高级设置 ▾",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,164,128,176,34,mainw,(HMENU)102,inst,nullptr);
