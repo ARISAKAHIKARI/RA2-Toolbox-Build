@@ -310,8 +310,33 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
   Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
   for(int t=0;t<i.targetCount;++t){const auto&target=i.targets[t];if(direct&&worldByID(target.id)!=target.pointer)return false;sampleMissileMotion(target.pointer,frame);}
   static CombatProbeTargetSample targetSamples[missilecompute::MaxTargets];
-  for(int t=0;t<i.targetCount;++t)targetSamples[t].epoch=0;
+  struct TargetPosition {int x,y;};
+  static TargetPosition positions[missilecompute::MaxTargets];
+  for(int t=0;t<i.targetCount;++t){
+   targetSamples[t].epoch=0;
+   if(!native){const auto q=i.targets[t].pointer;positions[t]={get<int>(q+0x9C),get<int>(q+0xA0)};}
+  }
   CombatProbeBatch batch{targetSamples};
+  // Raw selection uses the current weapon slots and a firing annulus; the
+  // subsequent Edge permits at most AdvanceLeash beyond its cached range.
+  // Take an upper bound of BOTH fresh and still-valid cached range facts.
+  // Native selector geometry is not approximated by this broad phase.
+  auto rawReach=[&](uint32_t p){
+   const uint32_t type=typeOf(p,kind(p));if(!type)return int64_t(0);
+   int slots[2];const int count=rawWeaponSlots(p,type,slots);
+   const float veteran=get<float>(p+0x150);
+   int range=0;
+   for(int n=0;n<count;++n){
+    const uint32_t weapon=rawWeapon(type,veteran,slots[n]);if(weapon<0x10000)continue;
+    const int fresh=get<int>(weapon+0xB4);
+    if(fresh>0&&fresh<65536)range=std::max(range,fresh);
+    const auto&cached=weaponCache[(weapon>>4)&1023];
+    if(cached.pointer==weapon&&cached.match==match&&frame>=cached.frame&&frame-cached.frame<30)
+     range=std::max(range,cached.data.range);
+   }
+   const int bonus=std::clamp(get<int>(type+0x68C),0,32768);
+   return int64_t(range)+bonus+missilecompute::AdvanceLeash;
+  };
   auto add=[&](uint32_t p){if(i.count>=missilecompute::MaxSources||!p)return;for(int n=0;n<i.count;++n)if(i.sources[n].pointer==p)return;
    uint32_t id=get<uint32_t>(p+0x10);int at=missileRecord(id);bool held=at>=0&&missileSends[at].held,managed=at>=0&&missileSends[at].controlled;
    const bool source=missileSource(p,house,true,native);if(!held&&!managed&&!source)return;
@@ -319,8 +344,16 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
    s.cooldown=remaining(get<int>(p+0x2EC),get<int>(p+0x2F4),frame);s.held=held;s.managed=managed;
    if(at>=0){const auto&record=missileSends[at];s.pending=record.target;s.pendingMission=record.mission;s.advanceFrames=record.advanceStart>=0?std::max(0,frame-record.advanceStart):-1;s.releaseFrames=record.releasedAt>=0?std::max(0,missilecompute::ReleaseGraceFrames-(frame-record.releasedAt)):0;s.committedTarget=record.shotTarget;s.committedDamage=record.shotDamage;}
    if((held||managed)&&s.pendingMission<0){planner::Actor firing{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),firing,true,true);if(firing.flags&planner::BurstFiring)s.pendingMission=missilecompute::TransientBusy;}
-   if(source&&!native)for(int t=0;t<i.targetCount;++t){uint32_t weapon=0;int slot=0,close=0,airborne=0;
-    if(sampledCombatWeaponQuery(batch,t,p,i.targets[t].pointer,&weapon,&slot,&close,&airborne)>0)i.edges[n][t]=missileEdgeFacts(p,i.targets[t].pointer,weapon,close,airborne,at,&motionIndices[t],&batch,t);
+   if(source&&!native){
+    const int64_t reach=rawReach(p);const int px=get<int>(p+0x9C),py=get<int>(p+0xA0);
+    for(int t=0;t<i.targetCount;++t){
+     const int64_t dx=int64_t(positions[t].x)-px,dy=int64_t(positions[t].y)-py;
+     // A square enclosing both possible range circles is sufficient; keep
+     // boundary points and every uncertain/close pair on the original path.
+     if(reach>0&&(dx>reach||dx< -reach||dy>reach||dy< -reach))continue;
+     uint32_t weapon=0;int slot=0,close=0,airborne=0;
+     if(sampledCombatWeaponQuery(batch,t,p,i.targets[t].pointer,&weapon,&slot,&close,&airborne)>0)i.edges[n][t]=missileEdgeFacts(p,i.targets[t].pointer,weapon,close,airborne,at,&motionIndices[t],&batch,t);
+    }
    }
   };
   int revisited=0,managedBudget=i.targetCount?missilecompute::MaxSources/2:missilecompute::MaxSources;
@@ -359,12 +392,13 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
  compute::copyInput(missileInput,i);missilecompute::observe(missileObservation,i);return true;
 }
 static bool missileControlTick(uint32_t house,int frame,DWORD now){
- pruneMissileSends(now);
+ // releaseMissileHolds owns its own prune on either cleanup branch.
  if(!sh->missileEnabled){missilePending=false;releaseMissileHolds(house,frame,now);if(!missileSendCount)resetMissileControl();return false;}
  if(missileManualOverflowed()){
   missileFrames.clear();missileApplied=sh->missileComputed;missilePending=missileScanned=false;missileFrame=-1;
   sh->missileSources=sh->missileTargets=0;releaseMissileHolds(house,frame,now);return false;
  }
+ pruneMissileSends(now);
  if(snap.chat||!simulationReady())return false;
  uint32_t settings=sh->missileScope|(sh->missileAllocation<<8)|(sh->missileReserve<<16)|(sh->lowDamageFilter<<17);
  if(settings!=missileSettings){missileFrames.clear();missileApplied=sh->missileComputed;missilePending=missileScanned=false;missileFrame=-1;missileSettings=settings;}
