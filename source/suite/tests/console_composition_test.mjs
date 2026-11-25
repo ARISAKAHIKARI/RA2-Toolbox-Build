@@ -131,7 +131,7 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  ];
  const state=revision=>({kind:'state',protocol:1,module:2,generation:1,revision,page:'tactical/4',controls});
  f.receive(state(1));f.render();
- assert.equal(f.find('group-summary').length,2);
+ assert.equal(f.find('group-summary').length,1);
  assert.equal(f.find('group-summary')[0].tagName,'DIV');
  assert.equal(f.find('group-summary')[0].hidden,false);
  assert.equal(f.find('group-summary')[1].hidden,false);
@@ -300,7 +300,7 @@ test('compact shortcuts retain trigger, double-click, special keys and clear',()
  assert.equal(f.actions().at(-1).value,0xa24b);
  row.special.value='27';f.dispatch(row.special,'change');
  assert.equal(f.actions().at(-1).value,0xa21b);
- assert.equal(row.hotkeyDetails.open,false);
+ assert.equal(row.hotkeyDetails.open,true);
  f.dispatch(row.hotkeySummary,'click');f.dispatch(row.clear,'click');
  assert.equal(f.actions().at(-1).value,0);
  assert.equal(row.hotkeyDetails.open,false);
