@@ -1466,7 +1466,7 @@ static void command(uint32_t house,DWORD now,commandsampling::Sample sample=comm
  const int c=sh->command,arg=sh->arg;
  // A command posted after direct-lane admission must wait for its own full
  // graph; never acknowledge an unmigrated command against a zero-page source.
- if(runtimeDirectActions&&c!=Repair&&((c!=AutoBoard&&c!=SmartUnload&&(c<CombatSelection||c>IdleTransport))||!commandRosterReady()))return;
+ if(runtimeDirectActions&&worldFrameBoundaryOnly&&c!=Repair&&((c!=AutoBoard&&c!=SmartUnload&&(c<CombatSelection||c>IdleTransport))||!commandRosterReady()))return;
  const bool candidateOnly=sample!=commandsampling::Sample::Exact;
  int result=1,n=0;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
@@ -1757,14 +1757,14 @@ static void shiftScene(int dx,int dy){
 // the callback provider or write EventClass data themselves.
 static void consumeSubmittedIntents(uint32_t house,int frame,DWORD now){
  crcMapShadowTick();networkSenderTick(sh->networkHousePreserve!=0);nativeSellCursorTick();controlObjectOwnerTick();controlCommandOwnerTick();nativeMegaGatewayTick();
- if(!runtimeDirectActions)selectionCommand(house,now);uiSoundCommand(now);
+ if(!runtimeDirectActions||!worldFrameBoundaryOnly)selectionCommand(house,now);uiSoundCommand(now);
  // Preserve the ordering of the known-good path: input observers first,
  // then command / planner / cooperative requests.
  uint32_t inputFlags=sh->flags|((unloadCount||queuedUnload.count)?NativeOrders:0);
  csHooksTick(inputFlags);nativeHooksTick(inputFlags);clickHooksTick(inputFlags);
- snap.inputPatchMask=0;if(!runtimeDirectActions)pointerTick();
+ snap.inputPatchMask=0;if(!runtimeDirectActions||!worldFrameBoundaryOnly)pointerTick();
  ownGroundTick(house,frame,now);command(house,now);if(playerContextChanged)return;reservedSidebarTick(house,now);
- if(!runtimeDirectActions)externalOrdersTick(house,frame,now);
+ if(!runtimeDirectActions||!worldFrameBoundaryOnly)externalOrdersTick(house,frame,now);
  if(!runtimeDirectActions||commandRosterReady())cooperativeTick(house,frame,now);
  placementTick();
 }
@@ -2033,18 +2033,18 @@ static void tick(){
  // A same-frame hotkey later upgrades this boundary to a full graph.
  const bool noGraphJobs=!sh->moFeatures&&
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
-  !sh->minerDefenseEnabled&&!minerDefensePending()&&!sh->superweaponGrant&&
-  !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput))&&!sh->plannerTracking&&
+  !sh->superweaponGrant&&
+  !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput|AutoOreReturn))&&!sh->plannerTracking&&
   !sh->burstEnabled&&
   !sh->burstHoldEnabled&&!sh->burstHeld&&!sh->scrollRefreshHz&&
   !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&
   !burstCount&&!loadCalculationPending&&
   !ownground::job.pending&&!nativePlacementCompletionPending()&&!scrollRefreshActive&&
-  !oreHarvestNeedsWork()&&!moOrdersPending()&&
+  !moOrdersPending()&&
   !directAirPending()&&!directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
  const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&noGraphJobs&&
-   !sh->runtimeTracking&&!sh->magnetronGlobal&&!sh->magnetronDrop&&!sh->dodgeEnabled&&!dodgeCount&&!nativeCount&&
+   !sh->runtimeTracking&&!sh->minerDefenseEnabled&&!minerDefensePending()&&!oreHarvestNeedsWork()&&!manualVersions.pausedCount&&!sh->magnetronGlobal&&!sh->magnetronDrop&&!sh->dodgeEnabled&&!dodgeCount&&!nativeCount&&
    !sh->missileEnabled&&!missileHoldCount&&!missileSendCount&&!loadLedger.count&&
    !unloadCount&&!queuedUnload.count&&!entryReservationCount&&!cooperativeEffectCount&&
    !runtimeCoopPending&&!sh->cooperativeFrameWanted&&
@@ -2060,9 +2060,9 @@ static void tick(){
   sh->command==Repair||sh->command==AutoBoard||sh->command==SmartUnload||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
  const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&!catalogueDue&&
   !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
-  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread))&&
+  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread|AutoOreReturn|AntiTheft))&&
   !selectionPending&&!planPending&&!cooperativePending&&sh->pointer.request==sh->pointer.ack&&
-  directCommand&&!repairCalculationPending&&!manualVersions.pausedCount&&
+  directCommand&&!repairCalculationPending&&
   sh->computeApplied==compute::All&&
   worldFrameServer.demandMask()==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  // Display-only demand publishes a zero-page world boundary. The Host
@@ -2092,13 +2092,15 @@ static void tick(){
  if(observationFrame){inputMatch=match;inputFrame=frame;}
  bool finishSnapshot=false;
  withInputPublication(sh,match,now,frame,observationFrame,[&]{
- if(directRuntime&&gameentry::active(gameentry::Client::Assist))
-  runtimeDirectActions=true;
+ // Native execution and snapshot publication are independent. A legacy
+ // collector or catalogue refresh may still require a graph, but that must
+ // never force migrated synchronous consumers back into SampleReadScope.
+ runtimeDirectActions=!worldFrameCommandWorker.enabled()&&sh->computeApplied==compute::All&&gameentry::active(gameentry::Client::Assist);
  // Control time belongs to the dispatcher, never to the optional display scan.
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;pauseViewTick();buildTimeTooltipTick();
  snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();inputLockTick();
  if(worldChange==worldlife::Change::Same&&lastHouse)oreHarvestObserve(lastHouse,frame,now);
- bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missileSendCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||sh->cooperativeFrameWanted||(cooperative::valid(sh->cooperativeRequest)&&sh->cooperativeRequest.serial!=runtimeCoopRequest.serial)||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||manualRepairPending||ownground::job.pending||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
+ bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missileSendCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||manualVersions.pausedCount||oreHarvestNeedsWork()||runtimeCoopPending||sh->cooperativeFrameWanted||(cooperative::valid(sh->cooperativeRequest)&&sh->cooperativeRequest.serial!=runtimeCoopRequest.serial)||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||manualRepairPending||ownground::job.pending||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
   sh->flags|sh->plannerTracking|((sh->cooperativePlan!=sh->cooperativeAck)?AutoOreReturn:0),(sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)));
  const bool deferIndexedWork=needsIndex&&(!refreshWorldIndex(frame)||!commandRosterReady());
  indexedWorkDeferred=deferIndexedWork;
