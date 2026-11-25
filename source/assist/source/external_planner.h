@@ -8,6 +8,7 @@
 #include "weapon_policy.h"
 #include "magnetron_cycle.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <unordered_map>
 #include <unordered_set>
@@ -31,6 +32,7 @@ class Planner {
  };
  std::unordered_map<uint32_t,OreTurn> oreTurns_;
  uint32_t match_=0,inputSerial_=0,flags_=0;int frame_=-1,cursor_=0;
+ std::array<int,6> stepOptions_{};
  std::unordered_map<uint32_t,Advanced> advanced_;
  struct Drop {uint32_t victim,token;int sent;};std::unordered_map<uint32_t,Drop> drops_;bool dropEnabled_=false,dropObserved_=false;uint32_t magnetronModes_=3;
  std::unordered_map<uint32_t,uint32_t> defenseSent_;int defenseCursor_=0;
@@ -151,6 +153,14 @@ public:
   if(order.mission==1){t.skipTarget=order.target;t.skipUntil=frame+30;if(t.target==order.target)t.pendingShot=false;}
   else if(order.mission==2&&++t.moveFailures>=2){t.progress.hold=true;t.stopped=false;}
  }
+ // Callers with an already validated immutable world can avoid the entire
+ // duplicate step, including timing and status traversal. Expired receipts
+ // invalidate frame_ as before; options are part of the computation identity.
+ bool alreadyProcessed(const World&world,uint32_t flags,int veteran,int elite,int pathTimeout,int scanHz=0,int targetPriority=0,int rangeCells=2,bool autoDrop=false,uint32_t magnetronModes=3,bool observeDrop=false)const{
+  return frame_>=0&&world.match==match_&&world.frame==frame_&&world.inputSerial==inputSerial_&&
+   flags==flags_&&dropEnabled_==autoDrop&&magnetronModes_==magnetronModes&&dropObserved_==(observeDrop||autoDrop)&&
+   stepOptions_==std::array<int,6>{veteran,elite,pathTimeout,scanHz,targetPriority,rangeCells};
+ }
  std::vector<Order> step(const World& world,uint32_t flags,int veteran,int elite,int pathTimeout,int scanHz=0,int targetPriority=0,int rangeCells=2,bool autoDrop=false,uint32_t magnetronModes=3,bool observeDrop=false){
   const int rangePadding=std::clamp(rangeCells,0,30)*256;
   if(!validWorld(world)){reset();return {};}
@@ -158,7 +168,7 @@ public:
   observeDrop|=autoDrop;
   // An unchanged callback must not allocate order buffers or rebuild actor
   // indices. Keep the existing receipt invalidation (expired sets frame_=-1).
-  if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop&&magnetronModes_==magnetronModes&&dropObserved_==observeDrop)return {};
+  if(alreadyProcessed(world,flags,veteran,elite,pathTimeout,scanHz,targetPriority,rangeCells,autoDrop,magnetronModes,observeDrop))return {};
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
   auto finishBatch=[&](std::vector<Order> orders){
    // Carry the exact source-snapshot identity through asynchronous planning.
@@ -170,6 +180,7 @@ public:
    }
    return orders;
   };
+  stepOptions_={veteran,elite,pathTimeout,scanHz,targetPriority,rangeCells};
   frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;magnetronModes_=magnetronModes;dropObserved_=observeDrop;queued=docking=yielded=0;targetChecks=0;
   actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();bool enemiesBuilt=false;
   bool useOre=(flags&AutoOreReturn)||!ore_.empty(),useCombat=(flags&(AdvancedInput|MagnetronInput))&&world.intentCount;
