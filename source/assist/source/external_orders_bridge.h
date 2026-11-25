@@ -27,8 +27,7 @@ static void cancelOreJob(uint32_t pointer){if(worldObjects.contains(pointer)){in
   manualVersions.change(id,miner?pointer:0,miner);pauseMissileForManual(id,pointer);releaseAutoOwner(id);minerDefenseForget(id);++inputSerial;}}
 static void observePausedOre(uint32_t house,int frame){
  if(frame==pausedOreFrame||!manualVersions.pausedCount)return;
- SampleReadScope sample;
- const auto* roster=sample?sampledObjectIndex():nullptr;
+ const auto observe=[&](const ObjectIndex* roster){
  if(!roster)return;
  pausedOreFrame=frame;
  // Follow manually suspended miners in the sealed roster. Missing bytes
@@ -42,6 +41,9 @@ static void observePausedOre(uint32_t house,int frame){
   if(n<manualVersions.pausedCount&&manualVersions.pausedSlots[n]==slot)++n;
  }
  snap.oreManual=int(manualVersions.pausedCount);
+ };
+ if(runtimeDirectActions){if(commandRosterReady())observe(&worldObjects);}
+ else {SampleReadScope sample;observe(sample?sampledObjectIndex():nullptr);}
 }
 #include "object_identity_read_leaf.h"
 extern "C" int GuardedReadObjectIdentity(unsigned,unsigned*);
