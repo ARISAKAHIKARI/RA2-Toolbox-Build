@@ -33,6 +33,7 @@ static uint32_t item(Vec v,int n){return v.values->at(n);}
 // Extracted function fixture: the synthetic roster is already a complete
 // immutable vector; production uses SampleReadScope + sampleRoster from
 // tactical_frame_read.h and the real sealed Runtime world sample.
+static bool runtimeDirectActions=false;
 struct SampleReadScope {
  explicit operator bool() const{return true;}
  bool complete() const{return true;}
