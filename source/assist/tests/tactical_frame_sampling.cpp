@@ -680,7 +680,7 @@ static void testDirectCombatDodge(){
        "native planner did not use current game frame");
  check(collectDodgeThreats()&&collectDodgeInput(lastHouse,snap.frame,clockNow,a,b)&&dodgeInput.sources[0].shots[0]==51,
        "native dodge reused old projectile facts");
- check(worldFrame.pages.empty()&&runtimeWorldDemands.empty()&&!sampleReadDepth,
+ check(worldFrame.pages.size()==0&&runtimeWorldDemands.empty()&&!sampleReadDepth,
        "direct tactical collectors copied pages or registered dependencies");
  runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
  std::puts("PASS direct native combat and dodge collectors without copied world pages");
@@ -700,7 +700,7 @@ static void testDirectMissileLoad(){
  const auto distance=missileInput.edges[0][0].distance;
  set<int>(q+0x9C,1700);
  check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].distance!=distance,"native missile reused old target coordinates");
- check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth,"native missile registered page requests");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,"native missile registered page requests");
  runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
  setupLoad(0);const int legacy=autoLoad(lastHouse);const auto expected=assignments;
  setupLoad(0);worldObjects.unbind();worldObjects.clear();
@@ -710,7 +710,7 @@ static void testDirectMissileLoad(){
  worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  check(autoLoad(lastHouse)==legacy&&assignments==expected&&!assignments.empty(),"native boarding changed assignment or required a copied graph");
- check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth,"native boarding registered page requests");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,"native boarding registered page requests");
  runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
  std::puts("PASS direct missile and boarding collectors without world copies");
 }
@@ -735,7 +735,7 @@ static void testDirectRuntimeRepair(){
  set<int>(0xA8EB40+16,16385);
  check(collectRepairs(lastHouse,clockNow)==-6&&repairCount==1&&repairOrders[0].id==20,
        "invalid native roster destroyed previous candidate list");
- check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth,
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,
        "direct collector copied pages, created dependencies or leaked scope");
  runtimeDirectActions=false;
  check(collectRepairs(lastHouse,clockNow)==-6,"direct collector escaped dispatcher admission");
@@ -783,7 +783,7 @@ static void testDirectOre(){
  unloaded(f);++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
  oreHarvestTick(lastHouse,snap.frame,clockNow);
  check(harvestEvents==1&&harvestLast.destination==62056&&!oreHarvestPending(),"native ore failed to find and submit exact nearest resource");
- check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth,"native ore required copied pages");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,"native ore required copied pages");
  runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
  std::puts("PASS native ore unload transition and resource search with no copied graph");
 }
