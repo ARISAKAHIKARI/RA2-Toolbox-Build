@@ -2917,8 +2917,14 @@ static void finalizeTacticalLayout(){
    while(end<items.size()&&pageControls[items[end]].rect.y<bottom){auto&c=pageControls[items[end++]];bottom=std::max(bottom,c.rect.y+c.visibleHeight);}
    std::vector<int> ids;std::wstring rowHelp;for(size_t i=at;i<end;++i){int id=GetDlgCtrlID(pageControls[items[i]].hwnd);if(id){ids.push_back(id);if(rowHelp.empty())rowHelp=controlHelp(id,L"");}}
    int category=suite::categories::row(section,ids.data(),unsigned(ids.size()));
+   // Every row inside a named fold inherits the fold button's page. This
+   // keeps all of its controls together when one legacy section is split
+   // across the three new top-level control pages.
+   const int fold=pageControls[items[at]].fold;
+   const bool foldOwned=fold!=0&&std::all_of(items.begin()+at,items.begin()+end,[&](size_t index){return pageControls[index].fold==fold;});
+   if(foldOwned)category=suite::categories::row(section,&fold,1);
 #ifdef RA2_CONSOLE_WEBVIEW2
-   for(int id:ids)if(const auto* feature=suite::consolelayout::ownerFeature(id)){category=feature->page;break;}
+   if(!foldOwned)for(int id:ids)if(const auto* feature=suite::consolelayout::ownerFeature(id)){category=feature->page;break;}
 #endif
    int&y=bottoms[category];
    for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);if(c.help.empty())c.help=controlHelp(GetDlgCtrlID(c.hwnd),L"");if(c.help.empty())c.help=rowHelp.empty()?controlHelp(0,label):rowHelp;c.rect.y=y+c.rect.y-top;c.page=category;
