@@ -1109,12 +1109,13 @@ static void draw(){
  const bool mapPoint=cursorMapPoint(presentedPoint,presentation.output,mapGW,mapGH,presentation.mapped);
  if(hint.mode!=commandcursor::None&&mapPoint&&!nativeMenuHold&&!(shared&&shared->menuSuspend)&&
     (commandcursor::ordinary(cursorID)||(hint.mode==commandcursor::Enter&&cursorID==25))&&gameinput::heldBinding(hint.binding))commandMode=hint.mode;
- if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=GetTickCount();lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
+ const uint32_t commandAnimationNow=inputNow();
+ if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=commandAnimationNow;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
  if(commandMode!=commandcursor::None){
   const auto&d=commandDefs[commandcursor::definition(commandMode)];int chx=0,chy=0;
   if(cursorRangeMatches(d.first,d.count,d.first,asset.frames.size())&&hot(unsigned(d.hotX),w,chx)&&hot(unsigned(d.hotY),h,chy)){
    unsigned duration=unsigned(std::clamp(d.interval,1,60))*1000u/60u;
-   frame=d.first+int(uint32_t(GetTickCount()-commandSince)/std::max(1u,duration)%unsigned(d.count));
+   frame=d.first+int((commandAnimationNow-commandSince)/std::max(1u,duration)%unsigned(d.count));
    animStart=d.first;animCount=d.count;animKey=2000+int(commandMode);hx=chx;hy=chy;approx=false;inferredRange=false;
   }else commandMode=commandcursor::None;
  }
@@ -1147,7 +1148,7 @@ static void draw(){
   nativeMenuCandidateAt=0;nativeMenuHold=false;
  }
  bool animationChanged=frame!=tween.frame||animKey!=tween.group;
- uint32_t animationNow=inputNow();timing.observe(frame,animKey,animStart,animCount,animationNow);
+ uint32_t animationNow=commandAnimationNow;timing.observe(frame,animKey,animStart,animCount,animationNow);
  if(animationChanged)transitionMs=timing.duration(animKey,smoothMs,adaptive);
  if(animKey==160)transitionMs=lanboStream.duration(smoothMs);
  tween.update(frame,animKey,animStart,animCount,animationNow,smoothing);
@@ -1161,9 +1162,17 @@ static void draw(){
   // wasting a whole interval interpolating the PREVIOUS-to-current pair.
   if(smoothing&&predictedNext>=0){auto it=motionCache.find(pairKey(frame,predictedNext));if(it!=motionCache.end())activeMotion=it->second;}
  }
- if(predictedNext>=0&&!allowedPairs.count(pairKey(frame,predictedNext)))predictedNext=-1;
+ const bool commandTransition=commandMode!=commandcursor::None&&predictedNext>=0&&
+  commandcursor::animationTransition(animStart,animCount,frame,predictedNext,displayAsset.frames.size());
+ const unsigned nextPair=predictedNext>=0?pairKey(frame,predictedNext):0;
+ const bool preparedTransition=predictedNext>=0&&allowedPairs.count(nextPair);
+ if(predictedNext>=0&&!preparedTransition&&!commandTransition)predictedNext=-1;
  if(smoothing&&predictedNext>=0&&!activeMotion){auto it=motionCache.find(pairKey(frame,predictedNext));if(it!=motionCache.end())activeMotion=it->second;}
- if(smoothing&&predictedNext>=0&&!activeMotion&&(!profileId.empty()||gameResourceConfirmed))
+ // Command cursor sequences are valid animation edges even when the user's
+ // generic cursor groups omit them. Queue the same offline 1001-sample
+ // timeline; drawing remains read-only and never computes optical flow.
+ if(smoothing&&predictedNext>=0&&!activeMotion&&(preparedTransition||commandTransition)&&
+    (!profileId.empty()||gameResourceConfirmed))
   prepareQueue.request(pairKey(frame,predictedNext),displayAsset.frames.size());
  uint32_t animationElapsedMs=animationNow-timing.changedAt;
  bool stalled=animationElapsedMs>transitionMs*2u;
