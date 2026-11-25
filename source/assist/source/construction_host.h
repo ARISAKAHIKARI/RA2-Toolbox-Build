@@ -200,6 +200,15 @@ static void collectChoices(){
    choices.push_back({slot,index,tab,type,!native});
  }
  if(!source.complete()||(forecastAttempted&&!previewReady)){choices=std::move(previous);return;}
+ // Preserve the engine's Cameo order, not the type catalogue order. Future
+ // choices have no native rank yet; keep their stable catalogue order after
+ // the known native entries. Never reorder the actual reservation FIFO.
+ auto nativeRank=[&](const Choice&c){
+  for(int i=0;i<count;++i)
+   if(cameos[i*13]==typeIndex(c.index)&&cameos[i*13+1]==absKind(c.index))return i;
+  return count;
+ };
+ std::stable_sort(choices.begin(),choices.end(),[&](const Choice&a,const Choice&b){return nativeRank(a)<nativeRank(b);});
  choicesTab=activeTab;choicesMatch=commandMatch();choicesHouse=house;choicesIncomplete=false;
 }
 static void resizePanel(){
