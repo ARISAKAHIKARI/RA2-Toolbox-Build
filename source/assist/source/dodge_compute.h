@@ -1,8 +1,41 @@
 #pragma once
 #include <cstdint>
+#include <algorithm>
 namespace assist { namespace dodgecompute {
 constexpr int MaxSources=128,MaxThreats=128;
 constexpr uint32_t RetentionMs=5000;
+// Callback-local lookup for the raw projectile target / vehicle target and
+// destination. A sorted flat table avoids per-unit full threat traversals.
+// Merge two keys in original collection order so MaxThreats truncation and
+// the position of shot IDs remain identical to the unindexed collector.
+class ThreatIndex {
+ struct Entry {uint32_t target;int ordinal;};
+ static constexpr int Capacity=2*8192;
+ Entry entries_[Capacity];int count_=0;
+ const Entry*begin(uint32_t target)const{
+  return std::lower_bound(entries_,entries_+count_,target,[](const Entry&e,uint32_t t){return e.target<t;});
+ }
+public:
+ void clear(){count_=0;}
+ bool add(uint32_t target,int ordinal){
+  if(count_==Capacity)return false;
+  entries_[count_++]={target,ordinal};return true;
+ }
+ void seal(){std::sort(entries_,entries_+count_,[](const Entry&a,const Entry&b){return a.target<b.target||(a.target==b.target&&a.ordinal<b.ordinal);});}
+ template<class Visit>void visit(uint32_t first,uint32_t second,Visit visit)const{
+  const Entry*end=entries_+count_,*a=begin(first),*b=first==second?end:begin(second);
+  while((a!=end&&a->target==first)||(b!=end&&b->target==second)){
+   const bool haveA=a!=end&&a->target==first,haveB=b!=end&&b->target==second;
+   int ordinal;
+   if(haveA&&(!haveB||a->ordinal<=b->ordinal)){ordinal=a++->ordinal;}
+   else ordinal=b++->ordinal;
+   while(a!=end&&a->target==first&&a->ordinal==ordinal)++a;
+   while(b!=end&&b->target==second&&b->ordinal==ordinal)++b;
+   if(!visit(ordinal))break;
+  }
+ }
+};
+
 inline bool retentionExpired(uint32_t now,uint32_t lastSeenAt){return int32_t(now-lastSeenAt)>=0&&uint32_t(now-lastSeenAt)>RetentionMs;}
 // No destinations, trajectory scoring or replacement Attack/Guard orders.
 // Scatter is selected here; the synchronized native receiver owns movement.
