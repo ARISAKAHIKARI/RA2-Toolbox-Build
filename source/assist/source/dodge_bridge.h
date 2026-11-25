@@ -87,19 +87,25 @@ static void dodgeRemember(DodgeJob&j,const dodgecompute::Source&s,DWORD now){
  if(s.count){j.lastSeen=s.frame;j.lastSeenAt=now;}
  for(int k=0;k<s.count;++k)if(s.shots[k]&&!dodgeSeen(j,s.shots[k]))j.shots[j.shotNext++%32]=s.shots[k];
 }
-static void dodgeObserve(uint32_t p,uint32_t house,dodgecompute::Source&s){
+static void dodgeObserve(uint32_t p,uint32_t house,dodgecompute::Source&s,const dodgecompute::ThreatIndex*index=nullptr){
  s.id=get<uint32_t>(p+0x10);s.pointer=p;s.token=manualVersions.get(s.id);s.frame=get<int>(0xA8ED84);s.busy=dodgeBusy(p,s.frame);
  int j=dodgeIndex(s.id);if(j>=0){const auto&job=dodgeJobs[j];s.job=job.serial;s.active=job.active;s.sentAt=job.sentAt;s.quietFrame=job.quietFrame;s.observed=job.observed;}
  int px=get<int>(p+0x9C),py=get<int>(p+0xA0);
- if(sh->dodgeEnabled)for(int n=0;n<dodgeThreatCount&&s.count<dodgecompute::MaxThreats;++n){const auto&ref=dodgeThreatRefs[n];uint32_t q=ref.pointer;if(!dodgeThreatCurrent(ref))continue;
-  if(!ref.projectile){if(dodgeThreat(p,q,house)){++s.count;s.freshThreat=1;}continue;}
+ if(!sh->dodgeEnabled)return;
+ auto observe=[&](int n)->bool{
+  if(s.count>=dodgecompute::MaxThreats)return false;
+  const auto&ref=dodgeThreatRefs[n];uint32_t q=ref.pointer;if(!dodgeThreatCurrent(ref))return true;
+  if(!ref.projectile){if(dodgeThreat(p,q,house)){++s.count;s.freshThreat=1;}return true;}
   int64_t dx=int64_t(get<int>(q+0x140))-px,dy=int64_t(get<int>(q+0x144))-py;
-  if(dx < -8192||dx>8192||dy < -8192||dy>8192)continue;
+  if(dx < -8192||dx>8192||dy < -8192||dy>8192)return true;
   const uint32_t target=get<uint32_t>(q+0x10C);
-  if(target!=p&&(worldObjects.contains(target)||target!=readMapCell(px/256,py/256)))continue;
-  uint32_t id=get<uint32_t>(q+0x10);if(!id)continue;
+  if(target!=p&&(worldObjects.contains(target)||target!=readMapCell(px/256,py/256)))return true;
+  uint32_t id=get<uint32_t>(q+0x10);if(!id)return true;
   s.shots[s.count++]=id;if(j<0||!dodgeSeen(dodgeJobs[j],id))s.freshThreat=1;
- }
+  return true;
+ };
+ if(index)index->visit(p,readMapCell(px/256,py/256),observe);
+ else for(int n=0;n<dodgeThreatCount;++n)if(!observe(n))break;
 }
 static int createDodge(const dodgecompute::Source&s,DWORD now){
  int n=dodgeIndex(s.id);if(n>=0)return n;
@@ -207,14 +213,33 @@ static bool collectDodgeInput(uint32_t house,int frame,DWORD now,int&nextCursor,
  // Native capture uses the current dispatch time; legacy samples retain provenance.
  i.tick=sampleWorldSource&&sampleWorldSource->key.tick?sampleWorldSource->key.tick:now;
  i.frame=sampleWorldSource?sampleWorldSource->key.frame:frame;
+ // Native observation is read-only until dispatchDodgeCalculation. Index
+ // both vehicle links and the CURRENT projectile target, not old references.
+ // No index is retained across callbacks or used by the command recheck.
+ static dodgecompute::ThreatIndex threatIndex;
+ const dodgecompute::ThreatIndex*index=nullptr;
+ if(runtimeDirectActions&&sh->dodgeEnabled){
+  threatIndex.clear();bool complete=true;
+  for(int n=0;n<dodgeThreatCount;++n){
+   const auto&ref=dodgeThreatRefs[n];if(!dodgeThreatCurrent(ref))continue;
+   const auto q=ref.pointer;
+   if(ref.projectile)complete=threatIndex.add(get<uint32_t>(q+0x10C),n)&&complete;
+   else{
+    const auto target=get<uint32_t>(q+0x2B4),destination=get<uint32_t>(q+0x5A4);
+    complete=threatIndex.add(target,n)&&complete;
+    if(destination!=target)complete=threatIndex.add(destination,n)&&complete;
+   }
+  }
+  if(complete){threatIndex.seal();index=&threatIndex;}
+ }
  int checkedJobs=0;
  for(;checkedJobs<dodgeCount&&i.count<dodgecompute::MaxSources/2;++checkedJobs){const auto&j=dodgeJobs[(dodgeJobCursor+checkedJobs)%dodgeCount];
-  if(j.active&&(!runtimeDirectActions||worldObjects.byId(j.id)==j.pointer)&&get<uint32_t>(j.pointer+0x10)==j.id)dodgeObserve(j.pointer,house,i.sources[i.count++]);
+  if(j.active&&(!runtimeDirectActions||worldObjects.byId(j.id)==j.pointer)&&get<uint32_t>(j.pointer+0x10)==j.id)dodgeObserve(j.pointer,house,i.sources[i.count++],index);
  }
  nextJobCursor=dodgeCount?(dodgeJobCursor+checkedJobs)%dodgeCount:0;
  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;int visited=0,checked=0;
  if(sh->dodgeEnabled)for(;visited<all.count&&i.count<dodgecompute::MaxSources&&checked<dodgecompute::MaxSources;++visited){uint32_t p=item(all,(dodgeCursor+visited)%all.count);if(!dodgeSource(p,house)||dodgeOwns(get<uint32_t>(p+0x10)))continue;++checked;
-  dodgecompute::Source source{};dodgeObserve(p,house,source);if(source.count)i.sources[i.count++]=source;
+  dodgecompute::Source source{};dodgeObserve(p,house,source,index);if(source.count)i.sources[i.count++]=source;
  }
  nextCursor=all.count?(dodgeCursor+visited)%all.count:0;
  return true;
