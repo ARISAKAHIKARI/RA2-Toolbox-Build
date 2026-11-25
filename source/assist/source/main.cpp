@@ -2934,7 +2934,7 @@ static void finalizeTacticalLayout(){
  for(auto&c:pageControls){int id=GetDlgCtrlID(c.hwnd);if(id==430||(id>=910&&id<=915)){c.page=-3;ShowWindow(c.hwnd,SW_HIDE);}}
 #endif
  for(auto&c:pageControls)c.fullRect=c.rect;applySettingsFolds();
- activePage=suite::categories::Control;scrollY=scrollX=0;layoutPanel();
+ activePage=suite::categories::Keyboard;scrollY=scrollX=0;layoutPanel();
 }
 
 #ifdef RA2_CONSOLE_WEBVIEW2
