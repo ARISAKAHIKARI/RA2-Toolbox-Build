@@ -120,6 +120,7 @@ inline const TypeScope* typeScope(int index){
 // Preserve the original control IDs and settings owners.
 inline constexpr Feature ManualCommandTypes{9610,categories::Tactical,L"命令类型手动指定",L"命令类型手动指定",false,{781,782,783,784}};
 inline const Feature* ownerFeature(int id){
+ if(id==905||id==ManualCommandTypes.key)return &ManualCommandTypes;
  if(id>=9200&&id<9200+2*assist::featuretypes::Count)
   return typeScope((id-9200)/2)?&ManualCommandTypes:nullptr;
  for(int control:ManualCommandTypes.controls)if(id==control)return &ManualCommandTypes;
