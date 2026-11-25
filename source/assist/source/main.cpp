@@ -146,7 +146,7 @@ static bool unitPanelEnabled=false; // independent, persisted, default-off visua
 static monitorrefresh::Tracker informationMonitor;
 static int informationFPS(){return infoAdaptive?informationMonitor.rate():std::clamp(fps,5,500);}
 static void publishSuiteDisplay();
-struct DisplayCounters {DWORD since=0,samples=0,paints=0,uploads=0,maxGap=0;uint64_t readUs=0,maxReadUs=0;};
+struct DisplayCounters {DWORD since=0,samples=0,paints=0,uploads=0,maxGap=0;uint64_t readUs=0,maxReadUs=0;DWORD worldFrames=0,maxWorldJobAgeMs=0,maxWorldSourceAgeMs=0;uint64_t worldJobAgeMs=0,worldSourceAgeMs=0;};
 static DisplayCounters displayCounters;
 static overlayui::Recovery overlayRecovery;
 static int labelScalePercent=100,constructionScalePercent=100;
@@ -1638,6 +1638,8 @@ static void sampleExternal(DWORD now){
     L" samples="+std::to_wstring(dc.samples)+L" paintCalls="+std::to_wstring(dc.paints)+L" uploads="+std::to_wstring(dc.uploads)+
     L" meanReadUs="+std::to_wstring(dc.samples?dc.readUs/dc.samples:0)+L" maxReadUs="+std::to_wstring(dc.maxReadUs)+
     L" maxSampleGapMs="+std::to_wstring(dc.maxGap)+L" labels="+std::to_wstring(externalData->labels)+
+    L" worldFrames="+std::to_wstring(dc.worldFrames)+L" meanWorldJobAgeMs="+std::to_wstring(dc.worldFrames?dc.worldJobAgeMs/dc.worldFrames:0)+L" maxWorldJobAgeMs="+std::to_wstring(dc.maxWorldJobAgeMs)+
+    L" meanWorldSourceAgeMs="+std::to_wstring(dc.worldFrames?dc.worldSourceAgeMs/dc.worldFrames:0)+L" maxWorldSourceAgeMs="+std::to_wstring(dc.maxWorldSourceAgeMs)+
     L" foreground="+std::to_wstring(foregroundGame()));
    dc={};dc.since=displayNow;
   }
@@ -1902,15 +1904,21 @@ struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(
 #include "watch_windows.h"
 #include "world_presentation.h"
 namespace worldrender {
-struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;};
-struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;};
+struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;DWORD sourceTick=0;};
+struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;DWORD sourceTick=0;};
 static std::shared_ptr<const Frame> rasterize(const Job&j){
  if(j.w<1||j.h<1||j.w>8192||j.h>8192||uint64_t(j.w)*j.h>16*1024*1024)return {};
- auto out=std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->projection=j.projection;out->pixels.resize(size_t(j.w)*j.h);
+ auto out=std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->projection=j.projection;out->sourceTick=j.sourceTick;out->pixels.resize(size_t(j.w)*j.h);
  Bitmap bm(j.w,j.h,j.w*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(out->pixels.data()));{Graphics g(&bm);j.draw(g);}return out;
 }
 static asyncwork::Latest<Job,Frame> worker(rasterize);
 static std::shared_ptr<const Frame> displayed;
+static void recordPresented(const std::shared_ptr<const Frame>&frame){
+ if(frame==displayed)return;
+ const DWORD now=GetTickCount(),jobAge=DWORD(now-frame->tick),sourceAge=frame->sourceTick?DWORD(now-frame->sourceTick):0;
+ auto&c=displayCounters;++c.worldFrames;c.worldJobAgeMs+=jobAge;c.maxWorldJobAgeMs=std::max(c.maxWorldJobAgeMs,jobAge);
+ c.worldSourceAgeMs+=sourceAge;c.maxWorldSourceAgeMs=std::max(c.maxWorldSourceAgeMs,sourceAge);
+}
 static worldpresentation::Submission submission;
 static void submit(Job input){
  nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform)||input.projection!=nativeviewhost::key(transform))return;
@@ -1945,7 +1953,7 @@ static void present(){auto frame=worker.get();
    overlaycompositor::host().publish(std::move(layer));
   }
   if(IsWindowVisible(overlay))ShowWindow(overlay,SW_HIDE);
-  displayed=frame;return;
+  recordPresented(frame);displayed=frame;return;
  }
  overlaycompositor::host().hide(overlaycompositor::World);
  // The compatibility HWND has no per-layer radar cutout. During the
@@ -1956,7 +1964,7 @@ static void present(){auto frame=worker.get();
  POINT origin{};ClientToScreen(game,&origin);origin.x+=frame->relative.x;origin.y+=frame->relative.y;POINT zero{};
  SIZE size{frame->w,frame->h};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
  bool ok=UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)!=0;
- overlayRecovery.submitted(ok);if(ok){displayed=frame;++displayCounters.uploads;overlaystack::place(overlay,overlaystack::Layer::World,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);}
+ overlayRecovery.submitted(ok);if(ok){recordPresented(frame);displayed=frame;++displayCounters.uploads;overlaystack::place(overlay,overlaystack::Layer::World,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);}
 }
 }
 #include "sidebar_overlay.h"
@@ -2118,7 +2126,7 @@ static void paint(){
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
  };
  if(!nativeviewhost::stable(shared,viewportTransform)){unitpanelhost::panel.hide();worldrender::invalidate();hideWorldOverlay();return;}
- worldrender::Job job{pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)};job.projection=currentProjection;worldrender::submit(std::move(job));
+ worldrender::Job job{pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)};job.projection=currentProjection;job.sourceTick=snap.sampledTick;worldrender::submit(std::move(job));
 
 }
 #include "frame_clock.h"
