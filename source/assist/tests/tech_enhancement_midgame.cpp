@@ -163,6 +163,25 @@ static void setup(){
 #endif
  assert(fixtureCatalogue());
 #ifdef DIRECT_CATALOGUE
+ // 130 types span two full pointer chunks and a short tail. Repeated
+ // pointers are deliberate: the stamp must preserve roster order/count.
+ const uint32_t list=Items+0x1000;
+ for(int n=0;n<130;++n)put<uint32_t>(list+uint32_t(n)*4,n%2?Normal:Bus);
+ put<Vec>(0xA83CE0,{0,list,130,0,130,1});
+ unsigned reads=0;
+ auto counted=[&](uint32_t p,void*out,size_t n){++reads;return read(p,out,n);};
+ external::catalogue::Stamp batched;
+ assert(external::catalogue::capture(counted,batched)&&batched.count==130);
+ assert(reads==8+3+130*6);
+ external::catalogue::Stamp reference;
+ assert(external::catalogue::capture(read,reference)&&reference.hash==batched.hash);
+ put<uint32_t>(list+129*4,Bus);
+ assert(external::catalogue::capture(read,reference)&&reference.hash!=batched.hash);
+ put<uint32_t>(list+129*4,Normal);
+ unreadable=list+128*4;reference=batched;
+ assert(!external::catalogue::capture(read,reference)&&reference.hash==batched.hash&&reference.count==130);
+ unreadable=0;
+ put<Vec>(0xA83CE0,{0,Items,2,0,2,1});
  const int nativeCount=snap.typeCount;
  const int nativeSlot=typeSlot(Normal);
  assert(nativeSlot>=0&&scanTypes(true)&&snap.typeCount==nativeCount);
