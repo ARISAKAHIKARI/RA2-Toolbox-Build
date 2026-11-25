@@ -660,7 +660,7 @@ static void testDirectRuntimeRepair(){
  sh->computeApplied=1u<<compute::Repair;
  worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
  worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct boundary seal");
- worldFrameReady=worldFrameBoundaryOnly=true;runtimeDirectReader=liveRead;
+ worldFrameReady=worldFrameBoundaryOnly=true;runtimeDirectActions=true;
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  {SampleReadScope legacy;check(!legacy,"unmigrated collector accepted direct boundary");}
  check(collectRepairs(lastHouse,clockNow)==1&&repairOrders[0].id==20&&liveReads&&!hostNotifies,
@@ -669,16 +669,17 @@ static void testDirectRuntimeRepair(){
  check(collectRepairs(lastHouse,clockNow)==0,"direct repair reused stale object fields");
  set<int>(p+0x6C,100);
  check(collectRepairs(lastHouse,clockNow)==1,"direct repair missed native change");
- missingPage=p&~4095u;denyLivePage=true;
+ // Native scalar access does not emulate snapshot missing-page behavior.
+ // Keep the single bounded roster admission check before traversing objects.
+ set<int>(0xA8EB40+16,16385);
  check(collectRepairs(lastHouse,clockNow)==-6&&repairCount==1&&repairOrders[0].id==20,
-       "failed direct read destroyed previous candidate list");
- check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth&&!sampleDirectRead,
+       "invalid native roster destroyed previous candidate list");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth,
        "direct collector copied pages, created dependencies or leaked scope");
- denyLivePage=false;missingPage=0;
- ++snap.frame;
- check(collectRepairs(lastHouse,clockNow)==-6,"direct read accepted stale frame boundary");
- runtimeDirectReader=nullptr;worldFrameBoundaryOnly=false;worldFrameReady=false;
- std::puts("PASS direct repair: native changes, failed-read retention, explicit admission and zero copied pages");
+ runtimeDirectActions=false;
+ check(collectRepairs(lastHouse,clockNow)==-6,"direct collector escaped dispatcher admission");
+ worldFrameBoundaryOnly=false;worldFrameReady=false;
+ std::puts("PASS direct repair: native changes, invalid roster retention, explicit admission and zero copied pages");
 }
 struct OreFixture {uint32_t miner,type,refinery,refineryType,links,resource,distant;};
 static uint32_t resource(int x,int y){uint32_t cell=alloc();set<int16_t>(cell+0x24,int16_t(x));set<int16_t>(cell+0x26,int16_t(y));set<int>(cell+0x44,0);set<int>(cell+0xEC,0);set<uint32_t>(0x400000+uint32_t(y*512+x)*4,cell);return cell;}
