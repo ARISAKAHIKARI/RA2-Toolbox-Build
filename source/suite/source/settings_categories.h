@@ -1,6 +1,6 @@
 #pragma once
 namespace suite { namespace categories {
-enum Category {Video=0,Keyboard=1,Tactical=2,Entry=3,Automatic=4,Rules=5,Experimental=6,Debug=7,Count=8,Control=Keyboard};
+enum Category {Video=0,Keyboard=1,Tactical=2,Entry=3,Automatic=4,Rules=5,Experimental=6,Debug=7,Count=8,Control=Tactical};
 inline const wchar_t*name(int category){constexpr const wchar_t*names[]={L"视频",L"键鼠与选兵",L"战术操作",L"进驻与装卸",L"自动功能",L"游戏规则",L"实验功能",L"调试"};return category>=0&&category<Count?names[category]:L"设置";}
 inline bool rule(int id){
  if(id==9250||id==9251||id==9252||id==807||id==865||id==9193||id==9194)return true;
