@@ -733,7 +733,7 @@ if (!failed && process.argv.includes('--browser')) {
       tech(815,{type:'label',label:'生产进度：等待游戏',text:'生产进度：等待游戏'})
     ];
     await page.getByRole('button',{name:'游戏规则',exact:true}).click();
-    await receive(tacticalCardPage(3,10,rules));
+    await receive(tacticalCardPage(5,10,rules));
     const ruleSwitch=page.getByLabel('科技全开',{exact:true});await ruleSwitch.waitFor();
     assert.deepEqual(await page.locator('.group-title').allTextContents(),['单机速度与暂停','科技与建造']);
     const ruleFold=page.getByRole('button',{name:'展开 科技全开 的设置',exact:true});
@@ -749,7 +749,7 @@ if (!failed && process.argv.includes('--browser')) {
 
     const zoom=(id,attrs)=>cardField(id,9090,'视角缩放','视角与界面',attrs);
     await page.getByRole('button',{name:'实验功能',exact:true}).click();
-    await receive(tacticalCardPage(4,11,[
+    await receive(tacticalCardPage(6,11,[
       zoom(9090,{type:'toggle',label:'高危：视角缩放',groupHeader:true}),
       zoom(9091,{type:'choice',label:'视角倍率',selected:0,options:['100%','125%'],readonly:true}),
       zoom(9450,{type:'hotkey',label:'缩小视野快捷键',selected:0x12bd,options:['press','release','keyboardOnly']})
@@ -766,21 +766,20 @@ if (!failed && process.argv.includes('--browser')) {
     await page.keyboard.press('Escape');assert.equal(await trigger.isVisible(),false);
     await page.screenshot({path:diagnosticsPrefix+'-experimental.png',fullPage:false});
 
-    const types=(id,attrs)=>cardField(id,9208,'自动装车','适用单位清单',attrs);
-    await page.getByRole('button',{name:'自动功能',exact:true}).click();
+    const types=(id,attrs)=>cardField(id,9610,'命令类型手动指定','命令类型手动指定',attrs);
+    await page.getByRole('button',{name:'战术操作',exact:true}).click();
     await receive(tacticalCardPage(2,12,[
-      types(9208,{type:'toggle',label:'限定乘员类型',checked:true}),
-      types(9209,{type:'text',label:'乘员类型 ID',text:'E1,E2'}),
-      types(9210,{type:'toggle',label:'限定载具类型',checked:true}),
-      types(9211,{type:'text',label:'载具类型 ID',text:'HTK'}),
-      cardField(9216,9216,'智能卸载','适用单位清单',{type:'toggle',label:'限定卸载载具'})
+      types(9208,{type:'toggle',label:'自动装车 · 限定乘员类型',checked:true}),
+      types(9209,{type:'text',label:'自动装车 · 乘员类型 ID',text:'E1,E2'}),
+      types(9210,{type:'toggle',label:'自动装车 · 限定载具类型',checked:true}),
+      types(9211,{type:'text',label:'自动装车 · 载具类型 ID',text:'HTK'}),
+      types(9216,{type:'toggle',label:'智能卸载 · 限定卸载载具'})
     ]));
-    await page.getByRole('heading',{name:'适用单位清单',exact:true}).waitFor();
-    const typeFold=page.getByRole('button',{name:'展开 自动装车 的设置',exact:true});
-    assert.equal(await page.getByLabel('乘员类型 ID',{exact:true}).isVisible(),false);
-    await typeFold.click();await page.getByLabel('乘员类型 ID',{exact:true}).waitFor();
-    assert.equal(await page.getByLabel('载具类型 ID',{exact:true}).inputValue(),'HTK');
-    assert.equal(await page.getByLabel('限定卸载载具',{exact:true}).isVisible(),false);
+    const typeFold=page.getByRole('button',{name:'展开 命令类型手动指定 的设置',exact:true});
+    assert.equal(await page.getByLabel('自动装车 · 乘员类型 ID',{exact:true}).isVisible(),false);
+    await typeFold.click();await page.getByLabel('自动装车 · 乘员类型 ID',{exact:true}).waitFor();
+    assert.equal(await page.getByLabel('自动装车 · 载具类型 ID',{exact:true}).inputValue(),'HTK');
+    assert.equal(await page.getByLabel('智能卸载 · 限定卸载载具',{exact:true}).isVisible(),true);
     for(const viewport of [{width:1240,height:880},{width:390,height:720}]){
       await page.setViewportSize(viewport);await assertFits();
       await page.screenshot({path:diagnosticsPrefix+'-type-filters-'+viewport.width+'.png',fullPage:false});
