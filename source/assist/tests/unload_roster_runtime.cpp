@@ -24,6 +24,7 @@ static std::vector<uint32_t> infantry;
 static int indexedFrame=-1;
 struct Vec {int count=0;};static Vec vec(uint32_t at){if(at!=0xA83DE8)throw std::runtime_error("unexpected roster");return {int(infantry.size())};}
 static uint32_t item(Vec,int i){return infantry.at(i);}
+static bool runtimeDirectActions=false;
 static bool sampleComplete=true;
 struct SampleReadScope {
  SampleReadScope(){sampleComplete=true;}
