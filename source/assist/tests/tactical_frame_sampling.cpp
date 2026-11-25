@@ -520,6 +520,19 @@ static void testMissile(){
  const auto oldReads=readRequests;readRequests=0;int motions[32];std::fill_n(motions,32,-2);
  {SampleReadScope scope;for(int n=0;n<32;++n){const int record=missileRecord(500+n);for(int t=0;t<32;++t){const auto edge=missileEdgeFacts(sources[n],targets[t],weapon,0,1,record,&motions[t]);check(!std::memcmp(&edge,&beforeEdges[n][t],sizeof edge),"cached missile edge changed");}}check(scope.complete(),"indexed matrix incomplete");}
  const auto newReads=readRequests;check(newReads*4<oldReads,"missile pair loop repeated per-target lookup");
+ // The raw selector already produced these immutable facts. Edge projection
+ // must match the unbatched path, even after the batch epoch is invalidated.
+ static CombatProbeTargetSample edgeSamples[32]{};
+ CombatProbeBatch edgeBatch{edgeSamples};
+ {SampleReadScope scope;
+  for(int t=0;t<32;++t){const auto q=targets[t];edgeSamples[t]={q,airType,edgeBatch.epoch,0,get<int>(airType+0x9C),get<int>(q+0x9C),get<int>(q+0xA0),get<int>(q+0xA4),planner::Airborne};}
+  for(int n=0;n<32;++n){const auto p=sources[n];edgeBatch.sourcePointer=p;edgeBatch.sourceKind=2;edgeBatch.sourceEpoch=edgeBatch.epoch;
+   edgeBatch.source.x=get<int>(p+0x9C);edgeBatch.source.y=get<int>(p+0xA0);edgeBatch.source.z=get<int>(p+0xA4);
+   for(int t=0;t<32;++t){const auto edge=missileEdgeFacts(p,targets[t],weapon,0,1,992+n,&motions[t],&edgeBatch,t);check(!std::memcmp(&edge,&beforeEdges[n][t],sizeof edge),"batched coordinates or armor changed edge");}
+  }
+  edgeBatch.invalidate();const auto edge=missileEdgeFacts(sources[0],targets[0],weapon,0,1,992,&motions[0],&edgeBatch,0);
+  check(!std::memcmp(&edge,&beforeEdges[0][0],sizeof edge)&&scope.complete(),"invalidated batch did not use current fields");
+ }
  std::printf("PASS missile dense edge parity: 1024 pairs, logical field reads %llu -> %llu; source history lookup once per row and motion identity once per column\n",(unsigned long long)oldReads,(unsigned long long)newReads);
  }
  std::puts("PASS missile raw/fresh selector facts, missing retention, manual generations and native query boundaries");
