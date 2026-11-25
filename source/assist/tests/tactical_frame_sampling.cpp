@@ -661,14 +661,14 @@ static void testDirectCombatDodge(){
  set<uint32_t>(bullet,0x7E46E4);set<uint32_t>(bullet+0x10,50);set<int>(bullet+0x6C,25);
  set<bool>(bullet+0x90,true);set<uint32_t>(bullet+0xB0,owner);set<uint32_t>(bullet+0x10C,p);
  set<int>(bullet+0x140,1000);set<int>(bullet+0x144,1000);set<double>(bullet+0xE8,5.);
- vectorAt(0xA8EC78,0x800000,{p,target,owner});vectorAt(0xA8ED40,0x810000,{bullet});
+ vectorAt(0xA8EC78,0x800000,{target,p,owner});vectorAt(0xA8ED40,0x810000,{bullet});
  // Model the dispatcher-local native index without copying a single page.
  worldObjects.unbind();worldObjects.clear();worldObjects.add(p,20);worldObjects.add(target,30);worldObjects.add(owner,21);
  worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
  worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct combat boundary");
  worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  int a=0,b=0;
- check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count>=2&&planningWorld.actors[0].x==1000,
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count>=2&&planningWorld.actors[0].id==20&&planningWorld.actors[0].x==1000&&planningWorld.actors[1].id==30,
        "native planner required a copied graph");
  check(collectDodgeThreats()&&collectDodgeInput(lastHouse,snap.frame,clockNow,a,b)&&dodgeInput.count==1&&dodgeInput.sources[0].shots[0]==50,
        "native dodge required a copied graph");
