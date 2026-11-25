@@ -21,8 +21,8 @@ int main(){
  std::thread writer([&]{for(int i=0;i<10000;++i){auto q=p;q.lasers=q.particles=bool(i%2);settings.publish(q);}});for(int i=0;i<10000;++i){auto value=settings.get();assert(value.profile.lasers==value.profile.particles);}writer.join();
  std::set<int>ids;for(const auto&s:suite::displaySpecs)assert(ids.insert(s.id).second);assert(suite::DisplayOptionCount==62);
  for(auto o:{suite::RenderParticles,suite::RenderLasers,suite::RenderVoxelLighting,suite::RenderSpriteLighting})assert(suite::validDisplayEdit(o,0)&&suite::validDisplayEdit(o,1)&&!suite::validDisplayEdit(o,2));
- assert(suite::categories::Count==5);for(int id:{420,428,808,809,814,815}){assert(suite::categories::rule(id));assert(suite::categories::row(0,&id,1)==suite::categories::Rules);}
- int automatic[]={0,9042},control[]={9170},video[]={9300},experimental[]={0};assert(suite::categories::row(0,automatic,2)==suite::categories::Automatic);assert(suite::categories::row(4,control,1)==suite::categories::Control);assert(suite::categories::row(3,video,1)==suite::categories::Video);assert(suite::categories::row(4,experimental,1)==suite::categories::Experimental);
+ assert(suite::categories::Count==8);for(int id:{420,428,808,809,814,815}){assert(suite::categories::rule(id));assert(suite::categories::row(0,&id,1)==suite::categories::Rules);}
+ int automatic[]={0,9042},control[]={9170},keyboard[]={724},entry[]={111,211},video[]={9300},experimental[]={0};assert(suite::categories::row(0,automatic,2)==suite::categories::Automatic);assert(suite::categories::row(4,control,1)==suite::categories::Control);assert(suite::categories::row(0,keyboard,1)==suite::categories::Keyboard);assert(suite::categories::row(0,entry,2)==suite::categories::Entry);assert(suite::categories::row(3,video,1)==suite::categories::Video);assert(suite::categories::row(4,experimental,1)==suite::categories::Experimental);
  for(int mode=0;mode<=6;++mode)assert(assist::shroudpolicy::fullPreview(mode)==(mode==3||mode==5||mode==6));
  std::cout<<"PASS default-on independent effects, coherent concurrent profile, three viewport propagation, unique owner routing, five categories, material fog preview\n";
 }
