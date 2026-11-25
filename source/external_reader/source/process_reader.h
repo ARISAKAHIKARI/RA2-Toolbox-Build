@@ -162,7 +162,7 @@ public:
  std::shared_ptr<void> worldPublicationSignal(){return worldClient_?worldClient_->publicationSignal():std::shared_ptr<void>{};}
  void endWorldFrame(){
   if(worldClient_&&!worldDemands_.empty()){
-   if(worldframe::visualDemand(worldDemand_))worldClient_->requestVisual(worldDemands_,!worldComplete_);
+   if(worldframe::visualDemand(worldDemand_))worldClient_->requestVisual(worldDemands_,!worldComplete_,worldFrame_);
   else worldClient_->request(worldDemands_,!worldComplete_);
   }
   for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}

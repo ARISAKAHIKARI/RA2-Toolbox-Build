@@ -68,9 +68,22 @@ public:
  // Report whether this request invalidated the built visual observation.
  // A full lease table can evict an expired page and admit a new one without
  // changing size; the insertion status, not the count, proves new demand.
- bool request(const std::vector<uint32_t>&pages,uint32_t now,bool retry){
+ bool request(const std::vector<uint32_t>&pages,uint32_t now,bool retry,const Token&reported={}){
   bool added=false;
   for(uint32_t page:pages)if(leases_.retainStatus(page,now)==DemandLeases::RetainResult::Added)added=true;
+  // A delayed display reader may report a miss after another reader has
+  // already repaired it. Suppress only retry reports from an older sealed
+  // visual token in this world, with positive full-page coverage in latest_.
+  // Missing/partial pages, current-source reports and explicit retries keep
+  // their original invalidation semantics.
+  if(retry&&!pages.empty()&&reported&&reported->controlSource&&latest_&&
+     reported->visualSerial<latest_->visualSerial&&reported->key.sameWorld(latest_->key)){
+   bool repaired=false,covered=true;
+   for(uint32_t page:pages){const auto*old=reported->find(page);const auto*next=latest_->find(page);
+    repaired|=!old||!old->full;covered&=next&&next->full;if(!covered)break;
+   }
+   if(repaired&&covered)retry=false;
+  }
   if(added||retry){++revision_;return true;}
   return false;
  }

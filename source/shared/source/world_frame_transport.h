@@ -279,8 +279,8 @@ public:
  template<class Live>Token visual(const Token&source,uint32_t demand,Live live){
   std::lock_guard<std::mutex>lock(visualMutex_);return visuals_.acquire(source,demand,GetTickCount(),live);
  }
- void requestVisual(const std::vector<uint32_t>&pages,bool retry){
-  std::lock_guard<std::mutex>lock(visualMutex_);visuals_.request(pages,GetTickCount(),retry);
+ void requestVisual(const std::vector<uint32_t>&pages,bool retry,const Token&reported={}){
+  std::lock_guard<std::mutex>lock(visualMutex_);visuals_.request(pages,GetTickCount(),retry,reported);
  }
  void subscribe(uintptr_t reader,uint32_t demand){
   const bool display=visualDemand(demand);

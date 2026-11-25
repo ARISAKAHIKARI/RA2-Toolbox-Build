@@ -65,7 +65,7 @@ assert "observedFrame!=externalData->frame" in passenger
 assert "source->key.tick!=externalData->sampledTick" in passenger
 
 assert "worldClient_->visual(frame,worldDemand_" in reader
-assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in reader
+assert "worldClient_->requestVisual(worldDemands_,!worldComplete_,worldFrame_)" in reader
 assert "VisualCache visuals_" in transport
 assert "Token visual(" in transport
 assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in reader

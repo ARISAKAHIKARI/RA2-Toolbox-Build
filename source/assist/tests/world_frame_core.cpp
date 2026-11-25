@@ -127,6 +127,13 @@ void hostVisual(){
  CHECK(!cache.acquire(raw,worldframe::Resources,102,live));auto extended=cache.acquire(raw,worldframe::Resources,116,live);
  CHECK(extended&&extended!=visual&&extended->visualSerial>visual->visualSerial&&extended->read(extra,&value,4)&&value==456);
  CHECK(!visual->read(extra,&value,4)&&raw->key.tick==100&&extended->key.tick==100);
+ // An old consumer reports the same missing page after it was repaired.
+ // No new full graph capture is warranted; a current report still retries.
+ const auto repairedCalls=m.calls.size();
+ CHECK(!cache.request({extra&~4095u},117,true,visual));
+ CHECK(cache.acquire(raw,worldframe::Resources,117,live)==extended);
+ CHECK(m.calls.size()==repairedCalls);
+ CHECK(cache.request({extra&~4095u},117,true,extended));
  CHECK(!cache.acquire(extended,worldframe::Visual,133,live));
  // Independent world/frame guards, including a mutation during collection.
  cache.request({0xE01000},133,true);bool changed=false;

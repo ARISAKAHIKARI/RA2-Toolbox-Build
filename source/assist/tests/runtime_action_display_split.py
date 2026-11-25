@@ -46,7 +46,7 @@ assert runtime.index("if(boundaryOnly){") < runtime.index("worldframe::CaptureGr
 # Display readers use Host VisualCache even while command readers are active.
 # The Host path is deliberately read-only and has no per-object command authority.
 assert "worldClient_->visual(frame,worldDemand_" in reader
-assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in reader
+assert "worldClient_->requestVisual(worldDemands_,!worldComplete_,worldFrame_)" in reader
 assert "VisualCache visuals_" in transport
 assert "Token visual(" in transport
 assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in reader

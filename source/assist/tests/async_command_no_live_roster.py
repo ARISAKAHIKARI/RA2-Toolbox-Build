@@ -65,7 +65,7 @@ assert "readLiveWorld(pointer+0x10,&observed,sizeof observed)" in bridge
 assert "VisualCache visuals_" in transport
 assert "worldClient_->visual(frame,worldDemand_" in process_reader
 assert "if(worldframe::visualDemand(worldDemand_))" in process_reader
-assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in process_reader
+assert "worldClient_->requestVisual(worldDemands_,!worldComplete_,worldFrame_)" in process_reader
 assert "else worldClient_->request(worldDemands_,!worldComplete_)" in process_reader
 assert "uint32_t(now-latest_->visualTick)<visualReuseWindow(latest_->pages.size())" in visual
 assert "pages<=256?10u:16u" in visual
