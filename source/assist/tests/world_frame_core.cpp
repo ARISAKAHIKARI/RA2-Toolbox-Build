@@ -136,6 +136,9 @@ void hostVisual(){
  auto original=fast.acquire(first,worldframe::Resources,200,live);CHECK(original);
  m.put(0xA8ED84,60);auto next=boundary(60,208);
  CHECK(fast.acquire(next,worldframe::Resources,208,live)==original&&fast.statistics.captures==1);
+ const auto repeatedBoundaryReads=m.calls.size();
+ CHECK(fast.acquire(next,worldframe::Resources,209,live)==original);
+ CHECK(m.calls.size()==repeatedBoundaryReads&&fast.statistics.captures==1);
  CHECK(original->controlSource==first&&original->visualTick==200);
  CHECK(worldframe::visualReuseWindow(256)==10&&worldframe::visualReuseWindow(257)==16);
  CHECK(original->pages.size()<=256);
