@@ -84,9 +84,9 @@ const test=(name,run)=>cases.push({name,run});
 
 test('top-level display pages route, restore and show only their controls',()=>{
  const f=setup(),node=id=>f.document.getElementById(id);
- const nav=Array.from({length:8},(_,i)=>navButton(node('navigation'),i));
+ const nav=Array.from({length:11},(_,i)=>navButton(node('navigation'),i));
  assert.deepEqual(node('navigation').children.filter(child=>child.className==='nav-group-label').map(child=>child.textContent),['对局工具','显示','高级']);
- assert.deepEqual(nav.map(b=>b.attributes.get('aria-label')),['光标','渲染','监控视图','控制','自动功能','游戏规则','实验功能','调试']);
+ assert.deepEqual(nav.map(b=>b.attributes.get('aria-label')),['鼠标','渲染','监控视图','键鼠与选兵','战术操作','进驻与装卸','自动功能','生产','游戏规则','实验功能','调试']);
  const state=(module,revision,controls)=>({kind:'state',protocol:1,module,generation:1,revision,controls,page:module?'monitor':'cursor'});
  f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:0,videoSection:1});
  f.receive(state(1,1,[{id:11,type:'toggle',label:'副相机',group:'副相机'}]));
@@ -96,10 +96,10 @@ test('top-level display pages route, restore and show only their controls',()=>{
  assert.equal(f.find('setting-row').length,1);
  f.dispatch(nav[0],'click');
  assert.equal(f.sent.at(-1).module,0);
- f.receive(state(0,2,[{id:12,type:'toggle',label:'光标补帧',group:'光标设置'},{id:13,type:'toggle',label:'画质选项',group:'渲染'}]));
+ f.receive(state(0,2,[{id:12,type:'toggle',label:'鼠标补帧',group:'鼠标设置'},{id:13,type:'toggle',label:'画质选项',group:'渲染'}]));
  f.render();
- assert.equal(node('pageTitle').textContent,'光标');
- assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['光标补帧']);
+ assert.equal(node('pageTitle').textContent,'鼠标');
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['鼠标补帧']);
  const sent=f.sent.length;
  f.dispatch(nav[1],'click');f.render();
  assert.equal(f.sent.length,sent+1);
@@ -118,9 +118,9 @@ test('top-level display pages route, restore and show only their controls',()=>{
 });
 
 test('automatic features have one level of expansion and no empty fold',()=>{
- const f=setup(),node=id=>f.document.getElementById(id),select=navButton(f.document.getElementById('navigation'),4);
+ const f=setup(),node=id=>f.document.getElementById(id),select=navButton(f.document.getElementById('navigation'),6);
  f.dispatch(select,'click');
- assert.equal(f.sent.at(-1).category,2);
+ assert.equal(f.sent.at(-1).category,4);
  const controls=[
   {id:11,type:'heading',label:'自动功能'},
   {id:12,type:'toggle',label:'过滤低伤害自动目标',groupHeader:true},
@@ -129,7 +129,7 @@ test('automatic features have one level of expansion and no empty fold',()=>{
   {id:15,type:'number',label:'血量阈值',group:'维修',text:'40'},
   {id:16,type:'label',label:'维修范围暂不可用',group:'维修',runtimeError:true},
  ];
- const state=revision=>({kind:'state',protocol:1,module:2,generation:1,revision,page:'tactical/2',controls});
+ const state=revision=>({kind:'state',protocol:1,module:2,generation:1,revision,page:'tactical/4',controls});
  f.receive(state(1));f.render();
  assert.equal(f.find('group-summary').length,2);
  assert.equal(f.find('group-summary')[0].tagName,'DIV');
@@ -155,39 +155,44 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'false');
 });
 
-test('production settings have a single page and keep their tactical owner',()=>{
+test('production queue is one compact expanded block; reminders stay with monitor settings',()=>{
  const f=setup(),node=id=>f.document.getElementById(id);
- f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:2,pageIndex:8});
- f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/2',controls:[
+ f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:4,pageIndex:7});
+ f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/4',controls:[
   {id:71,nativeId:799,type:'toggle',label:'生产预定',group:'生产预定',groupHeader:true},
-  {id:72,nativeId:817,type:'number',label:'预定面板缩放',group:'生产预定',text:'100'},
-  {id:73,nativeId:100,type:'toggle',label:'自动维修',group:'自动维修',groupHeader:true}
+  {id:72,nativeId:9796,type:'toggle',label:'显示已可生产单位（批量预定）',group:'生产预定'},
+  {id:73,nativeId:817,type:'number',label:'建筑预定面板缩放',group:'生产预定',text:'100'},
+  {id:74,nativeId:100,type:'toggle',label:'自动维修',group:'自动维修',groupHeader:true}
  ]});
  f.render();
  assert.equal(node('pageTitle').textContent,'生产');
- assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['生产预定']);
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['生产预定','显示已可生产单位（批量预定）','建筑预定面板缩放']);
+ assert.equal(f.find('feature-config-toggle').length,1);
+ assert.equal(f.find('feature-config-toggle')[0].hidden,true,'the small production queue must not get a redundant fold');
+ assert.equal(node('foldAll').hidden,true,'no bulk-fold action for this tiny page');
  assert.equal(f.store.act(71,'toggle',true),true);
  assert.equal(f.actions().at(-1).module,2);
  assert.equal(f.actions().at(-1).id,71);
- f.dispatch(navButton(node('navigation'),4),'click');f.render();
+ f.dispatch(navButton(node('navigation'),6),'click');f.render();
+ assert.equal(f.sent.at(-1).category,4);
+ f.receive({kind:'state',protocol:1,module:2,generation:1,revision:2,page:'tactical/4',controls:[
+  {id:71,nativeId:799,type:'toggle',label:'生产预定',group:'生产预定',groupHeader:true},
+  {id:74,type:'toggle',label:'自动维修',group:'自动维修',groupHeader:true}
+ ]});
+ f.render();
  assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['自动维修']);
  f.dispatch(navButton(node('navigation'),8),'click');
  assert.equal(f.sent.at(-1).pageIndex,8);
- assert.equal(f.sent.at(-1).category,2);
- f.dispatch(node('productionNotices'),'click');
+ assert.equal(f.sent.at(-1).category,5);
+ f.dispatch(navButton(node('navigation'),2),'click');
  assert.equal(f.sent.at(-1).module,1);
- assert.equal(f.sent.at(-1).pageIndex,9);
+ assert.equal(f.sent.at(-1).pageIndex,2);
  f.receive({kind:'state',protocol:1,module:1,generation:1,revision:1,page:'monitor',controls:[
-  {id:74,type:'toggle',label:'显示建造时间',group:'生产提醒'},
-  {id:75,type:'toggle',label:'副相机',group:'副相机'}
+  {id:75,type:'toggle',label:'显示建造时间',group:'生产提醒'},
+  {id:76,type:'toggle',label:'副相机',group:'副相机'}
  ]});
  f.render();
- assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['显示建造时间']);
- assert.equal(navButton(node('navigation'),8).attributes.get('aria-current'),'page');
- assert.equal(f.store.act(74,'toggle',true),true);
- assert.equal(f.actions().at(-1).module,1);
- f.dispatch(navButton(node('navigation'),2),'click');f.render();
- assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['副相机']);
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['显示建造时间','副相机']);
 });
 
 test('native shared rows and status notes have no redundant configuration title',()=>{
@@ -447,16 +452,32 @@ test('all manual command type restrictions share one collapsed control entry',()
  for(const [id,type,label] of [[781,'toggle','矿车'],[783,'text','矿车类型 ID'],[782,'toggle','矿场'],[784,'text','矿场类型 ID']])
   fields.push(core.canonical({id,type,label,group:title,section:title,featureId:9610,row:200+id,column:20}));
  const master=core.canonical({id:705,type:'toggle',label:'飞机分配攻击',group:'飞机分配攻击',featureId:705,groupHeader:true});
- const blocks=core.featureBlocks([...core.layoutGroups([master,...fields],'',3).values()][0]);
+ const blocks=core.featureBlocks([...core.layoutGroups([master,...fields],'',4).values()][0]);
  assert.equal(blocks.length,2);
  const manual=blocks.find(b=>b.title===title);
  assert.equal(manual.headers.length,0);
  assert.equal(manual.details.length,44);
  assert.equal(core.hasFeatureConfig(manual),true);
  assert.equal(blocks.find(b=>b.title==='飞机分配攻击').details.length,0);
- const searched=core.featureBlocks([...core.layoutGroups([master,...fields],'矿车类型 ID',3).values()][0]);
+ const searched=core.featureBlocks([...core.layoutGroups([master,...fields],'矿车类型 ID',4).values()][0]);
  assert.equal(searched.length,1);
  assert.equal(searched[0].title,title);
+});
+test('new top-level control pages and legacy restoration map to the expanded backend categories',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ assert.deepEqual([3,4,5,6,7,8,9,10].map(i=>core.targetFor(i)),[
+  {module:2,category:1},{module:2,category:2},{module:2,category:3},{module:2,category:4},
+  {module:2,category:4},{module:2,category:5},{module:2,category:6},{module:2,category:7}
+ ]);
+ assert.deepEqual([1,2,3,4,5,6,7].map(i=>core.restoredIndex(i,0)),[3,4,5,6,8,9,10]);
+ const controls=[
+  core.canonical({id:1,type:'toggle',label:'生产预定',group:'生产预定'}),
+  core.canonical({id:2,type:'toggle',label:'生产提醒',group:'生产提醒'}),
+  core.canonical({id:3,type:'toggle',label:'副相机',group:'副相机'})
+ ];
+ assert.deepEqual(core.displayPageControls(controls,2).map(c=>c.id),[1,2,3]);
+ assert.deepEqual(core.displayPageControls(controls,6).map(c=>c.id),[2,3]);
+ assert.deepEqual(core.displayPageControls(controls,7).map(c=>c.id),[1]);
 });
 let failures=0;
 for(const {name,run} of cases){try{run();console.log(`PASS ${name}`)}catch(error){failures++;console.error(`FAIL ${name}\n${error.stack}`)}}
