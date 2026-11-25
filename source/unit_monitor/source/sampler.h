@@ -7,6 +7,7 @@
 #include "type_index.h"
 #include "../../external_reader/source/catalogue_stamp.h"
 #include "../../external_reader/source/layout_probe.h"
+#include <array>
 
 // Layout: YR 1.001 / YRpp; audited against supplied gamemd-spawn(1).exe.
 // Read is a bounded, fault-tolerant memory reader, Resolve optionally resolves an SHP cache reference.
@@ -24,9 +25,9 @@ template<class Read,class Resolve> class Sampler {
  using ArtRead=bool(*)(uint32_t,void*,size_t);
  TypeIndex typeIndex_;
  external::catalogue::Dependencies cataloguePages_;
- Read read; Resolve resolve;AssetLoad files=nullptr;CameoResolve resolveCameo=nullptr;ArtRead art=nullptr; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
+ Read read; Resolve resolve;AssetLoad files=nullptr;CameoResolve resolveCameo=nullptr;ArtRead art=nullptr; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint32_t sidebarAt=0;bool sidebarKnown=false; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
  const Snapshot& invalidate(uint32_t tick,bool forgetRound=false){
-  memset(&state,0,sizeof state);typeIndex_.clear();state.tick=tick;state.match=matchSerial;if(forgetRound)haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;return state;
+  memset(&state,0,sizeof state);typeIndex_.clear();state.tick=tick;state.match=matchSerial;if(forgetRound)haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;sidebarKnown=false;sidebarAt=0;return state;
  }
  template<class T>T get(uint32_t a,T def={}) {T v{};return read(a,&v,sizeof(v))?v:def;}
  bool bytes(uint32_t a,void* p,size_t n){return read(a,p,n);}
@@ -65,6 +66,38 @@ template<class Read,class Resolve> class Sampler {
   }
   typeIndex_.rebuild(state);return true;
  }
+ // Presentation-only order: the local sidebar contains the game's actual
+ // Cameo sequence. Its live reads are deliberately outside the sealed world
+ // read path, so an unavailable sidebar never invalidates unit statistics.
+ void orderSidebar(uint32_t tick,bool reload){
+  if(!art||(!reload&&sidebarKnown&&uint32_t(tick-sidebarAt)<500))return;
+  if(!reload&&sidebarAt&&uint32_t(tick-sidebarAt)<500)return;
+  sidebarAt=tick;
+  std::array<std::array<int,4096>,4> ranks;
+  for(auto&category:ranks)category.fill(300);
+  for(int tab=0;tab<4;++tab){
+   const uint32_t strip=0x87F7E8+0x1544+uint32_t(tab)*3988;
+   int count=-1,entries[75*13]{};
+   if(!art(strip+84,&count,4)||count<0||count>75||
+      (count&&!art(strip+88,entries,size_t(count)*52)))return;
+   for(int i=0;i<count;++i){
+    const int index=entries[i*13],kind=entries[i*13+1];
+    const int cat=kind==16?0:kind==40?1:kind==3?2:kind==7?3:-1;
+    if(cat>=0&&index>=0&&index<4096)ranks[cat][index]=std::min(ranks[cat][index],tab*75+i);
+   }
+  }
+  sidebarKnown=true;
+  auto less=[&](const Type&a,const Type&b){
+   if(a.category!=b.category)return a.category<b.category;
+   const int ar=a.index>=0&&a.index<4096?ranks[a.category][a.index]:300;
+   const int br=b.index>=0&&b.index<4096?ranks[b.category][b.index]:300;
+   return ar==br?a.index<b.index:ar<br;
+  };
+  if(!std::is_sorted(state.types,state.types+state.typeCount,less)){
+   std::sort(state.types,state.types+state.typeCount,less);
+   typeIndex_.rebuild(state);
+  }
+ }
  void owned(Player& player,uint32_t house){
   // CountOwnedNow: real ownership (including passengers/garrison), not
   // FactoryClass queue counts. CounterClass capacity grows on demand, so
@@ -91,7 +124,7 @@ public:
   roundstate::Stamp start{},end{};
   if(!roundstate::capture(read,start,probe_))return invalidate(tick,probe_.stage==external::layout::Stage::WaitingForMatch);
   const bool newRound=!haveRound||!start.follows(previous);
-  if(newRound){memset(&state,0,sizeof state);if(++matchSerial==0)++matchSerial;}
+  if(newRound){memset(&state,0,sizeof state);sidebarKnown=false;sidebarAt=0;if(++matchSerial==0)++matchSerial;}
   cataloguePages_.maintain(read);
   state.tick=tick;state.readErrors=0;state.playerCount=0;state.status=1;
   uint32_t local=start.local,observer=get<uint32_t>(0xAC1198);
@@ -106,6 +139,7 @@ public:
   // Reject a partial rebuild and retire its stamp so unchanged metadata can
   // recover on the next sample instead of preserving a missing/wrong type.
   if(reload){if(!types(buildings))return invalidate(tick);prevBuildings=buildings;}
+  orderSidebar(tick,reload);
   palette();
   // All lobby nodes, not just the single local Observer pointer: multiplayer supports multiple spectators.
   PtrList spectators;
@@ -164,7 +198,25 @@ public:
    if(used&&missing)state.missingIcons++;
    if(budget>0&&attempts<MaxAttempts&&(!t.iconRetry||int32_t(tick-t.iconRetry)>=0)){
     ++attempts;t.iconRetry=tick+500;
-    if(loadIcon(t)){
+    // Names resolved during initial catalogue construction may have been
+    // incomplete while archives or live Art INI were still being loaded.
+    // Re-resolve from the original native name, not a previously erased
+    // or incorrectly normalized name. Keep the attempt budget unchanged.
+    if(resolveCameo&&art&&used){
+     char original[25]{};
+     if(art(t.ptr+1750,original,24)){
+      Type candidate=t;memset(candidate.cameo,0,sizeof candidate.cameo);
+      memcpy(candidate.cameo,original,sizeof original);
+      resolveCameo(candidate,state.match);
+      if(candidate.cameo[0]&&!sameAscii(candidate.cameo,"none")&&!sameAscii(candidate.cameo,"<none>")){
+       if(strcmp(candidate.cameo,t.cameo)){
+        memcpy(t.cameo,candidate.cameo,sizeof t.cameo);
+        t.iconReady=0;t.iconCached=0;if(cache)cache->restore(t,state);
+       }
+      }
+     }
+    }
+    if(t.iconReady==1||loadIcon(t)){
      --budget;if(used&&missing)state.missingIcons--;
      if(cache)t.iconCached=cache->remember(t,state);
     }
