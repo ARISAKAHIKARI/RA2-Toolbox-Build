@@ -44,8 +44,10 @@ type_save = block(io, "for(int i=0;i<featuretypes::Count;++i){std::wstring custo
 type_sync = "\n".join(block(bindings, "if(memcmp(&shared->" + name + ",")
                       for name in ("featureConfig", "oreConfig"))
 changed = block(ui, "static void changedSetting()")
-assert controls.count('toggle(9200+f*2,L"自定义点杀单位类型"') == 1
-assert 'f==featuretypes::BurstRefresh||f==featuretypes::SpiderDefense' in controls
+assert controls.count('toggle(9200+f*2,L"仅处理清单中的类型",featureTypes.filters[f].custom,380,245)') == 1
+assert 'f==featuretypes::BurstRefresh' in controls
+assert 'f==featuretypes::SpiderDefense?L"填写参与点杀的己方地面载具或步兵类型 ID（不是蜘蛛 ID）。关闭时自动识别矿车；开启且留空时不处理任何单位。":' in controls
+assert '可在“命令类型手动指定”中选择参与单位' in controls
 assert '矿车类型沿用上方' not in controls
 load = "\n".join(re.search(r"extra\." + field + r"=[^;]+;", io)[0]
                  for field in ("minerDefenseEnabled", "minerDefenseRangeCells"))
