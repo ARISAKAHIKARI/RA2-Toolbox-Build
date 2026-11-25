@@ -182,7 +182,7 @@ if(!failed && process.argv.includes('--browser')){
     }
     controls[0].debug.ageMs=6000;await receive(snapshot());await page.waitForFunction(()=>document.querySelector('.debug-row[data-control-id="9001"] .debug-badge').textContent==='观测已过期');
     controls[0].debug.ageMs=0;await receive(snapshot());await page.waitForFunction(()=>document.querySelector('.debug-row[data-control-id="9001"] .debug-badge').textContent==='可调用');
-    await page.getByRole('button',{name:'控制',exact:true}).click();await page.locator('#debugPanel').waitFor({state:'hidden'});assert.equal(await page.locator('#debugPanel').isHidden(),true);
+    await page.getByRole('button',{name:'键鼠与选兵',exact:true}).click();await page.locator('#debugPanel').waitFor({state:'hidden'});assert.equal(await page.locator('#debugPanel').isHidden(),true);
     await page.getByRole('button',{name:'调试',exact:true}).click();await receive(snapshot());await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===8);
     assert.deepEqual(errors,[]);console.log('PASS debug browser: ordinary probe PID/start/cancel/report commands, live metadata, independent status, filtering, opaque toggle ACK, focus, expiry, navigation and 3 responsive sizes');
   }finally{await browser.close();}
