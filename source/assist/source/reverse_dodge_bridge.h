@@ -95,7 +95,7 @@ static bool collectReverseDodgeInput(uint32_t house,int frame,DWORD now,bool can
  memset(&i,0,sizeof i);i.match=match;
  i.tick=sampleWorldSource?sampleWorldSource->key.tick:now;
  i.frame=sampleWorldSource?sampleWorldSource->key.frame:frame;
- for(int n=0;n<dodgeCount&&i.count<dodgecompute::MaxSources;++n)if(dodgeJobs[n].active&&get<uint32_t>(dodgeJobs[n].pointer+0x10)==dodgeJobs[n].id)dodgeObserve(dodgeJobs[n].pointer,house,i.sources[i.count++]);
+ for(int n=0;n<dodgeCount&&i.count<dodgecompute::MaxSources;++n)if(dodgeJobs[n].active&&(!runtimeDirectActions||worldObjects.byId(dodgeJobs[n].id)==dodgeJobs[n].pointer)&&get<uint32_t>(dodgeJobs[n].pointer+0x10)==dodgeJobs[n].id)dodgeObserve(dodgeJobs[n].pointer,house,i.sources[i.count++]);
  for(int n=0;n<dodgeThreatCount&&i.count<dodgecompute::MaxSources;++n){const auto&ref=dodgeThreatRefs[n];if(ref.projectile||!dodgeSource(ref.target,house))continue;
   bool found=false;for(int k=0;k<i.count;++k)if(i.sources[k].pointer==ref.target)found=true;
   if(!found)dodgeObserve(ref.target,house,i.sources[i.count++]);
