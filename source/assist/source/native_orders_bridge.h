@@ -404,7 +404,7 @@ static int smartUnload(uint32_t house,bool candidateOnly=false){
  // This only remembers members of the explicitly selected own transports;
  // all UID/manual-command/owner/filter checks still run at admission.
  if(count&&!candidateOnly){
-  const auto capture=[&]()->bool{
+  const auto capture=[&](SampleReadScope* sample)->bool{
    Vec inf{};if(!sampleRoster(0xA83DE8,inf))return false;
    static RecentPassenger staged[nativeorders::MaxPassengers];
    int stagedCount=recentPassengerCount;
@@ -419,7 +419,7 @@ static int smartUnload(uint32_t house,bool candidateOnly=false){
    if(at<0){if(stagedCount==nativeorders::MaxPassengers)continue;at=stagedCount++;tracked.add(q,at);}
    staged[at]={q,id,carrier,carrierID,typeOf(carrier,2),manualVersions.get(id),now,frame};
    }
-   if(runtimeDirectActions||sampleReadComplete){
+   if(!sample||sample->complete()){
     // Publish only an all-or-nothing click cohort. Keep still-pending other
     // carriers; a fresh Ctrl+D supersedes only its selected carrier identities.
     static RecentPassenger cohort[nativeorders::MaxPassengers];
@@ -448,7 +448,7 @@ static int smartUnload(uint32_t house,bool candidateOnly=false){
         get<uint32_t>(r.carrier+0x10)!=r.carrierID)continue;
      if(!append(r)){complete=false;break;}
     }
-    if(complete&&(runtimeDirectActions||sampleReadComplete)){
+    if(complete&&(!sample||sample->complete())){
      frozenUnloadCount=cohortCount;
      std::memcpy(frozenUnloadPassengers,cohort,sizeof(RecentPassenger)*cohortCount);
      recentPassengerCount=stagedCount;
@@ -457,8 +457,8 @@ static int smartUnload(uint32_t house,bool candidateOnly=false){
    }
    return true;
   };
-  if(runtimeDirectActions)capture();
-  else {SampleReadScope sample;if(sample)capture();}
+  if(runtimeDirectActions)capture(nullptr);
+  else {SampleReadScope sample;if(sample)capture(&sample);}
  }
  return count; // acknowledgement means arranged, not physically unloaded
 }
