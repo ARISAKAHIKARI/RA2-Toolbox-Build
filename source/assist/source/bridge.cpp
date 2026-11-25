@@ -2064,7 +2064,10 @@ static void tick(){
   !moOrdersPending()&&
   !directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
- const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&noGraphJobs&&
+ // Match start by itself is not a command or display graph consumer.
+ // Native catalogue publication above is independent; if catalogue data
+ // still needs a graph, TypeCatalogue in worldDemand excludes this lane.
+ const bool noCommandWork=!cmd&&!resultsDue&&noGraphJobs&&
    !sh->bombBoardEnabled&&!sh->formationPolicy.enabled&&!formationJobCount&&!directAirPending()&&
    !sh->runtimeTracking&&!sh->minerDefenseEnabled&&!minerDefensePending()&&!oreHarvestNeedsWork()&&!manualVersions.pausedCount&&!sh->magnetronGlobal&&!sh->magnetronDrop&&!sh->dodgeEnabled&&!dodgeCount&&!nativeCount&&
    !sh->missileEnabled&&!missileHoldCount&&!missileSendCount&&!loadLedger.count&&
