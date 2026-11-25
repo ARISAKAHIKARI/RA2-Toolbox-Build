@@ -11,7 +11,7 @@ static external::GameView<LocalRawRead> clickView(LocalRawRead{});
 // conversion consumes only the manager's already sealed world sample.
 struct CooperativeFrameRead {bool operator()(uint32_t a,void*out,size_t n)const{return read(a,out,n);}};
 static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig& quotas,cooperative::Input&out,worldframe::Key*source=nullptr,cooperative::CapturedIdentities*identities=nullptr){
- ObservationReadScope frameRead;if(!frameRead)return false;
+ const auto collect=[&](){
  auto input=external::cooperativeInput(CooperativeFrameRead{},r,[&](uint32_t type){
   char id[24]{};if(!read(type+0x24,id,23))return quotas.defaults;
   for(int i=0;i<quotas.count;++i)if(sameid(id,quotas.entries[i].id))return quotas.entries[i].quota;return quotas.defaults;
@@ -19,6 +19,15 @@ static bool collectCooperativeInput(const cooperative::Request&r,const compute::
  const auto feature=r.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
  for(size_t i=0;i<input.units.size();++i)for(size_t j=0;j<input.targets.size();++j)
   if(!featureTypeAllowed(feature,input.units[i].type)||(r.mode==cooperative::Enter&&!featureTypeAllowed(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
+ return input;
+ };
+ if(runtimeDirectActions&&compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){
+  auto input=collect();
+  if(source){*source={};source->match=match;source->house=lastHouse;source->frame=get<int>(0xA8ED84);source->tick=sampleClock(sh);}
+  out=std::move(input);return true;
+ }
+ ObservationReadScope frameRead;if(!frameRead)return false;
+ auto input=collect();
  if(!frameRead.complete())return false;
  if(source)*source=sampleWorldSource->key;
  out=std::move(input);return true;
@@ -183,18 +192,30 @@ static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house,bool* ev
  // An incomplete frame is UNKNOWN, not a permanent capacity denial.
  if(evidenceReady)*evidenceReady=false;
  struct Candidate {uint32_t pointer,id;};static Candidate candidates[16384];
- int count=0;SampleReadScope frameRead;if(!frameRead||!commandRosterReady())return 1024;
- // Filter the canonical worker-owned Techno membership using the sealed
- // sample. Only relevant owned infantry/vehicles receive later live checks.
- for(const auto&member:worldFrameCommandRoster.members){
-  const uint32_t p=member.pointer;
+ int count=0;if(!commandRosterReady())return 1024;
+ // Only the asynchronous worker owns CommandRoster::members. Synchronous
+ // dispatchers enumerate their current native roster rather than assuming an
+ // absent worker roster means zero incoming passengers.
+ const auto add=[&](uint32_t p,uint32_t id)->bool{
+  if(!p||!id||id==ignore)return true;
   const int k=kind(p);
-  if((k!=1&&k!=2)||member.id==ignore||get<uint32_t>(p+0x21C)!=house)continue;
-  if(count>=16384)return 1024;
-  candidates[count++]={p,member.id};
+  if((k!=1&&k!=2)||get<uint32_t>(p+0x21C)!=house)return true;
+  if(count>=16384)return false;
+  candidates[count++]={p,id};return true;
+ };
+ const auto collectRoster=[&]()->bool{
+  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+  for(int n=0;n<all.count;++n){const uint32_t p=item(all,n);if(p&&!add(p,get<uint32_t>(p+0x10)))return false;}
+  return true;
+ };
+ if(runtimeDirectActions){if(!collectRoster())return 1024;}
+ else{
+  SampleReadScope frameRead;if(!frameRead)return 1024;
+  if(worldFrameCommandWorker.enabled()){
+   for(const auto&member:worldFrameCommandRoster.members)if(!add(member.pointer,member.id))return 1024;
+  }else if(!collectRoster())return 1024;
+  if(!frameRead.complete())return 1024;
  }
- if(!frameRead.complete())return 1024;
- frameRead.finish();
  if(evidenceReady)*evidenceReady=true;
  int reserved=0;const bool facility=clickView.capacity(target).singleVehicle;
  for(int i=0;i<count;++i){
