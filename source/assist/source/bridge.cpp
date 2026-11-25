@@ -1466,7 +1466,7 @@ static void command(uint32_t house,DWORD now,commandsampling::Sample sample=comm
  const int c=sh->command,arg=sh->arg;
  // A command posted after direct-lane admission must wait for its own full
  // graph; never acknowledge an unmigrated command against a zero-page source.
- if(runtimeDirectActions&&c!=Repair&&((c<CombatSelection||c>IdleTransport)||!commandRosterReady()))return;
+ if(runtimeDirectActions&&c!=Repair&&((c!=AutoBoard&&(c<CombatSelection||c>IdleTransport))||!commandRosterReady()))return;
  const bool candidateOnly=sample!=commandsampling::Sample::Exact;
  int result=1,n=0;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
@@ -2037,7 +2037,7 @@ static void tick(){
   !sh->burstHoldEnabled&&!sh->burstHeld&&!sh->scrollRefreshHz&&
   !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&
   !burstCount&&!unloadCount&&!queuedUnload.count&&
-  !loadLedger.count&&!loadCalculationPending&&!entryReservationCount&&
+  !loadCalculationPending&&!entryReservationCount&&
   !cooperativeEffectCount&&
   !ownground::job.pending&&!nativePlacementCompletionPending()&&!scrollRefreshActive&&
   !runtimeCoopPending&&!oreHarvestNeedsWork()&&!moOrdersPending()&&
@@ -2045,17 +2045,17 @@ static void tick(){
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
  const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&noGraphJobs&&
    !sh->runtimeTracking&&!sh->magnetronGlobal&&!sh->magnetronDrop&&!sh->dodgeEnabled&&!dodgeCount&&!nativeCount&&
-   !sh->missileEnabled&&!missileHoldCount&&!missileSendCount&&
+   !sh->missileEnabled&&!missileHoldCount&&!missileSendCount&&!loadLedger.count&&
    !actorLeaseArbiter.count&&!missionObserver.pending()&&
    !capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)&&
    !repairCalculationPending&&!manualRepairPending&&!(repairAt<repairCount)&&!pendingRepairs.count;
  const bool hostDisplayOnly=sharedWorldWanted&&noCommandWork&&
   worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
- // Direct Runtime lane: native repair, selection, combat, dodge and missile defense.
+ // Direct Runtime lane: native repair, selection, combat, dodge, missile defense and boarding.
  // Graph-dependent collectors and explicit command mailboxes retain their
  // old path until migrated. A visual subscription never grants action authority.
  const bool directCommand=sh->request==sh->ack||
-  sh->command==Repair||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
+  sh->command==Repair||sh->command==AutoBoard||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
  const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&!catalogueDue&&
   !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
   !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS))&&
