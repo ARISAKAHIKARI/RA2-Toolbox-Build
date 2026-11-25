@@ -292,7 +292,7 @@ static void onMessage(const std::string& json){
  if(message.kind==consolemodel::MessageKind::Navigate){
   userNavigated=true;selectedCategory=message.shell.module==2?message.shell.category:0;
   if(message.shell.module<2)videoSection=int(message.shell.module);
-  selectedPageIndex=message.shell.pageIndex>=0?message.shell.pageIndex:(selectedCategory?selectedCategory+2:(videoSection?2:0));
+  static constexpr int categoryPages[]={0,3,4,5,6,8,9,10};selectedPageIndex=message.shell.pageIndex>=0?message.shell.pageIndex:(selectedCategory?categoryPages[std::clamp(selectedCategory,0,7)]:(videoSection?2:0));
   error.clear();selectPage(servicesStarted);publishShell();return;
  }
  if(message.kind==consolemodel::MessageKind::Module){
