@@ -137,22 +137,24 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  // Flat automatic page has no second subsection summary.
  const buttons=f.find('feature-config-toggle');
  assert.equal(buttons.length,2);
- assert.equal(buttons[1].hidden,true);
- assert.equal(buttons[0].attributes.get('aria-expanded'),'false');
- assert.equal(buttons[0].textContent,'展开','inline child settings use the same expand action everywhere');
- assert.ok(f.find('group-status')[0].textContent.includes('维修范围暂不可用'));
- f.dispatch(buttons[0],'click');
- assert.equal(buttons[0].attributes.get('aria-expanded'),'true');
- assert.equal(buttons[0].textContent,'收起');
+ const active=buttons.filter(button=>!button.hidden);
+ assert.equal(active.length,1,'only the feature with editable parameters has a fold');
+ const fold=active[0];
+ assert.equal(fold.attributes.get('aria-expanded'),'false');
+ assert.equal(fold.textContent,'展开');
+ assert.ok(f.find('group-status').some(status=>status.textContent.includes('维修范围暂不可用')));
+ f.dispatch(fold,'click');
+ assert.equal(fold.attributes.get('aria-expanded'),'true');
+ assert.equal(fold.textContent,'收起');
  assert.ok(f.find('setting-label').some(label=>label.textContent==='血量阈值'));
- f.dispatch(buttons[0],'click');
- assert.equal(buttons[0].textContent,'展开');
+ f.dispatch(fold,'click');
+ assert.equal(fold.textContent,'展开');
  const search=node('search');search.value='血量阈值';f.dispatch(search,'input');f.render();
- assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'true');
+ assert.equal(f.find('feature-config-toggle').find(button=>!button.hidden).attributes.get('aria-expanded'),'true');
  f.dispatch(node('foldAll'),'click');f.receive(state(2));f.render();
- assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'false');
+ assert.equal(f.find('feature-config-toggle').find(button=>!button.hidden).attributes.get('aria-expanded'),'false');
  search.value='';f.dispatch(search,'input');f.render();
- assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'false');
+ assert.equal(f.find('feature-config-toggle').find(button=>!button.hidden).attributes.get('aria-expanded'),'false');
 });
 
 test('production queue is one compact expanded block; reminders stay with monitor settings',()=>{
