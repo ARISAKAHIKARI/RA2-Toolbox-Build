@@ -155,6 +155,10 @@ public:
   const int rangePadding=std::clamp(rangeCells,0,30)*256;
   if(!validWorld(world)){reset();return {};}
   if(world.match!=match_){reset();match_=world.match;}
+  observeDrop|=autoDrop;
+  // An unchanged callback must not allocate order buffers or rebuild actor
+  // indices. Keep the existing receipt invalidation (expired sets frame_=-1).
+  if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop&&magnetronModes_==magnetronModes&&dropObserved_==observeDrop)return {};
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
   auto finishBatch=[&](std::vector<Order> orders){
    // Carry the exact source-snapshot identity through asynchronous planning.
@@ -166,8 +170,7 @@ public:
    }
    return orders;
   };
-  observeDrop|=autoDrop;
-  if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop&&magnetronModes_==magnetronModes&&dropObserved_==observeDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;magnetronModes_=magnetronModes;dropObserved_=observeDrop;queued=docking=yielded=0;targetChecks=0;
+  frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;magnetronModes_=magnetronModes;dropObserved_=observeDrop;queued=docking=yielded=0;targetChecks=0;
   actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();bool enemiesBuilt=false;
   bool useOre=(flags&AutoOreReturn)||!ore_.empty(),useCombat=(flags&(AdvancedInput|MagnetronInput))&&world.intentCount;
   for(int i=0;i<world.count;++i){const auto&a=world.actors[i];if(!a.id)continue;actors_.add(a);
