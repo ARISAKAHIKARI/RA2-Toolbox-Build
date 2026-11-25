@@ -61,7 +61,8 @@ class VisualCache {
  CaptureScratch scratch_;DemandLeases leases_;std::vector<uint32_t>requests_;
  VisualStamp latestStamp_;
  uint64_t revision_=0,builtRevision_=0,serial_=0;uint32_t builtDemand_=0,attemptedAt_=0;Token attempted_;
- std::array<uint32_t,6>demandTicks_{};uint32_t demanded_=0;
+ static constexpr std::array<uint32_t,7> VisualGraphDemands{Base,Combat,Passengers,Ore,Bullets,Visual,MonitorStats};
+ std::array<uint32_t,VisualGraphDemands.size()>demandTicks_{};uint32_t demanded_=0;
 public:
  struct Statistics {uint64_t captures=0,reused=0,failed=0;};Statistics statistics;
  void request(const std::vector<uint32_t>&pages,uint32_t now,bool retry){
@@ -79,7 +80,10 @@ public:
   if(visualDetails&HostVisualPassengers)demand|=Passengers;
   if(visualDetails&HostVisualCombat)demand|=Combat;
   if(visualDetails&HostVisualOre)demand|=Ore;
-  uint32_t combined=0;for(unsigned bit=0;bit<6;++bit){const uint32_t flag=1u<<bit;if(demand&flag){demanded_|=flag;demandTicks_[bit]=now;}if((demanded_&flag)&&uint32_t(now-demandTicks_[bit])<=250)combined|=flag;}
+  // MonitorStats is a sparse flag, not one of the first six bits.
+  // Retain it in the same lease union so repeated panel reads do not fault
+  // the same factory/count pages back into the next visual capture.
+  uint32_t combined=0;for(size_t bit=0;bit<VisualGraphDemands.size();++bit){const uint32_t flag=VisualGraphDemands[bit];if(demand&flag){demanded_|=flag;demandTicks_[bit]=now;}if((demanded_&flag)&&uint32_t(now-demandTicks_[bit])<=250)combined|=flag;}
   const bool compatible=latest_&&builtRevision_==revision_&&(demand&~builtDemand_)==0;
   if(compatible&&base_==source){++statistics.reused;return latest_;}
   // Only zero-page read-only boundaries may share a successful guard result.

@@ -256,6 +256,17 @@ void graphs(){
   worldframe::CaptureGraph<Read>ordinary(baseOnly,Read{&m});
   CHECK(ordinary.capture(worldframe::Base,noRequests)&&baseOnly.seal());
   CHECK(!baseOnly.read(counts,&owned,4)&&!baseOnly.read(queue,&queued,4));
+  // Exercise the actual Host visual path, not just CaptureGraph directly.
+  auto boundary=std::make_shared<worldframe::Snapshot>();auto k=key();
+  k.demand=worldframe::BoundaryOnlyKeyBit;boundary->reset(k);CHECK(boundary->seal());
+  worldframe::VisualCache cache;Read live{&m};
+  auto observed=cache.acquire(boundary,worldframe::MonitorStats,200,live);
+  CHECK(observed&&observed->controlSource==boundary);
+  CHECK(observed->read(counts,&owned,4)&&owned==99);
+  CHECK(observed->read(queue,&queued,4)&&queued==0);
+  const auto calls=m.calls.size();
+  CHECK(cache.acquire(boundary,worldframe::MonitorStats,201,live)==observed);
+  CHECK(m.calls.size()==calls&&cache.statistics.captures==1);
  }
  std::printf("GRAPH Base %u reads/%u bytes/%u rosters; Combat %u/%u/%u; Passengers %u/%u/%u; Ore %u/%u/%u; Visual %u/%u/%u\n",base.calls,base.bytes,base.rosters,combat.calls,combat.bytes,combat.rosters,passengers.calls,passengers.bytes,passengers.rosters,ore.calls,ore.bytes,ore.rosters,visual.calls,visual.bytes,visual.rosters);
  for(int bad:{-1,16385}){Memory m;setup(m);m.put(0xA8EC78+16,bad);worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});CHECK(!g.capture(worldframe::Base,{}));}
