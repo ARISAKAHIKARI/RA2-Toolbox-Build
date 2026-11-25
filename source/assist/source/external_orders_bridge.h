@@ -130,15 +130,19 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0)|(minerDefense?1u<<29:0);
  nativeEnrichment=allowNativeRead&&(drop||(advanced&&sh->nativeCombatQueries));
  if(planningFrame==source.frame&&planningSerial==inputSerial&&lastMode==mode&&lastNativeEnrichment==nativeEnrichment)return false;
- // No metadata mutation precedes this point. Idle and repeated same-frame
- // observations must not copy the entire rollback cache before returning.
- static WeaponCacheEntry cacheBefore[1024]{};memcpy(cacheBefore,weaponCache,sizeof weaponCache);
+ // Validate the roster before mutating any metadata. A pure native
+ // collection with no concurrent defense configuration proof has no
+ // fallible sealed-page phase and needs no rollback copy.
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+ const bool rollbackNeeded=!native||defenseProven;
+ static WeaponCacheEntry cacheBefore[1024]{};
+ if(rollbackNeeded)memcpy(cacheBefore,weaponCache,sizeof weaponCache);
  if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);nextMode=mode;
  w.match=match;
  // Preserve the real acquisition time and frame of a delayed observation.
  w.tick=source.tick?source.tick:now;
  w.frame=source.frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
- Vec all{};if(!sampleRoster(0xA8EC78,all))return false;static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;static bool dockOre=false,dockDefense=false;
+ static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;static bool dockOre=false,dockDefense=false;
  // Dock compatibility is type metadata. Cache it instead of rescanning all
  // combat units just to discover the same refinery types on every frame.
  if(ore||minerDefense){Vec types=vec(0xA83CE0,4096);
@@ -237,7 +241,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  if((!native&&!sampleReadComplete)||(defenseProven&&(native?sh->featureConfigSeq!=defenseRevision:!antiTheftSourceCurrent(defenseSource,defenseRevision)))){
   // An incomplete observation must neither replace a valid input nor poison
   // the existing metadata caches with values returned by failed reads.
-  memcpy(weaponCache,cacheBefore,sizeof weaponCache);dockFrame=-100000;dockCount=-1;return false;
+  if(rollbackNeeded)memcpy(weaponCache,cacheBefore,sizeof weaponCache);dockFrame=-100000;dockCount=-1;return false;
  }
  return true;
  };
