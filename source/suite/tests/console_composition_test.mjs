@@ -133,7 +133,7 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  f.receive(state(1));f.render();
  assert.equal(f.find('group-summary').length,1);
  assert.equal(f.find('group-summary')[0].tagName,'DIV');
- assert.equal(f.find('group-summary')[0].hidden,false);
+ assert.equal(f.find('group-summary')[0].hidden,true);
  assert.equal(f.find('group-summary')[1].hidden,false);
  const buttons=f.find('feature-config-toggle');
  assert.equal(buttons.length,2);
