@@ -8,7 +8,7 @@ static void syncRefreshControls(){
  SendMessageW(refreshModeBox,CB_SETCURSEL,0,0);
  if(shroudModeBox){EnableWindow(shroudModeBox,TRUE);SendMessageW(shroudModeBox,CB_SETCURSEL,state.values[suite::ShroudStrategy],0);}
  bool scene=state.values[suite::RefreshMode]!=0;
- std::wstring text=scene?L"等待游戏前台就绪":L"仅光标 · 使用上方目标刷新率";
+ std::wstring text=scene?L"等待游戏前台就绪":L"仅鼠标 · 使用上方目标刷新率";
  if(scene&&!state.assistEnabled)text=L"画面高刷已暂停";
  else if(scene&&state.refreshStatus<0)text=L"当前游戏使用原版画面刷新";
  else if(scene&&state.refreshStatus==1){
