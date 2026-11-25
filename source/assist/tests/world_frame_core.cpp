@@ -86,6 +86,14 @@ void setup(Memory&m){
 }
 
 void hostVisual(){
+ // Metadata loading may fail across many high-refresh callbacks. Only one
+ // attempt per 100 ms, including tick zero and rollover; reset permits an
+ // immediate explicit refresh without altering successful catalogue age.
+ {external::catalogue::ProbeRetryGate gate;CHECK(gate.begin(0));
+  for(uint32_t i=0;i<100;++i)CHECK(!gate.begin(i));
+  CHECK(gate.begin(100));CHECK(!gate.begin(101));gate.reset();CHECK(gate.begin(101));
+  gate.reset();CHECK(gate.begin(0xFFFFFFF0u));CHECK(!gate.begin(20));CHECK(gate.begin(84));
+ }
  // At capacity, one expired lease is replaced by a new page. Total count
  // remains MaxPages, but the previous graph no longer covers the demand.
  {

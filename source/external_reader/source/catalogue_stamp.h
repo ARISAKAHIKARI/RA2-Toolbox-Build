@@ -8,6 +8,16 @@
 // a permanently authenticated catalogue. Never persist these addresses to disk.
 namespace external { namespace catalogue {
 struct Stamp {uint64_t hash=1469598103934665603ull;int count=0;};
+// Bound incomplete metadata probes independently of successful refresh time.
+class ProbeRetryGate {
+ bool attempted_=false;uint32_t at_=0;
+public:
+ void reset(){attempted_=false;at_=0;}
+ bool begin(uint32_t now){
+  if(attempted_&&uint32_t(now-at_)<100)return false;
+  attempted_=true;at_=now;return true;
+ }
+};
 template<class Read> bool capture(Read read,Stamp&out){
  Stamp next;auto mix=[&](const void*p,size_t n){auto*b=(const uint8_t*)p;while(n--)next.hash=(next.hash^*b++)*1099511628211ull;};
  const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};
