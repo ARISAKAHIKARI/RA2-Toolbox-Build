@@ -1579,15 +1579,14 @@ static void sampleExternal(DWORD now){
   if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
     ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
   const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
-  // Host no longer creates an independent VisualCache/readLive world sample.
-  // These are native Runtime demands and are fulfilled by the one sealed
-  // CommandCaptureWorker graph; resource-only legacy display projections stay
-  // suspended until they are produced by that Worker.
-  uint32_t displayDemand=worldframe::Base;
+  // This sampler only feeds display/UI. Explicit visual tags prevent
+  // passenger/combat overlays from requesting a synchronous Runtime graph.
+  // Command readers retain their own authoritative subscriptions and guards.
+  uint32_t displayDemand=worldframe::Resources;
   if((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)
-   displayDemand|=worldframe::Passengers;
+   displayDemand|=worldframe::HostVisualPassengers;
   if(passengerOverlay||extra.enemyMarkers||extra.enemySpecialOnly)
-   displayDemand|=worldframe::Combat;
+   displayDemand|=worldframe::HostVisualCombat;
   externalReader.setWorldDemand(displayDemand);
   external::WorldFrameScope worldScope(externalReader,commandMatch());
   if(!worldScope){
@@ -1606,7 +1605,7 @@ static void sampleExternal(DWORD now){
    // The 100ms aircraft scan can precede the publication where play paused.
    // Fill that derived sample once from the already pinned immutable bytes;
    // its source tick stays unchanged and never renews command freshness.
-   if(!externalSampler.idleAircraftDisplay().current(source->key.match,source->key.frame,source->key.serial,GetTickCount(),true)){
+   if(!externalSampler.idleAircraftDisplay().current(source->key.match,externalSampler.state().frame,source->key.serial,GetTickCount(),true)){
     if(!externalSampler.refreshAircraft(source->key.tick,source->key.serial)||!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
     externalSampler.commitSample();
    }
