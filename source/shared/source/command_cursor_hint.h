@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cstddef>
 #include <mutex>
 // EXE-only presentation state shared by the Tactical and Cursor UI threads.
 // No game write, input interception, command submission or extra Runtime IPC.
@@ -16,6 +17,15 @@ inline Hint read(uint32_t pid,uint32_t now){auto&b=bus();std::lock_guard<std::mu
 // superweapon targets, waypoints and other native tools keep their own art.
 inline bool ordinary(int id){return id==0||(id>=17&&id<=21)||id==71;}
 inline int definition(Mode m){return m==Advanced||m==CS||m==Magnetron?71:m==Enter?25:20;}
+// True only for adjacent frames (including the loop edge) of a validated
+// command-cursor animation. These edges may be prepared on demand even when
+// a user-edited groups.json omits the command cursor sequence.
+inline bool animationTransition(int first,int count,int from,int to,size_t frameCount){
+ if(first<0||count<2||size_t(first)>frameCount||size_t(count)>frameCount-size_t(first))return false;
+ const int current=from-first,next=to-first;
+ return current>=0&&current<count&&next>=0&&next<count&&
+        (next==current+1||(current==count-1&&next==0));
+}
 inline uint32_t recolor(uint32_t p,Mode m,int x,int y,int w,int h){
  unsigned a=p>>24,r=(p>>16)&255,g=(p>>8)&255,b=p&255;
  if(!a)return p;
