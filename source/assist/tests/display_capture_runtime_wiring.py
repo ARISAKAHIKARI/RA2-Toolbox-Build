@@ -23,6 +23,8 @@ assert "if(!runtimeDirectActions||commandRosterReady())pointerTick();" in bridge
 direct_admission=bridge.split("const bool directRuntime=",1)[1].split(";",1)[0]
 assert "sh->pointer.request==sh->pointer.ack" not in direct_admission
 assert "AutoOreReturn|AntiTheft" in direct_admission
+graph_jobs=bridge.split("const bool noGraphJobs=",1)[1].split(";",1)[0]
+assert "scrollRefreshHz" not in graph_jobs and "scrollRefreshActive" not in graph_jobs
 assert "!graphCatalogueDue" in direct_admission
 assert "if(graphCatalogueDue)worldDemand|=worldframe::TypeCatalogue;" in bridge
 assert "external::catalogue::capture(readLiveWorld,stamp)" in bridge
