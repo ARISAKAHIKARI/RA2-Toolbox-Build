@@ -1762,7 +1762,10 @@ static void consumeSubmittedIntents(uint32_t house,int frame,DWORD now){
  // then command / planner / cooperative requests.
  uint32_t inputFlags=sh->flags|((unloadCount||queuedUnload.count)?NativeOrders:0);
  csHooksTick(inputFlags);nativeHooksTick(inputFlags);clickHooksTick(inputFlags);
- snap.inputPatchMask=0;if(!runtimeDirectActions||!worldFrameBoundaryOnly)pointerTick();
+ snap.inputPatchMask=0;
+ // Pointer intents are native work. A late mailbox publication waits for
+ // the next current roster, never for a full graph or display snapshot.
+ if(!runtimeDirectActions||commandRosterReady())pointerTick();
  ownGroundTick(house,frame,now);command(house,now);if(playerContextChanged)return;reservedSidebarTick(house,now);
  if(!runtimeDirectActions||!worldFrameBoundaryOnly)externalOrdersTick(house,frame,now);
  if(!runtimeDirectActions||commandRosterReady())cooperativeTick(house,frame,now);
@@ -2054,14 +2057,14 @@ static void tick(){
  const bool hostDisplayOnly=sharedWorldWanted&&noCommandWork&&
   worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  // Direct Runtime lane: native repair, selection, combat, dodge, missile defense, boarding, unload and cooperative planning.
- // Graph-dependent collectors and explicit command mailboxes retain their
- // old path until migrated. A visual subscription never grants action authority.
+ // Only the remaining graph-dependent collectors and command mailboxes
+ // retain their old path. Pointer admission is independent of visual publication.
  const bool directCommand=sh->request==sh->ack||
   sh->command==Repair||sh->command==AutoBoard||sh->command==SmartUnload||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
  const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&!catalogueDue&&
   !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
   !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread|AutoOreReturn|AntiTheft))&&
-  !selectionPending&&!planPending&&!cooperativePending&&sh->pointer.request==sh->pointer.ack&&
+  !selectionPending&&!planPending&&!cooperativePending&&
   directCommand&&!repairCalculationPending&&
   sh->computeApplied==compute::All&&
   worldFrameServer.demandMask()==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
