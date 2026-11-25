@@ -58,6 +58,11 @@ static uint32_t worldFrameCandidateVersion=0;
 // Never alias the strict worldFrame key or grant it native command authority.
 static const worldframe::Snapshot* sampleWorldSource=nullptr;
 static uint32_t sampleScopeTick=0;
+// Only the admitted Runtime dispatcher may set this reader, for explicitly
+// migrated synchronous collectors. A zero-page Host boundary is metadata,
+// never a sealed command graph; direct reads do not create page leases.
+using RuntimeDirectReader=bool(*)(uint32_t,void*,size_t);
+static RuntimeDirectReader runtimeDirectReader=nullptr;
 // Coalesce identical in-flight requests before copying dependency pages.
 static worldframe::CommandRequestGate commandRequestGate;
 #if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
@@ -158,6 +163,9 @@ static bool observationalFrameReady(){
 }
 #endif
 static bool readWorldSample(uint32_t at,void*out,size_t n){
+ if(runtimeDirectReader&&sampleWorldSource==&worldFrame&&worldFrameBoundaryOnly){
+  const bool ok=runtimeDirectReader(at,out,n);if(!ok)sampleReadComplete=false;return ok;
+ }
  requestWorldRange(at,n); // Keep successful consumer dependencies subscribed.
  const auto*source=sampleWorldSource?sampleWorldSource:&worldFrame;
  const bool ok=source&&source->sealed()&&source->read(at,out,n);
@@ -174,9 +182,11 @@ public:
     ready_(false),previousSource_(sampleWorldSource),previousTick_(sampleScopeTick){
   const bool strict=worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.sealed()&&
        worldFrame.key.match==match&&worldFrame.key.frame==snap.frame;
-  const bool observation=allowObservation&&!strict&&observationalFrameReady();
-  ready_=strict||observation;
-  sampleWorldSource=strict?&worldFrame:(observation?&worldFrameCandidate:nullptr);
+  const bool direct=runtimeDirectReader&&worldFrameReady&&worldFrameBoundaryOnly&&
+       worldFrame.key.match==match&&worldFrame.key.frame==snap.frame;
+  const bool observation=allowObservation&&!strict&&!direct&&observationalFrameReady();
+  ready_=strict||direct||observation;
+  sampleWorldSource=(strict||direct)?&worldFrame:(observation?&worldFrameCandidate:nullptr);
   sampleScopeTick=GetTickCount();
   ++sampleReadDepth;sampleReadComplete=ready_;
  }
@@ -236,7 +246,7 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
  }
 }
 #endif
-static void retireWorldFrame(){worldFrameCatalogueProbeAt=0;worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
+static void retireWorldFrame(){runtimeDirectReader=nullptr;worldFrameCatalogueProbeAt=0;worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
 runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;
 }
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
