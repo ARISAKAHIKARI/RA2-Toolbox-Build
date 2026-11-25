@@ -2049,15 +2049,16 @@ static void tick(){
  // game thread may publish a small scene boundary only if ALL Host readers
  // are display-only and no local native command feature has any pending work.
  // A same-frame hotkey later upgrades this boundary to a full graph.
+ // Scene refresh is native camera/composition work, not a world graph consumer.
  const bool noGraphJobs=!sh->moFeatures&&
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
   !sh->superweaponGrant&&
   !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput|AutoOreReturn))&&!sh->plannerTracking&&
   !sh->burstEnabled&&
-  !sh->burstHoldEnabled&&!sh->burstHeld&&!sh->scrollRefreshHz&&
+  !sh->burstHoldEnabled&&!sh->burstHeld&&
   !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&
   !burstCount&&!loadCalculationPending&&
-  !ownground::job.pending&&!nativePlacementCompletionPending()&&!scrollRefreshActive&&
+  !ownground::job.pending&&!nativePlacementCompletionPending()&&
   !moOrdersPending()&&
   !directAirPending()&&!directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
