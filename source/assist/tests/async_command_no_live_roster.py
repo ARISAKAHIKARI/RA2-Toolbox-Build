@@ -67,7 +67,9 @@ assert "worldClient_->visual(frame,worldDemand_" in process_reader
 assert "if(worldframe::visualDemand(worldDemand_))" in process_reader
 assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in process_reader
 assert "else worldClient_->request(worldDemands_,!worldComplete_)" in process_reader
-assert "uint32_t(now-latest_->visualTick)<16" in visual
+assert "uint32_t(now-latest_->visualTick)<visualReuseWindow(latest_->pages.size())" in visual
+assert "pages<=256?10u:16u" in visual
+assert "uint32_t(now-attemptedAt_)<16" in visual
 assert "if(hostDisplayOnly)" in bridge
 assert "captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);" in bridge
 assert "if(boundaryOnly){" in runtime
