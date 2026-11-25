@@ -725,7 +725,7 @@ static void testDirectCombatDodge(){
 static void testDirectMissileLoad(){
  reset();sh->computeApplied=compute::All;
  const uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),q=object(airType,0,40,0x30000,1300,1000);
- makeWeapon(type);set<bool>(airType+0xD68,true);set<int>(q+0xA4,200);sh->missileScope=0;
+ const uint32_t weapon=makeWeapon(type);set<bool>(airType+0xD68,true);set<int>(q+0xA4,200);sh->missileScope=0;
  vectorAt(0xA8EC78,0x800000,{p,q});
  worldObjects.unbind();worldObjects.clear();worldObjects.add(p,20);worldObjects.add(q,40);
  worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
@@ -737,6 +737,18 @@ static void testDirectMissileLoad(){
  const auto distance=missileInput.edges[0][0].distance;
  set<int>(q+0x9C,1700);
  check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].distance!=distance,"native missile reused old target coordinates");
+ // A target outside the firing circle can still be inside acquisition.
+ // Keep the exact inclusive advance boundary, and the still-valid cached
+ // weapon range even if fresh type metadata changes in this callback.
+ set<int>(q+0xA4,0);set<int>(q+0x9C,1000+4096+missilecompute::AdvanceLeash);
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].damage==40&&!missileInput.edges[0][0].close,
+       "AA spatial screening lost exact advance boundary");
+ set<int>(weapon+0xB4,2048);
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].damage==40,
+       "AA spatial screening lost cached-range acquisition");
+ set<int>(q+0x9C,1000+4096+missilecompute::AdvanceLeash+1);
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].damage==0,
+       "AA spatial screening admitted a distant target");
  check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,"native missile registered page requests");
  runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
  setupLoad(0);const int legacy=autoLoad(lastHouse);const auto expected=assignments;
