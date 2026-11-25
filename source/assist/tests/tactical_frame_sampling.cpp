@@ -698,7 +698,7 @@ static void testDirectCombatDodge(){
  // seam for the other cases). No graph is available on this boundary.
  indexedFrame=snap.frame;indexedCount=3;indexedVehicleHouse=lastHouse;indexedGlobalVehicles=false;
  check(advancedTargetInRange(20,lastHouse),"native movement range recheck required full graph");
- check(worldFrame.pages.empty()&&runtimeWorldDemands.empty(),"native range recheck registered graph dependencies");
+ check(worldFrame.pages.size()==0&&runtimeWorldDemands.empty(),"native range recheck registered graph dependencies");
  int a=0,b=0;
  const auto initialSequence=sh->worldSeq;
  const auto initialSharedFrame=sh->world.frame;
@@ -732,7 +732,7 @@ static void testDirectCombatDodge(){
 static void testDirectMissileLoad(){
  reset();sh->computeApplied=compute::All;
  const uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),q=object(airType,0,40,0x30000,1300,1000);
- const uint32_t weapon=makeWeapon(type);set<bool>(airType+0xD68,true);set<int>(q+0xA4,200);sh->missileScope=0;
+ const uint32_t weapon=makeWeapon(type);set<int>(type+0x808,1);set<bool>(airType+0xD68,true);set<int>(q+0xA4,200);sh->missileScope=0;
  vectorAt(0xA8EC78,0x800000,{p,q});
  worldObjects.unbind();worldObjects.clear();worldObjects.add(p,20);worldObjects.add(q,40);
  worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
