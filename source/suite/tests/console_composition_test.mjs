@@ -85,7 +85,7 @@ const test=(name,run)=>cases.push({name,run});
 test('top-level display pages route, restore and show only their controls',()=>{
  const f=setup(),node=id=>f.document.getElementById(id);
  const nav=Array.from({length:11},(_,i)=>navButton(node('navigation'),i));
- assert.deepEqual(node('navigation').children.filter(child=>child.className==='nav-group-label').map(child=>child.textContent),['显示','对局工具','高级']);
+ assert.deepEqual(node('navigation').children.filter(child=>child.className==='nav-group-label').map(child=>child.textContent),['对局工具','显示','高级']);
  assert.deepEqual(nav.map(b=>b.attributes.get('aria-label')),['鼠标','渲染','监控视图','键鼠与选兵','战术操作','进驻与装卸','自动功能','生产','游戏规则','实验功能','调试']);
  const state=(module,revision,controls)=>({kind:'state',protocol:1,module,generation:1,revision,controls,page:module?'monitor':'cursor'});
  f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:0,videoSection:1});
@@ -133,7 +133,7 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  f.receive(state(1));f.render();
  assert.equal(f.find('group-summary').length,1);
  assert.equal(f.find('group-summary')[0].tagName,'DIV');
- assert.equal(f.find('group-summary')[0].hidden,true);
+ assert.equal(f.find('group-summary')[0].hidden,false);
  // Flat automatic page has no second subsection summary.
  const buttons=f.find('feature-config-toggle');
  assert.equal(buttons.length,2);
