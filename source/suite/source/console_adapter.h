@@ -207,7 +207,7 @@ class Host {
    for(const auto& label:controls)if((label.control.type=="label"||label.control.type=="button"||label.control.type=="toggle")&&!label.control.text.empty()&&label.rect.right<=item.rect.left+6){long dy=std::abs(label.rect.top-item.rect.top);if(dy>24)continue;long candidate=dy*1000+item.rect.left-label.rect.right;if(candidate<score){score=candidate;best=&label;}}
    if(best){c.label=best->control.text;if(best->control.type=="label")usedLabels.push_back(best->control.id);}else if(c.type=="hotkey")c.label="快捷键";else if(c.type=="choice")c.label="选项";else if(c.type=="number"||c.type=="range")c.label="数值";else if(c.type=="text")c.label="输入内容";else if(c.label.empty())c.label="设置";
   }
-  consolemodel::Snapshot snapshot;snapshot.module=p.module;snapshot.page=nav.page;snapshot.status=std::move(status);snapshot.title=p.module==0?"视频":p.module==1?"监控视图":nav.category==1?"控制":nav.category==2?"自动功能":nav.category==3?"游戏规则":nav.category==4?"实验性功能":nav.category==5?"调试":"设置";
+  consolemodel::Snapshot snapshot;snapshot.module=p.module;snapshot.page=nav.page;snapshot.status=std::move(status);snapshot.title=p.module==0?"视频":p.module==1?"监控视图":nav.category==1?"键鼠与选兵":nav.category==2?"战术操作":nav.category==3?"进驻与装卸":nav.category==4?"自动功能":nav.category==5?"游戏规则":nav.category==6?"实验功能":nav.category==7?"调试":"设置";
   for(auto& item:controls){auto& c=item.control;
    if(c.type=="label"&&std::find(usedLabels.begin(),usedLabels.end(),c.id)!=usedLabels.end())continue;
    snapshot.controls.push_back(std::move(c));
@@ -215,7 +215,7 @@ class Host {
   if(!p.generation){std::lock_guard<std::mutex> admission(p.submissionMutex);p.generation=nextGeneration_.fetch_add(1);}snapshot.generation=p.generation;snapshot.revision=1;
   // A quiet debug page still publishes the periodic capture: ageMs is relative
   // to this snapshot, so suppressing an unchanged sample would imply staleness.
-  auto content=consolemodel::encodeSnapshot(snapshot);if(content!=p.lastContent||(p.module==2&&nav.category==5)){p.lastContent=std::move(content);snapshot.revision=++p.revision;publish(p,nav,std::move(snapshot));}
+  auto content=consolemodel::encodeSnapshot(snapshot);if(content!=p.lastContent||(p.module==2&&nav.category==7)){p.lastContent=std::move(content);snapshot.revision=++p.revision;publish(p,nav,std::move(snapshot));}
   p.capturing=false;
  }
  std::string apply(Port& p,const consolemodel::Action& action) {
@@ -305,7 +305,7 @@ public:
   SetPropW(pane,L"RA2.Console.Adapter",reinterpret_cast<HANDLE>(&p));SetPropW(pane,L"RA2.Suite.Managed",reinterpret_cast<HANDLE>(1));ShowWindow(pane,SW_HIDE);SetTimer(pane,SampleTimer,SamplePeriod,nullptr);service(p);return true;
  }
  bool navigate(unsigned module,int category=-1,const std::string& page={}){
-  if(module>=ports_.size()||category < -1||category>5||(category==5&&module!=2))return false;{
+  if(module>=ports_.size()||category < -1||category>7||(category==7&&module!=2))return false;{
    std::lock_guard<std::mutex> lock(navigationMutex_);std::string key=page.empty()?(module==0?"video":module==1?"monitor":"tactical/"+std::to_string(category)):page;
    if(selected_.module==module&&selected_.category==category&&selected_.page==key){ports_[module].dirty=true;}else{selected_.module=module;selected_.category=category;selected_.page=std::move(key);++selected_.serial;latest_.reset();snapshotPending_=false;}
   }wake(ports_[module]);return true;
