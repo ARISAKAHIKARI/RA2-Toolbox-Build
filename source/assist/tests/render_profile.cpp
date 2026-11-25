@@ -22,7 +22,13 @@ int main(){
  std::set<int>ids;for(const auto&s:suite::displaySpecs)assert(ids.insert(s.id).second);assert(suite::DisplayOptionCount==62);
  for(auto o:{suite::RenderParticles,suite::RenderLasers,suite::RenderVoxelLighting,suite::RenderSpriteLighting})assert(suite::validDisplayEdit(o,0)&&suite::validDisplayEdit(o,1)&&!suite::validDisplayEdit(o,2));
  assert(suite::categories::Count==8);for(int id:{420,428,808,809,814,815}){assert(suite::categories::rule(id));assert(suite::categories::row(0,&id,1)==suite::categories::Rules);}
- int automatic[]={0,9042},control[]={9170},keyboard[]={724},entry[]={111,211},video[]={9300},experimental[]={0};assert(suite::categories::row(0,automatic,2)==suite::categories::Automatic);assert(suite::categories::row(4,control,1)==suite::categories::Control);assert(suite::categories::row(0,keyboard,1)==suite::categories::Keyboard);assert(suite::categories::row(0,entry,2)==suite::categories::Entry);assert(suite::categories::row(3,video,1)==suite::categories::Video);assert(suite::categories::row(4,experimental,1)==suite::categories::Experimental);
+ int automatic[]={0,9042},control[]={9170},keyboard[]={724},entry[]={111,211},video[]={9300},experimental[]={0};assert(suite::categories::row(0,automatic,2)==suite::categories::Automatic);assert(suite::categories::row(4,control,1)==suite::categories::Control);assert(suite::categories::row(0,keyboard,1)==suite::categories::Keyboard);assert(suite::categories::row(0,entry,2)==suite::categories::Entry);
+ int keyboardFolds[]={9604,9608},tacticalFolds[]={9601,9602,9606,9610,9611,9615},automaticFolds[]={9603,9605},ruleFolds[]={9607,9612},experimentalFolds[]={9613,9614};
+ assert(suite::categories::row(1,keyboardFolds,2)==suite::categories::Keyboard);
+ assert(suite::categories::row(1,tacticalFolds,6)==suite::categories::Tactical);
+ assert(suite::categories::row(2,automaticFolds,2)==suite::categories::Automatic);
+ assert(suite::categories::row(4,ruleFolds,2)==suite::categories::Rules);
+ assert(suite::categories::row(4,experimentalFolds,2)==suite::categories::Experimental);assert(suite::categories::row(3,video,1)==suite::categories::Video);assert(suite::categories::row(4,experimental,1)==suite::categories::Experimental);
  for(int mode=0;mode<=6;++mode)assert(assist::shroudpolicy::fullPreview(mode)==(mode==3||mode==5||mode==6));
  std::cout<<"PASS default-on independent effects, coherent concurrent profile, three viewport propagation, unique owner routing, five categories, material fog preview\n";
 }
