@@ -162,6 +162,16 @@ static void setup(){
  assert(!scanTypes());
 #endif
  assert(fixtureCatalogue());
+#ifdef DIRECT_CATALOGUE
+ const int nativeCount=snap.typeCount;
+ const int nativeSlot=typeSlot(Normal);
+ assert(nativeSlot>=0&&scanTypes(true)&&snap.typeCount==nativeCount);
+ put<int>(Normal+0x610,725);
+ assert(scanTypes(true)&&snap.types[nativeSlot].cost==725&&!sampleReadDepth);
+ put<int>(Normal+0x610,500);
+ assert(scanTypes(true)&&snap.types[nativeSlot].cost==500);
+ {ObservationReadScope sample;assert(!scanTypes(true));}
+#endif
 #ifdef SAMPLED_CATALOGUE
  const int retained=snap.typeCount;unreadable=Normal+0x610;
  assert(!fixtureCatalogue()&&snap.typeCount==retained);unreadable=0;
