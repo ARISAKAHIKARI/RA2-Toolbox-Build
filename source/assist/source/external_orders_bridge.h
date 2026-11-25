@@ -27,7 +27,7 @@ static void cancelOreJob(uint32_t pointer){if(worldObjects.contains(pointer)){in
   manualVersions.change(id,miner?pointer:0,miner);pauseMissileForManual(id,pointer);releaseAutoOwner(id);minerDefenseForget(id);++inputSerial;}}
 static void observePausedOre(uint32_t house,int frame){
  if(frame==pausedOreFrame||!manualVersions.pausedCount)return;
- const auto observe=[&](const ObjectIndex* roster){
+ const auto observe=[&](const auto* roster){
  if(!roster)return;
  pausedOreFrame=frame;
  // Follow manually suspended miners in the sealed roster. Missing bytes
@@ -101,7 +101,16 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  bool defense=false,drop=sh->magnetronDrop!=0;
  worldframe::Key defenseSource{};long defenseRevision=-1;
  bool defenseProven=false;
- if(defenseRequested&&strictDefenseSource){
+ if(defenseRequested&&native&&allowNativeRead){
+  if(!refreshFeatureTypes())return false;
+  defenseRevision=featureConfigRevision;
+  Vec buildings{};if(!sampleRoster(0xA8EB40,buildings))return false;
+  for(int n=0;n<buildings.count;++n){const auto p=item(buildings,n);
+   if(p&&own(p,house)&&!get<bool>(p+0x81)&&antiTheftBuilding(p)){defense=true;break;}
+  }
+  MemoryBarrier();defenseProven=!(defenseRevision&1)&&sh->featureConfigSeq==defenseRevision;
+  if(!defenseProven)return false;
+ }else if(defenseRequested&&strictDefenseSource){
   bool changed=false;
   defenseProven=collectAntiTheftPresence(house,defense,changed,defenseRevision);
   if(defenseProven){
@@ -201,15 +210,15 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  for(int i=0;i<nativeCount&&w.intentCount<planner::MaxIntents;++i){const auto&o=nativeOrders[i];w.intents[w.intentCount++]={o.id,o.cell,o.token,o.mode,uint32_t(o.global)};}
  queryCombat=allowNativeRead&&advanced&&sh->nativeCombatQueries;
  if(advanced&&!queryCombat)collectCombatProbes(w,true);
- if((!native&&!sampleReadComplete)||(defenseProven&&!antiTheftSourceCurrent(defenseSource,defenseRevision))){
+ if((!native&&!sampleReadComplete)||(defenseProven&&(native?sh->featureConfigSeq!=defenseRevision:!antiTheftSourceCurrent(defenseSource,defenseRevision)))){
   // An incomplete observation must neither replace a valid input nor poison
   // the existing metadata caches with values returned by failed reads.
   memcpy(weaponCache,cacheBefore,sizeof weaponCache);dockFrame=-100000;dockCount=-1;return false;
  }
  return true;
  };
- // AntiTheft, ore and miner defense still have separate graph-dependent
- // collectors. Dispatcher admission excludes them from the native lane.
+ // Native collectors use current mission/type data; the legacy graph lane
+ // is reserved for explicit background command readers and unmigrated work.
  if(runtimeDirectActions&&allowNativeRead){
   worldframe::Key source{};source.match=match;source.frame=frame;source.tick=now;source.house=house;
   if(!collect(source,true))return false;
