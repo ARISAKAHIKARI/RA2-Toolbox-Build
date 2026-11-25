@@ -51,6 +51,8 @@ assert "VisualCache visuals_" in transport
 assert "Token visual(" in transport
 assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in reader
 assert "WORLD_FRAME_TEST_VISUAL_CACHE" not in transport
-assert "uint32_t(now-latest_->visualTick)<16" in visual
+assert "uint32_t(now-latest_->visualTick)<visualReuseWindow(latest_->pages.size())" in visual
+assert "pages<=256?10u:16u" in visual
+assert "uint32_t(now-attemptedAt_)<16" in visual
 
 print("PASS Runtime action / Host display split contract")
