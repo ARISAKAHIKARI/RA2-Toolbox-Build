@@ -216,7 +216,7 @@ void serialization() {
 }
 void debugSerialization() {
     auto snapshot = fixture(2);
-    snapshot.page = "tactical/5";
+    snapshot.page = "tactical/7";
     auto& c = snapshot.controls[0];
     c.id = 9021; c.type = "toggle"; c.checked = true;
     CHECK(encodeSnapshot(snapshot).find("\"debug\"") == std::string::npos);
