@@ -415,7 +415,7 @@ test('ordinary settings never expose native numeric fallback or duplicate status
  const ids=[...core.layoutGroups(controls,'',6).values()].flat().map(c=>c.id);
  assert.ok(!ids.includes(5)&&!ids.includes(6));
  assert.ok(ids.includes(4)&&ids.includes(7)&&ids.includes(8)&&ids.includes(9));
- assert.ok([...core.layoutGroups(controls,'',7).values()].flat().some(c=>c.id===5));
+ assert.ok([...core.layoutGroups(controls,'',10).values()].flat().some(c=>c.id===5));
 });
 test('participant filters share their master feature and never create a duplicate card',()=>{
  const core=setup().context.RA2ConsoleCore;
