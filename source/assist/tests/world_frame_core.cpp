@@ -113,6 +113,13 @@ void hostVisual(){
  CHECK(raw->counters.bytes==rawBytes&&raw->counters.calls==rawCalls&&raw->pages.size()==rawPages);
  CHECK(visual->counters.bytes>=rawBytes+512*4096&&visual->pages.size()>=rawPages+512);
  const auto calls=m.calls.size();CHECK(cache.acquire(raw,worldframe::Resources,101,live)==visual&&m.calls.size()==calls);
+ // A first reader's dependency report for a fully covered graph page must
+ // renew the lease, not invalidate the immutable observation.
+ const uint32_t actorPage=ActorA&~4095u;
+ CHECK(visual->find(actorPage)&&visual->find(actorPage)->full);
+ CHECK(!cache.request({actorPage},101,false,visual));
+ CHECK(cache.acquire(raw,worldframe::Resources,101,live)==visual&&m.calls.size()==calls);
+ CHECK(cache.statistics.captures==1);
  CHECK(worldframe::authoritative(visual)==raw&&!worldframe::sameObservation(raw,visual));
  CHECK(worldframe::visualDemand(worldframe::Resources|worldframe::Visual));
  CHECK(!worldframe::visualDemand(worldframe::Resources|worldframe::Combat));

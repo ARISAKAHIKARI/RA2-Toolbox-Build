@@ -70,7 +70,16 @@ public:
  // changing size; the insertion status, not the count, proves new demand.
  bool request(const std::vector<uint32_t>&pages,uint32_t now,bool retry,const Token&reported={}){
   bool added=false;
-  for(uint32_t page:pages)if(leases_.retainStatus(page,now)==DemandLeases::RetainResult::Added)added=true;
+  const bool sameVisualWorld=reported&&reported->controlSource&&latest_&&
+    reported->key.sameWorld(latest_->key);
+  for(uint32_t page:pages){
+   if(leases_.retainStatus(page,now)!=DemandLeases::RetainResult::Added)continue;
+   // A newly retained page may already be fully covered by graph discovery.
+   // Keep its lease for future observations without rebuilding this one.
+   // Explicit requests without a visual token retain the previous behavior.
+   const auto*covered=sameVisualWorld?latest_->find(page):nullptr;
+   if(!covered||!covered->full)added=true;
+  }
   // A delayed display reader may report a miss after another reader has
   // already repaired it. Suppress only retry reports from an older sealed
   // visual token in this world, with positive full-page coverage in latest_.
