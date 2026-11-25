@@ -135,9 +135,9 @@ static bool minerDefenseRefinery(OreHarvestJob&j,uint32_t refinery,uint32_t hous
 // scan Building::Array separately for every miner or assume a miner-side link.
 static bool minerDefenseIndexRefineries(){
  if(planningWorld.match!=match||planningWorld.frame!=snap.frame){minerDefenseRefineryIncomplete=true;return false;}
- SampleReadScope frameRead;if(!frameRead){minerDefenseRefineryIncomplete=true;return false;}
  std::unordered_map<uint32_t,uint32_t> nextLinks;static uint32_t nextRefineries[planner::MaxRefineries];int count=0;
  bool incomplete=planningWorld.count>=planner::MaxActors;int linksBudget=4096;
+ const auto collect=[&](){
  for(int n=0;n<planningWorld.count;++n){const auto&a=planningWorld.actors[n];
   if(a.kind!=3||!(a.flags&planner::Own)||(a.flags&(planner::Limbo|planner::OffMap)))continue;
   if(count>=planner::MaxRefineries){incomplete=true;continue;}
@@ -155,7 +155,9 @@ static bool minerDefenseIndexRefineries(){
    if(old==nextLinks.end()||a.id<old->second)nextLinks[id]=a.id;
   }
  }
- if(!frameRead.complete()){minerDefenseRefineryIncomplete=true;return false;}
+ };
+ if(runtimeDirectActions)collect();
+ else {SampleReadScope frameRead;if(!frameRead){minerDefenseRefineryIncomplete=true;return false;}collect();if(!frameRead.complete()){minerDefenseRefineryIncomplete=true;return false;}}
  minerDefenseLinkedRefinery.swap(nextLinks);memcpy(minerDefenseRefineries,nextRefineries,size_t(count)*sizeof(nextRefineries[0]));
  minerDefenseRefineryCount=count;minerDefenseRefineryIncomplete=incomplete;return true;
 }
@@ -332,11 +334,11 @@ static void minerDefenseBeginRestore(MinerDefenseJob&j,int frame,DWORD now){
 // Only the complete, exact-frame worker roster can prove that the victim
 // left the world. A missing or stale sample keeps the recovery pending.
 static int minerDefenseVictimRetired(const MinerDefenseJob&j){
- if(!commandRosterReady()||worldFrame.key.frame!=minerDefenseWorld.frame||
-    worldFrame.key.house!=minerDefenseWorld.house)return 0;
- const auto&objects=*worldFrameCommandRoster.objects;
- if(objects.byId(j.identity.id)!=j.identity.pointer)return 0;
- return objects.byId(j.target)?-1:1;
+ if(!commandRosterReady()||snap.frame!=minerDefenseWorld.frame||lastHouse!=minerDefenseWorld.house)return 0;
+ // The current dispatcher index is authoritative for membership in either
+ // mode; a disabled worker does not own a CommandRoster allocation.
+ if(worldObjects.byId(j.identity.id)!=j.identity.pointer)return 0;
+ return worldObjects.byId(j.target)?-1:1;
 }
 // 1 proves captured death or retirement, 0 is uncertain, -1 is still present
 // without death evidence. Cloak, Limbo or off-map status alone is insufficient.
@@ -545,11 +547,14 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
   for(;visited<planningWorld.count&&checked<128&&issued<6&&minerDefenseJobs.size()<MinerDefenseCapacity;++visited){const int n=(minerDefenseCursor+visited)%planningWorld.count;auto&a=planningWorld.actors[n];
    if(!(a.flags&planner::Own)||minerDefenseJobs.count(a.id)||!manualVersions.trackable(a.id))continue;
    auto candidateSource=a;
-   {SampleReadScope frameRead;if(!frameRead)continue;
+   const auto classify=[&]()->bool{
     const bool configured=minerDefenseType(a.type,a.kind),harvester=a.kind==2&&minerDefenseMiner(a.type);
-    if(!frameRead.complete()||!configured)continue;
+    if(!configured)return false;
     if(harvester)candidateSource.flags|=planner::Harvester;else candidateSource.flags&=~(planner::Harvester|planner::OrePaused);
-   }
+    return true;
+   };
+   if(runtimeDirectActions){if(!classify())continue;}
+   else {SampleReadScope frameRead;if(!frameRead||!classify()||!frameRead.complete())continue;}
    if(!minerdefense::source(candidateSource))continue;++checked;
    const unsigned manualSlot=manualVersions.slot(a.id);
    if(manualSlot<ManualVersions::Size&&minerDefenseManual[manualSlot].id==a.id){
