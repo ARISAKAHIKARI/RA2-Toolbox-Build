@@ -76,13 +76,7 @@ static bool verifyCandidatePointer(uint32_t pointer){
  if(sampleReadDepth)return worldFrameCandidateRoster.objects->contains(pointer);
  std::memcpy(&id,memory.data()+pointer+0x10,4);return worldFrameCandidateRoster.objects->byId(id)==pointer;
 }
-static bool commandRosterReady(){
- return worldFrameReady&&worldFrameCommandWorker.enabled()&&
-        worldFrameCommandRoster.current(worldFrame.key)&&
-        worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
-        worldFrame.key.house==lastHouse&&
-        worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal);
-}
+static bool commandRosterReady();
 #include "sample_scope_production.h"
 static bool liveRead(uint32_t at,void*out,size_t n){
  ++liveReads;if(at==0xA8EC78||(at>=0x800000&&at<0x810000))++liveRosterReads;
@@ -190,6 +184,14 @@ static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const 
 }
 static int indexedFrame=-1,indexedCount=-1,globalVehicleCandidateCount=0;
 static uint32_t indexedItems=0,indexedVehicleHouse=0,globalVehicleCandidates[16384]{};static bool indexedGlobalVehicles=false;
+static bool commandRosterReady(){
+ if(runtimeDirectActions)return indexedFrame==snap.frame&&indexedCount>=0&&indexedVehicleHouse==lastHouse&&indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal);
+ return worldFrameReady&&worldFrameCommandWorker.enabled()&&
+        worldFrameCommandRoster.current(worldFrame.key)&&
+        worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
+        worldFrame.key.house==lastHouse&&
+        worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal);
+}
 static void minerDefenseReindexManual(ManualVersions&){}
 #include "tactical_frame_production.h"
 static void cancelDodge(uint32_t id){for(int i=0;i<dodgeCount;++i)if(dodgeJobs[i].id==id){dodgeJobs[i]=dodgeJobs[--dodgeCount];++dodgeCancelled;return;}}
@@ -692,6 +694,11 @@ static void testDirectCombatDodge(){
  worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
  worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct combat boundary");
  worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ // Emulate the current native roster proof (the worker remains a fixture
+ // seam for the other cases). No graph is available on this boundary.
+ indexedFrame=snap.frame;indexedCount=3;indexedVehicleHouse=lastHouse;indexedGlobalVehicles=false;
+ check(advancedTargetInRange(20,lastHouse),"native movement range recheck required full graph");
+ check(worldFrame.pages.empty()&&runtimeWorldDemands.empty(),"native range recheck registered graph dependencies");
  int a=0,b=0;
  const auto initialSequence=sh->worldSeq;
  const auto initialSharedFrame=sh->world.frame;
