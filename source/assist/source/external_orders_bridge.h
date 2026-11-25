@@ -149,14 +149,38 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
    }
   }
  }
- if(advanced||ore||minerDefense||defense||drop)for(int pass=0;pass<2;++pass)for(int i=0;i<all.count&&w.count<planner::MaxActors;++i){uint32_t p=item(all,i);int k=p?kind(p):-1;
-  if(k<0||get<int>(p+0x6C)<=0)continue;
-  bool ownActor=get<uint32_t>(p+0x21C)==house;
-  // Native refinery/chrono transitions may temporarily hide the unloading
-  // miner. Keep its read-only unloading evidence; it cannot receive orders
-  // until the separate live/on-map admission succeeds after completion.
-  if(!get<bool>(p+0x74)&&!(ore&&ownActor&&k==2&&get<bool>(p+0x6D1)))continue;
-  if(ownActor!=(pass==0))continue;if(!advanced&&!minerDefense&&!defense&&!drop&&(!ownActor||(k!=2&&k!=3)))continue;
+ const bool actorsNeeded=advanced||ore||minerDefense||defense||drop;
+ // Preserve the existing own-first order and capacity priority. The native
+ // collector performs no game calls in this loop, so the membership/class
+ // facts need only be read once per invocation. The legacy snapshot lane
+ // preserves its original demand/discovery order.
+ struct NativeActorRef{uint32_t pointer;int kind;};
+ static NativeActorRef nativeActors[2][16384];
+ int nativeCounts[2]{};
+ if(native&&actorsNeeded){
+  for(int i=0;i<all.count;++i){
+   const auto p=item(all,i);const int k=p?kind(p):-1;
+   if(k<0||get<int>(p+0x6C)<=0)continue;
+   const bool ownActor=get<uint32_t>(p+0x21C)==house;
+   if(!get<bool>(p+0x74)&&!(ore&&ownActor&&k==2&&get<bool>(p+0x6D1)))continue;
+   if(!advanced&&!minerDefense&&!defense&&!drop&&(!ownActor||(k!=2&&k!=3)))continue;
+   const int group=ownActor?0:1;
+   nativeActors[group][nativeCounts[group]++]={p,k};
+  }
+ }
+ if(actorsNeeded)for(int pass=0;pass<2;++pass)for(int i=0;i<(native?nativeCounts[pass]:all.count)&&w.count<planner::MaxActors;++i){
+  const uint32_t p=native?nativeActors[pass][i].pointer:item(all,i);
+  const int k=native?nativeActors[pass][i].kind:(p?kind(p):-1);
+  bool ownActor=pass==0;
+  if(!native){
+   if(k<0||get<int>(p+0x6C)<=0)continue;
+   ownActor=get<uint32_t>(p+0x21C)==house;
+   // Native refinery/chrono transitions may temporarily hide the unloading
+   // miner. Keep its evidence even if the object is temporarily off-map.
+   if(!get<bool>(p+0x74)&&!(ore&&ownActor&&k==2&&get<bool>(p+0x6D1)))continue;
+   if(ownActor!=(pass==0))continue;
+   if(!advanced&&!minerDefense&&!defense&&!drop&&(!ownActor||(k!=2&&k!=3)))continue;
+  }
   uint32_t type=typeOf(p,k);if(!type)continue;
   bool tracked=advanced&&ownActor&&orderIndex(p)>=0;
   bool dropSource=drop&&ownActor&&rawMagnetron(p,featuretypes::MagnetronDrop);
