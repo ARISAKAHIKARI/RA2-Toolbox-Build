@@ -1903,12 +1903,16 @@ static void constructionResult(int r,int n,uint32_t id,uint32_t token){buildrese
 struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(){clear();}void clear(){if(dc){if(old&&old!=HGDI_ERROR)SelectObject(dc,old);DeleteDC(dc);}if(bitmap)DeleteObject(bitmap);dc=nullptr;bitmap=old=nullptr;bits=nullptr;w=h=0;}bool resize(int x,int y){if(x==w&&y==h&&dc)return true;clear();if(x<1||y<1||x>8192||y>8192)return false;BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=x;bi.bmiHeader.biHeight=-y;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;HDC screen=GetDC(nullptr);dc=CreateCompatibleDC(screen);bitmap=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,(void**)&bits,nullptr,0);ReleaseDC(nullptr,screen);if(!bitmap||!dc){clear();return false;}old=(HBITMAP)SelectObject(dc,bitmap);if(!old||old==HGDI_ERROR){clear();return false;}w=x;h=y;return true;}};static Surface surface;
 #include "watch_windows.h"
 #include "world_presentation.h"
+#include "../../shared/source/frame_pool.h"
 namespace worldrender {
 struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;DWORD sourceTick=0;};
 struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;DWORD sourceTick=0;};
 static std::shared_ptr<const Frame> rasterize(const Job&j){
  if(j.w<1||j.h<1||j.w>8192||j.h>8192||uint64_t(j.w)*j.h>16*1024*1024)return {};
- auto out=std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->projection=j.projection;out->sourceTick=j.sourceTick;out->pixels.resize(size_t(j.w)*j.h);
+ // Each raster worker owns its pool; published pixels remain immutable until
+ // all consumers release them. Bound retained buffers to normal HUD sizes.
+ static thread_local asyncwork::FramePool<Frame,3> pool;
+ auto out=uint64_t(j.w)*j.h<=4*1024*1024?pool.acquire():std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->projection=j.projection;out->sourceTick=j.sourceTick;out->pixels.resize(size_t(j.w)*j.h);std::fill(out->pixels.begin(),out->pixels.end(),0u);
  Bitmap bm(j.w,j.h,j.w*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(out->pixels.data()));{Graphics g(&bm);j.draw(g);}return out;
 }
 static asyncwork::Latest<Job,Frame> worker(rasterize);
@@ -2093,11 +2097,16 @@ static void paint(){
  drawnStatusCount=statusCount;drawnStatusWidth=statusFrame.width;drawnStatusHeight=statusFrame.height;memcpy(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);memcpy(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount);
  drawnPlacement=placementDrawing;drawnMo=moDrawing;drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
  auto labels=std::vector<visual::LabelView>(labelViews,labelViews+labelCount),enemies=std::vector<visual::LabelView>(enemyViews,enemyViews+enemyCount),statuses=std::vector<visual::LabelView>(statusViews,statusViews+statusCount);
+ // Capture only populated records; capturing Frame references by value in
+ // the lambda otherwise copies the entire fixed-capacity arrays each job.
+ auto enemyMarkers=std::vector<external::enemies::Marker>(enemyFrame.items,enemyFrame.items+enemyCount);
+ auto statusMarkers=std::vector<external::status::Marker>(statusFrame.items,statusFrame.items+statusCount);
+ const int enemyWidth=enemyFrame.width,enemyHeight=enemyFrame.height,statusWidth=statusFrame.width,statusHeight=statusFrame.height;
  auto threats=std::vector<Threat>(snap.threats,snap.threats+snap.threatCount);auto crates=std::vector<CrateMark>(snap.crates,snap.crates+snap.crateCount);
  for(auto&t:threats){nativeviewhost::localPoint(viewportTransform,t.x,t.y);nativeviewhost::localPoint(viewportTransform,t.tx,t.ty);}for(auto&c:crates)nativeviewhost::localPoint(viewportTransform,c.x,c.y);
  std::array<external::sidebar::Frame,4> shapes; // immutable sidebar SHP pixels
  for(int i=0;i<4;++i)if(idleTabs&(1u<<i))shapes[i]=sidebarShapes.frames[i];
- auto draw=[=,labelViews=std::move(labels),enemyViews=std::move(enemies),statusViews=std::move(statuses),formation=formationhost::drawing(),used=snap.used,capacity=snap.capacity,toast=toast,labelScale=labelScalePercent](Graphics&g) mutable {
+ auto draw=[=,labelViews=std::move(labels),enemyViews=std::move(enemies),statusViews=std::move(statuses),enemyMarkers=std::move(enemyMarkers),statusMarkers=std::move(statusMarkers),threats=std::move(threats),crates=std::move(crates),shapes=std::move(shapes),formation=formationhost::drawing(),used=snap.used,capacity=snap.capacity,toast=toast,labelScale=labelScalePercent](Graphics&g) mutable {
  g.SetSmoothingMode(SmoothingModeAntiAlias);g.ScaleTransform(view.x,view.y);g.TranslateTransform(-worldpresentation::rasterOrigin(left,view.x),-worldpresentation::rasterOrigin(up,view.y));
   for(const auto&b:opaquePanels)g.SetClip(RectF(float(b.left),float(b.top),float(b.right-b.left),float(b.bottom-b.top)),CombineModeExclude);
   if(idleTabs&&tabPhase){auto state=g.Save();g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);
@@ -2109,15 +2118,15 @@ static void paint(){
    drawText(g,numbers,b.x*sx+2,b.y*sy,std::max(8.f,10.f*sy),Color(255,255,239,158));}
   auto mapState=g.Save();if(viewportTransform.active)g.SetClip(RectF(float(mapClip.x),float(mapClip.y),float(mapClip.w),float(mapClip.h)),CombineModeIntersect);
   specialoverlayhost::draw(g,specialDrawing);
-  auto enemyClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);
-  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(onMap(v.x,v.y)&&(viewportTransform.active||external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height)))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
+  auto enemyClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,enemyWidth*sx,enemyHeight*sy),CombineModeIntersect);
+  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(onMap(v.x,v.y)&&(viewportTransform.active||external::enemies::onScreen(v.x,v.y,enemyWidth,enemyHeight)))drawEnemyMarker(g,enemyMarkers[i],v,sx,sy);}g.Restore(enemyClip);
   Pen flightPen(Color(210,130,235,160),1.5f);flightPen.SetEndCap(LineCapArrowAnchor);for(auto l:airLines){g.DrawLine(&flightPen,float(l.x)*sx,float(l.y)*sy,float(l.tx)*sx,float(l.ty)*sy);g.DrawEllipse(&flightPen,float(l.tx)*sx-3,float(l.ty)*sy-3,6.f,6.f);}
   Pen threatPen(Color(185,245,114,223),1.6f);threatPen.SetEndCap(LineCapArrowAnchor);
   for(int i=0;i<threats.size();++i){auto&t=threats[i];float x=t.x*sx,y=t.y*sy,tx=t.tx*sx,ty=t.ty*sy;g.DrawLine(&threatPen,x,y,tx,ty);g.DrawEllipse(&threatPen,tx-7,ty-7,14.f,14.f);}
   Pen cratePen(Color(245,255,205,82),2.f);
   for(int i=0;i<crates.size();++i){auto&c=crates[i];float x=c.x*sx,y=c.y*sy;g.DrawRectangle(&cratePen,x-10,y-9,20.f,18.f);std::wstring text=c.preview<0?L"随机箱":std::wstring(L"预设 · ")+crateName(c.preview);drawText(g,text,x-text.size()*6,y-29,12,Color(255,255,216,117));}
-  auto statusClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,float(statusFrame.width),float(statusFrame.height)),CombineModeIntersect);
-  for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusFrame.items[i],statusViews[i],spiderPhase);g.Restore(statusClip);
+  auto statusClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,float(statusWidth),float(statusHeight)),CombineModeIntersect);
+  for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusMarkers[i],statusViews[i],spiderPhase);g.Restore(statusClip);
   for(int i=0;i<labelCount;++i)drawLabel(g,labelViews[i],sx,sy,labelScale);
   for(const auto&b:passengerBubbles)drawPassengerBubble(g,b);
   g.Restore(mapState);formationhost::draw(g,formation);moordershost::draw(g,moDrawing);placementdrawing::draw(g,placementDrawing);
