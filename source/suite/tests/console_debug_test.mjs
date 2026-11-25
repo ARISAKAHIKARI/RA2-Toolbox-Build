@@ -17,7 +17,7 @@ function test(name,run){tests.push({name,run});}
 function entry(id,patch={},debug={}){return {id,type:'toggle',label:'CanBuild',group:'原生调用',checked:true,enabled:true,visible:true,...patch,debug:{present:true,siteId:0,address:0x4f7870,kind:'call',purpose:'查询建造权限',features:'科技；建造栏',state:'ready',detail:'Ares 入口跳转可调用',hook:'na',ageMs:25,sampled:true,...debug}};}
 function setup(controls=[entry(9001)]){
   const messages=[],store=new ConsoleStore(message=>messages.push(message),()=>{},{initialSeq:0});
-  const state=(patch={})=>({kind:'state',protocol:1,module:2,generation:3,revision:1,page:'tactical/5',controls,...patch});
+  const state=(patch={})=>({kind:'state',protocol:1,module:2,generation:3,revision:1,page:'tactical/7',controls,...patch});
   store.navigate(2,5);store.receive(state());return {store,messages,state};
 }
 const normalize=(...items)=>items.map(canonical);
@@ -139,9 +139,9 @@ if(!failed && process.argv.includes('--browser')){
       {id:9104,type:'button',label:'打开 HTML 报告',text:'打开 HTML 报告',group:'平台 Hook 探测',visible:true,enabled:false,row:40,column:330},
       {id:9105,type:'label',label:'尚未扫描。',text:'尚未扫描。',group:'平台 Hook 探测',visible:true,readonly:true,row:70,column:20}];
     controls.push(...probe);
-    let revision=1;const snapshot=()=>({kind:'state',protocol:1,module:2,generation:7,revision:revision++,page:'tactical/5',title:'调试',status:'入口观测已刷新',controls});
+    let revision=1;const snapshot=()=>({kind:'state',protocol:1,module:2,generation:7,revision:revision++,page:'tactical/7',title:'调试',status:'入口观测已刷新',controls});
     const receive=m=>page.evaluate(m=>window.__receive(m),m);
-    await receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:5,version:'debug fixture',modules:[{module:2,ready:true,enabled:true}]});await receive(snapshot());
+    await receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:7,version:'debug fixture',modules:[{module:2,ready:true,enabled:true}]});await receive(snapshot());
     await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===8);
     assert.equal(await page.locator('#pageTitle').textContent(),'调试');assert.equal(await page.locator('.nav-button').count(),6);
     const scanButton=page.getByRole('button',{name:'开始只读扫描',exact:true}),cancelButton=page.getByRole('button',{name:'取消扫描',exact:true}),reportButton=page.getByRole('button',{name:'打开 HTML 报告',exact:true});
