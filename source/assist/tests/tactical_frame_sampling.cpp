@@ -693,8 +693,19 @@ static void testDirectCombatDodge(){
  worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct combat boundary");
  worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  int a=0,b=0;
+ const auto initialSequence=sh->worldSeq;
+ const auto initialSharedFrame=sh->world.frame;
  check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count>=2&&planningWorld.actors[0].id==20&&planningWorld.actors[0].x==1000&&planningWorld.actors[1].id==30,
        "native planner required a copied graph");
+ check(sh->worldSeq==initialSequence&&sh->world.frame==initialSharedFrame,
+       "all-Runtime local publication needlessly copied the Host mailbox");
+ // A legacy Host consumer still tracking work can arrive on the same frame.
+ sh->plannerTracking=AdvancedInput;
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&sh->worldSeq==initialSequence+2&&
+       sh->world.frame==snap.frame&&sh->world.count==planningWorld.count&&sh->world.actors[0].id==20,
+       "Host tracking did not restore same-frame mailbox publication");
+ sh->plannerTracking=0;
+ const auto hostSequence=sh->worldSeq;
  check(collectDodgeThreats()&&collectDodgeInput(lastHouse,snap.frame,clockNow,a,b)&&dodgeInput.count==1&&dodgeInput.sources[0].shots[0]==50,
        "native dodge required a copied graph");
  reversedodge::Point delta{};
@@ -703,6 +714,7 @@ static void testDirectCombatDodge(){
  ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);set<int>(p+0x9C,1100);set<uint32_t>(bullet+0x10,51);
  check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.frame==snap.frame&&planningWorld.actors[0].x==1100,
        "native planner did not use current game frame");
+ check(sh->worldSeq==hostSequence,"local-only frame republished stale Host work");
  check(collectDodgeThreats()&&collectDodgeInput(lastHouse,snap.frame,clockNow,a,b)&&dodgeInput.sources[0].shots[0]==51,
        "native dodge reused old projectile facts");
  check(worldFrame.pages.size()==0&&runtimeWorldDemands.empty()&&!sampleReadDepth,
