@@ -619,7 +619,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await line.locator('.setting-row').count(),3);
     assert.equal(await line.locator('#control-0-703').count(),0,'no redundant preset editor');
     const compoundHotkey=line.locator('.setting-row[data-type="hotkey"]');
-    const options=compoundHotkey.locator('.hotkey-options summary');
+    const options=compoundHotkey.getByLabel('快捷键选项 · 高级进驻',{exact:true});
     const compactKey=compoundHotkey.locator('.hotkey-capture');
     const mouse=line.locator('#control-0-740');
     assert.equal(await line.locator('.setting-label').filter({hasText:/^高级进驻$/}).count(),1);
