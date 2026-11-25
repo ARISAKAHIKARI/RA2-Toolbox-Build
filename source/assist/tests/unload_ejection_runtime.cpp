@@ -33,6 +33,7 @@ struct Versions{uint32_t get(uint32_t)const{return 9;}}manualVersions;
 struct Vec{int count=0;};
 static std::vector<uint32_t> infantry;
 static bool sampleComplete=true;
+static bool runtimeDirectActions=false;
 struct SampleReadScope {
  SampleReadScope(){sampleComplete=true;}
  explicit operator bool()const{return true;}
@@ -100,6 +101,9 @@ int main(){
  check(unloadCount==2&&unloadPassengers[0].id==101&&unloadPassengers[1].id==102,
        "recovered complete owner sample did not atomically enroll passengers");
 
+ setup();runtimeDirectActions=true;watchEjections(House,10);
+ check(unloadCount==2&&unloadPassengers[0].id==101&&unloadPassengers[1].id==102,"direct watcher lost passenger cohort");
+ runtimeDirectActions=false;
  setup();sh->flags=0;watchEjections(House,10);
  check(unloadCount==0,"explicitly disabled EjectAssist must not enroll");
  std::printf("PASS %d exact EjectAssist native enrollment assertions\n",assertions);
