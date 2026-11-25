@@ -86,8 +86,13 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  static DropCandidate dropCandidates[planner::MaxActors];int dropCount=0;
  bool queryCombat=false;static bool oreParticipant[planner::MaxActors];
  uint32_t nextMode=0;
- static uint32_t lastMode;static bool lastNativeEnrichment=false;
+ static uint32_t lastMode;static bool lastNativeEnrichment=false,lastHostPublication=true;
  bool nativeEnrichment=false;
+ // The fixed all-Runtime compute policy consumes planningWorld locally.
+ // Host display reads its own WorldFrame, never this command mailbox.
+ // Keep the legacy/mixed-compute and outstanding Host receipt paths intact.
+ const bool hostPublication=!(runtimeDirectActions&&allowNativeRead&&
+   sh->computeApplied==compute::All&&!sh->plannerTracking&&sh->planRequest==sh->planAck);
  // Runtime-native conversion reads the current game objects directly.
  // Keep immutable observation provenance only for the legacy graph lane.
  const auto collect=[&](const worldframe::Key&source,bool native)->bool{
@@ -129,7 +134,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  if(!advanced&&!ore&&!minerDefense&&!defense&&!drop&&!sh->plannerTracking&&!sh->runtimeTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
  uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0)|(minerDefense?1u<<29:0);
  nativeEnrichment=allowNativeRead&&(drop||(advanced&&sh->nativeCombatQueries));
- if(planningFrame==source.frame&&planningSerial==inputSerial&&lastMode==mode&&lastNativeEnrichment==nativeEnrichment)return false;
+ if(planningFrame==source.frame&&planningSerial==inputSerial&&lastMode==mode&&lastNativeEnrichment==nativeEnrichment&&lastHostPublication==hostPublication)return false;
  // Validate the roster before mutating any metadata. A pure native
  // collection with no concurrent defense configuration proof has no
  // fallible sealed-page phase and needs no rollback copy.
@@ -261,7 +266,10 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  // with live missions. A new input can share this frame with older raw bytes.
  for(int n=0;n<w.count;++n)if(oreParticipant[n]&&manualVersions.orePaused(w.actors[n].id))w.actors[n].flags|=planner::OrePaused;
  if(!planner::copyActiveWorld(planningWorld,w))return false;
- planningFrame=w.frame;planningSerial=w.inputSerial;lastMode=nextMode;lastNativeEnrichment=nativeEnrichment;
+ planningFrame=w.frame;planningSerial=w.inputSerial;lastMode=nextMode;lastNativeEnrichment=nativeEnrichment;lastHostPublication=hostPublication;
+ // A successful local update still prevents the dispatcher display-throttle
+ // early return. Avoid a second copy and shared seqlock write with no reader.
+ if(!hostPublication)return true;
  InterlockedIncrement(&sh->worldSeq);sh->world.match=w.match;sh->world.tick=w.tick;sh->world.frame=w.frame;sh->world.count=w.count;sh->world.intentCount=w.intentCount;sh->world.refineryCount=w.refineryCount;sh->world.inputSerial=w.inputSerial;
  memcpy(sh->world.actors,w.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(sh->world.intents,w.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(sh->world.refineries,w.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));
  sh->world.combatCount=w.combatCount;memcpy(sh->world.combat,w.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));
