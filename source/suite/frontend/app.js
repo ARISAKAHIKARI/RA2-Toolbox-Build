@@ -345,6 +345,9 @@
         const primary=line.some(isFeatureHeader);
         const mouseGesture=line.some(c=>c.type==='choice'&&c.options.includes('中键')&&c.options.includes('侧键 1'));
         for(const control of line){
+          const manualTypeScaffold=control.featureId===9610&&
+            (control.type==='label'&&control.groupHeader||control.type==='button'&&control.nativeId===9610);
+          if(manualTypeScaffold)continue;
           const companion=primary&&!mouseGesture&&['hotkey','button'].includes(control.type);
           (isFeatureHeader(control)||companion?block.headers:block.details).push(control);
         }
