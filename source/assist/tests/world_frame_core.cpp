@@ -185,6 +185,17 @@ void hostVisual(){
  m.put(0xA8ED84,59);auto rewound=boundary(59,218);
  auto rewindCapture=fast.acquire(rewound,worldframe::Resources,218,live);
  CHECK(rewindCapture&&rewindCapture->controlSource==rewound&&fast.statistics.captures==4);
+ // A consumer of the previous match may release its pinned snapshot after
+ // the new match has already built a display graph.
+ auto changedWorld=std::make_shared<worldframe::Snapshot>();auto changedKey=rewound->key;
+ ++changedKey.match;++changedKey.serial;changedWorld->reset(changedKey);CHECK(changedWorld->seal());
+ auto freshWorld=fast.acquire(changedWorld,worldframe::Resources,234,live);
+ CHECK(freshWorld&&freshWorld->controlSource==changedWorld);
+ const auto worldCalls=m.calls.size();const auto worldCaptures=fast.statistics.captures;
+ CHECK(!fast.request({0xE80000},235,true,rewindCapture));
+ CHECK(fast.acquire(changedWorld,worldframe::Resources,235,live)==freshWorld);
+ CHECK(m.calls.size()==worldCalls&&fast.statistics.captures==worldCaptures);
+ CHECK(fast.request({0xE80000},235,true,freshWorld));
  std::printf("PASS Host visual isolation: control %u reads/%u bytes/%zu pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection\n",rawCalls,rawBytes,rawPages);
 }
 

@@ -69,6 +69,11 @@ public:
  // A full lease table can evict an expired page and admit a new one without
  // changing size; the insertion status, not the count, proves new demand.
  bool request(const std::vector<uint32_t>&pages,uint32_t now,bool retry,const Token&reported={}){
+  // A reader can finish after the cache has moved to a different world.
+  // Ignore its obsolete visual dependencies before touching the lease table.
+  // Keep explicit requests and reports without an older visual serial intact.
+  if(reported&&reported->controlSource&&latest_&&
+     reported->visualSerial<latest_->visualSerial&&!reported->key.sameWorld(latest_->key))return false;
   bool added=false;
   const bool sameVisualWorld=reported&&reported->controlSource&&latest_&&
     reported->key.sameWorld(latest_->key);
