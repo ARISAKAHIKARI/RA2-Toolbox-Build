@@ -65,9 +65,14 @@ class VisualCache {
  std::array<uint32_t,VisualGraphDemands.size()>demandTicks_{};uint32_t demanded_=0;
 public:
  struct Statistics {uint64_t captures=0,reused=0,failed=0;};Statistics statistics;
- void request(const std::vector<uint32_t>&pages,uint32_t now,bool retry){
-  bool added=false;for(uint32_t page:pages){const auto count=leases_.size();if(leases_.retain(page,now)&&leases_.size()!=count)added=true;}
-  if(added||retry)++revision_;
+ // Report whether this request invalidated the built visual observation.
+ // A full lease table can evict an expired page and admit a new one without
+ // changing size; the insertion status, not the count, proves new demand.
+ bool request(const std::vector<uint32_t>&pages,uint32_t now,bool retry){
+  bool added=false;
+  for(uint32_t page:pages)if(leases_.retainStatus(page,now)==DemandLeases::RetainResult::Added)added=true;
+  if(added||retry){++revision_;return true;}
+  return false;
  }
  template<class Live>Token acquire(const Token&source,uint32_t demand,uint32_t now,Live live){
   if(!source||source->controlSource||!source->sealed())return {};

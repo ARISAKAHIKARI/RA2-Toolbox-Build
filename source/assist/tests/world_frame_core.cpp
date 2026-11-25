@@ -86,6 +86,21 @@ void setup(Memory&m){
 }
 
 void hostVisual(){
+ // At capacity, one expired lease is replaced by a new page. Total count
+ // remains MaxPages, but the previous graph no longer covers the demand.
+ {
+  worldframe::VisualCache cache;std::vector<uint32_t>pages;
+  for(uint32_t i=0;i<worldframe::MaxPages;++i)pages.push_back(0x10000000u+i*worldframe::PageSize);
+  CHECK(cache.request(pages,100,false));
+  CHECK(!cache.request({pages.front()},101,false));
+  std::vector<uint32_t>keep(pages.begin()+1,pages.end());
+  CHECK(!cache.request(keep,1101,false));
+  const uint32_t replacement=pages.back()+worldframe::PageSize;
+  CHECK(!cache.request({replacement},1101,false));
+  CHECK(cache.request({replacement},1102,false));
+  CHECK(!cache.request({replacement},1103,false));
+  CHECK(cache.request({},1103,true));
+ }
  Memory m;setup(m);Read live{&m};auto raw=std::make_shared<worldframe::Snapshot>();raw->reset(key());
  worldframe::CaptureGraph<Read>graph(*raw,live);CHECK(graph.capture(worldframe::Base,{}));CHECK(raw->seal());
  const auto rawBytes=raw->counters.bytes,rawCalls=raw->counters.calls;const size_t rawPages=raw->pages.size();
