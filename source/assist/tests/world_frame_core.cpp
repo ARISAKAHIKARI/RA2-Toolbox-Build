@@ -728,8 +728,18 @@ void hostIsolation(){
  auto next=std::make_shared<worldframe::Snapshot>();auto nextKey=raw->key;++nextKey.serial;++nextKey.frame;CHECK(next->import(nextKey,raw->counters,raw->pages.data(),raw->pages.size()));
  currentPid=GamePid;server.observe(nextKey);server.publish(*next);currentPid=HostPid;
  auto consumer=std::async(std::launch::async,[&]{return client->acquire(7);});const bool independent=consumer.wait_for(std::chrono::seconds(2))==std::future_status::ready;
+ // A slow capture must not block the Host diagnostics logger either.
+ auto diagnostic=std::async(std::launch::async,[&]{
+  worldframe::VisualCache::Statistics counters{};
+  return client->tryVisualStatistics(counters);
+ });
+ const bool diagnosticIndependent=diagnostic.wait_for(std::chrono::seconds(2))==std::future_status::ready;
  {std::lock_guard<std::mutex>lock(mutex);release=true;}cv.notify_all();auto observed=consumer.get();auto display=work.get();
  CHECK(independent&&observed&&observed->key.serial==nextKey.serial&&display);
+ CHECK(diagnosticIndependent&&!diagnostic.get());
+ worldframe::VisualCache::Statistics counters{};
+ CHECK(client->tryVisualStatistics(counters)&&counters.captures>0);
+ CHECK(counters.buildInitial+counters.buildRevision+counters.buildProfile+counters.buildRefresh>=counters.captures);
  reader.close();client.reset();currentPid=GamePid;server.disconnect();currentPid=HostPid;gameMemory=nullptr;CHECK(mappedBytes==0);
  std::puts("PASS Host transport isolation: visual requests remain local, command scopes unwrap authoritative bytes, derived wire publication rejected; a blocked display reader does not block producer publication or control acquisition");
 }
