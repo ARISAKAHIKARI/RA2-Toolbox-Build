@@ -13,7 +13,7 @@ def source():
     # mo_source already exposes a richer Vec with native roster coordinates.
     # Preserve its layout while adding the "all actors" view for bomb scanning.
     old='struct Vec{int count=0;uint32_t items=0;};static Vec vec(uint32_t p){assert(p==0xA8ECB8);constexpr uint32_t items=0x110000;for(size_t i=0;i<selected.size();++i)put(items+uint32_t(i)*4,selected[i]);return {int(selected.size()),items};}'
-    new='struct Vec{int count=0;uint32_t items=0;bool all=false;};static Vec vec(uint32_t p){constexpr uint32_t items=0x110000;for(size_t i=0;i<selected.size();++i)put(items+uint32_t(i)*4,selected[i]);return {int(p==0xA8EC78?actors.size():selected.size()),items,p==0xA8EC78};}'
+    new='struct Vec{int count=0;uint32_t items=0;bool all=false;};static Vec vec(uint32_t p){constexpr uint32_t items=0x110000;const auto&list=p==0xA8EC78?actors:selected;for(size_t i=0;i<list.size();++i)put(items+uint32_t(i)*4,list[i]);return {int(list.size()),items,p==0xA8EC78};}'
     assert old in text
     text=text.replace(old,new)
     old_item='static uint32_t item(Vec,int n){return selected.at(n);}'
@@ -44,6 +44,7 @@ static struct {struct Reservation{uint32_t id=0,vehicle=0,object=0;int slots=1;}
 static int fixtureAutoPendingSeats(uint32_t target,uint32_t ignore){int n=0;for(int i=0;i<loadLedger.count;++i){auto&r=loadLedger.records[i];if(r.id!=ignore&&r.vehicle==target&&incomingVehicle(r.object)!=target)n+=r.slots;}return n;}
 static bool loadQueryFailed=false;static std::set<uint32_t> illegal;
 static bool canEnter(uint32_t,uint32_t target){return !illegal.count(target);}
+static bool runtimeDirectActions=false;
 #include "bomb_board_bridge.h"
 static bool airMessage(UINT m,unsigned vk=0,int x=100,int y=100){MSG msg;msg.message=m;msg.wParam=vk;msg.lParam=MAKELPARAM(x,y);return directair::message(&msg);}
 static void keyTable(){
@@ -53,7 +54,7 @@ static void keyTable(){
 static void airBegin(){begin();directair::reset();directair::planning={};beforeSubmit=nullptr;events.clear();posted=0;queueRoom=256;sh->moFeatures=0;sh->flags=NativeAirWaypoints;kinds.clear();kinds[actors[0]]=0;put<uint32_t>(actors[0],0x7E22A4);put<uint8_t>(actors[0]+0x74,1);put<uint8_t>(actors[0]+0x90,1);held['Z']=true;keyTable();put(0x87F7E8+0x11B3,true);}
 static void airStep(){++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;sh->heartbeat=clockValue;directair::tick(lastHouse,snap.frame,clockValue);}
 static uint32_t unit(unsigned id,int k,int x,int y){uint32_t p=0x10000+id*0x1000,t=0x500000+id*0x2000;actors.push_back(p);kinds[p]=k;put(p+0x10,id);put(p+0x21C,lastHouse);put(p+0x6C,100);put(p+0x6C4,t);put(p+0x9C,x*256);put(p+0xA0,y*256);if(k==2)put(t+0x5E0,1);return p;}
-static void bombBegin(){begin();bombboard::reset();directair::reset();directair::planning={};beforeSubmit=nullptr;kinds.clear();actors.clear();selected.clear();events.clear();commands.clear();illegal.clear();entryReservationCount=loadLedger.count=0;queueRoom=256;SampleReadScope::available=true;sh->bombBoardEnabled=1;}
+static void bombBegin(){begin();bombboard::reset();directair::reset();directair::planning={};beforeSubmit=nullptr;kinds.clear();actors.clear();selected.clear();events.clear();commands.clear();illegal.clear();entryReservationCount=loadLedger.count=0;queueRoom=256;SampleReadScope::available=true;runtimeDirectActions=false;sh->bombBoardEnabled=1;}
 static void bombStep(){++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;sh->heartbeat=clockValue;bombboard::tick(lastHouse,snap.frame);}
 int main(){
  // Null, unmapped and freed selections must be rejected without raw pointer dereferences.
@@ -101,6 +102,14 @@ int main(){
  // latches manual ownership for this bomb even if it later stays idle.
  bombBegin();p=unit(1,1,20,20);near=unit(2,2,30,20);put(p+0x38,0x700000u);bombStep();check(events.empty());put(near+0x9C,21*256);++manualVersions.tokens[1];bombStep();check(events.empty()&&bombboard::jobs[0].cancelled);put(p+0x38,0x720000u);bombStep();check(events.size()==1);
  bombBegin();p=unit(1,1,20,20);near=unit(2,2,21,20);put(p+0x38,0x700000u);SampleReadScope::available=false;bombStep();check(events.empty()&&bombboard::jobs.empty());SampleReadScope::available=true;bombStep();check(events.size()==1);
+ // Native collection works without graph pages. A failed live field read
+ // retains the complete prior projection, then recovers on the same frame.
+ bombBegin();p=unit(1,1,20,20);near=unit(2,2,21,20);
+ for(uint32_t actor:{p,near}){put(actor,uint32_t(actor==p?0x7EB058:0x7F5C70));put(actor+0x74,uint8_t(1));put(actor+0x90,uint8_t(1));}
+ put(p+0x38,0x700000u);runtimeDirectActions=true;SampleReadScope::available=false;
+ check(bombboard::collect()&&bombboard::armed.size()==1&&bombboard::vehicles.size()==1);
+ failAt=p+0x38;check(!bombboard::collect()&&bombboard::armed.size()==1);
+ failAt=0;put(p+0x38,0u);check(bombboard::collect()&&bombboard::armed.empty());
  // Final queue guard rechecks a bomb removed across an external callback.
  bombBegin();p=unit(1,1,20,20);near=unit(2,2,21,20);put(p+0x38,0x700000u);beforeSubmit=[](){put(actors[0]+0x38,0u);beforeSubmit=nullptr;};bombStep();check(events.empty()&&!entryReservationCount);bombStep();check(bombboard::jobs.empty());
  bombBegin();p=unit(1,1,20,20);near=unit(2,2,21,20);put(p+0x38,0x700000u);queueRoom=0;bombStep();check(events.empty());queueRoom=256;bombStep();check(events.size()==1);sh->bombBoardEnabled=0;bombStep();check(bombboard::jobs.empty());
