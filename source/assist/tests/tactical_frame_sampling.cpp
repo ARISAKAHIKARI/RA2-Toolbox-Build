@@ -685,6 +685,35 @@ static void testDirectCombatDodge(){
  runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
  std::puts("PASS direct native combat and dodge collectors without copied world pages");
 }
+static void testDirectMissileLoad(){
+ reset();sh->computeApplied=compute::All;
+ const uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),q=object(airType,0,40,0x30000,1300,1000);
+ makeWeapon(type);set<bool>(airType+0xD68,true);set<int>(q+0xA4,200);sh->missileScope=0;
+ vectorAt(0xA8EC78,0x800000,{p,q});
+ worldObjects.unbind();worldObjects.clear();worldObjects.add(p,20);worldObjects.add(q,40);
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct missile boundary");
+ worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ int sc=0,tc=0,mc=0;
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.count==1&&missileInput.targetCount==1&&missileInput.edges[0][0].damage==40,"native missile required copied pages");
+ const auto distance=missileInput.edges[0][0].distance;
+ set<int>(q+0x9C,1700);
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].distance!=distance,"native missile reused old target coordinates");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth,"native missile registered page requests");
+ runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
+ setupLoad(0);const int legacy=autoLoad(lastHouse);const auto expected=assignments;
+ setupLoad(0);worldObjects.unbind();worldObjects.clear();
+ Vec all=vec(0xA8EC78);for(int n=0;n<all.count;++n){const auto p=item(all,n);if(p)worldObjects.add(p,get<uint32_t>(p+0x10));}
+ key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct boarding boundary");
+ worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ check(autoLoad(lastHouse)==legacy&&assignments==expected&&!assignments.empty(),"native boarding changed assignment or required a copied graph");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth,"native boarding registered page requests");
+ runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
+ std::puts("PASS direct missile and boarding collectors without world copies");
+}
 static void testDirectRuntimeRepair(){
  reset();const uint32_t type=makeType(),p=object(type,3,20);
  set<int>(type+0xA0,200);set<uint8_t>(type+0x157A,1);
@@ -764,5 +793,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDirectCombatDodge();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDirectCombatDodge();testDirectMissileLoad();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
