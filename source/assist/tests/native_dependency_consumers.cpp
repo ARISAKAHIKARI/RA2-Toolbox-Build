@@ -47,6 +47,11 @@ template<class T>static T get(uint32_t at){T result{};read(at,&result,sizeof res
 struct Vec {uint32_t address=0;int count=0;};
 static Vec vec(uint32_t at,int limit=16384){auto&v=vectors[at];return {at,std::min(limit,int(v.size()))};}
 static uint32_t item(Vec v,int i){return i>=0&&i<v.count?vectors[v.address][i]:0;}
+static bool runtimeDirectActions=true;
+struct SampleReadScope {explicit operator bool()const{return true;}bool complete()const{return true;}};
+static bool commandRosterReady(){return true;}
+static bool sampleRoster(uint32_t address,Vec&v,int limit=16384){v=vec(address,limit);return true;}
+static uint32_t worldByID(uint32_t id){for(const auto&entry:vectors)for(uint32_t p:entry.second)if(get<uint32_t>(p+0x10)==id)return p;return 0;}
 static bool own(uint32_t p,uint32_t house){return p&&get<uint32_t>(p+0x21C)==house;}
 static int kind(uint32_t p){auto i=kinds.find(p);return i==kinds.end()?-1:i->second;}
 static uint32_t typeOf(uint32_t p,int k){return k>=0?get<uint32_t>(p+(k==3?0x520:k==1?0x6C0:0x6C4)):0;}
