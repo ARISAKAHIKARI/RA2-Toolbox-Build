@@ -289,11 +289,16 @@ static void indexWorld(int frame){
  bool complete=true;
  for(int i=0;i<all.count;++i){
   const uint32_t p=pointers[i];if(p<0x10000)continue;
-  uint32_t id=0;if(!read(p+0x10,&id,4)){complete=false;continue;}
+  const bool native=runtimeDirectActions&&!sampleReadDepth;
+  if(native&&p>0x7ffffddfu){complete=false;continue;}
+  uint32_t id=0;
+  if(native)id=get<uint32_t>(p+0x10);
+  else if(!read(p+0x10,&id,4)){complete=false;continue;}
   if(id)worldObjects.add(p,id);
   if(id&&indexedGlobalVehicles&&kind(p)==2){
    uint32_t owner=0;
-   if(!read(p+0x21C,&owner,4)){complete=false;continue;}
+   if(native)owner=get<uint32_t>(p+0x21C);
+   else if(!read(p+0x21C,&owner,4)){complete=false;continue;}
    if(owner==lastHouse)globalVehicleCandidates[globalVehicleCandidateCount++]=p;
   }
  }
