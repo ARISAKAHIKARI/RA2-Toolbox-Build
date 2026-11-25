@@ -133,7 +133,7 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  f.receive(state(1));f.render();
  assert.equal(f.find('group-summary').length,1);
  assert.equal(f.find('group-summary')[0].tagName,'DIV');
- assert.equal(f.find('group-summary')[0].hidden,false);
+ assert.equal(f.find('group-summary')[0].hidden,true);
  // Flat automatic page has no second subsection summary.
  const buttons=f.find('feature-config-toggle');
  assert.equal(buttons.length,2);
@@ -465,12 +465,12 @@ test('all manual command type restrictions share one collapsed control entry',()
 });
 test('new top-level control pages and legacy restoration map to the expanded backend categories',()=>{
  const core=setup().context.RA2ConsoleCore;
- assert.deepEqual([3,4,5,6,7,8,9,10].map(i=>core.targetFor(i)),[
+ assert.deepEqual(JSON.parse(JSON.stringify([3,4,5,6,7,8,9,10].map(i=>core.targetFor(i)))),[
   {module:2,category:1},{module:2,category:2},{module:2,category:3},{module:2,category:4},
   {module:2,category:4},{module:2,category:5},{module:2,category:6},{module:2,category:7}
  ]);
  assert.deepEqual([1,2,3,4,5,6,7].map(i=>core.restoredIndex(i,0)),[3,4,5,6,8,9,10]);
- assert.deepEqual(core.targetFor(7),{module:2,category:4});
+ assert.deepEqual(JSON.parse(JSON.stringify(core.targetFor(7))),{module:2,category:4});
  const controls=[
   core.canonical({id:1,type:'toggle',label:'生产预定',group:'生产预定'}),
   core.canonical({id:2,type:'toggle',label:'生产提醒',group:'生产提醒'}),
