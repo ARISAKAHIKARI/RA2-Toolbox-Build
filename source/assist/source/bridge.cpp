@@ -2050,21 +2050,22 @@ static void tick(){
  // are display-only and no local native command feature has any pending work.
  // A same-frame hotkey later upgrades this boundary to a full graph.
  // Scene refresh is native camera/composition work, not a world graph consumer.
- // Bomb boarding now discovers and validates its roster natively; its
- // pending work still participates in needsIndex and frame scheduling.
+ // Bomb boarding, formation and direct aircraft gestures use current native
+ // objects. They still participate in command-index and frame scheduling.
  const bool noGraphJobs=!sh->moFeatures&&
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&
   !sh->superweaponGrant&&
   !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput|AutoOreReturn))&&!sh->plannerTracking&&
   !sh->burstEnabled&&
   !sh->burstHoldEnabled&&!sh->burstHeld&&
-  !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&
+  !stickyCount&&
   !burstCount&&!loadCalculationPending&&
   !ownground::job.pending&&!nativePlacementCompletionPending()&&
   !moOrdersPending()&&
-  !directAirPending()&&!directSellPending()&&!privateOutPending()&&
+  !directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
  const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&noGraphJobs&&
+   !sh->bombBoardEnabled&&!sh->formationPolicy.enabled&&!formationJobCount&&!directAirPending()&&
    !sh->runtimeTracking&&!sh->minerDefenseEnabled&&!minerDefensePending()&&!oreHarvestNeedsWork()&&!manualVersions.pausedCount&&!sh->magnetronGlobal&&!sh->magnetronDrop&&!sh->dodgeEnabled&&!dodgeCount&&!nativeCount&&
    !sh->missileEnabled&&!missileHoldCount&&!missileSendCount&&!loadLedger.count&&
    !unloadCount&&!queuedUnload.count&&!entryReservationCount&&!cooperativeEffectCount&&
@@ -2081,7 +2082,7 @@ static void tick(){
   sh->command==Repair||sh->command==AutoBoard||sh->command==SmartUnload||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
  const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&!graphCatalogueDue&&
   !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
-  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread|AutoOreReturn|AntiTheft))&&
+  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread|AutoOreReturn|AntiTheft|NativeAirWaypoints))&&
   !selectionPending&&!planPending&&!cooperativePending&&
   directCommand&&!repairCalculationPending&&
   sh->computeApplied==compute::All&&
