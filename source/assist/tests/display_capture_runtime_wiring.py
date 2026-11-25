@@ -33,6 +33,22 @@ assert "const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled()
 assert "const bool stable=" in runtime and "before.same(after)" in runtime
 assert "worldFrameServer.retire()" in runtime
 
+# Exercise the actual tactical HUD subscriber, not just the generic reader.
+# Base/Passengers/Combat are native demand bits: using them in sampleExternal
+# silently defeats the display-only boundary even if ProcessReader is correct.
+main=(root/"main.cpp").read_text(encoding="utf-8-sig")
+passenger=(root/"passenger_draw.h").read_text(encoding="utf-8-sig")
+display=main.split("uint32_t displayDemand=",1)[1].split("externalReader.setWorldDemand(displayDemand);",1)[0]
+assert display.startswith("worldframe::Resources;")
+assert "worldframe::HostVisualPassengers" in display
+assert "worldframe::HostVisualCombat" in display
+assert "worldframe::Passengers" not in display
+assert "worldframe::Combat" not in display
+assert "worldframe::Base" not in display
+assert "source->read(0xA8ED84,&observedFrame,sizeof observedFrame)" in passenger
+assert "observedFrame!=externalData->frame" in passenger
+assert "source->key.tick!=externalData->sampledTick" in passenger
+
 assert "worldClient_->visual(frame,worldDemand_" in reader
 assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in reader
 assert "VisualCache visuals_" in transport
