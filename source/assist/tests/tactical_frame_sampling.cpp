@@ -765,6 +765,21 @@ static void testOre(){
  f=setupOre();oreHarvestObserve(lastHouse,snap.frame,clockNow);unloaded(f);advance();set<int>(f.resource+0x44,-1);oreHarvestTick(lastHouse,snap.frame,clockNow);check(!harvestEvents,"ore execution guard used stale sampled resource");
  std::puts("PASS ore Unit/Building observation, failed transaction/search retry and live admission guard");
 }
+static void testDirectOre(){
+ auto f=setupOre();sh->computeApplied=compute::All;
+ worldObjects.unbind();worldObjects.clear();worldObjects.add(f.miner,20);worldObjects.add(f.refinery,30);
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct ore boundary");
+ worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ oreHarvestObserve(lastHouse,snap.frame,clockNow);check(oreHarvestPending()&&!oreHarvestNeedsWork(),"native ore failed to detect unloading");
+ unloaded(f);++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ oreHarvestTick(lastHouse,snap.frame,clockNow);
+ check(harvestEvents==1&&harvestLast.destination==62056&&!oreHarvestPending(),"native ore failed to find and submit exact nearest resource");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.empty()&&!sampleReadDepth,"native ore required copied pages");
+ runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
+ std::puts("PASS native ore unload transition and resource search with no copied graph");
+}
 static void testDelayedPlanning(){
  auto f=setupOre();sh->computeApplied=0;const auto sourceFrame=snap.frame;const auto sourceTick=clockNow;
  worldFrameCandidate.swap(worldFrame);worldFrameCandidateRoster.swap(worldFrameCommandRoster);worldFrameCandidateAvailable=true;worldFrameReady=false;
@@ -793,5 +808,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDirectCombatDodge();testDirectMissileLoad();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDirectCombatDodge();testDirectMissileLoad();testOre();testDirectOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
