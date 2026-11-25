@@ -1051,7 +1051,7 @@ static bool selection(uint32_t p){return nativeDependencyReady(0x6FBFA0)&&call<b
 static void unselect(){if(gameentry::active(gameentry::Client::Assist)&&nativeDependencyReady(0x48DC90))((void(__cdecl*)())0x48DC90)();}
 static int selectFilter(uint32_t house,int action){
  static uint32_t chosen[4096],ids[4096];int n=0;
- SampleReadScope sample;if(!sample||!commandRosterReady())return -12;
+ SampleReadScope sample(false,true);if(!sample||!commandRosterReady())return -12;
  Vec v{};const uint32_t source=action==EmptyTransports?0xA8EC78:0xA8ECB8;
  if(!sampleRoster(source,v,source==0xA8EC78?16384:4096))return -12;
  for(int i=0;i<v.count&&n<4096;++i){
@@ -1075,7 +1075,7 @@ static int findIdle(uint32_t house,int mode){
  static uint32_t lastIdle[3],firstPointer[3],firstID[3],nextPointer[3],nextID[3];
  const int slot=mode-IdleHarvester;if(slot<0||slot>=3)return -4;
  firstPointer[slot]=nextPointer[slot]=0;firstID[slot]=0xffffffffu;nextID[slot]=0xffffffffu;
- SampleReadScope sample;if(!sample||!commandRosterReady())return -12;
+ SampleReadScope sample(false,true);if(!sample||!commandRosterReady())return -12;
  Vec all{};if(!sampleRoster(0xA8EC78,all))return -12;
  for(int i=0;i<all.count;++i){
   const uint32_t p=item(all,i);if(!p||!own(p,house))continue;
@@ -1289,7 +1289,7 @@ static int collectRepairs(uint32_t house,DWORD now,bool refresh=false){
  static RepairCapture candidate;int count=0;
  // Candidate facts come from the sealed background observation. Native
  // eligibility and the captured building identity are checked at submission.
- ObservationReadScope source;if(!source)return -6;
+ ObservationReadScope source(internal);if(!source)return -6;
  const auto& key=(sampleWorldSource?sampleWorldSource:&worldFrame)->key;
  if(refresh){
   const auto*last=repairFrames.find(sh->repairTask);
@@ -1439,6 +1439,9 @@ static void command(uint32_t house,DWORD now,commandsampling::Sample sample=comm
  if(req==sh->ack||(pendingAckReady&&req==pendingAck))return;
  MemoryBarrier();
  const int c=sh->command,arg=sh->arg;
+ // A command posted after direct-lane admission must wait for its own full
+ // graph; never acknowledge an unmigrated command against a zero-page source.
+ if(runtimeDirectReader&&c!=Repair&&(c<CombatSelection||c>IdleTransport))return;
  const bool candidateOnly=sample!=commandsampling::Sample::Exact;
  int result=1,n=0;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
@@ -1729,13 +1732,14 @@ static void shiftScene(int dx,int dy){
 // the callback provider or write EventClass data themselves.
 static void consumeSubmittedIntents(uint32_t house,int frame,DWORD now){
  crcMapShadowTick();networkSenderTick(sh->networkHousePreserve!=0);nativeSellCursorTick();controlObjectOwnerTick();controlCommandOwnerTick();nativeMegaGatewayTick();
- selectionCommand(house,now);uiSoundCommand(now);
+ if(!runtimeDirectReader)selectionCommand(house,now);uiSoundCommand(now);
  // Preserve the ordering of the known-good path: input observers first,
  // then command / planner / cooperative requests.
  uint32_t inputFlags=sh->flags|((unloadCount||queuedUnload.count)?NativeOrders:0);
  csHooksTick(inputFlags);nativeHooksTick(inputFlags);clickHooksTick(inputFlags);
- snap.inputPatchMask=0;pointerTick();
- ownGroundTick(house,frame,now);command(house,now);if(playerContextChanged)return;reservedSidebarTick(house,now);externalOrdersTick(house,frame,now);cooperativeTick(house,frame,now);placementTick();
+ snap.inputPatchMask=0;if(!runtimeDirectReader)pointerTick();
+ ownGroundTick(house,frame,now);command(house,now);if(playerContextChanged)return;reservedSidebarTick(house,now);
+ if(!runtimeDirectReader){externalOrdersTick(house,frame,now);cooperativeTick(house,frame,now);}placementTick();
 }
 // A suspended command context retains selected code/vtable ownership. Only
 // explicit option changes retire command sites here; no command installer or
@@ -1807,10 +1811,10 @@ static bool hostFrameCaptureWanted(DWORD now){
 }
 template<class Fn>static void withInputPublication(Shared*value,uint32_t session,DWORD now,int frame,bool advanced,Fn&&tailWork){
  const unsigned priorReadDepth=sampleReadDepth;const bool priorReadComplete=sampleReadComplete;
- const auto priorDirectReader=runtimeDirectReader;
+ const auto priorDirectReader=runtimeDirectReader;const bool priorDirectRead=sampleDirectRead;
  bool complete=false;InterlockedIncrement(&value->computeFrameSeq);
  runtimeunwind::run([&]{tailWork();complete=true;},[&]{
-  sampleReadDepth=priorReadDepth;sampleReadComplete=priorReadComplete;runtimeDirectReader=priorDirectReader;
+  sampleReadDepth=priorReadDepth;sampleReadComplete=priorReadComplete;runtimeDirectReader=priorDirectReader;sampleDirectRead=priorDirectRead;
   if(complete){
    if(advanced){value->computeFrameMatch=session;value->computeFrameTick=now;value->computeFrame=frame;++value->computeFrameSerial;}
   }else{
@@ -1882,7 +1886,7 @@ static bool serviceReadOnlyRuntime(DWORD now){
 }
 static void tick(){
  LARGE_INTEGER start{},end{},controlEnd{},worldEnd{};static LARGE_INTEGER frequency{};if(!frequency.QuadPart)QueryPerformanceFrequency(&frequency);QueryPerformanceCounter(&start);
- sampleReadDepth=0;sampleReadComplete=true;runtimeDirectReader=nullptr; // A platform unwind must never leak the sample domain.
+ sampleReadDepth=0;sampleReadComplete=true;runtimeDirectReader=nullptr;sampleDirectRead=false; // A platform unwind must never leak the sample domain.
  // A detached legacy fault may still own asynchronous retirement. Finish it
  // before opening a fresh mailbox; mapped failures retain their Host below.
  if(fault&&!sh){maintainTechParameters();disconnect();return;}
@@ -2034,7 +2038,9 @@ static void tick(){
  // Display-only demand publishes a zero-page world boundary. The Host
  // VisualCache independently samples the read-only display graph; it never
  // becomes a source of Runtime commands or action-planning authority.
- if(hostDisplayOnly||directRuntime)
+ if(hostDisplayOnly)
+  captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
+ else if(directRuntime)
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
  else if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
