@@ -554,7 +554,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'narrow layout must not overflow');
     await receive({kind:'state',protocol:1,module:0,generation:3,revision:1,page:'cursor',controls:[{id:1,type:'label',label:'<img src=x onerror=window.__bad=1>',group:'文字显示'}],status:''});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
-    const unsafeNote=page.locator('.group-summary .label-help-text');
+    const unsafeNote=page.locator('.page-title-bar .label-help-text');
     await unsafeNote.waitFor({state:'attached'});
     assert.equal(await unsafeNote.textContent(),'<img src=x onerror=window.__bad=1>','explanatory labels remain inert plain text inside the collapsed info panel');
     assert.equal(await page.locator('#settings img').count(),0);
