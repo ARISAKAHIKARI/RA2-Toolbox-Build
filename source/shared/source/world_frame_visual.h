@@ -17,9 +17,14 @@ struct VisualStamp {
 template<class Live>VisualStamp visualStamp(Live live,const Snapshot&base){
  VisualStamp out;uint8_t active=0;bool ok=true;
  auto get=[&](uint32_t at,auto&value){ok=live(at,&value,sizeof value)&&ok;};
- get(0xA8B230,out.scenario);get(0x87F7E8+0x13C,out.cells);get(0x87F7E8+0x140,out.count);
+ // Coalesce contiguous guard fields without sampling them from a page
+ // cache. Both bookends still read the live game independently.
+ std::array<uint32_t,2>cellHeader{};std::array<int,2>dimensions{};
+ get(0xA8B230,out.scenario);get(0x87F7E8+0x13C,cellHeader);
+ out.cells=cellHeader[0];out.count=cellHeader[1];
  get(0xA83D4C,out.house);get(0xA8ED84,out.frame);get(0xA8B238,out.session);get(0xA8E9A0,active);
- get(0x87F7E8+0xF4,out.bounds);get(0x87F7E8+0x1240,out.rawWidth);get(0x87F7E8+0x1244,out.rawHeight);
+ get(0x87F7E8+0xF4,out.bounds);get(0x87F7E8+0x1240,dimensions);
+ out.rawWidth=dimensions[0];out.rawHeight=dimensions[1];
  // Full command-authoritative snapshots may carry geometry bytes that can
  // be compared directly. A display-only Key intentionally carries ZERO
  // game-thread pages: compare geometry across the two independent Host reads
@@ -46,6 +51,11 @@ template<class Live>VisualStamp visualStamp(Live live,const Snapshot&base){
 inline bool coherentVisualCapture(const VisualStamp&before,const VisualStamp&after,uint32_t durationMs,uint32_t maxDurationMs=150){
  return before.same(after)||(before.sameWorld(after)&&after.frame>=before.frame&&durationMs<=maxDurationMs);
 }
+// Size-based pacing, not the monitor refresh rate. A light display graph
+// can supply up to 100 observations/s; large graphs retain the existing
+// ~60/s cap. The capture cost and native frame arrival may lower both rates.
+// Failed attempts keep the independent 16 ms recovery throttle.
+inline uint32_t visualReuseWindow(size_t pages){return pages<=256?10u:16u;}
 class VisualCache {
  Token base_,latest_;std::shared_ptr<SnapshotPool>pool_=std::make_shared<SnapshotPool>();
  CaptureScratch scratch_;DemandLeases leases_;std::vector<uint32_t>requests_;
@@ -81,7 +91,7 @@ public:
    // never retag its original frame or treat it as command authority.
   if(compatible&&base_&&base_->key.sameWorld(source->key)&&
       source->key.frame>=base_->key.frame&&before.frame>=latestStamp_.frame&&
-      uint32_t(now-latest_->visualTick)<16&&latestStamp_.sameWorld(before)){
+      uint32_t(now-latest_->visualTick)<visualReuseWindow(latest_->pages.size())&&latestStamp_.sameWorld(before)){
    ++statistics.reused;return latest_;
   }
   attempted_=source;attemptedAt_=now;
