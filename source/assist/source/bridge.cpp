@@ -2050,8 +2050,10 @@ static void tick(){
  // are display-only and no local native command feature has any pending work.
  // A same-frame hotkey later upgrades this boundary to a full graph.
  // Scene refresh is native camera/composition work, not a world graph consumer.
+ // Bomb boarding now discovers and validates its roster natively; its
+ // pending work still participates in needsIndex and frame scheduling.
  const bool noGraphJobs=!sh->moFeatures&&
-  !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
+  !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&
   !sh->superweaponGrant&&
   !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput|AutoOreReturn))&&!sh->plannerTracking&&
   !sh->burstEnabled&&
