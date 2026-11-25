@@ -138,6 +138,7 @@ void parser() {
     CHECK(parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":2,\"category\":4,\"pageIndex\":7}"));
     CHECK(parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":2,\"category\":7,\"pageIndex\":10}"));
     CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":2,\"category\":4,\"pageIndex\":8}"));
+    CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":1,\"category\":1,\"pageIndex\":2}"));
     CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0,\"category\":7}"));
     CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":1,\"category\":1}"));
     const auto debug = parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":2,\"category\":7}");
