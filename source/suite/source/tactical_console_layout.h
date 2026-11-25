@@ -27,7 +27,7 @@ inline constexpr Feature Features[]={
  {720,categories::Tactical,L"移动、攻击与操作手势",L"出售被吸取目标",true,{720,727,728,737}},
  {721,categories::Tactical,L"移动、攻击与操作手势",L"出售战车",true,{721,789,738}},
  {795,categories::Keyboard,L"移动、攻击与操作手势",L"Shift 五连点",true,{795,796,797}},
- {724,categories::Keyboard,L"选兵与编组",L"按当前武器选择同类单位",true,{724}},
+ {724,categories::Keyboard,L"键鼠与选兵",L"按当前武器选择同类单位",true,{724}},
  // The legacy "下令与巡逻参数" button is only a Win32 presentation fold.
  // Each command owns its own switch, key, mouse and related parameters.
  {9400,categories::Tactical,L"队形、巡逻与飞机路径",L"模糊下令",true,{9400,9440,9441,9480,9481}},
