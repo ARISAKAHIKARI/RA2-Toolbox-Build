@@ -1807,9 +1807,10 @@ static bool hostFrameCaptureWanted(DWORD now){
 }
 template<class Fn>static void withInputPublication(Shared*value,uint32_t session,DWORD now,int frame,bool advanced,Fn&&tailWork){
  const unsigned priorReadDepth=sampleReadDepth;const bool priorReadComplete=sampleReadComplete;
+ const auto priorDirectReader=runtimeDirectReader;
  bool complete=false;InterlockedIncrement(&value->computeFrameSeq);
  runtimeunwind::run([&]{tailWork();complete=true;},[&]{
-  sampleReadDepth=priorReadDepth;sampleReadComplete=priorReadComplete;
+  sampleReadDepth=priorReadDepth;sampleReadComplete=priorReadComplete;runtimeDirectReader=priorDirectReader;
   if(complete){
    if(advanced){value->computeFrameMatch=session;value->computeFrameTick=now;value->computeFrame=frame;++value->computeFrameSerial;}
   }else{
@@ -1881,7 +1882,7 @@ static bool serviceReadOnlyRuntime(DWORD now){
 }
 static void tick(){
  LARGE_INTEGER start{},end{},controlEnd{},worldEnd{};static LARGE_INTEGER frequency{};if(!frequency.QuadPart)QueryPerformanceFrequency(&frequency);QueryPerformanceCounter(&start);
- sampleReadDepth=0;sampleReadComplete=true; // A platform unwind must never leak the sample domain.
+ sampleReadDepth=0;sampleReadComplete=true;runtimeDirectReader=nullptr; // A platform unwind must never leak the sample domain.
  // A detached legacy fault may still own asynchronous retirement. Finish it
  // before opening a fresh mailbox; mapped failures retain their Host below.
  if(fault&&!sh){maintainTechParameters();disconnect();return;}
@@ -1999,8 +2000,7 @@ static void tick(){
  // game thread may publish a small scene boundary only if ALL Host readers
  // are display-only and no local native command feature has any pending work.
  // A same-frame hotkey later upgrades this boundary to a full graph.
- const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&
-   !capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)&&!sh->moFeatures&&
+ const bool noGraphJobs=!sh->moFeatures&&
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
   !sh->minerDefenseEnabled&&!minerDefensePending()&&!sh->superweaponGrant&&
   !sh->placementPreview.active&&!sh->runtimeTracking&&!sh->plannerTracking&&
@@ -2008,19 +2008,33 @@ static void tick(){
   !sh->burstHoldEnabled&&!sh->burstHeld&&!sh->missileEnabled&&!sh->scrollRefreshHz&&
   !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&!dodgeCount&&
   !burstCount&&!missileHoldCount&&!nativeCount&&!unloadCount&&!queuedUnload.count&&
-  !loadLedger.count&&!loadCalculationPending&&!repairCalculationPending&&!manualRepairPending&&
-  !(repairAt<repairCount)&&!pendingRepairs.count&&!entryReservationCount&&
+  !loadLedger.count&&!loadCalculationPending&&!entryReservationCount&&
   !cooperativeEffectCount&&!actorLeaseArbiter.count&&!missionObserver.pending()&&
   !ownground::job.pending&&!nativePlacementCompletionPending()&&!scrollRefreshActive&&
   !runtimeCoopPending&&!oreHarvestNeedsWork()&&!moOrdersPending()&&
   !directAirPending()&&!directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
+ const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&noGraphJobs&&
+   !capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)&&
+   !repairCalculationPending&&!manualRepairPending&&!(repairAt<repairCount)&&!pendingRepairs.count;
  const bool hostDisplayOnly=sharedWorldWanted&&noCommandWork&&
+  worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
+ // First direct-read lane: repair and simple selection/filter commands.
+ // Other consumers, async results, rule work and pending jobs retain the
+ // existing sealed graph until individually migrated and tested.
+ const bool directCommand=sh->request==sh->ack||
+  sh->command==Repair||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
+ const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&
+  !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
+  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable))&&
+  !selectionPending&&!planPending&&!cooperativePending&&sh->pointer.request==sh->pointer.ack&&
+  directCommand&&!repairCalculationPending&&!manualVersions.pausedCount&&
+  compute::inside(sh->computeApplied,compute::Repair)&&
   worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  // Display-only demand publishes a zero-page world boundary. The Host
  // VisualCache independently samples the read-only display graph; it never
  // becomes a source of Runtime commands or action-planning authority.
- if(hostDisplayOnly)
+ if(hostDisplayOnly||directRuntime)
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
  else if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
@@ -2042,6 +2056,9 @@ static void tick(){
  if(observationFrame){inputMatch=match;inputFrame=frame;}
  bool finishSnapshot=false;
  withInputPublication(sh,match,now,frame,observationFrame,[&]{
+ if(directRuntime&&worldFrameReady&&worldFrameBoundaryOnly&&worldFrame.key.match==match&&
+    worldFrame.key.frame==frame&&worldFrame.key.house==house&&gameentry::active(gameentry::Client::Assist))
+  runtimeDirectReader=readLiveWorld;
  // Control time belongs to the dispatcher, never to the optional display scan.
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;pauseViewTick();buildTimeTooltipTick();
  snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();inputLockTick();
