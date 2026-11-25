@@ -34,6 +34,14 @@ inline void reset(Input& input){
  // Placement value-initialization allocates nothing and preserves all DMI.
  ::new(static_cast<void*>(&input)) Input{};
 }
+// Collector-only reset: every admitted Target and Source is assigned before
+// use, and every active edge row is initialized before the first query.
+// Inactive storage is not part of the counted Input payload.
+inline void beginCapture(Input&i){i.match=0;i.tick=0;i.frame=-1;i.count=0;i.targetCount=0;i.mode=Smart;}
+inline void resetActiveRow(Input&i,int source){
+ if(source>=0&&source<MaxSources&&i.targetCount>=0&&i.targetCount<=MaxTargets)
+  std::fill_n(i.edges[source],i.targetCount,Edge{});
+}
 struct Assignment {int source=0,target=-1,action=Attack;};
 struct Result {uint32_t match=0,tick=0;int frame=-1,count=0;Assignment orders[MaxOrders];};
 // One workspace belongs to one calculation lane. Keep the 64 KiB candidate
