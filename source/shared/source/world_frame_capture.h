@@ -51,8 +51,12 @@ public:
  void clear(){size_=0;failed_=false;if(!++generation_){for(size_t i=0;i<capacity_;++i)entries_[i].generation=0;generation_=1;}}
  bool count(uint32_t address)const{return capacity_&&entries_[slot(address)].generation==generation_;}
  Insertion insert(uint32_t address){
-  if(failed_)return {false};if(capacity_&&entries_[slot(address)].generation==generation_)return {false};
-  if((!capacity_||size_>=capacity_/2)&&!grow())return {false};entries_[slot(address)]={address,generation_};++size_;return {true};
+  if(failed_)return {false};
+  size_t at=capacity_?slot(address):0;
+  if(capacity_&&entries_[at].generation==generation_)return {false};
+  // Reuse the first lookup unless a real growth changes the bucket mask.
+  if(!capacity_||size_>=capacity_/2){if(!grow())return {false};at=slot(address);}
+  entries_[at]={address,generation_};++size_;return {true};
  }
 };
 // Recently missed exact consumer field, not stale data. The acquisition

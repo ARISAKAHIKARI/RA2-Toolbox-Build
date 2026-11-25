@@ -517,6 +517,19 @@ struct AllocationSpy {
  worldframe::PageAllocator allocator(){return {allocate,release,this};}
 };
 void nothrowPages(){
+ // The generic capture membership table must reuse a lookup without
+ // changing duplicate, growth, reset or allocation-failure semantics.
+ {AllocationSpy spy;{
+  worldframe::CaptureSet set(spy.allocator());
+  for(uint32_t i=0;i<1024;++i){CHECK(set.insert(i*4096+0x10000).second);CHECK(!set.insert(i*4096+0x10000).second);}
+  for(uint32_t i=0;i<1024;++i)CHECK(set.count(i*4096+0x10000));
+  const auto allocations=spy.calls;set.clear();
+  for(uint32_t i=0;i<1024;++i){CHECK(!set.count(i*4096+0x10000));CHECK(set.insert(i*4096+0x10000).second);}
+  CHECK(spy.calls==allocations&&set.valid());
+  set.clear();spy.failAt=spy.calls+1;
+  for(uint32_t i=0;i<1024;++i)CHECK(set.insert(i*4096+0x10000).second);
+  CHECK(!set.insert(0x700000).second&&!set.valid());set.clear();CHECK(set.valid()&&set.insert(0x700000).second);
+ }CHECK(spy.liveBytes==0);}
  AllocationSpy rejected;size_t liveReads=0;auto read=[&](uint32_t p,void*out,size_t n){++liveReads;std::memset(out,int(p>>12)&255,n);return true;};
  {
   worldframe::Snapshot sample(rejected.allocator());CHECK(rejected.calls==0&&!sample.pages.data()&&sample.pages.capacity()==0);sample.reset(key());rejected.failAt=1;
