@@ -105,4 +105,12 @@ static void publicationMeasurements(){
  std::printf("METRIC {\"baseline\":%s,\"world_bytes\":%zu,\"actor_bytes\":%zu,\"intent_bytes\":%zu,\"refinery_bytes\":%zu,\"combat_bytes\":%zu,\"rollback_cache_bytes\":%zu,\"actors\":%d,\"intents\":%d,\"refineries\":%d,\"combat\":%d,\"active_array_bytes\":%zu,\"header_bytes\":32,\"retained_memcpy_bytes_per_publication\":%llu,\"idle_calls\":%d,\"idle_rollback_bytes\":%llu,\"idle_elapsed_ns\":%lld,\"repeated_rollback_bytes\":%llu,\"repeated_elapsed_ns\":%lld,\"benchmark_iterations_per_batch\":%d,\"benchmark_batches\":%d,\"median_batch_ns\":%lld,\"min_batch_ns\":%lld,\"max_batch_ns\":%lld,\"final_active_digest\":\"%016llx\"}\n",
   PLANNER_PUBLICATION_BASELINE?"true":"false",sizeof(planner::World),sizeof(planner::Actor),sizeof(planner::Intent),sizeof(planner::Refinery),sizeof(planner::CombatProbe),sizeof weaponCache,planningWorld.count,planningWorld.intentCount,planningWorld.refineryCount,planningWorld.combatCount,activeBytes,(unsigned long long)oneRetained,skipped,(unsigned long long)idleRollback,(long long)idleNs,(unsigned long long)repeatedRollback,(long long)repeatedNs,iterations,batches,times[times.size()/2],times.front(),times.back(),(unsigned long long)digestWorld(planningWorld));
 }
-int main(){sh=new Shared{};copyBoundaries();retainedConsumers();testPlanning();publicationMeasurements();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS actual publication work counts and semantic invariants (portable synthetic fixture)");}
+static void nativePublicationCopies(){
+ if(PLANNER_PUBLICATION_BASELINE)return;
+ retainedBytes=rollbackBytes=0;measureCopies=true;
+ testDirectCombatDodge();
+ measureCopies=false;
+ check(retainedBytes>0&&rollbackBytes==0,"native publication copied an unnecessary rollback cache");
+ std::puts("PASS native planner retained publication without metadata rollback copy");
+}
+int main(){sh=new Shared{};copyBoundaries();retainedConsumers();testPlanning();publicationMeasurements();nativePublicationCopies();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS actual publication work counts and semantic invariants (portable synthetic fixture)");}
