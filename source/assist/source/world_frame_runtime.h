@@ -269,7 +269,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    worldFrameReady=false;worldFrameBoundaryOnly=false;return false;
   }
  }
- worldFrameServer.observe(key);
+ worldFrameServer.observe(key,boundaryOnly);
 
  // A successful strict sample becomes a read-only candidate on the NEXT
  // simulation frame. Its hash can be reused without any 16K-game-roster scan;
