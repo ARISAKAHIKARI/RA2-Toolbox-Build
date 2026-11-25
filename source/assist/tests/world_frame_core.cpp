@@ -930,6 +930,13 @@ void displayLeaseTransition(){
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  subscriber->subscribe(79,worldframe::Resources|worldframe::Ore);
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::Ore));
+ // A polling connection can remain alive after all reader leases expire.
+ // No active subscription means a passive producer has no graph demand.
+ clock+=252;CHECK(!subscriber->acquire(7));
+ CHECK(channel()->demandMask==0);
+ currentPid=GamePid;{worldframe::Server passive;CHECK(passive.wanted(HostPid,clock));CHECK(passive.demandMask()==0);}
+ currentPid=HostPid;subscriber->subscribe(79,worldframe::HostVisualBase);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  subscriber.reset();clock=2400;
 }
 void hostBoundaryCommandGuard(){

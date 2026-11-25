@@ -1886,6 +1886,13 @@ static void applyCommandComputeEpoch(){
  if(commandComputeEpoch==match)return;
  sh->computeApplied=sh->computeRequested&compute::All;commandComputeEpoch=match;
 }
+// Passive callbacks have no local snapshot consumer. A live mapping or
+// heartbeat alone does not establish an active world-data subscription.
+static void capturePassiveWorld(const worldlife::Sample&world,uint32_t house,DWORD now,bool connected){
+ if(!connected)return;
+ const uint32_t demand=worldFrameServer.demandMask();
+ if(demand)captureWorldFrame(readLiveWorld,world,house,now,demand,true);
+}
 static bool serviceReadOnlyRuntime(DWORD now){
  const bool wasReadOnly=readOnlyState.active;
  const auto admission=readOnlyState.service(*sh,cancelReadOnlyMailboxes,retireForReadOnly,[]{MemoryBarrier();});
@@ -1912,7 +1919,7 @@ static bool serviceReadOnlyRuntime(DWORD now){
  uint8_t chat=1;snap.chat=!readLiveWorld(0xA8BC79,&chat,1)||chat!=0;
  // The normal immutable producer remains the only world sampler. No command
  // maintenance, native view update or suspendedSnapshot(render) runs here.
- if(wanted)captureWorldFrame(readLiveWorld,world,house,now,worldFrameServer.demandMask(),true);
+ if(wanted)capturePassiveWorld(world,house,now,wanted);
  else retireWorldFrame();
  publishSnapshot(now);return true;
 }
@@ -2019,7 +2026,7 @@ static void tick(){
  if(!active){
   resetOwnGround();
   if(authority==worldlife::Authority::ViewOnly&&!commandDormant){cancelCooperativePlan(-3);reset(false);commandDormant=true;}
-  if(sharedWorldWanted)captureWorldFrame(readLiveWorld,worldSample,house,now,worldFrameServer.demandMask(),true);
+  capturePassiveWorld(worldSample,house,now,sharedWorldWanted);
   suspendedSnapshot(now,worldSample.running&&display.visible(),authority==worldlife::Authority::ViewOnly?activation::ViewOnly:!worldSample.running?activation::Paused:activation::DisplayHidden);return;
  }
  commandDormant=false;

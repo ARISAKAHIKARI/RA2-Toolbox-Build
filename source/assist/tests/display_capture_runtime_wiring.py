@@ -16,6 +16,12 @@ assert "capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)" in
 assert "!cmd&&!resultsDue&&!newMatch&&!sh->flags" not in bridge
 assert "worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)" in bridge
 assert "sharedWorldWanted&&noCommandWork" in bridge
+passive=bridge.split("static void capturePassiveWorld(",1)[1].split("static bool serviceReadOnlyRuntime(",1)[0]
+assert "if(!connected)return;" in passive
+assert "const uint32_t demand=worldFrameServer.demandMask();" in passive
+assert "if(demand)captureWorldFrame(readLiveWorld,world,house,now,demand,true);" in passive
+assert "if(wanted)capturePassiveWorld(world,house,now,wanted);" in bridge
+assert "capturePassiveWorld(worldSample,house,now,sharedWorldWanted);" in bridge
 assert "if(hostDisplayOnly)" in bridge
 assert "else if(directRuntime)" in bridge
 assert "runtimeDirectActions=!worldFrameCommandWorker.enabled()&&sh->computeApplied==compute::All&&gameentry::active(gameentry::Client::Assist);" in bridge
