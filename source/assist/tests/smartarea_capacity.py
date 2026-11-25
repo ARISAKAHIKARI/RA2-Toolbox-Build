@@ -56,7 +56,15 @@ static gateway::MissionObserver<> missionObserver;static void showOrderLines(uin
  generated+='};static EntryView clickView;\nstatic loading::Ledger<> loadLedger;\n'
  text=text[:start]+generated+text[end:]
  coop=(SOURCE/'cooperative_bridge.h').read_text(encoding='utf-8-sig')
- text=text.replace('static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}',block(coop,'static bool cooperativePendingActor(')+'\n'+block(coop,'static int cooperativePendingSlots(')+'\n'+block(coop,'static int entryReserved('))
+ native_roster=r'''
+static bool runtimeDirectActions=true;
+static bool commandRosterReady(){return true;}
+struct SampleReadScope{explicit operator bool()const{return true;}bool complete()const{return true;}};
+struct {bool enabled()const{return false;}} worldFrameCommandWorker;
+struct {struct Member{uint32_t pointer,id;};std::vector<Member> members;} worldFrameCommandRoster;
+static bool sampleRoster(uint32_t at,Vec&out){if(at!=0xA8EC78)return false;out=vec(at);return true;}
+'''
+ text=text.replace('static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}',native_roster+'\n'+block(coop,'static bool cooperativePendingActor(')+'\n'+block(coop,'static int cooperativePendingSlots(')+'\n'+block(coop,'static int entryReserved('))
  text=text.replace('#include "mo_orders_bridge.h"','#include '+json.dumps(str(orders)))
  text=text.replace('static int checks=0;static void check(bool b){++checks;assert(b);}', 'static int checks=0;static void checkAt(bool b,int line,const char*expression){++checks;if(!b){std::fprintf(stderr,"check %d line %d failed: %s\\n",checks,line,expression);std::abort();}}\n#define check(x) checkAt(bool(x),__LINE__,#x)')
  return text+'\n'+((HERE/'smartarea_capacity.cpp').read_text(encoding='utf-8-sig') if body is None else body)
