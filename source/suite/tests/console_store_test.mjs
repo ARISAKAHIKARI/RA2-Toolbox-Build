@@ -319,7 +319,7 @@ test('named semantic sections retain stable feature boundaries and do not depend
   assert.deepEqual([...tactical.get('战术操作')].map(x=>x.id),[82,83]);
   const automatic=layoutGroups(input.slice(4),'',6);
   assert.deepEqual([...automatic.keys()],['自动功能']);
-  assert.deepEqual(Array.from(automatic.get('自动战斗与防空'),x=>x.id),[9182,9183]);
+  assert.deepEqual(Array.from(automatic.get('自动功能'),x=>x.id),[9182,9183]);
 });
 
 test('action hierarchy accepts explicit semantic roles and defaults unknown legacy metadata to secondary',()=>{
