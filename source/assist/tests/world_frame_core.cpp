@@ -137,7 +137,16 @@ void hostVisual(){
  m.put(0xA8ED84,60);auto next=boundary(60,208);
  CHECK(fast.acquire(next,worldframe::Resources,208,live)==original&&fast.statistics.captures==1);
  CHECK(original->controlSource==first&&original->visualTick==200);
- auto refreshed=fast.acquire(next,worldframe::Resources,216,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
+ CHECK(worldframe::visualReuseWindow(256)==10&&worldframe::visualReuseWindow(257)==16);
+ CHECK(original->pages.size()<=256);
+ auto refreshed=fast.acquire(next,worldframe::Resources,210,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
+ CHECK(fast.acquire(next,worldframe::Resources,216,live)==refreshed);
+ CHECK(original->visualTick==200&&refreshed->visualTick==210);
+ const auto guardsBefore=m.calls.size();
+ auto stamp=worldframe::visualStamp(live,*next);
+ CHECK(stamp.valid&&m.calls.size()==guardsBefore+8);
+ m.denied.push_back({0x87F7E8+0x140,4});
+ CHECK(!worldframe::visualStamp(live,*next).valid);m.denied.pop_back();
  m.put(0xA8ED84,61);m.put(0x87F7E8+0x1240,64);
  auto resized=boundary(61,217);auto resizedCapture=fast.acquire(resized,worldframe::Resources,217,live);
  CHECK(resizedCapture&&resizedCapture->controlSource==resized&&fast.statistics.captures==3);
