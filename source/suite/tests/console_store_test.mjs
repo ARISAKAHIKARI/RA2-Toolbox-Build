@@ -290,19 +290,16 @@ test('compound manual commands and shared parameters retain their own boundaries
     {id:16,type:'label',label:'共享参数',row:156,column:20,groupHeader:true,group:'键鼠操作'},
     {id:17,type:'number',label:'巡逻范围',row:184,column:20,group:'键鼠操作'}
   ].map(canonical);
-  const groups=layoutGroups(controls,'',3);
-  assert.deepEqual([...groups.keys()],['移动、攻击与操作手势','队形、巡逻与飞机路径']);
-  const action=featureBlocks(groups.get('移动、攻击与操作手势'));
-  const formation=featureBlocks(groups.get('队形、巡逻与飞机路径'));
-  // Semantic owner mapping must preserve all controls and compound command rows;
-  // exact fold cardinality depends on whether an old native label is a feature.
-  assert.deepEqual(Array.from(groups.get('移动、攻击与操作手势'),c=>c.id),[11,12,13]);
-  assert.deepEqual(Array.from(groups.get('队形、巡逻与飞机路径'),c=>c.id),[14,15,16,17]); // Shared patrol-range parameters stay beside patrol gestures.
-  assert.deepEqual(Array.from(action[0].controls,c=>c.id).slice(0,3),[11,12,13]);
-  assert.deepEqual(Array.from(formation,block=>Array.from(block.controls,c=>c.id)),[[14,15],[16,17]]);
+  const groups=layoutGroups(controls,'',4);
+  assert.deepEqual([...groups.keys()],['战术操作']);
+  const blocks=featureBlocks(groups.get('战术操作'));
+  // The old control sub-sections are now one top-level page, while feature
+  // boundaries and shared patrol parameters remain distinct.
+  assert.deepEqual(Array.from(groups.get('战术操作'),c=>c.id),[11,12,13,14,15,16,17]);
+  assert.deepEqual(Array.from(blocks,block=>Array.from(block.controls,c=>c.id)),[[11,12,13],[14,15],[16,17]]);
   assert.deepEqual(Array.from(groupControls(controls,'检测频率').values()).flat().map(c=>c.id),[11,12,13]);
-  const filtered=layoutGroups(controls,'模糊下令',3);
-  assert.deepEqual(Array.from(filtered.get('队形、巡逻与飞机路径'),c=>c.id),[14,15]);
+  const filtered=layoutGroups(controls,'模糊下令',4);
+  assert.deepEqual(Array.from(filtered.get('战术操作'),c=>c.id),[14,15]);
 });
 
 test('named semantic sections retain stable feature boundaries and do not depend on row ordering',()=>{
