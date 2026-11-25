@@ -23,8 +23,9 @@ native=(root/"native_orders_bridge.h").read_text()
 assert "Vec inf=vec(0xA83DE8)" not in native
 assert native.count("sampleRoster(0xA83DE8,inf)") == 4
 assert "int stagedCount=recentPassengerCount;" in native
-assert "if(!sample.complete())return;" in native
-assert "if(sample.complete()){" in native
+assert "if(!sample||!collect()||!sample.complete())return;" in native
+assert "if(!sample||sample->complete()){" in native
+assert "if(complete&&(!sample||sample->complete())){" in native
 
 for old in ("frame-r.frame>900","frame-r.frame<=900",
             "DWORD(now-queuedUnload.lastProgress)>12000",
