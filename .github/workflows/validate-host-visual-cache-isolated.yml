@@ -22,5 +22,7 @@ jobs:
         run: |
           g++ -std=c++17 -O2 -UNDEBUG -pthread -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/world_frame_publication.cpp -o /tmp/publication-pool
           /tmp/publication-pool
+      - name: Exercise production catalogue and display sampling recovery
+        run: python3 source/assist/tests/catalogue_frame_sampling.py --out /tmp/catalogue-regression
       - name: Check read-only display wiring
         run: python3 source/assist/tests/display_capture_runtime_wiring.py

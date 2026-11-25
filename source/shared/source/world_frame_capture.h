@@ -92,7 +92,15 @@ template<class Read>class CaptureGraph {
  bool working(){if(!failed_&&(!scratch_||!scratch_->valid())){failed_=true;++frame_.counters.overflows;}return !failed_&&!frame_.overflow();}
  template<class T>T value(uint32_t at,T fallback={}){T v{};return frame_.capture(live_,at,&v,sizeof v)?v:fallback;}
  void block(uint32_t p,size_t n){if(working()&&range(p,n))frame_.prefetch(live_,p,n);}
- void enqueue(uint32_t p){if(!working()||p<0x10000||p>=0x80000000u||scratch_->actors.count(p))return;if(scratch_->queue.size()>=65536){failed_=true;++frame_.counters.overflows;return;}scratch_->actors.insert(p);scratch_->queue.push_back(p);}
+ void enqueue(uint32_t p){
+  if(!working()||p<0x10000||p>=0x80000000u)return;
+  if(scratch_->queue.size()>=65536){
+   // A duplicate at capacity is harmless; only a new actor overflows.
+   if(!scratch_->actors.count(p)){failed_=true;++frame_.counters.overflows;}return;
+  }
+  // One insertion lookup also answers whether this pointer was seen.
+  if(scratch_->actors.insert(p).second)scratch_->queue.push_back(p);
+ }
  void auxiliary(uint32_t p,size_t n){if(working()&&p>=0x10000&&scratch_->small.insert(p).second)block(p,n);}
  void animation(uint32_t p){
   if(!working()||p<0x10000||!scratch_->small.insert(p).second)return;

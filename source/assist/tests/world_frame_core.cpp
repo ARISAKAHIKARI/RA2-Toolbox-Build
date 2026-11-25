@@ -908,7 +908,7 @@ void displayLeaseTransition(){
  currentPid=HostPid;clock=1400;
  auto subscriber=worldframe::acquireClient(GamePid,71234);
  CHECK(!subscriber->acquire(7));
- subscriber->subscribe(79,worldframe::Resources);
+ subscriber->subscribe(79,worldframe::HostVisualBase);
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  subscriber->subscribe(79,worldframe::Base);
  CHECK(channel()->demandMask==worldframe::Base);
