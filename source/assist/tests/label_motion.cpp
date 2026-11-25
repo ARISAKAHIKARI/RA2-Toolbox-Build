@@ -38,6 +38,18 @@ int main(){
  // not restart a whole simulation-frame delay on each sample.
  s.sampledTick=202;s.label[0].x=9;motion.update(s,201);s.sampledTick=204;s.label[0].x=10;motion.update(s,201);
  motion.render(206,out);assert(out[0].x==10);
+ // Same-frame fast path must not swallow metadata edits, reordered IDs or
+ // camera-only reprojection, even when the world sample tick is unchanged.
+ motion.clear();s={};s.match=21;s.frame=1;s.sampledTick=100;s.labels=2;
+ s.label[0]={1,10,20,1,5,30,0,0,123,15};s.label[1]={2,40,50};
+ motion.update(s);for(int i=0;i<100;++i)motion.update(s);
+ assert(motion.render(100,out)==2&&out[0].id==1&&out[0].x==10&&out[0].used==1);
+ s.label[0].used=3;s.label[0].ownerColor=456;s.label[0].frozenFrames=30;motion.update(s);
+ motion.render(100,out);assert(out[0].used==3&&out[0].ownerColor==456&&out[0].frozenCentis==200);
+ std::swap(s.label[0],s.label[1]);motion.update(s);
+ motion.render(100,out);assert(out[0].id==2&&out[1].id==1);
+ s.cameraX=5;s.label[0].x-=5;s.label[1].x-=5;motion.update(s);
+ motion.render(100,out);assert(out[0].x==35&&out[1].x==5);
  s.labels=MaxLabels;s.match=4;s.sampledTick=100;for(int i=0;i<MaxLabels;++i)s.label[i]={uint32_t(i+1),i,0,0,0,30,0};motion.update(s);
  s.frame=3;s.sampledTick=150;for(int i=0;i<MaxLabels;++i)s.label[i]={uint32_t(MaxLabels-i),MaxLabels-i+20,0,0,0,29,0};motion.update(s);assert(motion.render(200,out)==MaxLabels&&out[0].id==MaxLabels);
 }
