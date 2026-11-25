@@ -190,8 +190,10 @@ static DWORD WINAPI prepareSettings(void*){
   const int oldCategory=std::clamp(read(L"UI",L"Category5",0),0,5);
   const int layoutVersion=read(L"UI",L"PageLayoutVersion",0);
   const int savedPage=read(L"UI",L"PageIndex",-1);
-  if(layoutVersion>=2&&savedPage>=0&&savedPage<=10)result.pageIndex=savedPage;
-  else if(savedPage>=0&&savedPage<=9){
+  if(layoutVersion>=2){
+   if(savedPage>=0&&savedPage<=10)result.pageIndex=savedPage;
+   else{constexpr int categoryPages[]={0,3,4,5,6,8,9,10};result.pageIndex=result.category?categoryPages[result.category]:(result.video?2:0);}
+  }else if(savedPage>=0&&savedPage<=9){
    constexpr int migrate[]={0,1,2,3,6,8,9,10,7,2};
    result.pageIndex=migrate[savedPage];
   }else{
