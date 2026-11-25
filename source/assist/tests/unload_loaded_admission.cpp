@@ -47,6 +47,7 @@ static uint32_t item(Vec v,int n){return (v.address==0xA83DE8?infantry:selectedC
 // immutable vector; production uses SampleReadScope + sampleRoster from
 // tactical_frame_read.h and the real sealed Runtime world sample.
 static bool sampleComplete=true;
+static bool runtimeDirectActions=false;
 struct SampleReadScope {
  explicit operator bool() const{return true;}
  bool complete() const{return sampleComplete;}
