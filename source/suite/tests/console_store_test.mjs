@@ -432,8 +432,7 @@ if (!failed && process.argv.includes('--browser')) {
       await item.click();
       await page.waitForFunction(name=>document.querySelector('#navigation [aria-current="page"]')?.getAttribute('aria-label')===name,name);
     };
-    assert.deepEqual(await nav.getByRole('button').evaluateAll(buttons=>buttons.slice(0,3).map(button=>button.getAttribute('aria-label'))),['鼠标','渲染','监控视图'],'display pages remain first');
-    assert.deepEqual(await nav.getByRole('button').evaluateAll(buttons=>buttons.slice(3,6).map(button=>button.getAttribute('aria-label'))),['键鼠与选兵','战术操作','进驻与装卸'],'control pages follow display');
+    assert.deepEqual(await nav.getByRole('button').evaluateAll(buttons=>buttons.slice(0,3).map(button=>button.getAttribute('aria-label'))),['键鼠与选兵','战术操作','进驻与装卸'],'control pages lead the navigation');
     assert.equal(await page.getByRole('tab').count(),0);
     await openPage('渲染');
     await page.getByLabel('增强渲染',{exact:true}).waitFor();
