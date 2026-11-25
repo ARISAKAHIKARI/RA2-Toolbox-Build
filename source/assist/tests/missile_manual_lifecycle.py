@@ -30,6 +30,7 @@ fixture = r'''
 #include <string>
 struct Shared {bool missileEnabled=true;};static Shared shared;static Shared*sh=&shared;
 static uint32_t lastHouse=70000;static int clockFrame=100;
+static bool runtimeDirectActions=false;static uint32_t match=1;
 struct {struct {uint32_t match=1;int frame=100;}key;}worldFrame;
 static bool sampleReady=true,sampleComplete=true,rosterReadable=true;
 static std::unordered_map<uint32_t,uint32_t> memory;
