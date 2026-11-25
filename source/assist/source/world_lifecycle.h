@@ -7,10 +7,18 @@ struct Sample {
  bool valid()const{return readable&&scenario>=0x10000&&cells>=0x10000&&count>0&&count<=512*512&&frame>=0&&frame<0x7fffffff&&(session==0||session==3||session==4||session==5);}
  bool same(const Sample&o)const{return scenario==o.scenario&&cells==o.cells&&count==o.count&&session==o.session;}
 };
-template<class Read>Sample capture(Read read){Sample s;s.readable=
- read(0xA8B230,&s.scenario,4)&&read(0xA8B238,&s.session,4)&&
- read(0x87F924,&s.cells,4)&&read(0x87F928,&s.count,4)&&
- read(0xA8ED84,&s.frame,4)&&read(0xA8E9A0,&s.running,1);return s;}
+template<class Read>Sample capture(Read read){
+ Sample s;
+ // Cells and its declared count occupy one contiguous engine header.
+ // Each independent lifecycle bookend still reads live bytes; only the
+ // number of read calls is reduced, and a failed span remains unknown.
+ struct CellHeader{uint32_t cells;int count;} header{};
+ static_assert(sizeof(CellHeader)==8,"engine cell header");
+ s.readable=read(0xA8B230,&s.scenario,4)&&read(0xA8B238,&s.session,4)&&
+  read(0x87F924,&header,sizeof header)&&
+  read(0xA8ED84,&s.frame,4)&&read(0xA8E9A0,&s.running,1);
+ s.cells=header.cells;s.count=header.count;return s;
+}
 enum class Change:uint8_t { Unknown, Absent, Start, Same, Replaced, Rewind };
 struct Tracker {
  Sample world{};bool bound=false;
