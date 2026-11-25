@@ -63,6 +63,7 @@ static uint32_t sampleScopeTick=0;
 // never a sealed command graph; direct reads do not create page leases.
 using RuntimeDirectReader=bool(*)(uint32_t,void*,size_t);
 static RuntimeDirectReader runtimeDirectReader=nullptr;
+static bool sampleDirectRead=false;
 // Coalesce identical in-flight requests before copying dependency pages.
 static worldframe::CommandRequestGate commandRequestGate;
 #if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
@@ -163,7 +164,7 @@ static bool observationalFrameReady(){
 }
 #endif
 static bool readWorldSample(uint32_t at,void*out,size_t n){
- if(runtimeDirectReader&&sampleWorldSource==&worldFrame&&worldFrameBoundaryOnly){
+ if(sampleDirectRead&&runtimeDirectReader&&sampleWorldSource==&worldFrame&&worldFrameBoundaryOnly){
   const bool ok=runtimeDirectReader(at,out,n);if(!ok)sampleReadComplete=false;return ok;
  }
  requestWorldRange(at,n); // Keep successful consumer dependencies subscribed.
@@ -173,28 +174,28 @@ static bool readWorldSample(uint32_t at,void*out,size_t n){
  return ok;
 }
 class SampleReadScope {
- unsigned previousDepth_;bool previousComplete_,ready_,finished_=false,result_=false;
+ unsigned previousDepth_;bool previousComplete_,previousDirect_,ready_,finished_=false,result_=false;
  const worldframe::Snapshot* previousSource_;
  uint32_t previousTick_;
 public:
- explicit SampleReadScope(bool allowObservation=false):
-    previousDepth_(sampleReadDepth),previousComplete_(sampleReadComplete),
+ explicit SampleReadScope(bool allowObservation=false,bool allowDirect=false):
+    previousDepth_(sampleReadDepth),previousComplete_(sampleReadComplete),previousDirect_(sampleDirectRead),
     ready_(false),previousSource_(sampleWorldSource),previousTick_(sampleScopeTick){
   const bool strict=worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.sealed()&&
        worldFrame.key.match==match&&worldFrame.key.frame==snap.frame;
-  const bool direct=runtimeDirectReader&&worldFrameReady&&worldFrameBoundaryOnly&&
+  const bool direct=allowDirect&&runtimeDirectReader&&(!previousDepth_||previousDirect_)&&worldFrameReady&&worldFrameBoundaryOnly&&
        worldFrame.key.match==match&&worldFrame.key.frame==snap.frame;
   const bool observation=allowObservation&&!strict&&!direct&&observationalFrameReady();
   ready_=strict||direct||observation;
   sampleWorldSource=(strict||direct)?&worldFrame:(observation?&worldFrameCandidate:nullptr);
-  sampleScopeTick=GetTickCount();
+  sampleScopeTick=GetTickCount();sampleDirectRead=direct;
   ++sampleReadDepth;sampleReadComplete=ready_;
  }
  explicit operator bool()const{return ready_;}
  bool complete()const{return finished_?result_:ready_&&sampleReadComplete;}
  void finish(){if(finished_)return;result_=complete();sampleReadDepth=previousDepth_;
   sampleReadComplete=previousComplete_&&(!previousDepth_||result_);
-  sampleWorldSource=previousSource_;sampleScopeTick=previousTick_;finished_=true;
+  sampleWorldSource=previousSource_;sampleScopeTick=previousTick_;sampleDirectRead=previousDirect_;finished_=true;
  }
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
@@ -202,7 +203,7 @@ public:
 // Opt-in ONLY for pure observation/forecasting; keep the default
 // SampleReadScope strict for destructive state pruning and native authority.
 class ObservationReadScope:public SampleReadScope {
-public: ObservationReadScope():SampleReadScope(true){}
+public: explicit ObservationReadScope(bool allowDirect=false):SampleReadScope(true,allowDirect){}
 };
 static const ::assist::ObjectIndex* sampledObjectIndex(){
  const auto& roster=sampleWorldSource==&worldFrameCandidate?worldFrameCandidateRoster:worldFrameCommandRoster;
@@ -246,7 +247,7 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
  }
 }
 #endif
-static void retireWorldFrame(){runtimeDirectReader=nullptr;worldFrameCatalogueProbeAt=0;worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
+static void retireWorldFrame(){runtimeDirectReader=nullptr;sampleDirectRead=false;worldFrameCatalogueProbeAt=0;worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
 runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;
 }
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
