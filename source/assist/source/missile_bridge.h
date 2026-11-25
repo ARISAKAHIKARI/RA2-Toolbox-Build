@@ -123,14 +123,22 @@ static void sampleMissileMotion(uint32_t p,int frame){
   if(std::abs(m.vx)>512||std::abs(m.vy)>512||std::abs(m.vz)>512)m.known=false;}
  m.id=id;m.pointer=p;m.frame=frame;m.x=x;m.y=y;m.z=z;
 }
-static missilecompute::Edge missileEdgeFacts(uint32_t p,uint32_t q,uint32_t weapon,int close,int airborne,int sourceRecord=-2,int*motionCache=nullptr){
+static missilecompute::Edge missileEdgeFacts(uint32_t p,uint32_t q,uint32_t weapon,int close,int airborne,int sourceRecord=-2,int*motionCache=nullptr,const CombatProbeBatch*batch=nullptr,int targetIndex=-1){
  missilecompute::Edge e{};e.close=0;if(!weapon||!airborne)return e;
- auto info=rawWeaponInfo(weapon,true);int armor=get<int>(typeOf(q,kind(q))+0x9C);
+ // Only the pure raw selector supplies this callback-local batch. Native
+ // selectors and final command admission still reread all live fields.
+ const bool sampled=batch&&targetIndex>=0&&targetIndex<missilecompute::MaxTargets&&
+  batch->sourceEpoch==batch->epoch&&batch->sourcePointer==p&&
+  batch->targets[targetIndex].epoch==batch->epoch&&batch->targets[targetIndex].pointer==q;
+ const auto*target=sampled?&batch->targets[targetIndex]:nullptr;
+ auto info=rawWeaponInfo(weapon,true);int armor=target?target->armor:get<int>(typeOf(q,kind(q))+0x9C);
  if(armor<0||armor>10||!(info.flags&planner::AirWeapon)||!(info.selectMask&(1u<<armor))||
     (info.flags&(planner::HealingWeapon|planner::MindControlWeapon|planner::TemporalWeapon|planner::ParasiteWeapon|planner::LocomotorWeapon)))return e;
  double damage=double(get<int>(weapon+0xA4))*info.effectiveness[armor];if(damage<=0)return e;
  if(sh->lowDamageFilter&&!(get<double>(get<uint32_t>(weapon+0xAC)+0xA0+armor*8)>0.02))return e;
- double dx=double(get<int>(q+0x9C))-get<int>(p+0x9C),dy=double(get<int>(q+0xA0))-get<int>(p+0xA0),dz=double(get<int>(q+0xA4))-get<int>(p+0xA4);
+ const int px=sampled?batch->source.x:get<int>(p+0x9C),py=sampled?batch->source.y:get<int>(p+0xA0),pz=sampled?batch->source.z:get<int>(p+0xA4);
+ const int qx=target?target->x:get<int>(q+0x9C),qy=target?target->y:get<int>(q+0xA0),qz=target?target->z:get<int>(q+0xA4);
+ double dx=double(qx)-px,dy=double(qy)-py,dz=double(qz)-pz;
  double distance=std::sqrt(dx*dx+dy*dy+dz*dz);if(!std::isfinite(distance)||distance>1048576)return e;
  int eta=0;
  if(!close){
@@ -142,8 +150,8 @@ static missilecompute::Edge missileEdgeFacts(uint32_t p,uint32_t q,uint32_t weap
   int at=sourceRecord==-2?missileRecord(get<uint32_t>(p+0x10)):sourceRecord;
   if(at>=0){const auto&r=missileSends[at];int frame=get<int>(0xA8ED84);
    if(r.releasedAt>=0&&frame-r.releasedAt<missilecompute::ReleaseGraceFrames)return e;
-   if(kind(p)!=3&&r.advanceStart>=0){double ax=double(get<int>(p+0x9C))-r.anchorX,ay=double(get<int>(p+0xA0))-r.anchorY;
-    double tx=double(get<int>(q+0x9C))-r.anchorX,ty=double(get<int>(q+0xA0))-r.anchorY;
+   if((sampled?batch->sourceKind:kind(p))!=3&&r.advanceStart>=0){double ax=double(px)-r.anchorX,ay=double(py)-r.anchorY;
+    double tx=double(qx)-r.anchorX,ty=double(qy)-r.anchorY;
     if(frame-r.advanceStart>=missilecompute::MaxAdvanceFrames||ax*ax+ay*ay>=double(missilecompute::AdvanceLeash)*missilecompute::AdvanceLeash||
        std::sqrt(tx*tx+ty*ty)>range+missilecompute::AdvanceLeash)return e;
    }
@@ -156,7 +164,7 @@ static missilecompute::Edge missileEdgeFacts(uint32_t p,uint32_t q,uint32_t weap
   const MissileMotion*motion=motionIndex>=0?&missileMotion[motionIndex]:nullptr;
   if(motion&&motion->known){double closing=distance>0?-(dx*motion->vx+dy*motion->vy+dz*motion->vz)/distance:0;
    if(sh->missileReserve&&(closing<=.5||gap/closing>missilecompute::LookAhead))return e;
-   if(kind(p)!=3&&closing<-.5)return e;
+   if((sampled?batch->sourceKind:kind(p))!=3&&closing<-.5)return e;
    eta=closing>.5?std::min(missilecompute::LookAhead,std::max(1,int(std::ceil(std::max(0.0,gap)/closing)))):missilecompute::LookAhead;
   }else eta=missilecompute::LookAhead;
  }
@@ -312,7 +320,7 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
    if(at>=0){const auto&record=missileSends[at];s.pending=record.target;s.pendingMission=record.mission;s.advanceFrames=record.advanceStart>=0?std::max(0,frame-record.advanceStart):-1;s.releaseFrames=record.releasedAt>=0?std::max(0,missilecompute::ReleaseGraceFrames-(frame-record.releasedAt)):0;s.committedTarget=record.shotTarget;s.committedDamage=record.shotDamage;}
    if((held||managed)&&s.pendingMission<0){planner::Actor firing{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),firing,true,true);if(firing.flags&planner::BurstFiring)s.pendingMission=missilecompute::TransientBusy;}
    if(source&&!native)for(int t=0;t<i.targetCount;++t){uint32_t weapon=0;int slot=0,close=0,airborne=0;
-    if(sampledCombatWeaponQuery(batch,t,p,i.targets[t].pointer,&weapon,&slot,&close,&airborne)>0)i.edges[n][t]=missileEdgeFacts(p,i.targets[t].pointer,weapon,close,airborne,at,&motionIndices[t]);
+    if(sampledCombatWeaponQuery(batch,t,p,i.targets[t].pointer,&weapon,&slot,&close,&airborne)>0)i.edges[n][t]=missileEdgeFacts(p,i.targets[t].pointer,weapon,close,airborne,at,&motionIndices[t],&batch,t);
    }
   };
   int revisited=0,managedBudget=i.targetCount?missilecompute::MaxSources/2:missilecompute::MaxSources;
