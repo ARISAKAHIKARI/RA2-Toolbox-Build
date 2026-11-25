@@ -2946,7 +2946,7 @@ static void finalizeTacticalLayout(){
 #ifdef RA2_CONSOLE_WEBVIEW2
 static void prepareConsoleSettingsModel(){
  struct Group {int fold;const wchar_t*name;};
- static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9610,L"命令类型手动指定",L"默认自动识别；仅在 MOD 或特殊兵种不兼容时填写。",true},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 原值镜像"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻"}};
+ static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9610,L"命令类型手动指定"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 原值镜像"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻"}};
  constexpr size_t count=sizeof(groups)/sizeof(groups[0]);int groupPages[count],groupRows[count];
  std::fill(std::begin(groupPages),std::end(groupPages),-999);std::fill(std::begin(groupRows),std::end(groupRows),-999);
  for(const auto&c:pageControls)for(size_t i=0;i<count;++i)if(GetDlgCtrlID(c.hwnd)==groups[i].fold){groupPages[i]=c.page;groupRows[i]=c.fullRect.y;}
