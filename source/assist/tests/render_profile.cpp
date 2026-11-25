@@ -26,6 +26,7 @@ int main(){
  int keyboardFolds[]={9604,9608},tacticalFolds[]={9601,9602,9606,9610,9611,9615},automaticFolds[]={9603,9605},ruleFolds[]={9607,9612},experimentalFolds[]={9613,9614};
  assert(suite::categories::row(1,keyboardFolds,2)==suite::categories::Keyboard);
  assert(suite::categories::row(1,tacticalFolds,6)==suite::categories::Tactical);
+ int directAttackMove[]={9797};assert(suite::categories::row(1,directAttackMove,1)==suite::categories::Tactical);
  assert(suite::categories::row(2,automaticFolds,2)==suite::categories::Automatic);
  assert(suite::categories::row(4,ruleFolds,2)==suite::categories::Rules);
  assert(suite::categories::row(4,experimentalFolds,2)==suite::categories::Experimental);assert(suite::categories::row(3,video,1)==suite::categories::Video);assert(suite::categories::row(4,experimental,1)==suite::categories::Experimental);
