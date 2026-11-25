@@ -2052,7 +2052,9 @@ static void tick(){
  // Scene refresh is native camera/composition work, not a world graph consumer.
  // Bomb boarding, formation and direct aircraft gestures use current native
  // objects. They still participate in command-index and frame scheduling.
- const bool noGraphJobs=!sh->moFeatures&&
+ // An enabled gesture preference does not itself require a graph. A live
+ // gesture still escalates through moOrdersPending(), including retries.
+ const bool noGraphJobs=
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&
   !sh->superweaponGrant&&
   !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput|AutoOreReturn))&&!sh->plannerTracking&&
