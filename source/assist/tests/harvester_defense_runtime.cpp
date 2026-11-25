@@ -119,6 +119,7 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  const uint32_t serial=uint32_t(events.size());actorFrameArbiter.record(id,revision,owner);actorLeaseArbiter.record(match,frame,id,p,revision,owner,serial);if(receipt)*receipt=serial;
  return true;
 }
+static bool runtimeDirectActions=false;
 #include "../source/ore_harvest_bridge.h"
 static int admitPlannerOrder(const planner::Order&,uint32_t){assert(false&&"ore observer does not dispatch in this fixture");return -1;}
 #include "../source/harvester_defense_bridge.h"
