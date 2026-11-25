@@ -17,6 +17,11 @@ assert "!cmd&&!resultsDue&&!newMatch&&!sh->flags" not in bridge
 assert "worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)" in bridge
 assert "sharedWorldWanted&&noCommandWork" in bridge
 assert "if(hostDisplayOnly)" in bridge
+assert "else if(directRuntime)" in bridge
+assert "runtimeDirectActions=true;" in bridge
+assert "if(internal&&runtimeDirectActions)" in bridge
+assert "if(runtimeDirectActions){if(!collect())return -12;}" in bridge
+assert "allowDirect" not in runtime
 assert "captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);" in bridge
 
 assert '#include "world_capture_requests.h"' in runtime
