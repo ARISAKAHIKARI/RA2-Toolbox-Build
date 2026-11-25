@@ -339,7 +339,7 @@ private:
  HANDLE mapping_=nullptr;Channel*channel_=nullptr;uint32_t owner_=0,openAt_=0;
  HANDLE notification_=nullptr;uint32_t notificationAttempt_=0;bool notificationTried_=false;
  std::array<DataView,2>data_;
- std::vector<uint32_t>requests_;uint32_t requestRevision_=0;
+ std::vector<uint32_t>requests_,requestScratch_;uint32_t requestRevision_=0;
  uint64_t connection_=0;
  bool clientAlive(uint32_t now)const{return channel_&&connectionMatches(channel_,uint32_t(connection_),uint32_t(connection_>>32))&&uint32_t(now-channel_->heartbeat)<=1000;}
  bool needed(uint32_t now){
@@ -378,10 +378,12 @@ public:
   const LONG seq=channel_->demandSeq;if(seq&1)return requests_;MemoryBarrier();
   const uint32_t count=channel_->demandCount,revision=channel_->demandRevision;
   if(revision==requestRevision_||count>MaxPages)return requests_;
-  std::vector<uint32_t>next(count);if(count)std::memcpy(next.data(),channel_->demands,size_t(count)*4);
+  // Reuse the previous accepted buffer as staging on the next revision.
+  // A torn/invalid descriptor must never modify the accepted request list.
+  requestScratch_.resize(count);if(count)std::memcpy(requestScratch_.data(),channel_->demands,size_t(count)*4);
   MemoryBarrier();if(seq!=channel_->demandSeq)return requests_;
-  for(uint32_t page:next)if((page&4095u)||!range(page,PageSize))return requests_;
-  requests_=std::move(next);requestRevision_=revision;return requests_;
+  for(uint32_t page:requestScratch_)if((page&4095u)||!range(page,PageSize))return requests_;
+  requests_.swap(requestScratch_);requestRevision_=revision;return requests_;
  }
  uint32_t demandRevision()const{return requestRevision_;}
  // A paused world can receive a new page request while its last exact
