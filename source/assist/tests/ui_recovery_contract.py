@@ -21,5 +21,7 @@ assert bindings.count("extra.variantKey")==bindings.count("featureavailability::
 app=(root/"suite/frontend/app.js").read_text()
 shell=(root/"suite/source/modern_console_main.h").read_text()
 assert "message.pageIndex" in app and "store.navigate(target.module,target.category,index)" in app
-assert 'L"PageIndex"' in shell and 'result.category=result.pageIndex==8?2:result.pageIndex-2' in shell
+assert 'L"PageIndex"' in shell and 'L"PageLayoutVersion"' in shell
+assert "migrate[]={0,1,2,3,6,8,9,10,7,2}" in shell
+assert "categoryPages[]={0,3,4,5,6,8,9,10}" in shell
 print("PASS UI entrance recovery, unique passengers, restored active variant hotkey, persisted navigation")
