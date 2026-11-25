@@ -305,7 +305,7 @@ public:
   SetPropW(pane,L"RA2.Console.Adapter",reinterpret_cast<HANDLE>(&p));SetPropW(pane,L"RA2.Suite.Managed",reinterpret_cast<HANDLE>(1));ShowWindow(pane,SW_HIDE);SetTimer(pane,SampleTimer,SamplePeriod,nullptr);service(p);return true;
  }
  bool navigate(unsigned module,int category=-1,const std::string& page={}){
-  if(module>=ports_.size()||category < -1||category>7||(category==7&&module!=2))return false;{
+  if(module>=ports_.size()||category < -1||category>7||(category>=0&&module!=2&&category!=0))return false;{
    std::lock_guard<std::mutex> lock(navigationMutex_);std::string key=page.empty()?(module==0?"video":module==1?"monitor":"tactical/"+std::to_string(category)):page;
    if(selected_.module==module&&selected_.category==category&&selected_.page==key){ports_[module].dirty=true;}else{selected_.module=module;selected_.category=category;selected_.page=std::move(key);++selected_.serial;latest_.reset();snapshotPending_=false;}
   }wake(ports_[module]);return true;
