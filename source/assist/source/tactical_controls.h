@@ -129,7 +129,7 @@ activeFoldGroup=9611;
 columnHeading(L"超级武器",20,306);columnHeading(L"启用快捷键",345,280);next();
 for(int i:{9,10}){button(100+i,labels[i],20,306);keys[i]=key(200+i,hotkeys[i]);next();}
 swList=combo(410,20,315,260);SetPropW(swList,L"RA2.Console.Label",const_cast<wchar_t*>(L"超级武器类型"));swHotkey=key(411,0,345,280);SetPropW(swHotkey,L"RA2.Console.Label",const_cast<wchar_t*>(L"超级武器快捷键"));next();
-note(L"启用超级武器后，使用游戏内目标光标选择位置。",26);
+note(L"启用超级武器后，使用游戏内目标鼠标指针选择位置。",26);
 activeFoldGroup=0;
 
 heading(2,902,L"自动功能",L"每项功能可独立设置开关快捷键；新快捷键默认留空。参数修改后自动保存并生效。");
@@ -354,7 +354,7 @@ note(L"默认关闭。对当前玩家的全部已注册超武，每个观察到�
 item(L"STATIC",L"持续授予超武：关闭",20,605,9491,0,44);next(44);
 
 toggle(9405,L"独立超级武器面板",extra.superweaponPanel);next();
-note(L"超武面板可拖动、折叠，点击超武后使用原生目标光标选择位置。",44);
+note(L"超武面板可拖动、折叠，点击超武后使用原生目标鼠标指针选择位置。",44);
 toggle(9403,L"高危：暂停与逐帧（单机实验性）",(extra.moFeatures&16u)!=0);next();
 label(L"暂停 / 恢复快捷键",20,306);{auto h=key(9454,extra.pauseKeys[0]);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
 label(L"前进一帧快捷键",20,306);{auto h=key(9455,extra.pauseKeys[1]);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
@@ -425,7 +425,7 @@ activeFoldGroup=9613;
 item(L"STATIC",L"高危 · 全图 CRC 原值镜像：关闭",20,605,9197,0,60);next(60);
 activeFoldGroup=0;
 toggle(9187,L"高危：保留事件所属方",extra.networkHousePreserve,20,455);button(9614,L"展开设置",500,125);next();
-note(L"保留跨玩家操控事件的所属方信息，用于联机原生判定模式和原生变卖光标。与硬件控制、Master 模式互斥；切回原生判定模式后按已保存的开关恢复。",65);
+note(L"保留跨玩家操控事件的所属方信息，用于联机原生判定模式和原生变卖鼠标指针。与硬件控制、Master 模式互斥；切回原生判定模式后按已保存的开关恢复。",65);
 activeFoldGroup=9614;
 item(L"STATIC",L"事件所属方保留：关闭",20,605,9188,0,44);next(44);
 activeFoldGroup=0;
@@ -439,12 +439,12 @@ label(L"自毁快捷键（默认不绑定）",20,306);key(9254,extra.destructSel
 note(L"必须使用独立快捷键；不允许与其他动作共享，即使已开启“执行所有匹配功能”。忙碌、失焦、聊天或超时后须重新按键。",44);
 item(L"STATIC",L"",20,605,9186,0,52);pageControls.back().feedbackHidden=true;next(52);
 
-toggle(9189,L"高危：原生变卖光标允许对手建筑",extra.nativeSellCursor);next();
-note(L"启用后请自行点击游戏原版 $ 变卖按钮，再指向对手建筑。只放宽所属方资格，仍检查建筑能否出售；单机电脑建筑调用原版 Sell 接收器；其余沿用原版构造入队。联机电脑建筑不生效，原生光标仍需所属方保留已启用；与下面的特殊键鼠入口独立。",65);
-item(L"STATIC",L"原生变卖光标：关闭",20,605,9190,0,44);next(44);
+toggle(9189,L"高危：原生变卖鼠标指针允许对手建筑",extra.nativeSellCursor);next();
+note(L"启用后请自行点击游戏原版 $ 变卖按钮，再指向对手建筑。只放宽所属方资格，仍检查建筑能否出售；单机电脑建筑调用原版 Sell 接收器；其余沿用原版构造入队。联机电脑建筑不生效，原生鼠标指针仍需所属方保留已启用；与下面的特殊键鼠入口独立。",65);
+item(L"STATIC",L"原生变卖鼠标指针：关闭",20,605,9190,0,44);next(44);
 extraControls[SellEnemyEnabled]=toggle(722,L"快捷键变卖对手建筑（直接组包，暂不可用）",false);EnableWindow(extraControls[SellEnemyEnabled],FALSE);next();
 item(L"STATIC",L"快捷键变卖：暂不可用",20,605,9540,0,44);next(44);
-note(L"直接组包入口已停用，旧配置也不会启用。原生变卖光标仍使用上方的独立开关。",65);
+note(L"直接组包入口已停用，旧配置也不会启用。原生变卖鼠标指针仍使用上方的独立开关。",65);
 
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);
