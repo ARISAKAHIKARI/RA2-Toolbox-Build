@@ -386,7 +386,8 @@
       return controls.filter(control=>(control.group==='生产预定')===(index===PRODUCTION_PAGE));
     return controls;
   }
-  const targetFor=index=>index===PRODUCTION_PAGE?{module:2,category:4}:index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:index-2};
+  const pageCategory={3:1,4:2,5:3,6:4,7:4,8:5,9:6,10:7};
+  const targetFor=index=>index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:pageCategory[index]??1};
   const restoredIndex=(category,section)=>category===0?(section===1?2:0):({1:3,2:4,3:5,4:6,5:8,6:9,7:10}[category]??0);
   // The adapter already exports the original logical row. Keep its related
   // editors together instead of turning every native widget into a full row.
@@ -467,6 +468,7 @@
   $('moduleToggle').addEventListener('change', event => store.enable(targetFor(selectedCategory).module, event.target.checked));
   $('retrySave').addEventListener('click', () => store.retryConfig());
   function configurableFeatures() {
+    if(selectedCategory===PRODUCTION_PAGE)return [];
     const features=[];
     for(const group of groupNodes.values())
       for(const block of featureBlocks(group.controls))
@@ -611,13 +613,14 @@
       const actionParent=master?.element||feature.header;
       if(feature.actions.parentNode!==actionParent)actionParent.insertBefore(feature.actions,master?.editor||null);
       const hasConfig=hasFeatureConfig(block);
-      const expanded=!hasConfig||featureExpanded(group,key);
-      feature.button.hidden=!hasConfig;
+      const compactProduction=selectedCategory===PRODUCTION_PAGE;
+      const expanded=compactProduction||!hasConfig||featureExpanded(group,key);
+      feature.button.hidden=!hasConfig||compactProduction;
       if(hasHeader){
         const head=block.headers.find(isFeatureHeader);
         const label=block.title||head?.label||head?.text||'功能';
         const hasNote=updateNoteHelp(feature.actions,label,block.controls.filter(control=>control.type==='label'&&!control.groupHeader),feature.button);
-        feature.actions.hidden=!hasConfig&&!hasNote;
+        feature.actions.hidden=compactProduction||(!hasConfig&&!hasNote);
         feature.button.textContent=expanded?'收起':'展开';
         feature.button.setAttribute('aria-expanded',String(expanded));
         feature.button.setAttribute('aria-label',(expanded?'收起 ':'展开 ')+label+' 的设置');
