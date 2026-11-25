@@ -71,12 +71,12 @@ static bool captureReverseTargetIndex(uint32_t house){
   const uint32_t cell=readMapCell(get<int>(p+0x9C)/256,get<int>(p+0xA0)/256);
   if(!reverseTargetIndex.add(cell,p,get<uint32_t>(p+0x10)))return false;
  }
- reverseTargetStamp.ready=sampleReadComplete&&reverseTargetStamp.config==uint32_t(featureConfigRevision)&&reverseTargetStamp.requested==uint32_t(sh->featureConfigSeq);return reverseTargetStamp.ready;
+ reverseTargetStamp.ready=(runtimeDirectActions||sampleReadComplete)&&reverseTargetStamp.config==uint32_t(featureConfigRevision)&&reverseTargetStamp.requested==uint32_t(sh->featureConfigSeq);return reverseTargetStamp.ready;
 }
 static bool collectReverseTargets(const DodgeThreatRef&ref,uint32_t house,reversedodge::Point&delta,bool candidateOnly=false){
- SampleReadScope frameRead(candidateOnly);if(!frameRead)return false;
+ const auto collect=[&]()->bool{
  reverseTargetCount=0;
- if(!dodgeThreatCurrent(ref)||!reverseVector(ref.pointer,delta))return frameRead.complete();
+ if(!dodgeThreatCurrent(ref)||!reverseVector(ref.pointer,delta))return true;
  if(worldObjects.contains(ref.target)){
   const uint32_t id=get<uint32_t>(ref.target+0x10);
   reverseTargets[reverseTargetCount++]={ref.target,id,manualVersions.get(id)};
@@ -84,11 +84,15 @@ static bool collectReverseTargets(const DodgeThreatRef&ref,uint32_t house,revers
  else {if(!captureReverseTargetIndex(house))return false;
   reverseTargetIndex.visit(ref.target,[&](uint32_t p,uint32_t id){if(dodgeSource(p,house))reverseTargets[reverseTargetCount++]={p,id,manualVersions.get(id)};});
  }
- return frameRead.complete();
+ return true;
+ };
+ if(runtimeDirectActions&&!candidateOnly)return collect();
+ SampleReadScope frameRead(candidateOnly);return frameRead&&collect()&&frameRead.complete();
 }
 static bool collectReverseDodgeInput(uint32_t house,int frame,DWORD now,bool candidateOnly=false){
- SampleReadScope frameRead(candidateOnly);if(!frameRead)return false;
- auto&i=dodgeCapture;memset(&i,0,sizeof i);i.match=match;
+ auto&i=dodgeCapture;
+ const auto collect=[&]()->bool{
+ memset(&i,0,sizeof i);i.match=match;
  i.tick=sampleWorldSource?sampleWorldSource->key.tick:now;
  i.frame=sampleWorldSource?sampleWorldSource->key.frame:frame;
  for(int n=0;n<dodgeCount&&i.count<dodgecompute::MaxSources;++n)if(dodgeJobs[n].active&&get<uint32_t>(dodgeJobs[n].pointer+0x10)==dodgeJobs[n].id)dodgeObserve(dodgeJobs[n].pointer,house,i.sources[i.count++]);
@@ -98,7 +102,10 @@ static bool collectReverseDodgeInput(uint32_t house,int frame,DWORD now,bool can
  }
  // Never turn a projectile-only failed reverse move into random Scatter.
  for(int n=0;n<i.count;++n)if(!i.sources[n].active){bool crush=false;for(int k=0;k<dodgeThreatCount;++k)if(!dodgeThreatRefs[k].projectile&&dodgeThreatRefs[k].target==i.sources[n].pointer&&dodgeThreatCurrent(dodgeThreatRefs[k])&&dodgeThreat(i.sources[n].pointer,dodgeThreatRefs[k].pointer,house))crush=true;if(!crush)i.sources[n].freshThreat=0;}
- if(!frameRead.complete())return false;
+ return true;
+ };
+ if(runtimeDirectActions&&!candidateOnly){if(!collect())return false;}
+ else {SampleReadScope frameRead(candidateOnly);if(!frameRead||!collect()||!frameRead.complete())return false;}
  dodgeInput=i;return true;
 }
 static bool reverseDodgeTick(uint32_t house,int frame,DWORD now,bool candidateOnly=false){
@@ -107,7 +114,7 @@ static bool reverseDodgeTick(uint32_t house,int frame,DWORD now,bool candidateOn
  // Eligibility also includes Runtime-owned Sticky state. Share a successful
  // index within this non-pumping dispatch, then refresh it on the next one.
  // A failed immutable observation remains deferred until its source changes.
- if(reverseTargetStamp.ready)reverseTargetStamp.attempted=false;
+ if(reverseTargetStamp.ready||runtimeDirectActions)reverseTargetStamp.attempted=false;
  for(int n=0;n<dodgeThreatCount;++n){const auto&ref=dodgeThreatRefs[n];if(!ref.projectile||reverseShotHandled(ref,now))continue;
   reversedodge::Point delta{};if(!collectReverseTargets(ref,house,delta,candidateOnly))continue;
   // The sample chose candidates; native path legality and submission retain
