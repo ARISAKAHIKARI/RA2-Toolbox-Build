@@ -24,7 +24,7 @@ static bool collectDodgeThreats(){
   if(!type||get<bool>(type+0xD68)||(k!=0&&!get<bool>(owner+0x134)&&get<int>(owner+0x94)!=3))continue;
   next[count++]={q,get<uint32_t>(q+0x10C),true,get<uint32_t>(q+0x10)};
  }
- Vec all{};if(!sampleRoster(0xA8EC78,all))return false;for(int n=0;n<all.count&&count<8192;++n){uint32_t q=item(all,n);if(kind(q)!=2)continue;
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return false;for(int n=0;n<all.count&&count<8192;++n){uint32_t q=item(all,n);if(!q||kind(q)!=2)continue;
   uint32_t t=get<uint32_t>(q+0x2B4);if(!worldObjects.contains(t))t=get<uint32_t>(q+0x5A4);if(worldObjects.contains(t))next[count++]={q,t,false,get<uint32_t>(q+0x10)};}
  return true;
  };
@@ -57,7 +57,8 @@ static void cancelDodge(uint32_t id){int n=dodgeIndex(id);if(n>=0){finishDodge(d
 static void resetDodgeControl(){dodgeCount=dodgeCursor=dodgeJobCursor=0;dodgePending=false;dodgeFrames.clear();dodgeApplied=sh?sh->dodgeComputed:0;if(sh)sh->dodgeActive=sh->dodgeIssued=0;}
 static bool dodgeSource(uint32_t p,uint32_t house){
  if(!p||stickyOwns(p))return false;int k=kind(p);if((k!=1&&k!=2)||!own(p,house)||!live(p)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||!featureObjectAllowed(featuretypes::Dodge,p))return false;
- planner::Actor a{};rawCombatInfo(p,typeOf(p,k),k,a,false);if(a.flags&(planner::Airborne|planner::Manipulated|planner::Protected))return false;
+ const uint32_t type=typeOf(p,k);if(!type)return false;
+ planner::Actor a{};rawCombatInfo(p,type,k,a,false);if(a.flags&(planner::Airborne|planner::Manipulated|planner::Protected))return false;
  int m=get<int>(p+0xAC);return m==1||m==2||m==5||m==6||m==11||m==13||m==29;
 }
 static int dodgeThreat(uint32_t p,uint32_t q,uint32_t house){
@@ -208,7 +209,7 @@ static bool collectDodgeInput(uint32_t house,int frame,DWORD now,int&nextCursor,
  i.frame=sampleWorldSource?sampleWorldSource->key.frame:frame;
  int checkedJobs=0;
  for(;checkedJobs<dodgeCount&&i.count<dodgecompute::MaxSources/2;++checkedJobs){const auto&j=dodgeJobs[(dodgeJobCursor+checkedJobs)%dodgeCount];
-  if(j.active&&get<uint32_t>(j.pointer+0x10)==j.id)dodgeObserve(j.pointer,house,i.sources[i.count++]);
+  if(j.active&&(!runtimeDirectActions||worldObjects.byId(j.id)==j.pointer)&&get<uint32_t>(j.pointer+0x10)==j.id)dodgeObserve(j.pointer,house,i.sources[i.count++]);
  }
  nextJobCursor=dodgeCount?(dodgeJobCursor+checkedJobs)%dodgeCount:0;
  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;int visited=0,checked=0;
