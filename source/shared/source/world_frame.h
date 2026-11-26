@@ -187,12 +187,15 @@ class Snapshot {
  std::array<uint32_t,IndexSize> index_{};
  bool sealed_=false,overflow_=false,indexFresh_=true;
  bool capacityFailure(){overflow_=true;++counters.overflows;return false;}
- Page* add(uint32_t address){
+ // Optionally report whether this page was already present, so capture
+ // does not need to probe the same bucket chain before inserting a miss.
+ Page* add(uint32_t address,bool* existing=nullptr){
+  if(existing)*existing=false;
   // A zero-page Host boundary does not touch the 128-KiB lookup array.
   // The first later full page reinitializes it before reading old indices.
   if(!indexFresh_){index_.fill(0);indexFresh_=true;}
   uint32_t slot=bucket(address);
-  while(index_[slot]){auto&p=pages[index_[slot]-1];if(p.address==address)return &p;slot=(slot+1)&(IndexSize-1);}
+  while(index_[slot]){auto&p=pages[index_[slot]-1];if(p.address==address){if(existing)*existing=true;return &p;}slot=(slot+1)&(IndexSize-1);}
   if(overflow_)return nullptr;
   if(!pages.append()){capacityFailure();return nullptr;}
   auto&p=pages.back();p.address=address;index_[slot]=uint32_t(pages.size());return &p;
@@ -300,7 +303,7 @@ public:
   if(sealed_||overflow_||!range(address,n))return false;
   auto*dest=static_cast<uint8_t*>(out);bool ok=true;
   while(n){const uint32_t base=address&~(PageSize-1);const size_t offset=address-base,count=std::min<size_t>(n,PageSize-offset);
-   Page*p=const_cast<Page*>(find(base));const bool existing=p!=nullptr;if(!p)p=add(base);if(!p)return false;
+   bool existing=false;Page*p=add(base,&existing);if(!p)return false;
    if(!existing){++counters.calls;++counters.pageAttempts;counters.bytes+=PageSize;
     if(live(base,p->bytes.data(),PageSize))p->full=1;else ++counters.failedReads;
    }
