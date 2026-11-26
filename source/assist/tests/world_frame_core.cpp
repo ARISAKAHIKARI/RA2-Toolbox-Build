@@ -856,7 +856,7 @@ void runtime(){
   CHECK(!worldFrameServer.wanted(sh->owner,clock));
   const auto noHostCreates=dataCreates;
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
-  CHECK(worldFrameReady&&worldFrameBoundaryOnly&&worldFrame.pages.empty()&&worldFrame.counters.calls==0);
+  CHECK(worldFrameReady&&worldFrameBoundaryOnly&&worldFrame.pages.size()==0&&worldFrame.counters.calls==0);
   CHECK(!worldFrameServer.hasPublication()&&dataCreates==noHostCreates);
   {SampleReadScope blocked;CHECK(!blocked&&!blocked.complete());}
   retireWorldFrame();
