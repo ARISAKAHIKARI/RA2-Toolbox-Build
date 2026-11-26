@@ -158,13 +158,17 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
    for(int i=0;i<types.count&&refineryTypesCount<512;++i){uint32_t type=item(types,i);const bool nativeMiner=minerDefense&&minerDefenseMiner(type);if(type<0x10000||(!nativeMiner&&(!ore||!oreMiner(type))))continue;
     Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&refineryTypesCount<512;++j){uint32_t dock=item(docks,j);bool known=false;for(int n=0;n<refineryTypesCount;++n)if(refineryTypes[n]==dock)known=true;if(dock&&!known&&(nativeMiner||oreTypeAllowed(dock,false)))refineryTypes[refineryTypesCount++]=dock;}
    }
+   // Membership is queried for every candidate building; ordering of
+   // this private type set is not observable. Sort after the original
+   // bounded discovery so its capacity/selection semantics stay intact.
+   std::sort(refineryTypes,refineryTypes+refineryTypesCount);
   }
  }
  // Preserve the existing own-first order and capacity priority. The native
  // collector performs no game calls in this loop, so the membership/class
  // facts need only be read once per invocation. The legacy snapshot lane
  // preserves its original demand/discovery order.
- struct NativeActorRef{uint32_t pointer;int kind;};
+ struct NativeActorRef{uint32_t pointer;int kind;bool onMap;};
  static NativeActorRef nativeActors[2][16384];
  int nativeCounts[2]{};
  if(native&&actorsNeeded){
@@ -172,10 +176,11 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
    const auto p=item(all,i);const int k=p?kind(p):-1;
    if(k<0||get<int>(p+0x6C)<=0)continue;
    const bool ownActor=get<uint32_t>(p+0x21C)==house;
-   if(!get<bool>(p+0x74)&&!(ore&&ownActor&&k==2&&get<bool>(p+0x6D1)))continue;
+   const bool onMap=get<bool>(p+0x74);
+   if(!onMap&&!(ore&&ownActor&&k==2&&get<bool>(p+0x6D1)))continue;
    if(!advanced&&!minerDefense&&!defense&&!drop&&(!ownActor||(k!=2&&k!=3)))continue;
    const int group=ownActor?0:1;
-   nativeActors[group][nativeCounts[group]++]={p,k};
+   nativeActors[group][nativeCounts[group]++]={p,k,onMap};
   }
  }
  if(actorsNeeded)for(int pass=0;pass<2;++pass)for(int i=0;i<(native?nativeCounts[pass]:all.count)&&w.count<planner::MaxActors;++i){
@@ -197,7 +202,8 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
   bool harvester=ore&&ownActor&&k==2&&oreMiner(type);
   bool defenseMiner=minerDefense&&ownActor&&k==2&&minerDefenseMiner(type);
   bool spiderSource=minerDefense&&ownActor&&(minerDefenseType(type,k)||minerDefenseOwns(get<uint32_t>(p+0x10)));
-  bool oreDock=false;if((ore||minerDefense)&&ownActor&&k==3)for(int j=0;j<refineryTypesCount;++j)if(refineryTypes[j]==type){oreDock=true;break;}
+  const bool oreDock=(ore||minerDefense)&&ownActor&&k==3&&
+   std::binary_search(refineryTypes,refineryTypes+refineryTypesCount,type);
   bool turret=defense&&ownActor&&antiTheftBuilding(p);
   bool threat=defense&&!ownActor&&antiTheftThreat(p,house);
   bool spider=minerDefense&&!ownActor&&minerDefenseThreat(p,house,true);
@@ -208,7 +214,9 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
   a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);a.cost=get<int>(type+0x610);a.veterancy=get<float>(p+0x150);a.manualVersion=manualVersions.get(a.id);
   if(ownActor)a.flags|=planner::Own;else if(enemy)a.flags|=planner::Enemy;
   if(get<bool>(p+0x83))a.flags|=planner::Selected;if(get<bool>(p+0x1C8))a.flags|=planner::Disabled;
-  if(get<bool>(p+0x81))a.flags|=planner::Limbo;if(!get<bool>(p+0x74)||!get<bool>(p+0x90))a.flags|=planner::OffMap;
+  if(get<bool>(p+0x81))a.flags|=planner::Limbo;
+  // Same invocation, before native queries: reuse the observed map bit.
+  if(!(native?nativeActors[pass][i].onMap:get<bool>(p+0x74))||!get<bool>(p+0x90))a.flags|=planner::OffMap;
   if(get<uint32_t>(p+0x11C))a.flags|=planner::Transported;if(get<int>(p+0x220)!=0)a.flags|=planner::Cloaked;
   a.target=rawObjectID(get<uint32_t>(p+0x2B4));uint32_t destination=k!=3?get<uint32_t>(p+0x5A4):0;a.destination=rawObjectID(destination);
   if(destination>=0x10000&&!a.destination){int x=get<short>(destination+0x24),y=get<short>(destination+0x26);if(readMapCell(x,y)==destination)a.destinationCell=uint32_t(y*1000+x);}
