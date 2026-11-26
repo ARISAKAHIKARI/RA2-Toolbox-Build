@@ -287,6 +287,25 @@ void partial(){
   }
  CHECK(words.observed(start+64,64)); // failed is observed, never readable
  CHECK(!words.read(start+64,out.data(),out.size()));
+ // Recovery must skip known runs without widening live reads across any
+ // successful or failed byte, including multiple complete bitmap words.
+ Memory mixed(0x50000);constexpr uint32_t mixedBase=0x40000;
+ mixed.partialPages.insert(mixedBase);mixed.denied.push_back({mixedBase+256,64});
+ worldframe::Snapshot recovery;recovery.reset(key());Read mixedRead{&mixed};
+ CHECK(recovery.prefetch(mixedRead,mixedBase+64,128));
+ CHECK(!recovery.prefetch(mixedRead,mixedBase+256,64));
+ CHECK(recovery.prefetch(mixedRead,mixedBase+512,64));
+ const auto prior=mixed.calls.size();
+ CHECK(!recovery.prefetch(mixedRead,mixedBase+32,568));
+ CHECK(mixed.calls.size()==prior+4);
+ const std::array<std::pair<uint32_t,size_t>,4> expectedRuns{{{32,32},{192,64},{320,192},{576,24}}};
+ for(size_t i=0;i<expectedRuns.size();++i){
+  CHECK(mixed.calls[prior+i].address==mixedBase+expectedRuns[i].first);
+  CHECK(mixed.calls[prior+i].bytes==expectedRuns[i].second&&mixed.calls[prior+i].success);
+ }
+ mixed.uniqueSuccessfulBytes();CHECK(recovery.seal());
+ CHECK(recovery.observed(mixedBase+32,568));
+ CHECK(!recovery.read(mixedBase+256,out.data(),out.size()));
 }
 struct GraphStats{uint32_t calls,bytes,rosters;};
 GraphStats graph(uint32_t demand){
