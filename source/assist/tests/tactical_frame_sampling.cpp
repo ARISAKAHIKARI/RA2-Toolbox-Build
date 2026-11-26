@@ -726,6 +726,15 @@ static void testDirectCombatDodge(){
        "native dodge reused old projectile facts");
  check(worldFrame.pages.size()==0&&runtimeWorldDemands.empty()&&!sampleReadDepth,
        "direct tactical collectors copied pages or registered dependencies");
+ // Retiring the final native planning task must publish an empty world
+ // without touching the Techno vector, including if the old roster is gone.
+ sh->flags=0;sh->runtimeTracking=AdvancedInput;nativeCount=0;
+ ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ const auto emptyRosterReads=liveRosterReads;
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count==0&&planningWorld.intentCount==0,
+       "empty native planning publication could not drain old actors");
+ check(liveRosterReads==emptyRosterReads&&sh->worldSeq==hostSequence,
+       "empty native planning publication read the Techno roster or copied Host mailbox");
  runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
  std::puts("PASS direct native combat and dodge collectors without copied world pages");
 }
