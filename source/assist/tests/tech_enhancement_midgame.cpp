@@ -191,6 +191,14 @@ static void setup(){
  assert(scanTypes(true)&&snap.types[nativeSlot].cost==725&&!sampleReadDepth);
  put<int>(Normal+0x610,500);
  assert(scanTypes(true)&&snap.types[nativeSlot].cost==500);
+ // A later vector failure must retain the entire previously published
+ // catalogue, not quietly replace it with a partial set of types.
+ unreadable=0xA83CE0+4;
+ assert(!scanTypes(true)&&snap.typeCount==nativeCount&&typeSlot(Normal)==nativeSlot);
+ unreadable=Items+4;
+ assert(!scanTypes(true)&&snap.typeCount==nativeCount&&snap.types[nativeSlot].cost==500);
+ unreadable=0;
+ assert(scanTypes(true)&&snap.typeCount==nativeCount);
  {ObservationReadScope sample;assert(!scanTypes(true));}
 #endif
 #ifdef SAMPLED_CATALOGUE
