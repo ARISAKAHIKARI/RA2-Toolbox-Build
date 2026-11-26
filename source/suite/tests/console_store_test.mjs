@@ -764,7 +764,11 @@ if (!failed && process.argv.includes('--browser')) {
     await page.getByRole('button',{name:'游戏规则',exact:true}).click();
     await receive(tacticalCardPage(5,10,rules));
     const ruleSwitch=page.getByLabel('科技全开',{exact:true});await ruleSwitch.waitFor();
-    assert.deepEqual(await page.locator('.group-title').allTextContents(),['单机速度与暂停','科技与建造']);
+    assert.deepEqual(await page.locator('.group-title').allTextContents(),['游戏规则']);
+    const speedField=page.getByLabel('目标游戏帧率（0 = 原版）',{exact:true});
+    await speedField.waitFor();
+    assert.equal(await speedField.inputValue(),'60');
+    assert.equal(await ruleSwitch.isVisible(),true,'flattening preserves independent feature headers');
     const ruleFold=page.getByRole('button',{name:'展开 科技全开 的设置',exact:true});
     const ruleMode=page.getByLabel('科技全开实现',{exact:true});
     assert.equal(await ruleMode.isVisible(),false);
