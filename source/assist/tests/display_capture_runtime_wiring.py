@@ -23,9 +23,10 @@ assert "if(demand)captureWorldFrame(readLiveWorld,world,house,now,demand,true);"
 assert "if(wanted)capturePassiveWorld(world,house,now,wanted);" in bridge
 assert "capturePassiveWorld(worldSample,house,now,sharedWorldWanted);" in bridge
 assert "if(hostDisplayOnly)" in bridge
-assert "else if(directRuntime)" in bridge
+assert "else if(directRuntime&&!idleWithoutGraph)" in bridge
+assert "const uint32_t hostDemand=sharedWorldWanted?worldFrameServer.demandMask():0u;" in bridge
 idle=bridge.split("const bool idleWithoutGraph=",1)[1].split(";",1)[0]
-for condition in ("noCommandWork", "sh->externalDisplay", "nativeCatalogue", "worldDemand==uint32_t(worldframe::Base)", "(!sharedWorldWanted||!worldFrameServer.demandMask())", "runtimeWorldDemands.empty()", "!runtimeDemandOverflow"):
+for condition in ("noCommandWork", "sh->externalDisplay", "nativeCatalogue", "worldDemand==uint32_t(worldframe::Base)", "!hostDemand", "runtimeWorldDemands.empty()", "!runtimeDemandOverflow"):
     assert condition in idle
 assert "else if(!idleWithoutGraph&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))" in bridge
 assert "runtimeDirectActions=!worldFrameCommandWorker.enabled()&&sh->computeApplied==compute::All&&gameentry::active(gameentry::Client::Assist);" in bridge
@@ -36,9 +37,12 @@ assert "AutoOreReturn|AntiTheft" in direct_admission
 graph_jobs=bridge.split("const bool noGraphJobs=",1)[1].split(";",1)[0]
 assert "scrollRefreshHz" not in graph_jobs and "scrollRefreshActive" not in graph_jobs
 assert "!graphCatalogueDue" in direct_admission
+assert "hostDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)" in direct_admission
+assert "(!hostDemand&&runtimeWorldDemands.empty()&&!runtimeDemandOverflow)" in direct_admission
 assert "if(graphCatalogueDue)worldDemand|=worldframe::TypeCatalogue;" in bridge
-assert "external::catalogue::capture(readLiveWorld,stamp)" in bridge
-assert "||scanTypes(true)" in bridge
+assert "external::catalogue::captureVisit(readLiveWorld,stamp,collectProbe)" in bridge
+assert "||scanTypes(true,&probes)" in bridge
+assert "for(auto&batch:probes)batch.clear();" in bridge
 assert "if(internal&&runtimeDirectActions)" in bridge
 assert "if(runtimeDirectActions){if(!collect())return -12;}" in bridge
 assert "allowDirect" not in runtime
@@ -53,7 +57,11 @@ assert "if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
 assert "if(boundaryOnly){" in runtime
 assert runtime.index("if(boundaryOnly){") < runtime.index("worldframe::CaptureGraph<Live>capture(")
 assert "sh->worldSamplePages=0;sh->worldSampleReads=0;sh->worldSampleBytes=0;" in runtime
-assert "worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)" in runtime
+reuse=runtime.split("const bool reuseSync=",1)[1].split(";",1)[0]
+for condition in ("!asyncCommand","worldFrameReady","haveCaptureAttempt","lastCaptureAttempt.sameFrame(key)","!(worldFrameBoundaryOnly&&!boundaryOnly)"):
+    assert condition in reuse
+assert "worldFrameServer.observe(key,boundaryOnly||reuseSync);" in runtime
+assert "if(reuseSync||(asyncCommand&&reuseAsync))" in runtime
 assert "const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled()" in runtime
 assert "const bool stable=" in runtime and "before.same(after)" in runtime
 assert "worldFrameServer.retire()" in runtime
