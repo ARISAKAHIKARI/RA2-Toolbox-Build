@@ -197,6 +197,13 @@ static void setup(){
  assert(!scanTypes(true)&&snap.typeCount==nativeCount&&typeSlot(Normal)==nativeSlot);
  unreadable=Items+4;
  assert(!scanTypes(true)&&snap.typeCount==nativeCount&&snap.types[nativeSlot].cost==500);
+ // Scalar metadata failures must be transactional as well. In particular
+ // an unreadable owner/filter bit cannot be mistaken for an excluded type.
+ for(uint32_t offset:{0x610u,0x634u,0x232u,0xD54u,0x6CCu,0x60u,0xCCEu}){
+  unreadable=Normal+offset;
+  assert(!scanTypes(true)&&snap.typeCount==nativeCount&&typeSlot(Normal)==nativeSlot&&
+         snap.types[nativeSlot].cost==500);
+ }
  unreadable=0;
  assert(scanTypes(true)&&snap.typeCount==nativeCount);
  {ObservationReadScope sample;assert(!scanTypes(true));}
