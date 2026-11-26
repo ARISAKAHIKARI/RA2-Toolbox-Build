@@ -1157,14 +1157,31 @@ static bool scanTypes(bool direct=false){
   for(int i=0;i<types.count&&count<MaxTypes;++i){
    const uint32_t type=direct?nativeTypes[i]:item(types,i);
    if(type<0x10000)return false;
-   const int level=get<int>(type+0x634);
-   const bool insignificant=get<bool>(type+0x232)&&!techEnhancementCatalogueIncludesInsignificant(type,arrays[k],i,level);
-   if(!validType(techEnhancementCatalogueLevel(type,level),insignificant,get<bool>(type+0xD54),get<uint32_t>(type+0x6CC)))continue;
+   int level=0,cost=0;uint8_t insignificantRaw=0,spawned=0,naval=0;uint32_t owners=0,localizedName=0;
+   if(direct){
+    // A failed metadata read is not a false filter bit or a zero price.
+    // Read the nearby cost/level fields together and stage all results.
+    uint32_t costLevel[(0x634-0x610)/4+1]{};
+    if(!read(type+0x610,costLevel,sizeof costLevel)||
+       !read(type+0x232,&insignificantRaw,1)||!read(type+0xD54,&spawned,1)||
+       !read(type+0x6CC,&owners,4))return false;
+    memcpy(&cost,costLevel,4);memcpy(&level,costLevel+(0x634-0x610)/4,4);
+   }else{
+    level=get<int>(type+0x634);insignificantRaw=get<bool>(type+0x232);
+    spawned=get<bool>(type+0xD54);owners=get<uint32_t>(type+0x6CC);
+   }
+   const bool insignificant=insignificantRaw&&!techEnhancementCatalogueIncludesInsignificant(type,arrays[k],i,level);
+   if(!validType(techEnhancementCatalogueLevel(type,level),insignificant,spawned!=0,owners))continue;
    Type& out=next.types[count];out={};
    if(!read(type+0x24,out.id,23))return false;
-   if(get<uint32_t>(type+0x60)>=0x10000)name(type,out.name,40);
+   if(direct){
+    if(!read(type+0x60,&localizedName,4)||!read(type+0xCCE,&naval,1))return false;
+   }else{
+    localizedName=get<uint32_t>(type+0x60);naval=get<bool>(type+0xCCE);cost=get<int>(type+0x610);
+   }
+   if(localizedName>=0x10000)name(type,out.name,40);
    else for(int n=0;n<23&&out.id[n];++n)out.name[n]=uint8_t(out.id[n]);
-   out.kind=kinds[k];out.index=i;out.naval=get<bool>(type+0xCCE);out.cost=get<int>(type+0x610);
+   out.kind=kinds[k];out.index=i;out.naval=naval!=0;out.cost=cost;
    next.pointers[count]=type;next.allowed[count]=0;
    const auto prior=std::lower_bound(priorByPointer.begin(),priorByPointer.begin()+priorCount,std::make_pair(type,0));
    if(prior!=priorByPointer.begin()+priorCount&&prior->first==type)next.allowed[count]=techAllowed[prior->second];
