@@ -665,19 +665,27 @@ if (!failed && process.argv.includes('--browser')) {
     ];
     await receive(compactState({controls:pairedShortcut}));
     const pairedRow=page.locator('.compound-row');
-    await pairedRow.locator('#control-0-9511').waitFor();
+    const pairedOptions=pairedRow.locator('.hotkey-options > summary');
+    const pairedKey=pairedRow.locator('#control-0-9511');
+    await pairedOptions.waitFor();
+    assert.equal(await pairedKey.isVisible(),false,'standalone keyboard editor starts in its closed menu');
     for (const width of [1240,720,390]) {
       await page.setViewportSize({width,height:880});
       const bounds=await pairedRow.evaluate(element=>{
         const box=selector=>element.querySelector(selector).getBoundingClientRect();
-        return {line:element.getBoundingClientRect(),toggle:box('.toggle'),editor:box('.hotkey-editor'),button:box('.hotkey-capture')};
+        return {line:element.getBoundingClientRect(),toggle:box('.toggle'),editor:box('.hotkey-editor'),button:box('.hotkey-options > summary')};
       });
       assert.ok(Math.abs(bounds.line.right-bounds.toggle.right)<2,'the switch occupies the same right column with a companion hotkey');
       if (width>=720) {
-        assert.ok(Math.abs(bounds.toggle.top-bounds.editor.top)<8,'an unbound shortcut stays beside its switch when there is room');
-        assert.ok(bounds.editor.width<120 && bounds.button.height<=29,'the unbound shortcut uses a compact button and options trigger');
+        assert.ok(Math.abs(bounds.toggle.top-bounds.editor.top)<8,'the shortcut launcher stays beside its switch when there is room');
+        assert.ok(bounds.editor.width<120 && bounds.button.height<=29,'the shortcut launcher remains compact');
       }
       await assertFits();
+      await pairedOptions.click();await pairedKey.waitFor();
+      assert.equal(await pairedKey.getAttribute('data-bound'),'false');
+      await assertFits();
+      await page.keyboard.press('Escape');
+      assert.equal(await pairedKey.isVisible(),false,'closing the menu hides the keyboard editor again');
     }
     await page.setViewportSize({width:1240,height:880});
     const pinned=[
