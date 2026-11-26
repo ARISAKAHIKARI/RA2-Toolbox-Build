@@ -265,7 +265,19 @@ public:
  bool observed(uint32_t address,size_t n)const{
   if(!sealed_||!range(address,n))return false;
   while(n){const size_t offset=address&(PageSize-1),count=std::min<size_t>(n,PageSize-offset);const auto*p=find(address&~(PageSize-1));
-   if(!p)return false;if(!p->full)for(size_t i=offset;i<offset+count;++i)if(!bit(p->valid,i)&&!bit(p->failed,i))return false;
+   if(!p)return false;
+   // Observation includes both successful and explicitly failed bytes.
+   // Check one bitmap word at a time rather than testing every byte.
+   if(!p->full){
+    size_t at=offset,remaining=count;
+    while(remaining){
+     const unsigned shift=unsigned(at&63);
+     const size_t span=std::min<size_t>(remaining,64-shift);
+     const uint64_t mask=span==64?~uint64_t(0):((uint64_t(1)<<span)-1)<<shift;
+     if(((p->valid[at>>6]|p->failed[at>>6])&mask)!=mask)return false;
+     at+=span;remaining-=span;
+    }
+   }
    address+=uint32_t(count);n-=count;}
   return true;
  }
