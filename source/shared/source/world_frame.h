@@ -408,9 +408,14 @@ public:
   reset(source);if(count>MaxPages)return capacityFailure();if(!input)return false;
   if(!pages.reserve(count))return capacityFailure();
   for(size_t i=0;i<count;++i){const auto&p=input[i];
-   if((p.address&(PageSize-1))||!range(p.address,PageSize)||p.full>1||find(p.address)){reset(source);return false;}
+   if((p.address&(PageSize-1))||!range(p.address,PageSize)||p.full>1){reset(source);return false;}
+   // Validate uniqueness and locate the insertion slot in one probe chain.
+   uint32_t slot=bucket(p.address);
+   while(index_[slot]){
+    if(pages[index_[slot]-1].address==p.address){reset(source);return false;}
+    slot=(slot+1)&(IndexSize-1);
+   }
    if(!pages.append(p))return capacityFailure();
-   uint32_t slot=bucket(p.address);while(index_[slot])slot=(slot+1)&(IndexSize-1);
    index_[slot]=uint32_t(pages.size());
   }counters=stats;return seal();
  }
