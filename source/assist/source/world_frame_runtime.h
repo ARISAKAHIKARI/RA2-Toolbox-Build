@@ -269,7 +269,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    worldFrameReady=false;worldFrameBoundaryOnly=false;return false;
   }
  }
- worldFrameServer.observe(key,boundaryOnly);
+ // A sealed synchronous frame can be re-exported without rewriting its
+ // observation heartbeat on every dispatcher wake. Never coalesce the
+ // first full capture, a boundary-to-command upgrade, or async admission.
+ const bool reuseSync=!asyncCommand&&worldFrameReady&&haveCaptureAttempt&&
+    lastCaptureAttempt.sameFrame(key)&&!(worldFrameBoundaryOnly&&!boundaryOnly);
+ worldFrameServer.observe(key,boundaryOnly||reuseSync);
 
  // A successful strict sample becomes a read-only candidate on the NEXT
  // simulation frame. Its hash can be reused without any 16K-game-roster scan;
@@ -302,7 +307,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // already sealed Runtime command sample.
   const bool reuseAsync=strictReusable&&worldFrameServer.hasPublication()&&
       requestRevision==worldFrameCapturedRevision;
-  if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)&&(!asyncCommand||reuseAsync)){
+  if(reuseSync||(asyncCommand&&reuseAsync)){
    // The async worker owns Host-only transport, including same-frame
    // republishing; never interleave the older strict publisher in its slot.
    if(!asyncCommand)worldFramePublication.publish(worldFrame,worldFrameServer);
