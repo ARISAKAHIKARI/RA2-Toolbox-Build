@@ -32,6 +32,7 @@ static bool fault=false,externalInputFrame=true;static DWORD clockNow=1000;
 static uint64_t readRequests=0;
 static unsigned leaseChecks=0;static bool leaseAllowed=true;
 static unsigned nativeCalls=0,hostNotifies=0,submissions=0,liveReads=0,liveRosterReads=0,missingLiveReads=0;
+static unsigned liveMapHeaderReads=0;
 static bool denyLivePage=false;static uint32_t missingPage=0,nextAddress=0x100000;static int enterResult=3;
 static std::vector<uint8_t> memory(0xC00000);
 static std::function<void()> nativeMutation;
@@ -79,7 +80,8 @@ static bool verifyCandidatePointer(uint32_t pointer){
 static bool commandRosterReady();
 #include "sample_scope_production.h"
 static bool liveRead(uint32_t at,void*out,size_t n){
- ++liveReads;if(at==0xA8EC78||(at>=0x800000&&at<0x810000))++liveRosterReads;
+ ++liveReads;if(at==0x87F7E8+316||at==0x87F7E8+320)++liveMapHeaderReads;
+ if(at==0xA8EC78||(at>=0x800000&&at<0x810000))++liveRosterReads;
  if(missingPage&&at<missingPage+4096&&uint64_t(at)+n>missingPage){++missingLiveReads;if(denyLivePage)return false;}
  if(at<0x10000||uint64_t(at)+n>memory.size())return false;
  std::memcpy(out,memory.data()+at,n);return true;
@@ -860,11 +862,15 @@ static void testDirectOre(){
  worldObjects.add(extraDock,31);worldObjects.add(otherBuilding,32);
  ++oreConfigRevision;++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
  set<bool>(f.miner+0x74,false);set<bool>(f.miner+0x6D1,true);
+ set<uint32_t>(f.miner+0x5A4,0); // No unrelated destination cell lookup.
+ const auto mapHeaderReads=liveMapHeaderReads;
  check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count==3,
        "native planning lost dock membership or unloading miner");
  check(planningWorld.actors[0].id==20&&(planningWorld.actors[0].flags&planner::OffMap)&&
        (planningWorld.actors[0].flags&planner::Unloading)&&planningWorld.actors[1].id==30&&planningWorld.actors[2].id==31,
        "native planning changed own roster order, dock membership or off-map flags");
+ check(planningWorld.refineryCount==2&&liveMapHeaderReads-mapHeaderReads==2,
+       "native waiting rings repeatedly read the same map-vector header");
  runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
  std::puts("PASS native ore unload transition and resource search with no copied graph");
 }
