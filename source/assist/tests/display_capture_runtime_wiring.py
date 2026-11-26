@@ -20,7 +20,13 @@ passive=bridge.split("static void capturePassiveWorld(",1)[1].split("static bool
 assert "if(!connected)return;" in passive
 assert "const uint32_t demand=worldFrameServer.demandMask();" in passive
 assert "if(demand)captureWorldFrame(readLiveWorld,world,house,now,demand,true);" in passive
-assert "if(wanted)capturePassiveWorld(world,house,now,wanted);" in bridge
+# Read-only admission must never escalate stale native demand to a full graph.
+readonly=bridge.split("static bool serviceReadOnlyRuntime(",1)[1].split("static void tick()",1)[0]
+assert "const uint32_t readOnlyDemand=wanted?worldFrameServer.demandMask():0u;" in readonly
+assert "if(readOnlyDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly))" in readonly
+assert "captureWorldFrame(readLiveWorld,world,house,now,readOnlyDemand,true);" in readonly
+assert "else retireWorldFrame();" in readonly
+assert "capturePassiveWorld(" not in readonly
 assert "capturePassiveWorld(worldSample,house,now,sharedWorldWanted);" in bridge
 assert "if(hostDisplayOnly)" in bridge
 assert "else if(directRuntime&&!idleWithoutGraph)" in bridge
