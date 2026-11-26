@@ -59,7 +59,8 @@ inline uint32_t visualReuseWindow(size_t pages){return pages<=256?10u:16u;}
 class VisualCache {
  Token base_,latest_;std::weak_ptr<const Snapshot> validatedReuseSource_;std::shared_ptr<SnapshotPool>pool_=std::make_shared<SnapshotPool>();
  CaptureScratch scratch_;DemandLeases leases_;std::vector<uint32_t>requests_;
- VisualStamp latestStamp_;
+ VisualStamp latestStamp_,failedBuildStamp_;
+ uint64_t failedBuildRevision_=0;uint32_t failedBuildDemand_=0;bool failedBuild_=false;
  uint64_t revision_=0,builtRevision_=0,serial_=0;uint32_t builtDemand_=0,attemptedAt_=0;Token attempted_;
  static constexpr std::array<uint32_t,8> VisualGraphDemands{Base,Combat,Passengers,Ore,Bullets,Visual,Resources,MonitorStats};
  std::array<uint32_t,VisualGraphDemands.size()>demandTicks_{};uint32_t demanded_=0;
@@ -67,7 +68,7 @@ public:
  struct Statistics {
   uint64_t captures=0,reused=0,failed=0;
   uint64_t buildInitial=0,buildRevision=0,buildProfile=0,buildRefresh=0,buildSameSource=0;
-  uint64_t coveredLeases=0,repairedReports=0,retiredReports=0;
+  uint64_t coveredLeases=0,repairedReports=0,retiredReports=0,deferredFailedBuilds=0;
  };Statistics statistics;
  // Report whether this request invalidated the built visual observation.
  // A full lease table can evict an expired page and admit a new one without
@@ -102,12 +103,21 @@ public:
    }
    if(repaired&&covered){retry=false;++statistics.repairedReports;}
   }
-  if(added||retry){++revision_;return true;}
+  if(added||retry){
+   // Repeated reports from a pinned display observation still invalidate
+   // reuse, but do not create new dependencies for a failed graph attempt.
+   // Never absorb a genuinely new dependency or an explicit refresh.
+   const bool repeatedFailureReport=failedBuild_&&failedBuildRevision_==revision_&&
+     !added&&retry&&sameVisualWorld&&!pages.empty();
+   ++revision_;
+   if(repeatedFailureReport)failedBuildRevision_=revision_;
+   return true;
+  }
   return false;
  }
  template<class Live>Token acquire(const Token&source,uint32_t demand,uint32_t now,Live live){
   if(!source||source->controlSource||!source->sealed())return {};
-  if((base_&&!base_->key.sameWorld(source->key))||(!base_&&attempted_&&!attempted_->key.sameWorld(source->key))){latest_.reset();base_.reset();attempted_.reset();validatedReuseSource_.reset();leases_.clear();revision_=builtRevision_=0;builtDemand_=demanded_=0;}
+  if((base_&&!base_->key.sameWorld(source->key))||(!base_&&attempted_&&!attempted_->key.sameWorld(source->key))){latest_.reset();base_.reset();attempted_.reset();validatedReuseSource_.reset();leases_.clear();revision_=builtRevision_=0;builtDemand_=demanded_=0;failedBuild_=false;}
   // Host visual profiles are NOT Runtime command demand. Only this
   // read-only Host cache expands them into actor/passenger/combat graph
   // ranges; the published game-thread boundary remains small.
@@ -130,7 +140,7 @@ public:
   if(attempted_==source&&uint32_t(now-attemptedAt_)<16)return {};
   const auto started=std::chrono::steady_clock::now();
   const auto before=visualStamp(live,*source);
-  if(!before.valid){attempted_=source;attemptedAt_=now;++statistics.failed;return {};}
+  if(!before.valid){attempted_=source;attemptedAt_=now;failedBuild_=false;++statistics.failed;return {};}
   // Display sampling is deliberately lower priority than Runtime commands.
    // Reuse a coherent same-world visual snapshot across nearby Runtime frames;
    // never retag its original frame or treat it as command authority.
@@ -140,6 +150,16 @@ public:
    if(boundaryOnlySource(source->key))validatedReuseSource_=source;
    ++statistics.reused;return latest_;
   }
+  // A failed read-only build must not retry a full graph on every new
+  // boundary token at high frame rates. Preserve immediate attempts for
+  // changed geometry, world, demand or explicit dependency revisions.
+  if(failedBuild_&&attempted_&&boundaryOnlySource(attempted_->key)&&
+     boundaryOnlySource(source->key)&&attempted_->key.sameWorld(source->key)&&
+     source->key.frame>=attempted_->key.frame&&before.frame>=failedBuildStamp_.frame&&
+     failedBuildStamp_.sameWorld(before)&&revision_==failedBuildRevision_&&
+     (combined&~failedBuildDemand_)==0&&uint32_t(now-attemptedAt_)<16){
+   ++statistics.deferredFailedBuilds;return {};
+  }
   // Actual graph build attempts: mutually exclusive reasons, with same-source
   // counted independently. Guard failures before this point are not builds.
   if(!latest_)++statistics.buildInitial;
@@ -148,6 +168,7 @@ public:
   else ++statistics.buildRefresh;
   if(base_==source)++statistics.buildSameSource;
   attempted_=source;attemptedAt_=now;
+  failedBuild_=true;failedBuildStamp_=before;failedBuildRevision_=revision_;failedBuildDemand_=combined;
   auto next=SnapshotPool::acquire(pool_);if(!next->extendVisual(source)){++statistics.failed;return {};}
   requests_.clear();leases_.append(now,requests_);std::sort(requests_.begin(),requests_.end());
   CaptureGraph<Live>capture(*next,live,scratch_);
@@ -162,7 +183,7 @@ public:
   const auto after=visualStamp(live,*source);
   if(!collected||!coherentVisualCapture(before,after,uint32_t(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-started).count()))||!next->seal()){++statistics.failed;return {};}
   next->visualFrame=after.frame;next->visualTick=now;next->visualSerial=++serial_;
-  base_=source;latest_=std::move(next);latestStamp_=after;builtRevision_=revision_;builtDemand_=combined;++statistics.captures;return latest_;
+  failedBuild_=false;base_=source;latest_=std::move(next);latestStamp_=after;builtRevision_=revision_;builtDemand_=combined;++statistics.captures;return latest_;
  }
 };
 }

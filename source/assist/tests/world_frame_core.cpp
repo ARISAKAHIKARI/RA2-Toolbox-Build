@@ -169,6 +169,57 @@ void hostVisual(){
   auto source=std::make_shared<worldframe::Snapshot>();auto k=key(frame);k.tick=tick;k.serial=uint32_t(frame);k.demand=worldframe::BoundaryOnlyKeyBit;
   source->reset(k);CHECK(source->seal());return source;
  };
+ // A failed graph must not be retried on every new display boundary.
+ {
+  worldframe::VisualCache retry;
+  m.put(0xA8ED84,52);
+  m.denied.push_back({0xA8EC78,24});
+  CHECK(!retry.acquire(boundary(52,200),worldframe::Resources,200,live));
+  CHECK(retry.statistics.buildInitial==1&&retry.statistics.failed==1);
+  for(int frame=53;frame<=55;++frame){
+   m.put(0xA8ED84,frame);
+   CHECK(!retry.acquire(boundary(frame,200+uint32_t(frame-52)),worldframe::Resources,200+uint32_t(frame-52),live));
+  }
+  CHECK(retry.statistics.buildInitial==1&&retry.statistics.deferredFailedBuilds==3);
+  // New explicit dependency revision is not throttled by the old attempt.
+  CHECK(retry.request({0xE80000},204,true));
+  m.put(0xA8ED84,56);
+  CHECK(!retry.acquire(boundary(56,204),worldframe::Resources,204,live));
+  CHECK(retry.statistics.buildInitial==2&&retry.statistics.failed==2);
+  m.denied.pop_back();
+  m.put(0xA8ED84,57);
+  CHECK(!retry.acquire(boundary(57,219),worldframe::Resources,219,live));
+  CHECK(retry.statistics.buildInitial==2);
+  m.put(0xA8ED84,58);
+  auto recovered=retry.acquire(boundary(58,220),worldframe::Resources,220,live);
+  CHECK(recovered&&retry.statistics.buildInitial==3&&retry.statistics.captures==1);
+  // Multiple readers of the same pinned display token report an existing
+  // missing page after a failed graph. They must not bypass backoff.
+  const uint32_t missing=0xE90000;
+  CHECK(retry.request({missing},221,true,recovered));
+  m.denied.push_back({0xA8EC78,24});
+  m.put(0xA8ED84,59);
+  CHECK(!retry.acquire(boundary(59,236),worldframe::Resources,236,live));
+  const auto failed=retry.statistics.failed;
+  const auto deferred=retry.statistics.deferredFailedBuilds;
+  for(int frame=60;frame<63;++frame){
+   const uint32_t tick=237+uint32_t(frame-60);
+   CHECK(retry.request({missing},tick,true,recovered));
+   m.put(0xA8ED84,frame);
+   CHECK(!retry.acquire(boundary(frame,tick),worldframe::Resources,tick,live));
+  }
+  CHECK(retry.statistics.failed==failed&&retry.statistics.deferredFailedBuilds==deferred+3);
+  // A new page followed by another duplicate report must still invalidate
+  // the old attempt, even before the retry window expires.
+  CHECK(retry.request({missing+4096},240,true,recovered));
+  CHECK(retry.request({missing},240,true,recovered));
+  m.put(0xA8ED84,63);
+  CHECK(!retry.acquire(boundary(63,240),worldframe::Resources,240,live));
+  CHECK(retry.statistics.failed==failed+1);
+  m.denied.pop_back();
+  m.put(0xA8ED84,64);
+  CHECK(retry.acquire(boundary(64,256),worldframe::Resources,256,live));
+ }
  worldframe::VisualCache fast;
  m.put(0xA8ED84,52);auto first=boundary(52,200);
  auto original=fast.acquire(first,worldframe::Resources,200,live);CHECK(original);
@@ -615,6 +666,18 @@ void capacity(){
    uint8_t byte=0;CHECK(collisions.capture(live,first+(i-1)*step,&byte,1)&&byte==i);
   }
   CHECK(reads==8&&collisions.counters.pageHits==8&&collisions.seal());
+  // Import must resolve the same collision chain once per input page.
+  worldframe::Snapshot imported;
+  std::vector<worldframe::Page> input(collisions.pages.data(),collisions.pages.data()+collisions.pages.size());
+  std::reverse(input.begin(),input.end());
+  CHECK(imported.import(collisions.key,collisions.counters,input.data(),input.size()));
+  CHECK(imported.pages.size()==8&&imported.counters.pageHits==8);
+  for(uint32_t i=0;i<8;++i){
+   uint8_t byte=0;CHECK(imported.read(first+i*step,&byte,1)&&byte==i+1);
+  }
+  input.back().address=input.front().address;
+  CHECK(!imported.import(collisions.key,{},input.data(),input.size()));
+  CHECK(!imported.sealed()&&imported.pages.size()==0&&!imported.find(first+7*step));
   collisions.resetBoundary(key());
   uint8_t byte=0;CHECK(collisions.capture(live,first+7*step,&byte,1)&&byte==8);
   CHECK(reads==9&&collisions.pages.size()==1&&collisions.counters.pageHits==0);
