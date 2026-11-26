@@ -21,7 +21,7 @@ public:
 // Optional probe visitor reuses the exact bytes that contributed to Stamp.
 // No cached observation survives the caller's current acquisition.
 struct TypeProbe {
- uint32_t pointer=0,owners=0;int level=-1;
+ uint32_t pointer=0,items=0,owners=0;int level=-1;
  uint8_t insignificant=0,spawned=0;char id[24]{};
 };
 template<class Read,class Visit> bool captureVisit(Read read,Stamp&out,Visit visit){
@@ -42,7 +42,7 @@ template<class Read,class Visit> bool captureVisit(Read read,Stamp&out,Visit vis
    for(int i=0;i<count;++i){uint32_t t=pointers[i],owners=0;int level=-1;uint8_t insignificant=0,spawned=0;char id[24]{},cameo[24]{};
     if(t<0x10000||!read(t+0x24,id,24)||!id[0]||!read(t+0x634,&level,4)||!read(t+0x6CC,&owners,4)||!read(t+0x232,&insignificant,1)||!read(t+0xD54,&spawned,1)||!read(t+0x6D6,cameo,24))return false;
     mix(&t,4);mix(id,24);mix(cameo,24);mix(&level,4);mix(&owners,4);mix(&insignificant,1);mix(&spawned,1);
-    TypeProbe probe{};probe.pointer=t;probe.owners=owners;probe.level=level;probe.insignificant=insignificant;probe.spawned=spawned;
+    TypeProbe probe{};probe.pointer=t;probe.items=p;probe.owners=owners;probe.level=level;probe.insignificant=insignificant;probe.spawned=spawned;
     std::copy_n(id,24,probe.id);visit(a,first+i,probe);
    }
   }
