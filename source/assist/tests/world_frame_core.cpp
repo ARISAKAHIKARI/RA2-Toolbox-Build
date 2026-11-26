@@ -615,6 +615,18 @@ void capacity(){
    uint8_t byte=0;CHECK(collisions.capture(live,first+(i-1)*step,&byte,1)&&byte==i);
   }
   CHECK(reads==8&&collisions.counters.pageHits==8&&collisions.seal());
+  // Import must resolve the same collision chain once per input page.
+  worldframe::Snapshot imported;
+  std::vector<worldframe::Page> input(collisions.pages.data(),collisions.pages.data()+collisions.pages.size());
+  std::reverse(input.begin(),input.end());
+  CHECK(imported.import(collisions.key,collisions.counters,input.data(),input.size()));
+  CHECK(imported.pages.size()==8&&imported.counters.pageHits==8);
+  for(uint32_t i=0;i<8;++i){
+   uint8_t byte=0;CHECK(imported.read(first+i*step,&byte,1)&&byte==i+1);
+  }
+  input.back().address=input.front().address;
+  CHECK(!imported.import(collisions.key,{},input.data(),input.size()));
+  CHECK(!imported.sealed()&&imported.pages.size()==0&&!imported.find(first+7*step));
   collisions.resetBoundary(key());
   uint8_t byte=0;CHECK(collisions.capture(live,first+7*step,&byte,1)&&byte==8);
   CHECK(reads==9&&collisions.pages.size()==1&&collisions.counters.pageHits==0);
