@@ -1189,7 +1189,19 @@ static bool scanTypes(bool direct=false,const std::array<std::vector<external::c
    }else{
     localizedName=get<uint32_t>(type+0x60);naval=get<bool>(type+0xCCE);cost=get<int>(type+0x610);
    }
-   if(localizedName>=0x10000)name(type,out.name,40);
+   if(localizedName>=0x10000&&direct){
+    // Reuse the already read name pointer. Most names fit in a single
+    // contiguous read. Fall back to the original bounded character walk
+    // when the speculative suffix crosses an unreadable region.
+    uint16_t text[39]{};
+    int n=0;
+    if(read(localizedName,text,sizeof text)){
+     while(n<39&&text[n]){out.name[n]=text[n];++n;}
+    }else{
+     for(;n<39;++n){uint16_t ch=0;if(!read(localizedName+uint32_t(n)*2,&ch,2)||!ch)break;out.name[n]=ch;}
+    }
+    if(!n)for(int i=0;i<23&&out.id[i];++i)out.name[i]=uint8_t(out.id[i]);
+   }else if(localizedName>=0x10000)name(type,out.name,40);
    else for(int n=0;n<23&&out.id[n];++n)out.name[n]=uint8_t(out.id[n]);
    out.kind=kinds[k];out.index=i;out.naval=naval!=0;out.cost=cost;
    next.pointers[count]=type;next.allowed[count]=0;
