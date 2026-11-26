@@ -1129,7 +1129,8 @@ static int findIdle(uint32_t house,int mode){
 static void requestTypeCatalogue(){
  nativeCatalogueProbe.reset();catalogueReady=false;catalogueRequestedAt=GetTickCount();worldFrameCatalogueProbeAt=0;
 }
-static bool scanTypes(bool direct=false){
+static bool scanTypes(bool direct=false,const std::array<std::vector<external::catalogue::TypeProbe>,4>* probes=nullptr){
+ if(probes&&!direct)return false;
  if(direct?sampleReadDepth!=0:(!sampleReadDepth||!sampleReadComplete))return false;
  struct Projection {Type types[MaxTypes];uint32_t pointers[MaxTypes];uint8_t allowed[MaxTypes];
   std::array<std::pair<uint32_t,int>,MaxTypes> priorByPointer;};
@@ -1152,13 +1153,19 @@ static bool scanTypes(bool direct=false){
    if(!read(arrays[k],&types,sizeof types)||types.count<0||types.count>4096||
       types.capacity<types.count||types.capacity>65536||
       (types.count&&(types.items<0x10000||uint64_t(types.items)+uint64_t(types.count)*4>=0x80000000ull)))return false;
-   if(count<MaxTypes&&types.count&&!read(types.items,nativeTypes,size_t(types.count)*4))return false;
+   if(probes){
+    const auto&batch=(*probes)[k];
+    if(batch.size()!=size_t(types.count)||(!batch.empty()&&batch.front().items!=types.items))return false;
+   }else if(count<MaxTypes&&types.count&&!read(types.items,nativeTypes,size_t(types.count)*4))return false;
   }else types=vec(arrays[k],4096);
   for(int i=0;i<types.count&&count<MaxTypes;++i){
-   const uint32_t type=direct?nativeTypes[i]:item(types,i);
+   const auto*probe=probes?&(*probes)[k][i]:nullptr;
+   const uint32_t type=probe?probe->pointer:direct?nativeTypes[i]:item(types,i);
    if(type<0x10000)return false;
    int level=0,cost=0;uint8_t insignificantRaw=0,spawned=0,naval=0;uint32_t owners=0,localizedName=0;
-   if(direct){
+   if(probe){
+    level=probe->level;owners=probe->owners;insignificantRaw=probe->insignificant;spawned=probe->spawned;
+   }else if(direct){
     // A failed metadata read is not a false filter bit or a zero price.
     // Read the nearby cost/level fields together and stage all results.
     uint32_t costLevel[(0x634-0x610)/4+1]{};
@@ -1173,7 +1180,10 @@ static bool scanTypes(bool direct=false){
    const bool insignificant=insignificantRaw&&!techEnhancementCatalogueIncludesInsignificant(type,arrays[k],i,level);
    if(!validType(techEnhancementCatalogueLevel(type,level),insignificant,spawned!=0,owners))continue;
    Type& out=next.types[count];out={};
-   if(!read(type+0x24,out.id,23))return false;
+   if(probe){
+    memcpy(out.id,probe->id,23);
+    if(!read(type+0x610,&cost,4))return false;
+   }else if(!read(type+0x24,out.id,23))return false;
    if(direct){
     if(!read(type+0x60,&localizedName,4)||!read(type+0xCCE,&naval,1))return false;
    }else{
@@ -2087,8 +2097,16 @@ static void tick(){
  const bool graphCatalogueDue=catalogueDue&&!nativeCatalogue;
  if(catalogueDue&&nativeCatalogue&&nativeCatalogueProbe.begin(now)){
   external::catalogue::Stamp stamp{};
-  if(external::catalogue::capture(readLiveWorld,stamp)&&
-     ((catalogueReady&&catalogueHash==stamp.hash)||scanTypes(true))){
+  // The stamp and projection share this invocation's ordered type metadata.
+  // Retain allocation capacity only, never reuse old observations.
+  static std::array<std::vector<external::catalogue::TypeProbe>,4> probes;
+  for(auto&batch:probes)batch.clear();
+  const auto collectProbe=[&](uint32_t array,int,const external::catalogue::TypeProbe&probe){
+   const int k=array==0xA8B218?0:array==0xA8E348?1:array==0xA83CE0?2:3;
+   probes[k].push_back(probe);
+  };
+  if(external::catalogue::captureVisit(readLiveWorld,stamp,collectProbe)&&
+     ((catalogueReady&&catalogueHash==stamp.hash)||scanTypes(true,&probes))){
    catalogueHash=stamp.hash;catalogueReady=true;catalogueAt=now;
    catalogueRequestedAt=0;worldFrameCatalogueProbeAt=now;
   }
