@@ -1123,8 +1123,15 @@ static void requestTypeCatalogue(){
 }
 static bool scanTypes(bool direct=false){
  if(direct?sampleReadDepth!=0:(!sampleReadDepth||!sampleReadComplete))return false;
- struct Projection {Type types[MaxTypes];uint32_t pointers[MaxTypes];uint8_t allowed[MaxTypes];};
+ struct Projection {Type types[MaxTypes];uint32_t pointers[MaxTypes];uint8_t allowed[MaxTypes];
+  std::array<std::pair<uint32_t,int>,MaxTypes> priorByPointer;};
  static Projection next;
+ // Preserve the first previous entry for a duplicate pointer, exactly like
+ // the old linear scan. Build the lookup once per catalogue projection.
+ const int priorCount=std::min<int>(MaxTypes,std::max<int>(0,snap.typeCount));
+ auto& priorByPointer=next.priorByPointer;
+ for(int prior=0;prior<priorCount;++prior)priorByPointer[prior]={typePointers[prior],prior};
+ std::sort(priorByPointer.begin(),priorByPointer.begin()+priorCount);
  int count=0;
  const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};
  const int kinds[]={3,16,40,7};
@@ -1142,7 +1149,8 @@ static bool scanTypes(bool direct=false){
    else for(int n=0;n<23&&out.id[n];++n)out.name[n]=uint8_t(out.id[n]);
    out.kind=kinds[k];out.index=i;out.naval=get<bool>(type+0xCCE);out.cost=get<int>(type+0x610);
    next.pointers[count]=type;next.allowed[count]=0;
-   for(int prior=0;prior<snap.typeCount;++prior)if(typePointers[prior]==type){next.allowed[count]=techAllowed[prior];break;}
+   const auto prior=std::lower_bound(priorByPointer.begin(),priorByPointer.begin()+priorCount,std::make_pair(type,0));
+   if(prior!=priorByPointer.begin()+priorCount&&prior->first==type)next.allowed[count]=techAllowed[prior->second];
    ++count;
   }
  }
