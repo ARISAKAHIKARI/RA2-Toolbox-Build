@@ -193,6 +193,32 @@ void hostVisual(){
   m.put(0xA8ED84,58);
   auto recovered=retry.acquire(boundary(58,220),worldframe::Resources,220,live);
   CHECK(recovered&&retry.statistics.buildInitial==3&&retry.statistics.captures==1);
+  // Multiple readers of the same pinned display token report an existing
+  // missing page after a failed graph. They must not bypass backoff.
+  const uint32_t missing=0xE90000;
+  CHECK(retry.request({missing},221,true,recovered));
+  m.denied.push_back({0xA8EC78,24});
+  m.put(0xA8ED84,59);
+  CHECK(!retry.acquire(boundary(59,236),worldframe::Resources,236,live));
+  const auto failed=retry.statistics.failed;
+  const auto deferred=retry.statistics.deferredFailedBuilds;
+  for(int frame=60;frame<63;++frame){
+   const uint32_t tick=237+uint32_t(frame-60);
+   CHECK(retry.request({missing},tick,true,recovered));
+   m.put(0xA8ED84,frame);
+   CHECK(!retry.acquire(boundary(frame,tick),worldframe::Resources,tick,live));
+  }
+  CHECK(retry.statistics.failed==failed&&retry.statistics.deferredFailedBuilds==deferred+3);
+  // A new page followed by another duplicate report must still invalidate
+  // the old attempt, even before the retry window expires.
+  CHECK(retry.request({missing+4096},240,true,recovered));
+  CHECK(retry.request({missing},240,true,recovered));
+  m.put(0xA8ED84,63);
+  CHECK(!retry.acquire(boundary(63,240),worldframe::Resources,240,live));
+  CHECK(retry.statistics.failed==failed+1);
+  m.denied.pop_back();
+  m.put(0xA8ED84,64);
+  CHECK(retry.acquire(boundary(64,256),worldframe::Resources,256,live));
  }
  worldframe::VisualCache fast;
  m.put(0xA8ED84,52);auto first=boundary(52,200);
