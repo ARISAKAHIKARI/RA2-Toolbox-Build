@@ -243,6 +243,31 @@ void overlap(){
  CHECK(!imported.observed(0x10FF8,24));
  CHECK(imported.import(s.key,s.counters,s.pages.data(),s.pages.size()));
  CHECK(imported.read(0x10FF8,out.data(),24));
+ // Swap full and zero-page snapshots in both directions. The valid
+ // lookup must follow its page buffer, never expose old boundary bytes.
+ worldframe::Snapshot boundary;
+ emptyKey.frame=51;CHECK(boundary.import(emptyKey,{},nullptr,0));
+ imported.swap(boundary);
+ CHECK(imported.key.frame==51&&imported.pages.size()==0&&!imported.find(0x10000));
+ CHECK(boundary.read(0x10FF8,out.data(),24)&&boundary.key.frame==s.key.frame);
+ imported.swap(boundary);
+ CHECK(imported.read(0x10FF8,out.data(),24)&&!boundary.find(0x10000));
+ // Both invalid indices can be skipped, but identities still move.
+ worldframe::Snapshot empty2;emptyKey.frame=52;
+ CHECK(empty2.import(emptyKey,{},nullptr,0));
+ boundary.swap(empty2);
+ CHECK(boundary.key.frame==52&&empty2.key.frame==51);
+ CHECK(!boundary.find(0x10000)&&!empty2.find(0x10000));
+ // Two valid lookup tables with different page order/content must swap.
+ const auto*last=s.pages.data()+s.pages.size()-1;
+ CHECK(boundary.import(key(53),{},last,1));
+ const uint32_t address=last->address;
+ imported.swap(boundary);
+ CHECK(imported.key.frame==53&&imported.pages.size()==1&&imported.find(address));
+ CHECK(boundary.read(0x10FF8,out.data(),24));
+ CHECK(!imported.read(0x10FF8,out.data(),24));
+ imported.swap(imported);
+ CHECK(imported.key.frame==53&&imported.find(address)&&imported.sealed());
 }
 void partial(){
  Memory m;for(uint32_t i=0x20000;i<0x21000;++i)m.bytes[i]=uint8_t(i);m.partialPages.insert(0x20000);m.denied.push_back({0x20020,8});
