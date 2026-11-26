@@ -27,8 +27,7 @@ static void cancelOreJob(uint32_t pointer){if(worldObjects.contains(pointer)){in
   manualVersions.change(id,miner?pointer:0,miner);pauseMissileForManual(id,pointer);releaseAutoOwner(id);minerDefenseForget(id);++inputSerial;}}
 static void observePausedOre(uint32_t house,int frame){
  if(frame==pausedOreFrame||!manualVersions.pausedCount)return;
- SampleReadScope sample;
- const auto* roster=sample?sampledObjectIndex():nullptr;
+ const auto observe=[&](const auto* roster){
  if(!roster)return;
  pausedOreFrame=frame;
  // Follow manually suspended miners in the sealed roster. Missing bytes
@@ -42,6 +41,9 @@ static void observePausedOre(uint32_t house,int frame){
   if(n<manualVersions.pausedCount&&manualVersions.pausedSlots[n]==slot)++n;
  }
  snap.oreManual=int(manualVersions.pausedCount);
+ };
+ if(runtimeDirectActions){if(commandRosterReady())observe(&worldObjects);}
+ else {SampleReadScope sample;observe(sample?sampledObjectIndex():nullptr);}
 }
 #include "object_identity_read_leaf.h"
 extern "C" int GuardedReadObjectIdentity(unsigned,unsigned*);
@@ -84,24 +86,36 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  static DropCandidate dropCandidates[planner::MaxActors];int dropCount=0;
  bool queryCombat=false;static bool oreParticipant[planner::MaxActors];
  uint32_t nextMode=0;
- static uint32_t lastMode;static bool lastNativeEnrichment=false;
+ static uint32_t lastMode;static bool lastNativeEnrichment=false,lastHostPublication=true;
  bool nativeEnrichment=false;
- // Pure planner conversion may consume a recent sealed background graph.
- // The native EventClass gateway must still recheck all actor/target IDs.
- // A strict AntiTheft presence probe is handled independently below.
- {ObservationReadScope frameRead;if(!frameRead)return false;
- const auto&source=sampleWorldSource->key;
+ // The fixed all-Runtime compute policy consumes planningWorld locally.
+ // Host display reads its own WorldFrame, never this command mailbox.
+ // Keep the legacy/mixed-compute and outstanding Host receipt paths intact.
+ const bool hostPublication=!(runtimeDirectActions&&allowNativeRead&&
+   sh->computeApplied==compute::All&&!sh->plannerTracking&&sh->planRequest==sh->planAck);
+ // Runtime-native conversion reads the current game objects directly.
+ // Keep immutable observation provenance only for the legacy graph lane.
+ const auto collect=[&](const worldframe::Key&source,bool native)->bool{
  if(planningWorld.match==match&&source.frame<planningWorld.frame)return false;
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
  bool ore=((sh->flags|sh->plannerTracking|sh->runtimeTracking)&AutoOreReturn)!=0;
  bool minerDefense=sh->minerDefenseEnabled||minerDefensePending();
  const bool defenseRequested=(sh->flags&AntiTheft)!=0;
- const bool strictDefenseSource=allowNativeRead&&worldFrameReady&&!worldFrameBoundaryOnly&&
+ const bool strictDefenseSource=!native&&allowNativeRead&&worldFrameReady&&!worldFrameBoundaryOnly&&
       worldFrame.sealed()&&worldFrame.key.match==match&&worldFrame.key.frame==frame;
  bool defense=false,drop=sh->magnetronDrop!=0;
  worldframe::Key defenseSource{};long defenseRevision=-1;
  bool defenseProven=false;
- if(defenseRequested&&strictDefenseSource){
+ if(defenseRequested&&native&&allowNativeRead){
+  if(!refreshFeatureTypes())return false;
+  defenseRevision=featureConfigRevision;
+  Vec buildings{};if(!sampleRoster(0xA8EB40,buildings))return false;
+  for(int n=0;n<buildings.count;++n){const auto p=item(buildings,n);
+   if(p&&own(p,house)&&!get<bool>(p+0x81)&&antiTheftBuilding(p)){defense=true;break;}
+  }
+  MemoryBarrier();defenseProven=!(defenseRevision&1)&&sh->featureConfigSeq==defenseRevision;
+  if(!defenseProven)return false;
+ }else if(defenseRequested&&strictDefenseSource){
   bool changed=false;
   defenseProven=collectAntiTheftPresence(house,defense,changed,defenseRevision);
   if(defenseProven){
@@ -120,16 +134,37 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  if(!advanced&&!ore&&!minerDefense&&!defense&&!drop&&!sh->plannerTracking&&!sh->runtimeTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
  uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0)|(minerDefense?1u<<29:0);
  nativeEnrichment=allowNativeRead&&(drop||(advanced&&sh->nativeCombatQueries));
- if(planningFrame==source.frame&&planningSerial==inputSerial&&lastMode==mode&&lastNativeEnrichment==nativeEnrichment)return false;
- // No metadata mutation precedes this point. Idle and repeated same-frame
- // observations must not copy the entire rollback cache before returning.
- static WeaponCacheEntry cacheBefore[1024]{};memcpy(cacheBefore,weaponCache,sizeof weaponCache);
+ if(planningFrame==source.frame&&planningSerial==inputSerial&&lastMode==mode&&lastNativeEnrichment==nativeEnrichment&&lastHostPublication==hostPublication)return false;
+ // Validate a roster only when the collector will actually consume it.
+ // A native drain/empty publication carries residual intents and clears old
+ // actor arrays without reading a Techno vector it will never traverse.
+ // Preserve legacy sealed-roster completeness semantics.
+ const bool actorsNeeded=advanced||ore||minerDefense||defense||drop;
+ Vec all{};if((actorsNeeded||!native)&&!sampleRoster(0xA8EC78,all))return false;
+ // The native collector does not invoke the engine until after conversion.
+ // Every refinery waiting ring can share one live map-array header during
+ // this invocation. Keep sealed-page discovery and missing-read semantics
+ // unchanged for the legacy observation route.
+ uint32_t waitingMapItems=0;int waitingMapCount=0;bool waitingMapRead=false;
+ const auto waitingCell=[&](int x,int y)->uint32_t{
+  if(!native)return readMapCell(x,y);
+  if(x<=0||y<=0||x>=512||y>=512)return 0;
+  if(!waitingMapRead){
+   waitingMapCount=get<int>(0x87F7E8+320);waitingMapItems=get<uint32_t>(0x87F7E8+316);waitingMapRead=true;
+  }
+  const int index=y*512+x;
+  return waitingMapItems>=0x10000&&waitingMapCount>index&&waitingMapCount<=512*512?
+   get<uint32_t>(waitingMapItems+uint32_t(index)*4):0;
+ };
+ const bool rollbackNeeded=!native||defenseProven;
+ static WeaponCacheEntry cacheBefore[1024]{};
+ if(rollbackNeeded)memcpy(cacheBefore,weaponCache,sizeof weaponCache);
  if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);nextMode=mode;
  w.match=match;
  // Preserve the real acquisition time and frame of a delayed observation.
  w.tick=source.tick?source.tick:now;
  w.frame=source.frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
- Vec all{};if(!sampleRoster(0xA8EC78,all))return false;static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;static bool dockOre=false,dockDefense=false;
+ static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;static bool dockOre=false,dockDefense=false;
  // Dock compatibility is type metadata. Cache it instead of rescanning all
  // combat units just to discover the same refinery types on every frame.
  if(ore||minerDefense){Vec types=vec(0xA83CE0,4096);
@@ -138,23 +173,52 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
    for(int i=0;i<types.count&&refineryTypesCount<512;++i){uint32_t type=item(types,i);const bool nativeMiner=minerDefense&&minerDefenseMiner(type);if(type<0x10000||(!nativeMiner&&(!ore||!oreMiner(type))))continue;
     Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&refineryTypesCount<512;++j){uint32_t dock=item(docks,j);bool known=false;for(int n=0;n<refineryTypesCount;++n)if(refineryTypes[n]==dock)known=true;if(dock&&!known&&(nativeMiner||oreTypeAllowed(dock,false)))refineryTypes[refineryTypesCount++]=dock;}
    }
+   // Membership is queried for every candidate building; ordering of
+   // this private type set is not observable. Sort after the original
+   // bounded discovery so its capacity/selection semantics stay intact.
+   std::sort(refineryTypes,refineryTypes+refineryTypesCount);
   }
  }
- if(advanced||ore||minerDefense||defense||drop)for(int pass=0;pass<2;++pass)for(int i=0;i<all.count&&w.count<planner::MaxActors;++i){uint32_t p=item(all,i);int k=p?kind(p):-1;
-  if(k<0||get<int>(p+0x6C)<=0)continue;
-  bool ownActor=get<uint32_t>(p+0x21C)==house;
-  // Native refinery/chrono transitions may temporarily hide the unloading
-  // miner. Keep its read-only unloading evidence; it cannot receive orders
-  // until the separate live/on-map admission succeeds after completion.
-  if(!get<bool>(p+0x74)&&!(ore&&ownActor&&k==2&&get<bool>(p+0x6D1)))continue;
-  if(ownActor!=(pass==0))continue;if(!advanced&&!minerDefense&&!defense&&!drop&&(!ownActor||(k!=2&&k!=3)))continue;
+ // Preserve the existing own-first order and capacity priority. The native
+ // collector performs no game calls in this loop, so the membership/class
+ // facts need only be read once per invocation. The legacy snapshot lane
+ // preserves its original demand/discovery order.
+ struct NativeActorRef{uint32_t pointer;int kind;bool onMap;};
+ static NativeActorRef nativeActors[2][16384];
+ int nativeCounts[2]{};
+ if(native&&actorsNeeded){
+  for(int i=0;i<all.count;++i){
+   const auto p=item(all,i);const int k=p?kind(p):-1;
+   if(k<0||get<int>(p+0x6C)<=0)continue;
+   const bool ownActor=get<uint32_t>(p+0x21C)==house;
+   const bool onMap=get<bool>(p+0x74);
+   if(!onMap&&!(ore&&ownActor&&k==2&&get<bool>(p+0x6D1)))continue;
+   if(!advanced&&!minerDefense&&!defense&&!drop&&(!ownActor||(k!=2&&k!=3)))continue;
+   const int group=ownActor?0:1;
+   nativeActors[group][nativeCounts[group]++]={p,k,onMap};
+  }
+ }
+ if(actorsNeeded)for(int pass=0;pass<2;++pass)for(int i=0;i<(native?nativeCounts[pass]:all.count)&&w.count<planner::MaxActors;++i){
+  const uint32_t p=native?nativeActors[pass][i].pointer:item(all,i);
+  const int k=native?nativeActors[pass][i].kind:(p?kind(p):-1);
+  bool ownActor=pass==0;
+  if(!native){
+   if(k<0||get<int>(p+0x6C)<=0)continue;
+   ownActor=get<uint32_t>(p+0x21C)==house;
+   // Native refinery/chrono transitions may temporarily hide the unloading
+   // miner. Keep its evidence even if the object is temporarily off-map.
+   if(!get<bool>(p+0x74)&&!(ore&&ownActor&&k==2&&get<bool>(p+0x6D1)))continue;
+   if(ownActor!=(pass==0))continue;
+   if(!advanced&&!minerDefense&&!defense&&!drop&&(!ownActor||(k!=2&&k!=3)))continue;
+  }
   uint32_t type=typeOf(p,k);if(!type)continue;
   bool tracked=advanced&&ownActor&&orderIndex(p)>=0;
   bool dropSource=drop&&ownActor&&rawMagnetron(p,featuretypes::MagnetronDrop);
   bool harvester=ore&&ownActor&&k==2&&oreMiner(type);
   bool defenseMiner=minerDefense&&ownActor&&k==2&&minerDefenseMiner(type);
   bool spiderSource=minerDefense&&ownActor&&(minerDefenseType(type,k)||minerDefenseOwns(get<uint32_t>(p+0x10)));
-  bool oreDock=false;if((ore||minerDefense)&&ownActor&&k==3)for(int j=0;j<refineryTypesCount;++j)if(refineryTypes[j]==type){oreDock=true;break;}
+  const bool oreDock=(ore||minerDefense)&&ownActor&&k==3&&
+   std::binary_search(refineryTypes,refineryTypes+refineryTypesCount,type);
   bool turret=defense&&ownActor&&antiTheftBuilding(p);
   bool threat=defense&&!ownActor&&antiTheftThreat(p,house);
   bool spider=minerDefense&&!ownActor&&minerDefenseThreat(p,house,true);
@@ -165,7 +229,9 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
   a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);a.cost=get<int>(type+0x610);a.veterancy=get<float>(p+0x150);a.manualVersion=manualVersions.get(a.id);
   if(ownActor)a.flags|=planner::Own;else if(enemy)a.flags|=planner::Enemy;
   if(get<bool>(p+0x83))a.flags|=planner::Selected;if(get<bool>(p+0x1C8))a.flags|=planner::Disabled;
-  if(get<bool>(p+0x81))a.flags|=planner::Limbo;if(!get<bool>(p+0x74)||!get<bool>(p+0x90))a.flags|=planner::OffMap;
+  if(get<bool>(p+0x81))a.flags|=planner::Limbo;
+  // Same invocation, before native queries: reuse the observed map bit.
+  if(!(native?nativeActors[pass][i].onMap:get<bool>(p+0x74))||!get<bool>(p+0x90))a.flags|=planner::OffMap;
   if(get<uint32_t>(p+0x11C))a.flags|=planner::Transported;if(get<int>(p+0x220)!=0)a.flags|=planner::Cloaked;
   a.target=rawObjectID(get<uint32_t>(p+0x2B4));uint32_t destination=k!=3?get<uint32_t>(p+0x5A4):0;a.destination=rawObjectID(destination);
   if(destination>=0x10000&&!a.destination){int x=get<short>(destination+0x24),y=get<short>(destination+0x26);if(readMapCell(x,y)==destination)a.destinationCell=uint32_t(y*1000+x);}
@@ -193,7 +259,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
    // entry, pathfinder, radio query or game-side docking helper is called.
    int cx=refinery.cellX+(refinery.dockStyleB?2:1),cy=refinery.cellY+2;
    for(int radius=1;radius<=4&&refinery.count<planner::MaxWaitingCells;++radius)for(int dy=-radius;dy<=radius&&refinery.count<planner::MaxWaitingCells;++dy)for(int dx=-radius;dx<=radius&&refinery.count<planner::MaxWaitingCells;++dx){
-    if(dx!=-radius&&dx!=radius&&dy!=-radius&&dy!=radius)continue;int x=cx+dx,y=cy+dy;uint32_t cell=readMapCell(x,y);if(!cell)continue;
+    if(dx!=-radius&&dx!=radius&&dy!=-radius&&dy!=radius)continue;int x=cx+dx,y=cy+dy;uint32_t cell=waitingCell(x,y);if(!cell)continue;
     auto&sample=refinery.waiting[refinery.count++];sample.cell=uint32_t(y*1000+x);sample.occupation=get<uint32_t>(cell+0x124);sample.land=get<int>(cell+0xEC);
    }
   }
@@ -201,12 +267,21 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  for(int i=0;i<nativeCount&&w.intentCount<planner::MaxIntents;++i){const auto&o=nativeOrders[i];w.intents[w.intentCount++]={o.id,o.cell,o.token,o.mode,uint32_t(o.global)};}
  queryCombat=allowNativeRead&&advanced&&sh->nativeCombatQueries;
  if(advanced&&!queryCombat)collectCombatProbes(w,true);
- if(!frameRead.complete()||(defenseProven&&!antiTheftSourceCurrent(defenseSource,defenseRevision))){
+ if((!native&&!sampleReadComplete)||(defenseProven&&(native?sh->featureConfigSeq!=defenseRevision:!antiTheftSourceCurrent(defenseSource,defenseRevision)))){
   // An incomplete observation must neither replace a valid input nor poison
   // the existing metadata caches with values returned by failed reads.
-  memcpy(weaponCache,cacheBefore,sizeof weaponCache);dockFrame=-100000;dockCount=-1;return false;
+  if(rollbackNeeded)memcpy(weaponCache,cacheBefore,sizeof weaponCache);dockFrame=-100000;dockCount=-1;return false;
  }
- } // sealed facts only; native queries and publication follow outside scope
+ return true;
+ };
+ // Native collectors use current mission/type data; the legacy graph lane
+ // is reserved for explicit background command readers and unmigrated work.
+ if(runtimeDirectActions&&allowNativeRead){
+  worldframe::Key source{};source.match=match;source.frame=frame;source.tick=now;source.house=house;
+  if(!collect(source,true))return false;
+ }else{
+  ObservationReadScope frameRead;if(!frameRead||!collect(sampleWorldSource->key,false)||!frameRead.complete())return false;
+ }
  for(int n=0;n<dropCount;++n){const auto&candidate=dropCandidates[n];auto&a=w.actors[candidate.actor];
   if(worldByID(a.id)==candidate.pointer&&rawMagnetronDrop(candidate.pointer,candidate.victim,house))a.flags|=planner::DropHazard;
  }
@@ -215,7 +290,10 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  // with live missions. A new input can share this frame with older raw bytes.
  for(int n=0;n<w.count;++n)if(oreParticipant[n]&&manualVersions.orePaused(w.actors[n].id))w.actors[n].flags|=planner::OrePaused;
  if(!planner::copyActiveWorld(planningWorld,w))return false;
- planningFrame=w.frame;planningSerial=w.inputSerial;lastMode=nextMode;lastNativeEnrichment=nativeEnrichment;
+ planningFrame=w.frame;planningSerial=w.inputSerial;lastMode=nextMode;lastNativeEnrichment=nativeEnrichment;lastHostPublication=hostPublication;
+ // A successful local update still prevents the dispatcher display-throttle
+ // early return. Avoid a second copy and shared seqlock write with no reader.
+ if(!hostPublication)return true;
  InterlockedIncrement(&sh->worldSeq);sh->world.match=w.match;sh->world.tick=w.tick;sh->world.frame=w.frame;sh->world.count=w.count;sh->world.intentCount=w.intentCount;sh->world.refineryCount=w.refineryCount;sh->world.inputSerial=w.inputSerial;
  memcpy(sh->world.actors,w.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(sh->world.intents,w.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(sh->world.refineries,w.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));
  sh->world.combatCount=w.combatCount;memcpy(sh->world.combat,w.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));

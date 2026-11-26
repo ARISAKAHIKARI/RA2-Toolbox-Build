@@ -1,0 +1,36 @@
+name: Validate aircraft waypoint input and patrol
+on:
+  pull_request:
+    paths:
+      - 'source/assist/source/air_path_*'
+      - 'source/assist/source/mo_orders_bridge.h'
+      - 'source/assist/source/native_planning_input_bridge.h'
+      - 'source/assist/tests/air_*'
+      - 'source/assist/tests/mo_orders_bridge_test.py'
+      - '.github/workflows/validate-aircraft-waypoint.yml'
+  push:
+    branches: [fix/watch-pin-and-control-ui-20261123]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  aircraft-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise production Runtime input, node submission and patrol gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics/air-path
+          python3 source/assist/tests/mo_orders_bridge_test.py
+          python3 source/assist/tests/air_events_bomb_board_test.py --out diagnostics/air-path/events
+          python3 source/assist/tests/air_path_command_admission.py --build-dir diagnostics/air-path/admission
+          python3 source/assist/tests/air_waypoint_host_test.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2-Aircraft-Waypoint-Regression
+          retention-days: 7
+          path: diagnostics/air-path/

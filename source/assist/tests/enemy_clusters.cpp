@@ -15,6 +15,18 @@ int main(){
  f={};add(0,0);add(3*256+1,0);assert(group(f).size()==2);
  f={};add(0,0);add(3*256,1);assert(group(f).size()==2); // Euclidean, not square radius
  f={};add(0,0);add(0,0,1,2);add(0,0,1,1,2);add(0,0,3);add(0,0,3);add(-1,0);assert(group(f).size()==6);
+ // A camera-only or metadata-only update retains the exact topology;
+ // movement, order, match, owner and type changes must never reuse stale members.
+ f={};f.match=7;f.house=9;add(0,0);add(768,0);GroupCache cache;
+ assert(cache.update(f).size()==1);
+ f.items[0].x=100;f.items[1].x=200;f.tick=42;assert(cache.update(f).size()==1);
+ f.items[1].worldX=769;assert(cache.update(f).size()==2);
+ f.items[1].worldX=768;assert(cache.update(f).size()==1);
+ f.items[1].owner=2;assert(cache.update(f).size()==2);
+ f.items[1].owner=1;assert(cache.update(f).size()==1);
+ std::swap(f.items[0],f.items[1]);assert(cache.update(f)[0].members[0]==1);
+ f.match=8;assert(cache.update(f).size()==1);
+ cache.clear();f.count=0;assert(cache.update(f).empty());
  // Compare the spatial index against an independent all-pairs flood fill.
  std::mt19937 rng(711);unsigned comparisons=0;
  for(int trial=0;trial<120;++trial){f={};int n=32+int(rng()%96);for(int i=0;i<n;++i)add(int(rng()%8192),int(rng()%8192),int(rng()%4),1+rng()%2,1+rng()%3);

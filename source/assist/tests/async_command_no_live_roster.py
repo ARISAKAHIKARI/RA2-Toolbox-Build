@@ -65,18 +65,29 @@ assert "readLiveWorld(pointer+0x10,&observed,sizeof observed)" in bridge
 assert "VisualCache visuals_" in transport
 assert "worldClient_->visual(frame,worldDemand_" in process_reader
 assert "if(worldframe::visualDemand(worldDemand_))" in process_reader
-assert "worldClient_->requestVisual(worldDemands_,!worldComplete_)" in process_reader
+assert "worldClient_->requestVisual(worldDemands_,!worldComplete_,worldFrame_)" in process_reader
 assert "else worldClient_->request(worldDemands_,!worldComplete_)" in process_reader
-assert "uint32_t(now-latest_->visualTick)<16" in visual
+assert "uint32_t(now-latest_->visualTick)<visualReuseWindow(latest_->pages.size())" in visual
+assert "pages<=256?10u:16u" in visual
+assert "uint32_t(now-attemptedAt_)<16" in visual
 assert "if(hostDisplayOnly)" in bridge
 assert "captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);" in bridge
 assert "if(boundaryOnly){" in runtime
 assert "worldFrame.resetBoundary(key)" in runtime
 
-# Display profiles cannot quietly reintroduce per-feature full Techno-list scans.
-for path in ("type_select_bridge.h", "autoload_bridge.h", "burst_bridge.h",
-             "combat_probe_bridge.h", "cooperative_bridge.h", "native_orders_bridge.h"):
+# No recurring display/automation route may secretly walk the full live
+# Techno array. The explicit current-weapon selection shortcut is exceptional:
+# it runs once on the native game thread, when pressed, and uses the original
+# normal-weapon resolver (including Ares extended slots).
+for path in ("autoload_bridge.h", "burst_bridge.h", "combat_probe_bridge.h",
+             "cooperative_bridge.h", "native_orders_bridge.h"):
     assert "vec(0xA8EC78" not in (root / path).read_text(encoding="utf-8"), path
+variant = (root / "type_select_bridge.h").read_text(encoding="utf-8")
+assert "static int selectVariant(uint32_t house,bool global)" in variant
+assert variant.count("vec(0xA8EC78") == 1
+assert "normalVariantWeapon(p,type)" in variant
+assert "get<uint32_t>(c.pointer+0x10)" not in variant
+assert "read(c.pointer+0x10,&currentID,sizeof currentID)" in variant
 
 # Page demand is bounded, deduplicated and ownership-transferred; a partial or
 # oversized dependency set is never submitted as a complete graph.

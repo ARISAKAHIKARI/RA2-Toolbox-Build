@@ -17,8 +17,12 @@ static std::vector<PassengerVisual> passengerView(uint32_t renderNow,const nativ
  // Reproject the same authenticated observation as the other information
  // layers. A missing page must never fall back to another live world scan.
  std::vector<PassengerVisual> out;if(!enabled||!externalData||snap.chat||(!extra.passengerBubbles&&!extra.dangerPassengers)){clearPassengerDisplay();return out;}
+ // A Host visual token can carry a newer display frame than its original
+ // Runtime identity boundary. Verify the frame actually sealed in its bytes.
+ int observedFrame=-1;
  if(!source||!externalData->match||source->key.pid!=pid||source->key.match!=externalData->match||
-    source->key.frame!=externalData->frame||source->key.tick!=externalData->sampledTick){clearPassengerDisplay();return out;}
+    !source->read(0xA8ED84,&observedFrame,sizeof observedFrame)||observedFrame!=externalData->frame||
+    source->key.tick!=externalData->sampledTick){clearPassengerDisplay();return out;}
  external::Projection projection;projection.width=snap.width-160;projection.height=snap.height;projection.cameraX=snap.cameraX;projection.cameraY=snap.cameraY;
  if(transform.active){projection.width=transform.logical.w;projection.height=transform.logical.h;}passengerMotion.projection(transform.generation);
  const auto area=nativeviewhost::clip(transform,projection.width,projection.height);

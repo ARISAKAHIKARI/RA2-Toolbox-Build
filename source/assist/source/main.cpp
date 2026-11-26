@@ -146,14 +146,14 @@ static bool unitPanelEnabled=false; // independent, persisted, default-off visua
 static monitorrefresh::Tracker informationMonitor;
 static int informationFPS(){return infoAdaptive?informationMonitor.rate():std::clamp(fps,5,500);}
 static void publishSuiteDisplay();
-struct DisplayCounters {DWORD since=0,samples=0,paints=0,uploads=0,maxGap=0;uint64_t readUs=0,maxReadUs=0;};
+struct DisplayCounters {DWORD since=0,samples=0,paints=0,uploads=0,maxGap=0;uint64_t readUs=0,maxReadUs=0;DWORD worldFrames=0,maxWorldJobAgeMs=0,maxWorldSourceAgeMs=0;uint64_t worldJobAgeMs=0,worldSourceAgeMs=0;};
 static DisplayCounters displayCounters;
 static overlayui::Recovery overlayRecovery;
 static int labelScalePercent=100,constructionScalePercent=100;
 static visual::Motion motion;static visual::LabelView labelViews[MaxLabels];
 #include "enemy_clusters.h"
 static external::enemies::Frame clusteredEnemies;
-static std::vector<enemyclusters::Group> enemyGroups;
+static enemyclusters::GroupCache enemyGroups;
 static visual::LabelView clusteredEnemyViews[MaxLabels];
 static visual::Motion enemyMotion;static Snapshot enemySample{};static visual::LabelView enemyViews[MaxLabels];
 static_assert(external::enemies::Maximum<=MaxLabels,"Enemy markers reuse the existing display Motion capacity");
@@ -474,14 +474,16 @@ static void logSamplingHealth(DWORD now){
  // the x86 worker is running, so deltas are approximate diagnostic evidence.
  if(!shared)return;
  const auto&d=shared->sampling;
- const std::array<uint32_t,18> values={
+ const std::array<uint32_t,28> values={
   d.captureCalls,d.gateDeferred,d.workerDeferred,d.requestsQueued,
   d.strictAdopted,d.candidateAdopted,d.indexUnavailable,d.strictWorldRejected,
   d.workerStarted,d.workerPublished,d.workerExact,d.workerCandidate,
   d.workerStale,d.workerWorldChanged,d.workerBudget,d.workerRosterFailed,
-  d.workerGraphIncomplete,d.workerRejected
+  d.workerGraphIncomplete,d.workerRejected,
+  d.syncGraphAttempts,d.syncGraphCompleted,d.boundaryAttempts,d.boundaryCompleted,d.reuseHits,
+  d.graphHostDemand,d.graphDisplayOnly,d.graphNoHost,d.graphCatalogue,d.graphRequestedPages
  };
- static std::array<uint32_t,18> prior{};
+ static std::array<uint32_t,28> prior{};
  static uint32_t previousPID=0,previousMatch=0;
  const bool reset=previousPID!=pid||previousMatch!=incoming.match;
  if(reset){prior=values;previousPID=pid;previousMatch=incoming.match;}
@@ -527,7 +529,51 @@ static void logSamplingHealth(DWORD now){
   L" capturedFromFrame="+std::to_wstring(d.workerFirstFrame)+
   L" capturedThroughFrame="+std::to_wstring(d.workerLastFrame)+
   L" scope=worker-aggregates;not-per-frame-atomic");
+ autolog::write(L"sampling-admission pid="+std::to_wstring(pid)+
+  L" match="+std::to_wstring(incoming.match)+
+  L" warmup="+std::to_wstring(reset)+
+  L" syncGraphAttempts="+std::to_wstring(delta(18))+
+  L" syncGraphCompleted="+std::to_wstring(delta(19))+
+  L" boundaryAttempts="+std::to_wstring(delta(20))+
+  L" boundaryCompleted="+std::to_wstring(delta(21))+
+  L" reuseHits="+std::to_wstring(delta(22))+
+  L" graphHostDemand="+std::to_wstring(delta(23))+
+  L" graphDisplayOnly="+std::to_wstring(delta(24))+
+  L" graphNoHost="+std::to_wstring(delta(25))+
+  L" graphCatalogue="+std::to_wstring(delta(26))+
+  L" graphRequestedPages="+std::to_wstring(delta(27))+
+  L" asyncJobsQueued="+std::to_wstring(delta(3))+
+  L" scope=sync-graph-attempts;subscription-context-exclusive;catalogue-requests-overlap");
  prior=values;
+ // Connection-shared Host cache, without blocking on a capture or changing IPC.
+ worldframe::VisualCache::Statistics v{};
+ if(externalReader.tryVisualStatistics(v)){
+  static worldframe::VisualCache::Statistics old{};
+  static uint64_t visualGeneration=0;static uint32_t visualMatch=0,visualAt=0;
+  const bool resetVisual=visualGeneration!=externalReader.generation()||visualMatch!=incoming.match||
+    v.captures<old.captures||v.failed<old.failed||v.reused<old.reused||
+    v.buildInitial<old.buildInitial||v.buildRevision<old.buildRevision||v.buildProfile<old.buildProfile||
+    v.buildRefresh<old.buildRefresh||v.buildSameSource<old.buildSameSource||
+    v.coveredLeases<old.coveredLeases||v.repairedReports<old.repairedReports||v.retiredReports<old.retiredReports;
+  if(resetVisual)old=v;
+  autolog::write(L"sampling-visual-cache pid="+std::to_wstring(pid)+
+   L" match="+std::to_wstring(incoming.match)+
+   L" warmup="+std::to_wstring(resetVisual)+
+   L" windowMs="+std::to_wstring(resetVisual?0u:uint32_t(now-visualAt))+
+   L" captures="+std::to_wstring(v.captures-old.captures)+
+   L" reused="+std::to_wstring(v.reused-old.reused)+
+   L" failed="+std::to_wstring(v.failed-old.failed)+
+   L" buildInitial="+std::to_wstring(v.buildInitial-old.buildInitial)+
+   L" buildRevision="+std::to_wstring(v.buildRevision-old.buildRevision)+
+   L" buildProfile="+std::to_wstring(v.buildProfile-old.buildProfile)+
+   L" buildRefresh="+std::to_wstring(v.buildRefresh-old.buildRefresh)+
+   L" buildSameSource="+std::to_wstring(v.buildSameSource-old.buildSameSource)+
+   L" coveredLeases="+std::to_wstring(v.coveredLeases-old.coveredLeases)+
+   L" repairedReports="+std::to_wstring(v.repairedReports-old.repairedReports)+
+   L" retiredReports="+std::to_wstring(v.retiredReports-old.retiredReports)+
+   L" scope=shared-host-visual-cache;build-reasons-exclusive-except-same-source");
+  old=v;visualGeneration=externalReader.generation();visualMatch=incoming.match;visualAt=now;
+ }
 }
 static void logBridgeHealth(bool force=false){
  // Independent five-second interval, even when bridge-health logs more often
@@ -1518,7 +1564,6 @@ static void updateEnemyDisplay(const Snapshot&source){
  enemySample.cameraX=source.cameraX;enemySample.cameraY=source.cameraY;
  for(int i=0;i<f.count;++i){const auto&m=f.items[i];enemySample.label[i]={m.id,m.x,m.y,0,0,0,0,0,m.color,0};}
  enemyMotion.update(enemySample,f.frame);
- enemyGroups=enemyclusters::group(f);
  // Count-specific text is shared across equal groups; bound historical counts.
  if(enemyRasters.size()>4096)enemyRasters.clear();
 }
@@ -1580,15 +1625,17 @@ static void sampleExternal(DWORD now){
   if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
     ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
   const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
-  // Host no longer creates an independent VisualCache/readLive world sample.
-  // These are native Runtime demands and are fulfilled by the one sealed
-  // CommandCaptureWorker graph; resource-only legacy display projections stay
-  // suspended until they are produced by that Worker.
-  uint32_t displayDemand=worldframe::Base;
+  // This sampler only feeds display/UI. Explicit visual tags prevent
+  // passenger/combat overlays from requesting a synchronous Runtime graph.
+  // Command readers retain their own authoritative subscriptions and guards.
+  // The tactical summary reads factory headers from Base and local sidebar
+  // UI through the separate live UI path. Full product/queue discovery is
+  // requested by actual resource consumers, not the high-rate main display.
+  uint32_t displayDemand=worldframe::HostVisualBase;
   if((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)
-   displayDemand|=worldframe::Passengers;
+   displayDemand|=worldframe::HostVisualPassengers;
   if(passengerOverlay||extra.enemyMarkers||extra.enemySpecialOnly)
-   displayDemand|=worldframe::Combat;
+   displayDemand|=worldframe::HostVisualCombat;
   externalReader.setWorldDemand(displayDemand);
   external::WorldFrameScope worldScope(externalReader,commandMatch());
   if(!worldScope){
@@ -1607,7 +1654,7 @@ static void sampleExternal(DWORD now){
    // The 100ms aircraft scan can precede the publication where play paused.
    // Fill that derived sample once from the already pinned immutable bytes;
    // its source tick stays unchanged and never renews command freshness.
-   if(!externalSampler.idleAircraftDisplay().current(source->key.match,source->key.frame,source->key.serial,GetTickCount(),true)){
+   if(!externalSampler.idleAircraftDisplay().current(source->key.match,externalSampler.state().frame,source->key.serial,GetTickCount(),true)){
     if(!externalSampler.refreshAircraft(source->key.tick,source->key.serial)||!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
     externalSampler.commitSample();
    }
@@ -1638,6 +1685,8 @@ static void sampleExternal(DWORD now){
     L" samples="+std::to_wstring(dc.samples)+L" paintCalls="+std::to_wstring(dc.paints)+L" uploads="+std::to_wstring(dc.uploads)+
     L" meanReadUs="+std::to_wstring(dc.samples?dc.readUs/dc.samples:0)+L" maxReadUs="+std::to_wstring(dc.maxReadUs)+
     L" maxSampleGapMs="+std::to_wstring(dc.maxGap)+L" labels="+std::to_wstring(externalData->labels)+
+    L" worldFrames="+std::to_wstring(dc.worldFrames)+L" meanWorldJobAgeMs="+std::to_wstring(dc.worldFrames?dc.worldJobAgeMs/dc.worldFrames:0)+L" maxWorldJobAgeMs="+std::to_wstring(dc.maxWorldJobAgeMs)+
+    L" meanWorldSourceAgeMs="+std::to_wstring(dc.worldFrames?dc.worldSourceAgeMs/dc.worldFrames:0)+L" maxWorldSourceAgeMs="+std::to_wstring(dc.maxWorldSourceAgeMs)+
     L" foreground="+std::to_wstring(foregroundGame()));
    dc={};dc.since=displayNow;
   }
@@ -1901,16 +1950,26 @@ static void constructionResult(int r,int n,uint32_t id,uint32_t token){buildrese
 struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(){clear();}void clear(){if(dc){if(old&&old!=HGDI_ERROR)SelectObject(dc,old);DeleteDC(dc);}if(bitmap)DeleteObject(bitmap);dc=nullptr;bitmap=old=nullptr;bits=nullptr;w=h=0;}bool resize(int x,int y){if(x==w&&y==h&&dc)return true;clear();if(x<1||y<1||x>8192||y>8192)return false;BITMAPINFO bi{};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=x;bi.bmiHeader.biHeight=-y;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;HDC screen=GetDC(nullptr);dc=CreateCompatibleDC(screen);bitmap=CreateDIBSection(screen,&bi,DIB_RGB_COLORS,(void**)&bits,nullptr,0);ReleaseDC(nullptr,screen);if(!bitmap||!dc){clear();return false;}old=(HBITMAP)SelectObject(dc,bitmap);if(!old||old==HGDI_ERROR){clear();return false;}w=x;h=y;return true;}};static Surface surface;
 #include "watch_windows.h"
 #include "world_presentation.h"
+#include "../../shared/source/frame_pool.h"
 namespace worldrender {
-struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;};
-struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;};
+struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;DWORD sourceTick=0;};
+struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;DWORD sourceTick=0;};
 static std::shared_ptr<const Frame> rasterize(const Job&j){
  if(j.w<1||j.h<1||j.w>8192||j.h>8192||uint64_t(j.w)*j.h>16*1024*1024)return {};
- auto out=std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->projection=j.projection;out->pixels.resize(size_t(j.w)*j.h);
+ // Each raster worker owns its pool; published pixels remain immutable until
+ // all consumers release them. Bound retained buffers to normal HUD sizes.
+ static thread_local asyncwork::FramePool<Frame,3> pool;
+ auto out=uint64_t(j.w)*j.h<=4*1024*1024?pool.acquire():std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->projection=j.projection;out->sourceTick=j.sourceTick;const auto retained=std::min(out->pixels.size(),size_t(j.w)*j.h);out->pixels.resize(size_t(j.w)*j.h);std::fill_n(out->pixels.begin(),retained,0u);
  Bitmap bm(j.w,j.h,j.w*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(out->pixels.data()));{Graphics g(&bm);j.draw(g);}return out;
 }
 static asyncwork::Latest<Job,Frame> worker(rasterize);
 static std::shared_ptr<const Frame> displayed;
+static void recordPresented(const std::shared_ptr<const Frame>&frame){
+ if(frame==displayed)return;
+ const DWORD now=GetTickCount(),jobAge=DWORD(now-frame->tick),sourceAge=frame->sourceTick?DWORD(now-frame->sourceTick):0;
+ auto&c=displayCounters;++c.worldFrames;c.worldJobAgeMs+=jobAge;c.maxWorldJobAgeMs=std::max(c.maxWorldJobAgeMs,jobAge);
+ c.worldSourceAgeMs+=sourceAge;c.maxWorldSourceAgeMs=std::max(c.maxWorldSourceAgeMs,sourceAge);
+}
 static worldpresentation::Submission submission;
 static void submit(Job input){
  nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform)||input.projection!=nativeviewhost::key(transform))return;
@@ -1945,7 +2004,7 @@ static void present(){auto frame=worker.get();
    overlaycompositor::host().publish(std::move(layer));
   }
   if(IsWindowVisible(overlay))ShowWindow(overlay,SW_HIDE);
-  displayed=frame;return;
+  recordPresented(frame);displayed=frame;return;
  }
  overlaycompositor::host().hide(overlaycompositor::World);
  // The compatibility HWND has no per-layer radar cutout. During the
@@ -1956,7 +2015,7 @@ static void present(){auto frame=worker.get();
  POINT origin{};ClientToScreen(game,&origin);origin.x+=frame->relative.x;origin.y+=frame->relative.y;POINT zero{};
  SIZE size{frame->w,frame->h};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
  bool ok=UpdateLayeredWindow(overlay,nullptr,&origin,&size,surface.dc,&zero,0,&blend,ULW_ALPHA)!=0;
- overlayRecovery.submitted(ok);if(ok){displayed=frame;++displayCounters.uploads;overlaystack::place(overlay,overlaystack::Layer::World,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);}
+ overlayRecovery.submitted(ok);if(ok){recordPresented(frame);displayed=frame;++displayCounters.uploads;overlaystack::place(overlay,overlaystack::Layer::World,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);}
 }
 }
 #include "sidebar_overlay.h"
@@ -2002,7 +2061,7 @@ static void paint(){
  const auto&rawEnemyFrame=enemyTextFrame();
  for(int i=0;i<statusCount;++i)nativeviewhost::localPoint(viewportTransform,statusViews[i].x,statusViews[i].y);
  int rawEnemyCount=enemyTextEnabled()&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
- int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups,clusteredEnemies,clusteredEnemyViews):0;
+ int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups.update(rawEnemyFrame),clusteredEnemies,clusteredEnemyViews):0;
  std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
  for(int i=0;i<enemyCount;++i)nativeviewhost::localPoint(viewportTransform,enemyViews[i].x,enemyViews[i].y);
  const auto&enemyFrame=clusteredEnemies;
@@ -2085,11 +2144,16 @@ static void paint(){
  drawnStatusCount=statusCount;drawnStatusWidth=statusFrame.width;drawnStatusHeight=statusFrame.height;memcpy(drawnStatuses,statusFrame.items,sizeof(external::status::Marker)*statusCount);memcpy(drawnStatusViews,statusViews,sizeof(visual::LabelView)*statusCount);
  drawnPlacement=placementDrawing;drawnMo=moDrawing;drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
  auto labels=std::vector<visual::LabelView>(labelViews,labelViews+labelCount),enemies=std::vector<visual::LabelView>(enemyViews,enemyViews+enemyCount),statuses=std::vector<visual::LabelView>(statusViews,statusViews+statusCount);
+ // Capture only populated records; capturing Frame references by value in
+ // the lambda otherwise copies the entire fixed-capacity arrays each job.
+ auto enemyMarkers=std::vector<external::enemies::Marker>(enemyFrame.items,enemyFrame.items+enemyCount);
+ auto statusMarkers=std::vector<external::status::Marker>(statusFrame.items,statusFrame.items+statusCount);
+ const int enemyWidth=enemyFrame.width,enemyHeight=enemyFrame.height,statusWidth=statusFrame.width,statusHeight=statusFrame.height;
  auto threats=std::vector<Threat>(snap.threats,snap.threats+snap.threatCount);auto crates=std::vector<CrateMark>(snap.crates,snap.crates+snap.crateCount);
  for(auto&t:threats){nativeviewhost::localPoint(viewportTransform,t.x,t.y);nativeviewhost::localPoint(viewportTransform,t.tx,t.ty);}for(auto&c:crates)nativeviewhost::localPoint(viewportTransform,c.x,c.y);
  std::array<external::sidebar::Frame,4> shapes; // immutable sidebar SHP pixels
  for(int i=0;i<4;++i)if(idleTabs&(1u<<i))shapes[i]=sidebarShapes.frames[i];
- auto draw=[=,labelViews=std::move(labels),enemyViews=std::move(enemies),statusViews=std::move(statuses),formation=formationhost::drawing(),used=snap.used,capacity=snap.capacity,toast=toast,labelScale=labelScalePercent](Graphics&g) mutable {
+ auto draw=[=,labelViews=std::move(labels),enemyViews=std::move(enemies),statusViews=std::move(statuses),enemyMarkers=std::move(enemyMarkers),statusMarkers=std::move(statusMarkers),threats=std::move(threats),crates=std::move(crates),shapes=std::move(shapes),formation=formationhost::drawing(),used=snap.used,capacity=snap.capacity,toast=toast,labelScale=labelScalePercent](Graphics&g) mutable {
  g.SetSmoothingMode(SmoothingModeAntiAlias);g.ScaleTransform(view.x,view.y);g.TranslateTransform(-worldpresentation::rasterOrigin(left,view.x),-worldpresentation::rasterOrigin(up,view.y));
   for(const auto&b:opaquePanels)g.SetClip(RectF(float(b.left),float(b.top),float(b.right-b.left),float(b.bottom-b.top)),CombineModeExclude);
   if(idleTabs&&tabPhase){auto state=g.Save();g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);
@@ -2101,15 +2165,15 @@ static void paint(){
    drawText(g,numbers,b.x*sx+2,b.y*sy,std::max(8.f,10.f*sy),Color(255,255,239,158));}
   auto mapState=g.Save();if(viewportTransform.active)g.SetClip(RectF(float(mapClip.x),float(mapClip.y),float(mapClip.w),float(mapClip.h)),CombineModeIntersect);
   specialoverlayhost::draw(g,specialDrawing);
-  auto enemyClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);
-  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(onMap(v.x,v.y)&&(viewportTransform.active||external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height)))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
+  auto enemyClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,enemyWidth*sx,enemyHeight*sy),CombineModeIntersect);
+  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(onMap(v.x,v.y)&&(viewportTransform.active||external::enemies::onScreen(v.x,v.y,enemyWidth,enemyHeight)))drawEnemyMarker(g,enemyMarkers[i],v,sx,sy);}g.Restore(enemyClip);
   Pen flightPen(Color(210,130,235,160),1.5f);flightPen.SetEndCap(LineCapArrowAnchor);for(auto l:airLines){g.DrawLine(&flightPen,float(l.x)*sx,float(l.y)*sy,float(l.tx)*sx,float(l.ty)*sy);g.DrawEllipse(&flightPen,float(l.tx)*sx-3,float(l.ty)*sy-3,6.f,6.f);}
   Pen threatPen(Color(185,245,114,223),1.6f);threatPen.SetEndCap(LineCapArrowAnchor);
   for(int i=0;i<threats.size();++i){auto&t=threats[i];float x=t.x*sx,y=t.y*sy,tx=t.tx*sx,ty=t.ty*sy;g.DrawLine(&threatPen,x,y,tx,ty);g.DrawEllipse(&threatPen,tx-7,ty-7,14.f,14.f);}
   Pen cratePen(Color(245,255,205,82),2.f);
   for(int i=0;i<crates.size();++i){auto&c=crates[i];float x=c.x*sx,y=c.y*sy;g.DrawRectangle(&cratePen,x-10,y-9,20.f,18.f);std::wstring text=c.preview<0?L"随机箱":std::wstring(L"预设 · ")+crateName(c.preview);drawText(g,text,x-text.size()*6,y-29,12,Color(255,255,216,117));}
-  auto statusClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,float(statusFrame.width),float(statusFrame.height)),CombineModeIntersect);
-  for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusFrame.items[i],statusViews[i],spiderPhase);g.Restore(statusClip);
+  auto statusClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,float(statusWidth),float(statusHeight)),CombineModeIntersect);
+  for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusMarkers[i],statusViews[i],spiderPhase);g.Restore(statusClip);
   for(int i=0;i<labelCount;++i)drawLabel(g,labelViews[i],sx,sy,labelScale);
   for(const auto&b:passengerBubbles)drawPassengerBubble(g,b);
   g.Restore(mapState);formationhost::draw(g,formation);moordershost::draw(g,moDrawing);placementdrawing::draw(g,placementDrawing);
@@ -2118,7 +2182,7 @@ static void paint(){
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
  };
  if(!nativeviewhost::stable(shared,viewportTransform)){unitpanelhost::panel.hide();worldrender::invalidate();hideWorldOverlay();return;}
- worldrender::Job job{pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)};job.projection=currentProjection;worldrender::submit(std::move(job));
+ worldrender::Job job{pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)};job.projection=currentProjection;job.sourceTick=snap.sampledTick;worldrender::submit(std::move(job));
 
 }
 #include "frame_clock.h"
@@ -2223,7 +2287,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
   setConsoleFeedback(GetDlgItem(ui,9176),message);setConsoleRuntimeError(GetDlgItem(ui,9176),r<0);notify(message);return;
  }
  if(c==PlaceCompletedBuilding){
-  notify(r==2?(shared->placementPreview.active?L"已自动匹配当前栏的完成建筑：地基预览已开启，左键放置，右键或 Esc 取消。":L"已取消放置预览。"):r>0&&n==1?L"建筑放置事件已提交；是否落地以游戏结果为准。":L"预览未开启：请先退出原生建造／维修／出售／超武光标，确认当前建筑／防御栏有已完成产品。");
+  notify(r==2?(shared->placementPreview.active?L"已自动匹配当前栏的完成建筑：地基预览已开启，左键放置，右键或 Esc 取消。":L"已取消放置预览。"):r>0&&n==1?L"建筑放置事件已提交；是否落地以游戏结果为准。":L"预览未开启：请先退出原生建造／维修／出售／超武鼠标指针，确认当前建筑／防御栏有已完成产品。");
   updatePlacementEventUI();return;
  }
  if(c==OpenTech&&r==-45){if(shared&&shared->techParameterStatus<0)notify(L"参数拦截未能启用；请查看下方参数拦截状态与错误。其他工具占用的硬件断点不会被覆盖。");else notify(L"正在等待硬件断点安装或还原，完成后自动继续；请查看下方参数拦截状态。");return;}
@@ -2477,8 +2541,8 @@ static void updateModeStatus(DWORD now){
    default:text+=L"等待游戏前台就绪 / 松开鼠标";break;}
   SetWindowTextW(GetDlgItem(ui,9093),text.c_str());
  }
- SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
- if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
+ SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅鼠标（沿用鼠标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：鼠标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
+ if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"鼠标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
  const int lowDamage=shared?shared->lowDamageStatus:0;
  setConsoleTooltip(GetDlgItem(ui,9182),lowDamage<0?L"应用或还原未完成，请检查日志":!extra.lowDamageFilter?L"关闭":lowDamage==1?L"高危：原生索敌及工具自动命令":lowDamage==2?L"仅工具自动命令":L"等待就绪");
  setConsoleFeedback(GetDlgItem(ui,9184),lowDamage<0?L"低伤害过滤应用或还原未完成，请检查日志中的冲突。":L"");
@@ -2489,7 +2553,7 @@ static void updateModeStatus(DWORD now){
    state==1?(requested?L"已启用（实验性）":L"正在关闭"):requested?L"等待适配启用":L"关闭";};
   std::wstring network=L"高危 · 事件所属方保留：";if(shared&&shared->networkHouseStatus<0)network+=stateText(extra.networkHouseRequested(),shared->networkHouseStatus);else if(extra.basicControlRequested()){network+=L"当前控制模式下不请求启用";if(shared&&shared->networkHouseStatus)network+=L"（旧状态待还原或检查）";}else network+=stateText(extra.networkHouseRequested(),shared?shared->networkHouseStatus:0);
   SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
-  std::wstring sell=L"高危 · 原生变卖光标：";
+  std::wstring sell=L"高危 · 原生变卖鼠标指针：";
   if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
   else if(shared&&nativesell::failureText(shared->nativeSellCursorStatus))sell+=nativesell::failureText(shared->nativeSellCursorStatus);
   else sell+=stateText(extra.nativeSellCursor,shared?shared->nativeSellCursorStatus:0);
@@ -2917,8 +2981,14 @@ static void finalizeTacticalLayout(){
    while(end<items.size()&&pageControls[items[end]].rect.y<bottom){auto&c=pageControls[items[end++]];bottom=std::max(bottom,c.rect.y+c.visibleHeight);}
    std::vector<int> ids;std::wstring rowHelp;for(size_t i=at;i<end;++i){int id=GetDlgCtrlID(pageControls[items[i]].hwnd);if(id){ids.push_back(id);if(rowHelp.empty())rowHelp=controlHelp(id,L"");}}
    int category=suite::categories::row(section,ids.data(),unsigned(ids.size()));
+   // Every row inside a named fold inherits the fold button's page. This
+   // keeps all of its controls together when one legacy section is split
+   // across the three new top-level control pages.
+   const int fold=pageControls[items[at]].fold;
+   const bool foldOwned=fold!=0&&std::all_of(items.begin()+at,items.begin()+end,[&](size_t index){return pageControls[index].fold==fold;});
+   if(foldOwned)category=suite::categories::row(section,&fold,1);
 #ifdef RA2_CONSOLE_WEBVIEW2
-   for(int id:ids)if(const auto* feature=suite::consolelayout::feature(id)){category=feature->page;break;}
+   if(!foldOwned)for(int id:ids)if(const auto* feature=suite::consolelayout::ownerFeature(id)){category=feature->page;break;}
 #endif
    int&y=bottoms[category];
    for(size_t i=at;i<end;++i){auto&c=pageControls[items[i]];wchar_t label[512]{};GetWindowTextW(c.hwnd,label,512);if(c.help.empty())c.help=controlHelp(GetDlgCtrlID(c.hwnd),L"");if(c.help.empty())c.help=rowHelp.empty()?controlHelp(0,label):rowHelp;c.rect.y=y+c.rect.y-top;c.page=category;
@@ -2934,13 +3004,13 @@ static void finalizeTacticalLayout(){
  for(auto&c:pageControls){int id=GetDlgCtrlID(c.hwnd);if(id==430||(id>=910&&id<=915)){c.page=-3;ShowWindow(c.hwnd,SW_HIDE);}}
 #endif
  for(auto&c:pageControls)c.fullRect=c.rect;applySettingsFolds();
- activePage=suite::categories::Control;scrollY=scrollX=0;layoutPanel();
+ activePage=suite::categories::Keyboard;scrollY=scrollX=0;layoutPanel();
 }
 
 #ifdef RA2_CONSOLE_WEBVIEW2
 static void prepareConsoleSettingsModel(){
  struct Group {int fold;const wchar_t*name;};
- static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9610,L"单位类型清单"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 原值镜像"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻"}};
+ static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9610,L"命令类型手动指定"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 原值镜像"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻"}};
  constexpr size_t count=sizeof(groups)/sizeof(groups[0]);int groupPages[count],groupRows[count];
  std::fill(std::begin(groupPages),std::end(groupPages),-999);std::fill(std::begin(groupRows),std::end(groupRows),-999);
  for(const auto&c:pageControls)for(size_t i=0;i<count;++i)if(GetDlgCtrlID(c.hwnd)==groups[i].fold){groupPages[i]=c.page;groupRows[i]=c.fullRect.y;}
@@ -2966,14 +3036,10 @@ static void prepareConsoleSettingsModel(){
   }
   // Explicit ownership supersedes the Win32 fold and label heuristics.
   using namespace suite::consolelayout;
-  const auto* entry=feature(id);
-  int key=entry?entry->key:0;
+  const auto* entry=ownerFeature(id);
+  const int key=entry?entry->key:0;
   const wchar_t* section=entry?entry->section:nullptr;
   const wchar_t* title=entry?entry->title:nullptr;
-  const int filter=id>=9200&&id<9200+2*featuretypes::Count?(id-9200)/2:-1;
-  if(!entry)if(const auto* scope=typeScope(filter)){
-   key=9200+scope->owner*2;section=L"适用单位清单";title=scope->title;
-  }
   if(key){
    SetPropW(c.hwnd,L"RA2.Console.Feature",reinterpret_cast<HANDLE>(INT_PTR(key)));
    SetPropW(c.hwnd,L"RA2.Console.Section",const_cast<wchar_t*>(section));

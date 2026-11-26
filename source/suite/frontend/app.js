@@ -23,7 +23,7 @@
     }
     return true;
   }
-  const stateCategory = message => message.module === 2 ? Number(String(message.page || '').match(/(?:^|\/)([1-5])$/)?.[1] || message.category || 0) : 0;
+  const stateCategory = message => message.module === 2 ? Number(String(message.page || '').match(/(?:^|\/)([1-7])$/)?.[1] || message.category || 0) : 0;
   const DEBUG_STATES = new Set(['ready','blocked','unknown','unused']);
   const DEBUG_HOOKS = new Set(['na','inactive','installed','pending','conflict','unknown']);
   const DEBUG_STALE_MS = 5000;
@@ -57,7 +57,7 @@
       const d=control.debug, status=debugStatus(control,receivedAt,now,current);
       if (group && (control.group || '未分组')!==group) return false;
       if (state==='unchecked' ? control.checked : state==='attention' ? !(status.state==='blocked' || status.hook==='conflict' || status.stale) : state && status.state!==state) return false;
-      return !query || [control.label,control.group,debugAddress(d.address),String(d.address),d.kind,d.purpose,d.features,d.detail,status.label,status.hookLabel].join(' ').toLocaleLowerCase().includes(query);
+      return !query || fuzzyMatch(query,[control.label,control.group,debugAddress(d.address),String(d.address),d.kind,d.purpose,d.features,d.detail,status.label,status.hookLabel]);
     });
   }
   function canonical(control) {
@@ -91,7 +91,7 @@
     emit(message) { this.send({ ...message, protocol: PROTOCOL }); }
     ready() { this.emit({ kind: 'ready' }); }
     navigate(module, category = 0, pageIndex = null) {
-      if (!Number.isInteger(module) || module < 0 || module > 2 || (module === 2 && (!Number.isInteger(category) || category < 1 || category > 5))) return false;
+      if (!Number.isInteger(module) || module < 0 || module > 2 || (module === 2 && (!Number.isInteger(category) || category < 1 || category > 7))) return false;
       this.current = { module, category: module === 2 ? category : 0 };
       this.emit({ kind: 'navigate', ...this.current, ...(Number.isInteger(pageIndex) ? {pageIndex} : {}) }); this.changed('navigate'); return true;
     }
@@ -112,7 +112,7 @@
       if (message.kind === 'state') {
         if (!safeInteger(message.module) || message.module > 2 || !safeInteger(message.generation) || !message.generation || !safeInteger(message.revision) || !Array.isArray(message.controls) || message.controls.length > 10000) return false;
         if (message.generation < (this.generation.get(message.module) || 0)) return false;
-        const category = stateCategory(message); if (message.module === 2 && (category < 1 || category > 5)) return false;
+        const category = stateCategory(message); if (message.module === 2 && (category < 1 || category > 7)) return false;
         const key = pageKey(message.module, category), previous = this.pages.get(key);
         if (previous && previous.generation === message.generation && previous.revision >= message.revision) return false;
         const controls = message.controls.map(canonical);
@@ -226,6 +226,56 @@
   function encodeHotkey(event, previous = 0) { if (composingKey(event) || event.metaKey) return null; const vk = virtualKey(event); if (!vk || vk > 255) return null; let mods = (event.shiftKey ? 0x100 : 0) | (event.ctrlKey ? 0x200 : 0) | (event.altKey ? 0x400 : 0); if (vk === 16) mods &= ~0x100; if (vk === 17) mods &= ~0x200; if (vk === 18) mods &= ~0x400; return (previous & 0xb000) | mods | vk; }
   function keyName(value) { const vk = value & 255; if (!vk) return '未绑定'; const names = { 1:'鼠标左键',2:'鼠标右键',4:'鼠标中键',5:'鼠标侧键 1',6:'鼠标侧键 2',8:'Backspace',9:'Tab',13:'Enter',16:'Shift',17:'Ctrl',18:'Alt',19:'Pause',20:'Caps Lock',27:'Esc',32:'Space',33:'Page Up',34:'Page Down',35:'End',36:'Home',37:'←',38:'↑',39:'→',40:'↓',45:'Insert',46:'Delete',106:'Num *',107:'Num +',108:'Num 分隔',109:'Num -',110:'Num .',111:'Num /',144:'Num Lock',145:'Scroll Lock',186:';',187:'=',188:',',189:'-',190:'.',191:'/',192:'`',219:'[',220:'\\',221:']',222:"'" }; const prefix = []; if ((value & 0x200) && vk !== 17) prefix.push('Ctrl'); if ((value & 0x100) && vk !== 16) prefix.push('Shift'); if ((value & 0x400) && vk !== 18) prefix.push('Alt'); const name = names[vk] || (vk >= 112 && vk <= 135 ? `F${vk - 111}` : vk >= 96 && vk <= 105 ? `Num ${vk - 96}` : (vk>=48 && vk<=57 || vk>=65 && vk<=90) ? String.fromCharCode(vk) : `VK ${vk}`); return [...prefix, name].join(' + '); }
   const debugToolControls = controls => controls.filter(control => control.visible && !control.debug?.present);
+  // Case/width-insensitive, unordered keywords and in-order partial characters.
+  function fuzzyMatch(query,fields) {
+    const normalize=value=>String(value??'').normalize('NFKC').toLocaleLowerCase();
+    const tokens=normalize(query).trim().split(/\s+/).filter(Boolean);
+    const haystacks=fields.map(normalize);
+    return tokens.every(token=>haystacks.some(text=>{
+      if(text.includes(token))return true;
+      if(token.length<2)return false;
+      let position=0;
+      for(const ch of text){if(ch===token[position]&&++position===token.length)return true;}
+      return false;
+    }));
+  }
+  // Dependency captions are a legacy native representation. Keep saved values
+  // in the store, but do not render controls that cannot currently apply.
+  const dependencyPrefix=/^\[(?:需先|需开启|需选择|需要 |当前模式不|此功能暂不可用|当前控制实现不能|规则数据模式)[^\]]*\]\s*/;
+  const dependencyHidden=c=>!c.runtimeError&&c.enabled===false&&(dependencyPrefix.test(c.label||c.text||'')||/^当前不可用：(?!硬件断点预算不足)/.test(c.hint||''));
+  // Native feedback labels are not independent settings. Keep exceptional
+  // feedback and real measurements, but do not repeat switch/choice values.
+  const routineStatusIds=new Set([866,807,809,813,888,9093,9098,9190,9192,9194,9197,9223,9303,9406,9407,9460,9461,9464,9471,9491,9493,9495,9498,9499,9532,9537,9539,9540,9751]);
+  function redundantStatus(c){
+    if(c.type!=='label'||c.groupHeader||c.runtimeError||c.debug)return false;
+    const value=(c.text||c.label||'').trim();
+    if(/失败|异常|冲突(?!时)|错误|未就绪|未能|不支持|还原未完成|拒绝|受阻|预算不足/.test(value)&&!/无冲突/.test(value))return false;
+    return routineStatusIds.has(c.nativeId)||Boolean(c.nativeId&&/^[^：:\n]{1,48}[：:]\s*(?:关闭|开启|已关闭|已开启|已启用|未启用|原实现|原版|暂不可用|已停用)(?:\s*[（(][^）)]*[）)])?$/.test(value));
+  }
+  function displaySettingLabel(c){
+    const value=(c.label||(c.type==='label'?c.text:'')).replace(dependencyPrefix,'');
+    if(c.type==='label'||!/^设置\s*\d+$/.test(value)&&value)return value;
+    return ({hotkey:'快捷键',choice:'选项',number:'数值',range:'数值',text:'输入内容',button:'操作'})[c.type]||'设置';
+  }
+  function applicableSettings(items,allControls){
+    const aircraft=allControls.find(c=>c.nativeId===9195||c.id===9195);
+    const policy=aircraft?.selected;
+    const quotaIds=new Set([710,711,712,713,714,715,716,717,718,751]);
+    const damageIds=new Set([9794,9795]);
+    return settingLines(items).flatMap(line=>{
+      const ids=line.map(c=>c.nativeId||c.id),first=line[0];
+      if(Number.isInteger(policy)&&policy>=0){
+        if(policy!==0&&(ids.some(id=>quotaIds.has(id))||line.some(c=>c.type==='label'&&/^(?:\[[^\]]+\]\s*)?飞机分配攻击数量$/.test(c.label||c.text))))return [];
+        if(policy!==1&&ids.some(id=>damageIds.has(id)))return [];
+      }
+      if(dependencyHidden(first))return [];
+      const visible=line.filter(c=>!dependencyHidden(c));
+      // A disabled legacy editor may share a label with its caption. Do not
+      // leave that caption stranded if all of its editors were hidden.
+      if(visible.length<line.length&&visible.every(c=>c.type==='label'))return [];
+      return visible;
+    });
+  }
   function groupControls(controls, query = '') {
     const groups=new Map(),needle=query.trim().toLocaleLowerCase();let heading='常用设置';
     for(const control of controls) {
@@ -235,11 +285,12 @@
       const name=control.group || heading;
       if(!groups.has(name))groups.set(name,[]);groups.get(name).push(control);
     }
+    for(const [name,items] of groups){const visible=applicableSettings(items,controls);if(visible.length)groups.set(name,visible);else groups.delete(name);}
     if(needle)for(const [name,items] of groups) {
       const matches=[];
       for(const block of featureBlocks(items)){
         const matchingLines=settingLines(block.controls).filter(line=>line.some(control=>
-          [control.label,control.text,control.hint,name,control.section,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle)
+          fuzzyMatch(needle,[control.label,control.text,control.hint,name,control.section,...control.options,...control.optionDescriptions])
         ));
         if(!matchingLines.length)continue;
         // Named features can contain controls that depend on each other.
@@ -257,6 +308,23 @@
   const hasFeatureConfig=block=>Boolean(block.title||block.headers.length)&&block.details.some(control=>!['label','heading'].includes(control.type));
   // Keep compound command rows intact and give each marked feature its own settings.
   function featureBlocks(controls) {
+    if(controls.flatFeatureBlocks)return controls.flatFeatureBlocks;
+    const lines=settingLines(controls);
+    // Legacy panels sometimes supplied a self-named master switch plus
+    // independent child rows but no GroupHeader / Feature metadata. Infer
+    // ownership only for that unambiguous pattern; broad groups such as
+    // "自动功能" with several switches must never swallow other features.
+    const firstLine=lines[0]||[];
+    const main=firstLine.find(control=>control.type==='toggle');
+    const tail=lines.slice(1).flat();
+    if(lines.length>1&&main&&main.group&&main.group===main.label&&
+       controls.every(control=>control.group===main.group)&&
+       !controls.some(control=>control.featureId||control.groupHeader)&&
+       !tail.some(control=>control.layoutBreak||control.type==='toggle'||control.type==='heading')&&
+       tail.some(control=>!['heading','label'].includes(control.type))){
+      return [{key:'inferred:'+main.id,title:main.group,headers:firstLine,
+        details:tail,controls:[...firstLine,...tail]}];
+    }
     const blocks=[],named=new Map();let current=null,common=[];
     const flush=()=>{
       if(current){blocks.push(current);current=null;}
@@ -265,7 +333,7 @@
         common=[];
       }
     };
-    for(const line of settingLines(controls)){
+    for(const line of lines){
       const first=line[0];
       if(first.featureId){
         flush();
@@ -274,7 +342,15 @@
           block={key:'named:'+first.featureId,title:first.group,headers:[],details:[],controls:[]};
           named.set(first.featureId,block);blocks.push(block);
         }
-        for(const control of line)(isFeatureHeader(control)?block.headers:block.details).push(control);
+        const primary=line.some(isFeatureHeader);
+        const mouseGesture=line.some(c=>c.type==='choice'&&c.options.includes('中键')&&c.options.includes('侧键 1'));
+        for(const control of line){
+          const manualTypeScaffold=control.featureId===9610&&
+            (control.type==='label'&&control.nativeId===905||control.type==='button'&&control.nativeId===9610);
+          if(manualTypeScaffold)continue;
+          const companion=primary&&!mouseGesture&&['hotkey','button'].includes(control.type);
+          (isFeatureHeader(control)||companion?block.headers:block.details).push(control);
+        }
         block.controls.push(...line);
         continue;
       }
@@ -287,62 +363,35 @@
     }
     flush();return blocks;
   }
-  // Each native feature group is assigned to one stable semantic section.
-  // Never flatten every control/automatic feature into one enormous group:
-  // doing so loses the original feature boundary and doubles the fold layer.
-  const CONTROL_SECTIONS=['选兵与编组','移动、攻击与操作手势','队形、巡逻与飞机路径','进驻、装卸与超武目标选择','其他快捷操作'];
-  const AUTOMATIC_SECTIONS=['采矿、倒矿与防蜘蛛','维修与自动救援','自动战斗与防空','其他自动功能','适用单位清单'];
-  const RULE_SECTIONS=['单机速度与暂停','科技与建造','地图显示与揭示','操控与变卖','运行状态'];
-  const EXPERIMENT_SECTIONS=['视角与界面','剧情触发器','命令与兼容','规则实验','暂不可用'];
-  const SECTION_ORDER={3:CONTROL_SECTIONS,4:AUTOMATIC_SECTIONS,5:RULE_SECTIONS,6:EXPERIMENT_SECTIONS};
-  function semanticSection(name,controls,navigationIndex){
-    const hint=[name,...controls.map(c=>c.label||c.text||'')].join(' ').toLocaleLowerCase();
-    const ids=new Set(controls.map(item=>item.nativeId));
-    const has=(...values)=>values.some(v=>ids.has(v));
-    if(navigationIndex===3){
-      if(/选兵|编组|轮选|同类/.test(hint)||has(9608,441,443,444,445,449,467,724,853))return 0;
-      if(/队形|巡逻|路径|模糊下令|区域目标|快速占位/.test(hint)||has(9602,9615,9400,9401,9402))return 2;
-      if(/进驻|卸载|装车|超武目标/.test(hint)||has(9611,453,459,451,700,701))return 3;
-      if(/键鼠|高级移动|磁电|飞机分配|操作手势|攻击/.test(hint)||has(9601,9606,458,477,478,705))return 1;
-      return 4;
-    }
-    if(/清单|单位类型/.test(hint)||has(9610))return 4;
-    if(/采矿|矿车|倒矿|蜘蛛|矿厂/.test(hint)||has(9605,832,833))return 0;
-    if(/维修|救援|炸弹|寄生/.test(hint)||has(312,780,9184))return 1;
-    if(/防空|战斗|攻击|低伤害|磁电|躲弹|索敌/.test(hint)||has(9182,9183,9042))return 2;
-    return 3;
-  }
+  // Navigation pages are the only category level. Keep the original native
+  // feature boundaries before flattening so parameter ownership survives.
+  const FLAT_PAGE_NAMES=['鼠标','渲染','监控视图','键鼠与选兵','战术操作','进驻与装卸','自动功能','生产','游戏规则','实验功能',null];
   function layoutGroups(controls,query='',navigationIndex=0){
-    const groups=groupControls(controls,query);
-    const names=SECTION_ORDER[navigationIndex];
-    if(!names)return groups;
-    const combined=new Map();
+    const groups=groupControls(navigationIndex===10?controls:controls.filter(c=>!redundantStatus(c)),query);
+    const pageName=FLAT_PAGE_NAMES[navigationIndex];
+    if(!pageName||!groups.size)return groups;
+    const flat=[],blocks=[];
     for(const [name,items] of groups){
-      // A feature header owns its params; unheaded keyboard controls are
-      // independent action rows. Preserve compound shortcut rows as a unit.
       for(const block of featureBlocks(items)){
-        const pieces=(block.title||block.headers.length||block.controls.some(c=>c.groupHeader))?[block.controls]:settingLines(block.controls);
-        for(const piece of pieces){
-          const legacy=navigationIndex===3||navigationIndex===4;
-          const section=piece[0].section||(legacy?names[semanticSection(name,piece,navigationIndex)]:name);
-          if(!combined.has(section))combined.set(section,[]);
-          combined.get(section).push(...piece.map((control,i)=>({...control,layoutBreak:i===0})));
-        }
+        const key=name+':'+block.key;
+        blocks.push({...block,key});
+        flat.push(...block.controls);
       }
     }
-    return new Map([...names,...[...combined.keys()].filter(name=>!names.includes(name))].filter(name=>combined.has(name)).map(name=>[name,combined.get(name)]));
+    flat.flatFeatureBlocks=blocks;
+    return new Map([[pageName,flat]]);
   }
-  const PRODUCTION_PAGE=8, PRODUCTION_NOTICES=9;
+  const PRODUCTION_PAGE=7;
   function displayPageControls(controls,index){
     if(index<2)return controls.filter(control=>(control.group==='渲染')===(index===1));
-    if(index===2||index===PRODUCTION_NOTICES)
-      return controls.filter(control=>(control.group==='生产提醒')===(index===PRODUCTION_NOTICES));
-    if(index===4||index===PRODUCTION_PAGE)
+    if(index===2)return controls;
+    if(index===6||index===PRODUCTION_PAGE)
       return controls.filter(control=>(control.group==='生产预定')===(index===PRODUCTION_PAGE));
     return controls;
   }
-  const targetFor=index=>index===PRODUCTION_PAGE?{module:2,category:2}:index===PRODUCTION_NOTICES?{module:1,category:0}:index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:index-2};
-  const restoredIndex=(category,section)=>category===0?(section===1?2:0):category+2;
+  const pageCategory={3:1,4:2,5:3,6:4,7:4,8:5,9:6,10:7};
+  const targetFor=index=>index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:pageCategory[index]??1};
+  const restoredIndex=(category,section)=>category===0?(section===1?2:0):({1:3,2:4,3:5,4:6,5:8,6:9,7:10}[category]??0);
   // The adapter already exports the original logical row. Keep its related
   // editors together instead of turning every native widget into a full row.
   // Missing/default coordinates must never combine unrelated settings.
@@ -365,21 +414,22 @@
     }
     return {number:'数值',range:'数值',text:'内容'}[control.type] || '';
   }
-  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, featureBlocks, hasFeatureConfig, layoutGroups, displayPageControls, targetFor, restoredIndex, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
+  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, fuzzyMatch, redundantStatus, displaySettingLabel, applicableSettings, groupControls, settingLines, featureBlocks, hasFeatureConfig, layoutGroups, displayPageControls, targetFor, restoredIndex, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
   if (typeof document === 'undefined') return;
 
   const $ = id => document.getElementById(id);
   const CATEGORIES = [
-    ['光标','管理光标外观、刷新率与位置。','<circle cx="12" cy="12" r="8"></circle><path d="M12 6v6l4 4"></path>'],
+    ['鼠标','管理鼠标外观、刷新率与位置。','<path d="M7 3v11m0 0 4-4m-4 4-4-4M14 5h6v14h-6z"></path>'],
     ['渲染','画面效果、GPU 加速与帧率。','<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m7 14 4-4 3 3 3-4"></path>'],
-    ['监控视图','副相机、小地图与战场信息。','<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 10h10M9 15h6"></path>'],
-    ['控制','键鼠操作、选兵、移动与下令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'],
+    ['监控视图','副相机、小地图、生产提醒与战场信息。','<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 10h10M9 15h6"></path>'],
+    ['键鼠与选兵','快捷键、组合操作、选兵与编组。','<rect x="3" y="7" width="18" height="12" rx="3"></rect><path d="M7 11h2m-1-1v2m4-1h2m4-1v2"></path>'],
+    ['战术操作','移动攻击、目标分配、巡逻与路径点。','<path d="M4 18 18 4m-8 0h8v8"></path><circle cx="6" cy="6" r="2"></circle>'],
+    ['进驻与装卸','高级进驻、智能卸载与自动装车。','<path d="M3 12h18M13 4l8 8-8 8"></path><rect x="3" y="5" width="7" height="14" rx="1"></rect>'],
     ['自动功能','自动战斗、资源管理与辅助操作。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'],
+    ['生产','生产预定、队列与面板设置。','<path d="M3 20V9l6 3V7l6 4V4h4l2 16H3Zm4-4h2m3 0h2m3 0h2"></path>'],
     ['游戏规则','游戏速度、科技、地图与操控权限。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'],
     ['实验功能','原生视图、剧情触发与兼容设置。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'],
     ['调试','运行状态与平台兼容性。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect>']
-    ,['生产','设置生产预定、批量队列和面板大小。','<path d="M3 20V9l6 3V7l6 4V4h4l2 16H3Zm4-4h2m3 0h2m3 0h2"></path>'],
-    ['生产','设置各类生产队列提醒和建造时间提示。','']
   ];
   const navigationButtons=new Map();
   let selectedCategory = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, userNavigated = false, restoredNavigation = false;
@@ -402,9 +452,9 @@
     else store.navigate(target.module,target.category,index);
     $('contentScroll').scrollTop=0;
   }
-  const navGroups={0:'显示',3:'对局工具',5:'高级'};
+  const navGroups={0:'显示',3:'对局工具',8:'高级'};
   // Product-first ordering without changing the backend module/category IDs.
-  const navOrder=[3,4,PRODUCTION_PAGE,0,1,2,5,6,7];
+  const navOrder=[3,4,5,6,PRODUCTION_PAGE,0,1,2,8,9,10];
   for(const index of navOrder){
     if(navGroups[index]){const group=document.createElement('div');group.className='nav-group-label';group.textContent=navGroups[index];$('navigation').append(group);}
     const button=document.createElement('button');button.className='nav-button';button.type='button';button.dataset.pageIndex=String(index);
@@ -412,17 +462,16 @@
     button.querySelector('span').textContent=CATEGORIES[index][0];button.setAttribute('aria-label',CATEGORIES[index][0]);button.title=CATEGORIES[index][0];
     button.addEventListener('click',()=>navigate(index));$('navigation').append(button);navigationButtons.set(index,button);
   }
-  $('productionQueue').addEventListener('click',()=>navigate(PRODUCTION_PAGE));
-  $('productionNotices').addEventListener('click',()=>navigate(PRODUCTION_NOTICES));
   $('search').setAttribute('aria-keyshortcuts','Control+f');
   $('search').addEventListener('input', event => { setSearch(event.target.value); schedule(); });
   $('search').addEventListener('keydown', event => { if (!composingKey(event) && event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = ''; setSearch(''); schedule(); } });
-  $('clearSearch').addEventListener('click', () => { $('search').value = ''; setSearch(''); if(selectedCategory===7){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
+  $('clearSearch').addEventListener('click', () => { $('search').value = ''; setSearch(''); if(selectedCategory===10){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
   $('debugGroup').addEventListener('change',event=>{debugGroup=event.target.value;schedule();});
   $('debugFilter').addEventListener('change',event=>{debugFilter=event.target.value;schedule();});
   $('moduleToggle').addEventListener('change', event => store.enable(targetFor(selectedCategory).module, event.target.checked));
   $('retrySave').addEventListener('click', () => store.retryConfig());
   function configurableFeatures() {
+    if(selectedCategory===PRODUCTION_PAGE)return [];
     const features=[];
     for(const group of groupNodes.values())
       for(const block of featureBlocks(group.controls))
@@ -559,7 +608,7 @@
           feature.caption.prepend(document.createTextNode(block.title));
           feature.main.append(feature.caption);
         }
-        const scopes=group.name==='适用单位清单'?block.controls.filter(c=>c.type==='toggle'&&store.value(c,'toggle')).length:0;
+        const scopes=['适用单位清单','命令类型手动指定'].includes(block.title)?block.controls.filter(c=>c.type==='toggle'&&store.value(c,'toggle')).length:0;
         feature.activeScopes.hidden=!scopes;
         feature.activeScopes.textContent=scopes===1?'已限定范围':scopes>1?`${scopes} 项限制已启用`:'';
       }
@@ -567,13 +616,14 @@
       const actionParent=master?.element||feature.header;
       if(feature.actions.parentNode!==actionParent)actionParent.insertBefore(feature.actions,master?.editor||null);
       const hasConfig=hasFeatureConfig(block);
-      const expanded=!hasConfig||featureExpanded(group,key);
-      feature.button.hidden=!hasConfig;
+      const compactProduction=selectedCategory===PRODUCTION_PAGE;
+      const expanded=compactProduction||!hasConfig||featureExpanded(group,key);
+      feature.button.hidden=!hasConfig||compactProduction;
       if(hasHeader){
         const head=block.headers.find(isFeatureHeader);
         const label=block.title||head?.label||head?.text||'功能';
         const hasNote=updateNoteHelp(feature.actions,label,block.controls.filter(control=>control.type==='label'&&!control.groupHeader),feature.button);
-        feature.actions.hidden=!hasConfig&&!hasNote;
+        feature.actions.hidden=compactProduction||(!hasConfig&&!hasNote);
         feature.button.textContent=expanded?'收起':'展开';
         feature.button.setAttribute('aria-expanded',String(expanded));
         feature.button.setAttribute('aria-label',(expanded?'收起 ':'展开 ')+label+' 的设置');
@@ -584,12 +634,14 @@
       const hotkeys=hasHeader?lines.filter(line=>line.every(c=>c.type==='hotkey')).flat():[];
       const hotkeyIds=new Set(hotkeys.map(c=>c.id));
       const params=settings.filter(c=>!hotkeyIds.has(c.id));
-      const hasParameters=params.some(control=>control.type!=='label');
       feature.params.section.hidden=!params.length;feature.hotkeys.section.hidden=!hotkeys.length;
-      feature.params.title.hidden=!hasHeader||!hasParameters||!hotkeys.length;
-      feature.hotkeys.title.hidden=!hasParameters||!hotkeys.length;
+      // The fold already establishes the hierarchy. Do not repeat oversized
+      // "参数 / 快捷键" subheadings for every individual feature.
+      feature.params.title.hidden=true;
+      feature.hotkeys.title.hidden=true;
       feature.details.hidden=!expanded||!settings.length;
       feature.element.classList.toggle('is-expanded',expanded&&hasConfig);
+      feature.element.classList.toggle('has-settings',hasConfig);
       // Render only mounted details. Avoid work on hundreds of collapsed cards.
       if(expanded){
         updateFeatureRows(feature.params.rows,feature.params.controls,params,hasHeader,feature.paramsChunks);
@@ -611,25 +663,39 @@
       wanted.add(key);let line=lines.get(key);
       if(!line){line=document.createElement('div');line.className='settings-line';lines.set(key,line);}
       const compound=members.length>1,name=first.label || first.text;
+      const commandRow=first.type==='button'&&(!subsettings||members.slice(1).some(c=>c.type==='hotkey'));
+      line.classList.toggle('action-command-row',commandRow);
+      line.classList.toggle('keyboard-setting-row',members.some(c=>c.type==='hotkey'));
       line.classList.toggle('compound-row',compound);line.classList.toggle('subsettings-line',subsettings);
       const hasPreset=members.some(control=>control.type==='choice' && control.options.includes('仅鼠标') && control.options.includes('自定义'));
       let previous=null,parent=line;
+      const hotkeyControl=members.find(c=>c.type==='hotkey');
+      const mouseControl=hotkeyControl&&members.find(c=>c.type==='choice'&&c.options.includes('中键')&&c.options.includes('侧键 1'));
+      const presetControl=hotkeyControl&&members.find(c=>c.type==='choice'&&c.options.includes('仅鼠标')&&c.options.includes('自定义'));
       for(const [index,control] of members.entries()) {
         let row=rows.get(control.id);
         if(!row || row.type!==control.type || row.presentation!==control.presentation || Boolean(row.textInput)!==(control.type==='choice' && !control.readonly && control.presentation!=='list')) {
           const next=makeRow(control);if(row)row.element.replaceWith(next.element);row=next;rows.set(control.id,row);
         }
         row.control=control;
-        row.element.dataset.settingLevel=control.type==='label'?'status':subsettings || (compound && index>0) || !['toggle','button'].includes(control.type)?'secondary':'primary';
+        if(control===hotkeyControl)row.pairedMouse=mouseControl||null;
+        row.commandAction=commandRow&&index===0;
+        // An unowned choice, number or hotkey is a full feature row, not
+        // a subordinate field simply because it is not a switch.
+        row.element.dataset.settingLevel=control.type==='label'?'status':subsettings || (compound && index>0)?'secondary':'primary';
         row.inlineLabel=compound && index>0 && control.label===name?inlineLabel(control,hasPreset):null;
-        row.element.classList.toggle('inline-hotkey',control.type==='hotkey'&&Boolean(row.inlineLabel));
         // A pushbutton already carries its action name. Do not print it twice.
-        if(control.type==='button' && control.label===control.text)row.inlineLabel='';
+        if(control.type==='button' && control.label===control.text&&!row.commandAction)row.inlineLabel='';
+        if(compound&&index>0&&control.type==='hotkey')row.inlineLabel='';
+        row.element.classList.toggle('inline-hotkey',control.type==='hotkey'&&Boolean(row.inlineLabel));
         patchRow(row);
+        if(control===presetControl){row.element.hidden=true;row.element.remove();continue;}
+        if(control===mouseControl){row.inlineLabel='鼠标';patchRow(row);continue;}
         placeAfter(parent,row.element,previous);
         if(index===0&&row.companions){parent=row.companions;previous=null;}
         else previous=row.element;
       }
+      if(hotkeyControl){const hotkeyRow=rows.get(hotkeyControl.id);if(hotkeyRow){const mouseRow=mouseControl&&rows.get(mouseControl.id);if(mouseRow){if(mouseRow.element.parentNode!==hotkeyRow.mouseSlot)hotkeyRow.mouseSlot.replaceChildren(mouseRow.element);}else hotkeyRow.mouseSlot.replaceChildren();hotkeyRow.mouseSlot.hidden=!mouseRow;}}
       placeAfter(container,line,after);after=line;
     }
     for(const [key,line] of lines)if(!wanted.has(key)){line.remove();lines.delete(key);}
@@ -700,7 +766,7 @@
   function closeHotkeyOptions(restoreFocus=false) {
     const row=hotkeyOptions;
     if(!row)return;
-    hotkeyOptions=null;row.hotkeyDetails.open=false;
+    hotkeyOptions=null;if(capture?.row===row)stopCapture();row.hotkeyDetails.open=false;
     if(restoreFocus)row.hotkeySummary.focus();
   }
   function makeHotkeyEditor(row,send) {
@@ -710,11 +776,14 @@
     const summary=document.createElement('summary'),menu=document.createElement('div');
     const modeLabel=document.createElement('label'),mode=document.createElement('select');
     const doubleLabel=document.createElement('label'),check=document.createElement('input');
+    const keyboardLabel=document.createElement('label'),mouseSlot=document.createElement('div');
     const specialLabel=document.createElement('label'),special=document.createElement('select');
+    keyboardLabel.className='hotkey-keyboard';keyboardLabel.append(document.createTextNode('键盘'),button);
+    mouseSlot.className='hotkey-mouse-slot';
     const clear=document.createElement('button');
     button.type='button';button.className='hotkey-capture';
     button.addEventListener('click',()=>{if(capture?.row===row)stopCapture();else startCapture(row);});
-    details.className='hotkey-options';summary.textContent='⋯';menu.className='hotkey-menu';
+    details.className='hotkey-options';summary.textContent='快捷键';menu.className='hotkey-menu';
     summary.addEventListener('click',event=>{
       event.preventDefault();
       const wasOpen=details.open;
@@ -728,18 +797,18 @@
     check.type='checkbox';doubleLabel.className='hotkey-double';
     doubleLabel.append(check,document.createTextNode('双击触发'));
     check.addEventListener('change',()=>send('hotkey',(current()&~0x8000)|(check.checked?0x8000:0)));
-    special.setAttribute('aria-label','选择特殊按键');
-    specialLabel.append(document.createTextNode('特殊按键'),special);
+    special.setAttribute('aria-label','鼠标绑定');
+    specialLabel.append(document.createTextNode('鼠标'),special);
     special.addEventListener('change',()=>{
       const vk=Number(special.value);
-      if(vk){send('hotkey',(current()&0xb700)|vk);closeHotkeyOptions(true);}
+      if(vk){send('hotkey',(current()&0xb700)|vk);}
       special.value='0';
     });
     clear.type='button';clear.className='text-button hotkey-clear';clear.textContent='清除绑定';
     clear.setAttribute('aria-label','清除快捷键');
     clear.addEventListener('click',()=>{send('hotkey',0);closeHotkeyOptions(true);});
-    menu.append(modeLabel,doubleLabel,specialLabel,clear);details.append(summary,menu);editor.append(button,details);
-    Object.assign(row,{input:button,mode,modeLabel,double:check,doubleLabel,clear,special,hotkeyDetails:details,hotkeySummary:summary});
+    menu.append(keyboardLabel,mouseSlot,specialLabel,modeLabel,doubleLabel,clear);details.append(summary,menu);editor.append(details);
+    Object.assign(row,{input:button,mode,modeLabel,double:check,doubleLabel,clear,special,specialLabel,mouseSlot,hotkeyDetails:details,hotkeySummary:summary});
   }
   function patchChoiceHelp(row) {
     const c=row.control, descriptions=c.optionDescriptions || [];
@@ -753,9 +822,9 @@
   }
   function patchRow(row) {
     const control = row.control, error = store.error(control.id); row.element.dataset.pending = String(store.isPending(control.id)); row.element.classList.toggle('is-disabled',!control.enabled); row.element.classList.toggle('has-error',Boolean(error)||control.runtimeError);
-    let labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText;
+    let labelText=(row.inlineLabel ?? displaySettingLabel(control)).replace(dependencyPrefix,''); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(row.commandAction)labelText=control.text||control.label||'操作'; else if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(!control.enabled)labelText=labelText.replace(/^\[此功能暂不可用\]\s*/,''); if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText;
     const optionHelp=control.type==='choice'&&(control.optionDescriptions||[]).some(Boolean);
-    row.element.title=control.type==='label'||optionHelp?'':control.hint;
+    row.element.title=control.type==='label'||optionHelp?'':(!control.enabled&&/^\[此功能暂不可用\]/.test(control.label)?['此功能暂不可用',control.hint].filter(Boolean).join('\n'):control.hint);
     if(control.type==='label'){
       row.description.hidden=true;
       row.label.hidden=!labelText;row.copy.hidden=!labelText;row.element.hidden=!labelText;
@@ -767,7 +836,7 @@
     row.element.classList.toggle('is-disabled',disabled);
     row.input.disabled = disabled; row.input.setAttribute('aria-label',row.inlineLabel?`${control.label} · ${row.inlineLabel}`:control.label || control.text || '设置');
     if (control.type === 'toggle') { row.input.checked = Boolean(store.value(control,'toggle'));row.toggleState.textContent=row.input.checked?'已开启':'已关闭'; }
-    else if (control.type === 'button') { row.input.textContent = control.text || control.label || '执行'; row.input.disabled = disabled || store.isPending(control.id); row.input.className=`setting-button action-${control.actionRole}`; }
+    else if (control.type === 'button') { row.input.textContent = row.commandAction?'执行':control.text || control.label || '执行'; row.input.disabled = disabled || store.isPending(control.id); row.input.className=`setting-button action-${control.actionRole}`; }
     else if (control.type === 'choice') { const optionSignature = JSON.stringify([control.options,control.optionEnabled,control.optionDescriptions]); if (row.optionSignature !== optionSignature) { row.optionSignature = optionSignature; row.input.replaceChildren(...control.options.map((text,index) => { const option = document.createElement('option'); option.value = String(index); option.textContent = text; option.title = control.optionDescriptions[index] || ''; option.disabled = control.optionEnabled[index] === false; return option; })); } const index = Number(store.value(control,'select')); if (row.input.selectedIndex !== index) row.input.selectedIndex = index; patchChoiceHelp(row,index); if (row.textInput) { row.textInput.disabled = disabled; if (document.activeElement !== row.textInput) row.textInput.value = String(store.value(control,'text')); } }
     else if (control.type === 'text' || control.type === 'number') { row.input.readOnly = control.readonly; if (document.activeElement !== row.input || control.readonly) row.input.value = String(store.value(control,'text')); }
     else if (control.type === 'range') { row.input.min = control.min; row.input.max = control.max; row.input.step = control.step; const value = store.value(control,'range'); if (document.activeElement !== row.input) row.input.value = value; row.output.textContent = String(value); }
@@ -791,7 +860,7 @@
       const keyboardOnly = control.options.includes('keyboardOnly');
       if (row.keyboardOnly !== keyboardOnly) {
         row.keyboardOnly = keyboardOnly;
-        const keys = [['选择…',0],['Esc',27],['Enter',13],['Tab',9]];
+        const keys = [['未绑定',0]];
         if (!keyboardOnly) keys.push(['鼠标左键',1],['鼠标右键',2],['鼠标中键',4],['鼠标侧键 1',5],['鼠标侧键 2',6]);
         row.special.replaceChildren(...keys.map(([text,vk]) => {
           const option = document.createElement('option');
@@ -805,6 +874,8 @@
       row.double.checked = Boolean(value & 0x8000);
       row.mode.disabled = row.double.disabled = row.clear.disabled = disabled || !bound;
       row.special.disabled = disabled;
+      row.specialLabel.hidden=keyboardOnly||Boolean(row.pairedMouse);
+      row.hotkeySummary.textContent='快捷键';
       const binding=keyName(value);
       row.input.dataset.bound=String(bound);
       row.input.title=binding;
@@ -816,16 +887,16 @@
       row.input.classList.toggle('capturing',capture?.row === row);
     }
   }
-  function startCapture(row) { closeHotkeyOptions(); stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
+  function startCapture(row) { stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
   function stopCapture() { const previous = capture?.row; capture = null; if (previous) patchRow(previous); }
-  document.addEventListener('keydown',event => { if (!capture || composingKey(event)) return; event.preventDefault(); event.stopPropagation(); if (event.repeat) return; if (event.key === 'Escape') { stopCapture(); return; } if (event.metaKey) { notify('当前快捷键格式不支持 Win 组合键，请使用 Ctrl、Shift 或 Alt。'); return; } if (['Shift','Control','Alt'].includes(event.key)) { capture.modifier = event; return; } capture.usedModifier = true; const row = capture.row, previous = Number(store.value(row.control,'hotkey')) || 0, value = encodeHotkey(event,previous); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
+  document.addEventListener('keydown',event => { if (!capture || composingKey(event)) return; event.preventDefault(); event.stopPropagation(); if (event.repeat) return; if (event.metaKey) { notify('当前快捷键格式不支持 Win 组合键，请使用 Ctrl、Shift 或 Alt。'); return; } if (['Shift','Control','Alt'].includes(event.key)) { capture.modifier = event; return; } capture.usedModifier = true; const row = capture.row, previous = Number(store.value(row.control,'hotkey')) || 0, value = encodeHotkey(event,previous); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
   document.addEventListener('keyup',event => { if (!capture || composingKey(event) || capture.usedModifier || !capture.modifier || event.key !== capture.modifier.key) return; event.preventDefault(); const row = capture.row, value = encodeHotkey(capture.modifier,Number(store.value(row.control,'hotkey')) || 0); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
   document.addEventListener('pointerdown',event => {
     if(capture&&event.target!==capture.row.input)stopCapture();
     if(hotkeyOptions&&!hotkeyOptions.hotkeyDetails.contains(event.target))closeHotkeyOptions();
   },true);
   document.addEventListener('keydown',event=>{
-    if(!hotkeyOptions||composingKey(event)||event.key!=='Escape')return;
+    if(capture||!hotkeyOptions||composingKey(event)||event.key!=='Escape'||event.defaultPrevented)return;
     event.preventDefault();event.stopPropagation();closeHotkeyOptions(true);
   },true);
   document.addEventListener('focusin',event => { if (capture && event.target !== capture.row.input) stopCapture(); });
@@ -889,15 +960,12 @@
       for(const row of debugRows.values())row.element.remove();
       debugRows.clear();renderedPage=currentPage;
     }
-    const navIndex=selectedCategory===PRODUCTION_NOTICES?PRODUCTION_PAGE:selectedCategory;
-    $('productionViews').hidden=navIndex!==PRODUCTION_PAGE;
-    $('productionQueue').setAttribute('aria-pressed',String(selectedCategory===PRODUCTION_PAGE));
-    $('productionNotices').setAttribute('aria-pressed',String(selectedCategory===PRODUCTION_NOTICES));
+    const navIndex=selectedCategory;
     navigationButtons.forEach((button,index) => { if (index === navIndex) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     $('breadcrumb').textContent=category[0];$('pageTitle').textContent=category[0];
     $('pageDescription').textContent=category[1];
     $('version').textContent=store.shell.version||'正在连接…';
-    const debugging=selectedCategory===7;
+    const debugging=selectedCategory===10;
     $('settings').hidden=!state;$('debugTools').hidden=!debugging;
     $('debugPanel').hidden=!debugging||!state;
     $('search').placeholder=debugging?'搜索入口、地址或影响功能…':'搜索当前页面…';
@@ -940,7 +1008,7 @@
     if(message.kind==='shell'&&message.servicesReady&&!restoredNavigation){
       restoredNavigation=true;
       if(!userNavigated){
-        const native=Number.isInteger(message.selectedCategory)?Math.max(0,Math.min(5,message.selectedCategory)):0;
+        const native=Number.isInteger(message.selectedCategory)?Math.max(0,Math.min(7,message.selectedCategory)):0;
         navigate(Number.isInteger(message.pageIndex) && message.pageIndex>=0 && message.pageIndex<CATEGORIES.length
           ? message.pageIndex : restoredIndex(native,message.videoSection),true);
       }
@@ -948,6 +1016,6 @@
   });
   global.addEventListener('beforeunload',() => stopCapture());
   // Relative sample age keeps advancing if the owner/game stops publishing.
-  global.setInterval(()=>{if(selectedCategory===7 && store.state)schedule();},1000);
+  global.setInterval(()=>{if(selectedCategory===10 && store.state)schedule();},1000);
   store.ready(); schedule();
 })(globalThis);

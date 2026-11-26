@@ -63,6 +63,20 @@ int main(){
   // Repeated reset must retain all defaults and never advance the storage.
   reset(actual->input);check(&actual->input==address);guards(*actual);compare(actual->input,fresh->input);
  }
+ // The production collector resets just the admitted rectangle. Shrink,
+ // expand and zero-sized captures must never expose stale edge damage.
+ for(int round=0;round<3;++round){
+  pollute(actual->input,unsigned(round));beginCapture(actual->input);
+  check(actual->input.count==0&&actual->input.targetCount==0&&actual->input.frame==-1);
+  actual->input.targetCount=round==0?3:round==1?0:MaxTargets;
+  actual->input.count=round==2?MaxSources:2;
+  for(int n=0;n<actual->input.count;++n)resetActiveRow(actual->input,n);
+  for(int n=0;n<MaxSources;++n)for(int t=0;t<MaxTargets;++t){
+   const auto&e=actual->input.edges[n][t];const bool active=n<actual->input.count&&t<actual->input.targetCount;
+   check(active?(e.damage==0&&e.distance==0&&e.eta==0&&e.close==1):(e.damage==18000+n+t&&e.close==-21000-n-t));
+  }
+  guards(*actual);
+ }
  std::printf("{\"pass\":true,\"checks\":%u,\"field_comparisons\":%u,\"passes\":%u,\"input_bytes\":%zu,\"padding_compared\":false,\"heap_inputs\":2,\"game_process_tested\":false}\n",checks,comparisons,passes,sizeof(Input));
 }
 #endif

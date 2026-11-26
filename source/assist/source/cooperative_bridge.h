@@ -11,7 +11,7 @@ static external::GameView<LocalRawRead> clickView(LocalRawRead{});
 // conversion consumes only the manager's already sealed world sample.
 struct CooperativeFrameRead {bool operator()(uint32_t a,void*out,size_t n)const{return read(a,out,n);}};
 static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig& quotas,cooperative::Input&out,worldframe::Key*source=nullptr,cooperative::CapturedIdentities*identities=nullptr){
- ObservationReadScope frameRead;if(!frameRead)return false;
+ const auto collect=[&](){
  auto input=external::cooperativeInput(CooperativeFrameRead{},r,[&](uint32_t type){
   char id[24]{};if(!read(type+0x24,id,23))return quotas.defaults;
   for(int i=0;i<quotas.count;++i)if(sameid(id,quotas.entries[i].id))return quotas.entries[i].quota;return quotas.defaults;
@@ -19,6 +19,15 @@ static bool collectCooperativeInput(const cooperative::Request&r,const compute::
  const auto feature=r.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
  for(size_t i=0;i<input.units.size();++i)for(size_t j=0;j<input.targets.size();++j)
   if(!featureTypeAllowed(feature,input.units[i].type)||(r.mode==cooperative::Enter&&!featureTypeAllowed(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
+ return input;
+ };
+ if(runtimeDirectActions&&compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){
+  auto input=collect();
+  if(source){*source={};source->match=match;source->house=lastHouse;source->frame=get<int>(0xA8ED84);source->tick=sampleClock(sh);}
+  out=std::move(input);return true;
+ }
+ ObservationReadScope frameRead;if(!frameRead)return false;
+ auto input=collect();
  if(!frameRead.complete())return false;
  if(source)*source=sampleWorldSource->key;
  out=std::move(input);return true;
@@ -102,17 +111,21 @@ static bool sellAllowed(uint32_t p){
  return drained&&(sh->flags&SellDrained);
 }
 static bool newCooperative(uint32_t p,uint32_t target,int mode){
- auto&r=sh->cooperativeRequest;int frame=get<int>(0xA8ED84);DWORD now=sampleClock(sh);uint32_t id=get<uint32_t>(p+0x10),targetID=get<uint32_t>(target+0x10);
- if(!id||!targetID)return false;
+ auto&r=sh->cooperativeRequest;DWORD now=sampleClock(sh);uint32_t id=get<uint32_t>(p+0x10),targetID=get<uint32_t>(target+0x10);
+ const uint32_t inputRequest=sh->pointer.request;
+ if(!id||!targetID||!inputRequest||inputRequest==sh->pointer.ack)return false;
+ const bool samePointer=r.serial&&r.match==match&&r.pointerRequest==inputRequest;
+ const bool same=samePointer&&cooperative::sameInputRequest(r,inputRequest,match,targetID,mode,sh->aircraftDamageRadiusCells,sh->aircraftDamageCoveragePercent)&&r.count>=0&&r.count<=cooperative::MaxSources;
+ // One physical input cannot silently change target/mode while its selected
+ // sources are retried on later simulation frames.
+ if(samePointer&&!same)return false;
  if(get<int>(0xA8ECB8+16)>cooperative::MaxSources){
-  if(r.count<=cooperative::MaxSources||r.frame!=frame||r.target!=targetID||r.mode!=mode){InterlockedIncrement(&sh->cooperativeSeq);memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.mode=mode;r.frame=frame;r.tick=now;r.count=cooperative::MaxSources+1;MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();}return false;
+  if(!samePointer){InterlockedIncrement(&sh->cooperativeSeq);memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.mode=mode;r.pointerRequest=inputRequest;r.tick=now;r.count=cooperative::MaxSources+1;MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();}return false;
  }
- bool same=r.serial&&r.match==match&&r.target==targetID&&r.mode==mode&&r.frame==frame&&(mode!=cooperative::AirDamage||(r.airRadiusCells==sh->aircraftDamageRadiusCells&&r.airDamagePercent==sh->aircraftDamageCoveragePercent))&&r.count>=0&&r.count<=cooperative::MaxSources&&DWORD(now-r.tick)<100;
- if(same)for(int i=0;i<r.count;++i)if(r.sources[i].id==id){same=false;break;}
- if(same&&r.count>=cooperative::MaxSources)return false;
+ if(same)for(int i=0;i<r.count;++i)if(r.sources[i].id==id)return r.sources[i].token==manualVersions.get(id);
  if(!manualVersions.trackable(id))return false;
  if(mode!=cooperative::AirSingle)cancelNative(p);InterlockedIncrement(&sh->cooperativeSeq);
- if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.frame=frame;
+ if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.pointerRequest=inputRequest;r.tick=now;
   r.centerObject=target;
   if(mode==cooperative::AirDamage){r.airRadiusCells=sh->aircraftDamageRadiusCells;r.airDamagePercent=sh->aircraftDamageCoveragePercent;}
   else {r.airRadiusCells=0;r.airDamagePercent=0;}
@@ -120,7 +133,7 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
   else {uint32_t tactical=get<uint32_t>(0x887324);if(tactical>=0x10000){r.cameraX=get<int>(tactical+0xB0);r.cameraY=get<int>(tactical+0xB4);}}
   int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);r.viewWidth=width>0&&width<=32768?width:get<int>(0x8A00A4);r.viewHeight=height>0&&height<=32768?height:get<int>(0x8A00A8);
  }
- r.tick=now;r.sources[r.count++]={id,manualVersions.get(id)};MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();return true;
+ r.sources[r.count++]={id,manualVersions.get(id)};MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();return true;
 }
 static int cooperativeInput(uint32_t p,uint32_t target,uint32_t bindings,bool candidateEntry=false){
  if(!nativeReady()||!p||!target||!own(p,lastHouse)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C))return 0;
@@ -179,18 +192,30 @@ static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house,bool* ev
  // An incomplete frame is UNKNOWN, not a permanent capacity denial.
  if(evidenceReady)*evidenceReady=false;
  struct Candidate {uint32_t pointer,id;};static Candidate candidates[16384];
- int count=0;SampleReadScope frameRead;if(!frameRead||!commandRosterReady())return 1024;
- // Filter the canonical worker-owned Techno membership using the sealed
- // sample. Only relevant owned infantry/vehicles receive later live checks.
- for(const auto&member:worldFrameCommandRoster.members){
-  const uint32_t p=member.pointer;
+ int count=0;if(!commandRosterReady())return 1024;
+ // Only the asynchronous worker owns CommandRoster::members. Synchronous
+ // dispatchers enumerate their current native roster rather than assuming an
+ // absent worker roster means zero incoming passengers.
+ const auto add=[&](uint32_t p,uint32_t id)->bool{
+  if(!p||!id||id==ignore)return true;
   const int k=kind(p);
-  if((k!=1&&k!=2)||member.id==ignore||get<uint32_t>(p+0x21C)!=house)continue;
-  if(count>=16384)return 1024;
-  candidates[count++]={p,member.id};
+  if((k!=1&&k!=2)||get<uint32_t>(p+0x21C)!=house)return true;
+  if(count>=16384)return false;
+  candidates[count++]={p,id};return true;
+ };
+ const auto collectRoster=[&]()->bool{
+  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+  for(int n=0;n<all.count;++n){const uint32_t p=item(all,n);if(p&&!add(p,get<uint32_t>(p+0x10)))return false;}
+  return true;
+ };
+ if(runtimeDirectActions){if(!collectRoster())return 1024;}
+ else{
+  SampleReadScope frameRead;if(!frameRead)return 1024;
+  if(worldFrameCommandWorker.enabled()){
+   for(const auto&member:worldFrameCommandRoster.members)if(!add(member.pointer,member.id))return 1024;
+  }else if(!collectRoster())return 1024;
+  if(!frameRead.complete())return 1024;
  }
- if(!frameRead.complete())return 1024;
- frameRead.finish();
  if(evidenceReady)*evidenceReady=true;
  int reserved=0;const bool facility=clickView.capacity(target).singleVehicle;
  for(int i=0;i<count;++i){
@@ -390,9 +415,12 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
 }
 // Only the common game-thread capture epoch produces host cooperative input.
 static void captureCooperativeFrame(DWORD now,bool indexedWorkReady){
+ // Never publish a partial prefix while the physical pointer request is still
+ // being admitted/retried across simulation frames.
+ if(sh->pointer.request!=sh->pointer.ack)return;
  const auto&r=sh->cooperativeRequest;auto&out=sh->cooperativeInputFrame;
  const bool captured=out.frame>=0&&out.request.serial==r.serial&&out.match==r.match;
- if(!cooperative::valid(r)||r.match!=match||(!captured&&!freshness::intentAlive(r.tick,now))||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
+ if(!cooperative::valid(r)||r.match!=match||r.pointerRequest!=sh->pointer.request||(!captured&&!freshness::intentAlive(r.tick,now))||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
  if(out.request.serial==r.serial&&sh->cooperativeFrameWanted!=r.serial)return;
  // A worker may finish between two callbacks in the same game frame. Use
  // its original stamp, and avoid rebuilding the graph when several game
@@ -433,7 +461,7 @@ static void serviceCooperativePlan(uint32_t house,int frame,DWORD now,bool candi
  bool enter=sh->cooperativeMode==cooperative::Enter;
  auto fresh=[&](){return freshness::valid(sh->cooperativeMatch,match,sh->cooperativeTick,sh->cooperativeFrame,sampleClock(sh),get<int>(0xA8ED84),freshness::Cooperative);};
  auto expire=[&](){sh->cooperativeResult=-7;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;};
- if(compute::inside(sh->computeApplied,enter?compute::Enter:compute::Aircraft)||!nativeReady()||sh->cooperativeSerial!=sh->cooperativeRequest.serial||sh->cooperativeMode!=sh->cooperativeRequest.mode||sh->cooperativeMode<cooperative::Enter||sh->cooperativeMode>cooperative::AirSingle||sh->cooperativeRequest.match!=match||sh->cooperativeCount<0||sh->cooperativeCount>cooperative::MaxSources||!(sh->flags&(enter?AdvancedEnter:AircraftSpread))){sh->cooperativeResult=-4;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;}
+ if(compute::inside(sh->computeApplied,enter?compute::Enter:compute::Aircraft)||!nativeReady()||sh->cooperativeSerial!=sh->cooperativeRequest.serial||sh->cooperativeMode!=sh->cooperativeRequest.mode||sh->cooperativeMode<cooperative::Enter||sh->cooperativeMode>cooperative::AirSingle||sh->cooperativeRequest.match!=match||sh->cooperativeRequest.pointerRequest!=sh->pointer.request||sh->pointer.request!=sh->pointer.ack||sh->cooperativeCount<0||sh->cooperativeCount>cooperative::MaxSources||!(sh->flags&(enter?AdvancedEnter:AircraftSpread))){sh->cooperativeResult=-4;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;}
  if(cooperativeAt<sh->cooperativeCount&&!fresh())expire();
  const auto*identities=enter&&!candidateOnly?nullptr:cooperativeCaptures.find({sh->cooperativeSerial,sh->cooperativeMatch,sh->cooperativeTick,sh->cooperativeFrame});
  if(cooperativeAt<sh->cooperativeCount&&(!enter||candidateOnly)&&!identities)expire();

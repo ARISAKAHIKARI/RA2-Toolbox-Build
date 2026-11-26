@@ -37,20 +37,32 @@ static void formationPublish(){if(!sh)return;formationView.tick=sampleClock(sh);
 static void formationCancel(){if(formationQuick)formationButton=false;formationEndQuick();formationView.active=formationView.dragging=0;formationView.count=0;formationModal=formationHolding=false;formationHoldingKey=0;formationPublish();}
 static void resetFormation(){formationReleaseWatch.clear();formationFollowReleaseWatch.clear();formationForget();formationEndQuick();formationQuickCaptured=false;formationQuickMouse=0;formationFeedback=false;formationView={};formationModal=formationHolding=formationButton=false;formationHoldingKey=0;formationAltAt=0;formationHoldConsumed=false;formationJobCount=formationJobCursor=0;memset(formationSuppressed,0,sizeof formationSuppressed);if(sh){sh->formationJobs=0;formationPublish();}}
 static bool formationContext(bool preview=false){
- if(!sh||fault||sh->stop||!sh->foreground||!gameentry::active(gameentry::Client::Assist)||snap.status!=1||!match||!lastHouse||snap.commandStatus!=1||!get<bool>(0xA8E9A0)||get<uint32_t>(0xA83D4C)!=lastHouse||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u))return false;
- int frame=get<int>(0xA8ED84);if(frame<snap.frame||int64_t(frame)-snap.frame>6||frame<0||frame>=INT32_MAX||get<int>(0xA8B238)!=snap.session||!eventdelivery::mayQueue(snap.session)||get<bool>(lastHouse+0x1F5)||get<bool>(lastHouse+0x1F6)||get<bool>(lastHouse+0x1F8))return false;
+ // A held gesture gets bounded scheduling slack when the Host briefly lags.
+ // Admission remains strict; current House/session/focus are checked below.
+ const uint32_t hostGrace=preview?1000u:formationView.active?600u:150u;
+ if(!sh||fault||sh->stop||!sh->foreground||!gameentry::active(gameentry::Client::Assist)||snap.status!=1||!match||!lastHouse||snap.commandStatus!=1||!get<bool>(0xA8E9A0)||get<uint32_t>(0xA83D4C)!=lastHouse||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>hostGrace)return false;
+ // Game logic frames can advance much faster than the Host refresh rate.
+ // A fresh Host heartbeat plus live House/session/focus/queue checks prove
+ // gesture authority; a six-frame snapshot delta must never cancel a drag.
+ int frame=get<int>(0xA8ED84);if(frame<snap.frame||frame<0||frame>=INT32_MAX||get<int>(0xA8B238)!=snap.session||!eventdelivery::mayQueue(snap.session)||get<bool>(lastHouse+0x1F5)||get<bool>(lastHouse+0x1F6)||get<bool>(lastHouse+0x1F8))return false;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);if(foreground!=GetCurrentProcessId())return false;
  if(!external::display::inspect([](uint32_t at,void*out,size_t n){return read(at,out,n);}).visible())return false;
  long seq=sh->formationPolicySeq;if(seq&1)return formationPolicy.enabled!=0;MemoryBarrier();auto p=sh->formationPolicy;MemoryBarrier();if(seq!=sh->formationPolicySeq)return formationPolicy.enabled!=0;formationPolicy=p;return p.enabled!=0;
 }
-static bool formationActor(uint32_t p,bool quick=false,bool requireRoster=true){int air=0,k=kind(p);return p&&(!requireRoster||worldObjects.contains(p))&&own(p,lastHouse)&&(k==1||k==2||(quick&&k==0))&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&!get<bool>(p+0x427)&&(quick||(objectAirQuery(p,&air)&&!air));}
+static bool formationActor(uint32_t p,bool quick=false,bool requireRoster=true){
+ if(p<0x10000)return false;int air=0,k=kind(p);
+ return (!requireRoster||worldObjects.contains(p))&&own(p,lastHouse)&&
+  (k==1||k==2||(quick&&k==0))&&!get<bool>(p+0x1C8)&&
+  !get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&
+  !get<bool>(p+0x427)&&(quick||(objectAirQuery(p,&air)&&!air));
+}
 static bool formationAerial(const formation::Unit&u){
  // Aircraft are always in the air placement group, including while landed.
  // Existing type definitions identify jumpjet/flying infantry and vehicles.
  if(u.kind==0)return true;
  return u.type&&(get<int>(u.type+0x5B4)==9||get<int>(u.type+0x67C)==4);
 }
-static bool formationSelectionMatchesPreview(bool requireRoster=true){
+static bool formationSelectionMatchesPreview(bool requireRoster=false){
  Vec selected=vec(0xA8ECB8);bool found[formation::Maximum]{};int count=0;
  for(int n=0;n<selected.count;++n){uint32_t p=item(selected,n);if(!formationActor(p,formationQuick,requireRoster))continue;++count;int j=0;
   for(;j<formationView.count;++j)if(!found[j]&&p==formationView.units[j].pointer&&get<uint32_t>(p+0x10)==formationView.units[j].id)break;
@@ -58,8 +70,10 @@ static bool formationSelectionMatchesPreview(bool requireRoster=true){
  }return count==formationView.count&&count>0;
 }
 static void formationSelect(){
- if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady()){formationView.count=0;return;}formationView.count=0;Vec selected=vec(0xA8ECB8);
- for(int n=0;n<selected.count&&formationView.count<formation::Maximum;++n){uint32_t p=item(selected,n);if(!formationActor(p,formationQuick))continue;
+ // Input edge only needs the game's selected vector, not a full-world index
+ // sealed in precisely this fast-running frame. Each actor is checked live.
+ formationView.count=0;Vec selected=vec(0xA8ECB8);
+ for(int n=0;n<selected.count&&formationView.count<formation::Maximum;++n){uint32_t p=item(selected,n);if(!formationActor(p,formationQuick,false))continue;
   auto&u=formationView.units[formationView.count++];u={};u.pointer=p;u.id=get<uint32_t>(p+0x10);u.type=typeOf(p,kind(p));u.token=manualVersions.get(u.id);u.x=get<int>(p+0x9C);u.y=get<int>(p+0xA0);u.z=get<int>(p+0xA4);u.kind=kind(p);
  }
 }
@@ -115,7 +129,7 @@ static void formationCommit(bool remember=true,bool feedback=true){
  formationFeedback=feedback;formationFollow={};if(remember){formationMemory={};formationMemory.ax=formationView.ax;formationMemory.ay=formationView.ay;formationMemory.facing=formationView.facing;formationMemory.directed=formationDirected;formationMemory.quick=formationQuick;}
  sh->formationAccepted=sh->formationRejected=0;
  for(int n=0;n<formationView.count;++n){auto u=formationView.units[n];auto goal=formationView.slots[n];
-  if(!goal.valid||!formationActor(u.pointer,formationQuick)||get<uint32_t>(u.pointer+0x10)!=u.id||manualVersions.get(u.id)!=u.token){++sh->formationRejected;continue;}
+  if(!goal.valid||!formationActor(u.pointer,formationQuick,false)||get<uint32_t>(u.pointer+0x10)!=u.id||manualVersions.get(u.id)!=u.token){++sh->formationRejected;continue;}
   for(int j=0;j<formationJobCount;)if(formationJobs[j].unit.id==u.id)formationJobs[j]=formationJobs[--formationJobCount];else ++j;
   if(formationJobCount>=formation::Maximum){++sh->formationRejected;continue;}
   // This is an explicit player order: invalidate older automation leases.
@@ -125,7 +139,7 @@ static void formationCommit(bool remember=true,bool feedback=true){
   // Only a newly dragged layout asks for a common final heading. Continuation
   // translates the saved slots directly, without another facing detour.
   if(remember&&formationDirected&&formationCell(cx,cy))approach=cy*1000+cx;
-  auto&j=formationJobs[formationJobCount++];j={};j.unit=u;j.goal=goal;j.quick=formationQuick;j.approach=approach;j.epoch=match;j.frame=get<int>(0xA8ED84);++sh->formationAccepted;
+  auto&j=formationJobs[formationJobCount++];j={};j.unit=u;j.goal=goal;j.quick=formationQuick;j.approach=approach;j.epoch=match;j.frame=get<int>(0xA8ED84);j.issued=sampleClock(sh);++sh->formationAccepted;
   if(remember){int at=formationMemory.count++;formationMemory.units[at]=u;formationMemory.offsets[at]=goal;formationMemory.offsets[at].x-=formationView.ax;formationMemory.offsets[at].y-=formationView.ay;}
  }
  if(remember&&!formationSameSelection())formationForget();
@@ -280,12 +294,12 @@ static void formationTick(uint32_t house,int frame,DWORD now,bool indexedWorkRea
  if(formationFollow.down&&!formationFollow.dragged&&int32_t(sh->formationConsumedUntil-now)>0)sh->formationConsumedUntil=inputownership::afterGesture(now);
  formationContinue(now);
  int visited=0;while(formationJobCount&&visited++<32){if(formationJobCursor>=formationJobCount)formationJobCursor=0;int at=formationJobCursor++;auto&j=formationJobs[at];uint32_t p=worldByID(j.unit.id);
-  bool remove=j.epoch!=match||p!=j.unit.pointer||!formationActor(p,j.quick)||manualVersions.get(j.unit.id)!=j.unit.token||frame<j.frame||frame-j.frame>1800;
+  bool remove=j.epoch!=match||p!=j.unit.pointer||!formationActor(p,j.quick)||manualVersions.get(j.unit.id)!=j.unit.token||formation::taskExpired(frame,j.frame,now,j.issued,(j.stage==1||j.stage==3)?formation::IssuedTaskTimeoutMs:formation::PendingTaskTimeoutMs);
   uint32_t cell=j.stage<2&&j.approach?j.approach:uint32_t(j.goal.y/256*1000+j.goal.x/256);int gx=int(cell%1000)*256+128,gy=int(cell/1000)*256+128;
   if(!remove){double dx=double(get<int>(p+0x9C))-gx,dy=double(get<int>(p+0xA0))-gy;bool arrived=dx*dx+dy*dy<=96.*96.;
    if(j.stage==1||j.stage==3){bool going=get<int>(p+0xAC)==2&&get<uint32_t>(p+0x5A4)==readMapCell(cell%1000,cell/1000);j.observed|=going;
-    if(arrived){if(j.stage==1&&j.approach){j.stage=2;j.observed=false;}else remove=true;}
-    else if((j.observed&&!going)||DWORD(now-j.issued)>15000)remove=true;
+    if(arrived){if(j.stage==1&&j.approach){j.stage=2;j.observed=false;j.issued=now;}else remove=true;}
+    else if(j.observed&&!going)remove=true;
    }
    if(!remove&&(j.stage==0||j.stage==2)&&outgoingRoom()>0){uint32_t destination=j.stage==2?uint32_t(j.goal.y/256*1000+j.goal.x/256):cell;
     if(nativeMission(house,j.unit.id,2,0,destination,11,0,0,taskarbiter::Owner::Formation)){j.stage=j.stage==2?3:1;j.issued=now;if(formationFeedback){formationFeedback=false;inputFeedback(p,0,false);}}

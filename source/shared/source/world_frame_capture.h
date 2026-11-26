@@ -51,8 +51,12 @@ public:
  void clear(){size_=0;failed_=false;if(!++generation_){for(size_t i=0;i<capacity_;++i)entries_[i].generation=0;generation_=1;}}
  bool count(uint32_t address)const{return capacity_&&entries_[slot(address)].generation==generation_;}
  Insertion insert(uint32_t address){
-  if(failed_)return {false};if(capacity_&&entries_[slot(address)].generation==generation_)return {false};
-  if((!capacity_||size_>=capacity_/2)&&!grow())return {false};entries_[slot(address)]={address,generation_};++size_;return {true};
+  if(failed_)return {false};
+  size_t at=capacity_?slot(address):0;
+  if(capacity_&&entries_[at].generation==generation_)return {false};
+  // Reuse the first lookup unless a real growth changes the bucket mask.
+  if(!capacity_||size_>=capacity_/2){if(!grow())return {false};at=slot(address);}
+  entries_[at]={address,generation_};++size_;return {true};
  }
 };
 // Recently missed exact consumer field, not stale data. The acquisition
@@ -88,7 +92,15 @@ template<class Read>class CaptureGraph {
  bool working(){if(!failed_&&(!scratch_||!scratch_->valid())){failed_=true;++frame_.counters.overflows;}return !failed_&&!frame_.overflow();}
  template<class T>T value(uint32_t at,T fallback={}){T v{};return frame_.capture(live_,at,&v,sizeof v)?v:fallback;}
  void block(uint32_t p,size_t n){if(working()&&range(p,n))frame_.prefetch(live_,p,n);}
- void enqueue(uint32_t p){if(!working()||p<0x10000||p>=0x80000000u||scratch_->actors.count(p))return;if(scratch_->queue.size()>=65536){failed_=true;++frame_.counters.overflows;return;}scratch_->actors.insert(p);scratch_->queue.push_back(p);}
+ void enqueue(uint32_t p){
+  if(!working()||p<0x10000||p>=0x80000000u)return;
+  if(scratch_->queue.size()>=65536){
+   // A duplicate at capacity is harmless; only a new actor overflows.
+   if(!scratch_->actors.count(p)){failed_=true;++frame_.counters.overflows;}return;
+  }
+  // One insertion lookup also answers whether this pointer was seen.
+  if(scratch_->actors.insert(p).second)scratch_->queue.push_back(p);
+ }
  void auxiliary(uint32_t p,size_t n){if(working()&&p>=0x10000&&scratch_->small.insert(p).second)block(p,n);}
  void animation(uint32_t p){
   if(!working()||p<0x10000||!scratch_->small.insert(p).second)return;

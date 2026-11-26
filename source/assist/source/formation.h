@@ -5,6 +5,10 @@
 #include "../../shared/source/key_gesture.h"
 namespace assist { namespace formation {
 constexpr int Maximum=1024, Shapes=6;
+constexpr uint32_t PendingTaskTimeoutMs=30000,IssuedTaskTimeoutMs=15000;
+inline bool taskExpired(int frame,int startFrame,uint32_t now,uint32_t issuedAt,uint32_t timeoutMs=PendingTaskTimeoutMs){
+ return frame<startFrame||uint32_t(now-issuedAt)>timeoutMs;
+}
 constexpr double Pi=3.14159265358979323846;
 struct Policy {uint32_t enabled=0,hold=18,keys[Shapes]={'Z','X','C','V','B','N'},mouse=2;};
 struct Unit {uint32_t id=0,pointer=0,type=0,token=0,color=0;int x=0,y=0,z=0,kind=0;};

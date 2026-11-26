@@ -41,24 +41,18 @@ static settingsdeps::State currentSettingDependencies(){
  return s;
 }
 static std::map<int,settingsdeps::ControlBinding> dependencyBindings;
-struct DependencyCaption {std::wstring original,applied;};
-static std::map<HWND,DependencyCaption> dependencyCaptions;
 static std::map<HWND,std::wstring> dependencyTips;
 static std::wstring dependencyWindowText(HWND w){int n=GetWindowTextLengthW(w);std::vector<wchar_t> value(size_t(n)+1);GetWindowTextW(w,value.data(),n+1);return value.data();}
-static DependencyCaption& dependencyCaption(HWND w){
- auto found=dependencyCaptions.find(w);if(found==dependencyCaptions.end()){auto text=dependencyWindowText(w);found=dependencyCaptions.emplace(w,DependencyCaption{text,text}).first;}return found->second;
-}
 static void syncSettingDependencies(bool force,bool immediate){
  if(!ready||!ui||updatingControls)return;
  static DWORD polled=0;const DWORD now=GetTickCount();if(!force&&!immediate&&polled&&DWORD(now-polled)<120)return;polled=now;
  const auto state=currentSettingDependencies();static uint64_t previous=~uint64_t(0);static uint32_t previousBlocked=~uint32_t(0);
  if(!force&&state.available==previous&&state.hardwareBlocked==previousBlocked)return;previous=state.available;previousBlocked=state.hardwareBlocked;
- ControlUpdate guard;std::map<HWND,std::wstring> captions;
+ ControlUpdate guard;
  // Build each index once per changed dependency state, instead of searching
  // the complete settings tree separately for every dependent field.
  std::map<HWND,const PageControl*> placements;
- std::map<std::pair<int,int>,std::vector<const PageControl*>> labelRows;
- for(const auto&c:pageControls){placements.emplace(c.hwnd,&c);if(!GetDlgCtrlID(c.hwnd))labelRows[{c.page,c.rect.y}].push_back(&c);}
+ for(const auto&c:pageControls)placements.emplace(c.hwnd,&c);
  for(int id:settingsdeps::Controls){
   HWND control=GetDlgItem(ui,id);if(!control)continue;
   auto found=dependencyBindings.find(id);if(found==dependencyBindings.end())found=dependencyBindings.emplace(id,settingsdeps::ControlBinding(control)).first;
@@ -68,15 +62,8 @@ static void syncSettingDependencies(bool force,bool immediate){
   if(help.empty())help=dependencyWindowText(control);
   if(!availability.enabled())help=std::wstring(L"当前不可用：")+settingsdeps::reason(availability.missing)+(availability.missing==settingsdeps::Need::Unavailable?L"。相关快捷键与旧启用设置不执行。\r\n":availability.missing==settingsdeps::Need::HardwareBudget?L"。请先关闭其他硬件功能释放槽位；离线可按四槽预算预设，连接后复核实际占用。关闭已启用功能始终可用。\r\n":L"。已保存的子设置保留，开启父功能后恢复。\r\n")+help;
   if(dependencyTips[control]!=help){dependencyTips[control]=help;modernui::tip(control,help);}
-  auto addCaption=[&](HWND w){auto&text=dependencyCaption(w);captions[w]=availability.enabled()?text.original:std::wstring(L"[")+settingsdeps::reason(availability.missing)+L"] "+text.original;};
-  wchar_t cls[32]{};GetClassNameW(control,cls,32);if(!_wcsicmp(cls,L"BUTTON"))addCaption(control);
-  // Combo/edit captions have ID zero. Keep the reason visible beside their
-  // disabled field, rather than relying exclusively on hover tooltips.
-  else if(placed)for(const auto*c:labelRows[{placed->page,placed->rect.y}])if(c->rect.x<placed->rect.x){
-   GetClassNameW(c->hwnd,cls,32);if(!_wcsicmp(cls,L"STATIC"))addCaption(c->hwnd);
-  }
+  // Do not modify captions: dependency reasons live in the tooltip only.
  }
- for(const auto&entry:captions){auto&caption=dependencyCaption(entry.first);if(caption.applied!=entry.second){caption.applied=entry.second;SetWindowTextW(entry.first,entry.second.c_str());}}
 }
 static bool rejectUnavailableSetting(int id,int notification){
  if(notification!=BN_CLICKED&&notification!=CBN_SELCHANGE&&notification!=EN_CHANGE)return false;

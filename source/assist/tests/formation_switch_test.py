@@ -31,11 +31,12 @@ fixture = r'''
 #include <set>
 #include <vector>
 #include @LAYOUT_HEADER@
+#include "mo_orders.h"
 using namespace assist;
 using UINT=unsigned;using DWORD=uint32_t;using HWND=uintptr_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;
 constexpr UINT WM_NULL=0,WM_KEYDOWN=0x100,WM_KEYUP=0x101,WM_SYSKEYDOWN=0x104,WM_SYSKEYUP=0x105;
 constexpr UINT WM_MOUSEMOVE=0x200,WM_LBUTTONDOWN=0x201,WM_LBUTTONUP=0x202,WM_RBUTTONDOWN=0x204,WM_RBUTTONUP=0x205;
-constexpr int VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,VK_ESCAPE=27;
+constexpr int VK_LBUTTON=1,VK_RBUTTON=2,VK_SHIFT=16,VK_CONTROL=17,VK_MENU=18,VK_ESCAPE=27;
 static uint16_t LOWORD(LPARAM v){return uint16_t(v);}static uint16_t HIWORD(LPARAM v){return uint16_t(uintptr_t(v)>>16);}
 static LPARAM MAKELPARAM(short x,short y){return uint16_t(x)|(uint32_t(uint16_t(y))<<16);}
 struct MSG{HWND hwnd=1;UINT message=0;WPARAM wParam=0;LPARAM lParam=0;};
@@ -43,6 +44,7 @@ struct POINT{int x=100,y=100;};struct RECT{int left=0,top=0,right=800,bottom=600
 static std::array<bool,256> held{};static POINT cursor;
 static bool GetClientRect(HWND,RECT*r){*r={};return true;}static bool GetCursorPos(POINT*p){*p=cursor;return true;}
 static bool ScreenToClient(HWND,POINT*){return true;}static short GetKeyState(int k){return held[k]?short(0x8000):0;}
+static short GetAsyncKeyState(int k){return GetKeyState(k);}
 static HWND GetForegroundWindow(){return 1;}static DWORD GetCurrentProcessId(){return 42;}
 static void GetWindowThreadProcessId(HWND,DWORD*p){*p=42;}
 static void MemoryBarrier(){}static void InterlockedIncrement(volatile long*p){++*p;}
@@ -60,6 +62,8 @@ static bool own(uint32_t p,uint32_t h){return get<uint32_t>(p+0x21C)==h;}
 static bool live(uint32_t p){return get<int>(p+0x6C)>0;}
 static uint32_t typeOf(uint32_t p,int){return get<uint32_t>(p+0x6C4);}
 static bool GuardedObjectAir(uint32_t,int*air){*air=0;return true;}
+static bool objectAirQuery(uint32_t p,int*air){return GuardedObjectAir(p,air);}
+static bool nativeDependencyReady(uint32_t address){return address==0x578080;}
 static int selections=0;static void indexWorld(int){++selections;}
 static uint32_t worldByID(uint32_t id){for(auto p:actors)if(get<uint32_t>(p+0x10)==id)return p;return 0;}
 static struct{std::map<uint32_t,uint32_t> tokens;uint32_t get(uint32_t id){return tokens[id];}}manualVersions;
@@ -68,6 +72,7 @@ static struct{int status=1,commandStatus=1,frame=100,session=0,chat=0;}snap;
 static uint32_t clockValue=1000;static int notifications=0,formationJobCount=0;
 static struct Shared{
  bool stop=false,foreground=true;uint32_t heartbeat=1000;
+ volatile long moGesturePolicySeq=0;moorders::GesturePolicy moGestures{};moorders::Options moOptions{};uint32_t moFeatures=0;
  volatile long formationSeq=0,formationPolicySeq=0;
  formation::Policy formationPolicy;formation::Preview formationPreview;
  int formationJobs=0,formationAccepted=0,formationRejected=0;
@@ -117,7 +122,7 @@ static bool dispatch(UINT message,uint32_t key=0,bool repeat=false,int x=100,int
  assert((sh->formationSeq&1)==0);return consumed;
 }
 static void message(UINT m,uint32_t key=0,bool repeat=false,int x=100,int y=100){assert(dispatch(m,key,repeat,x,y));}
-static void activate(){held[VK_MENU]=true;message(WM_SYSKEYDOWN,VK_MENU);assert(sh->formationPreview.active&&sh->formationPreview.count==25&&selections==1);}
+static void activate(){held[VK_MENU]=true;message(WM_SYSKEYDOWN,VK_MENU);assert(sh->formationPreview.active&&sh->formationPreview.count==25&&selections==0);}
 using Geometry=std::set<std::pair<int,int>>;
 static Geometry geometry(const formation::Preview&p){Geometry out;for(int n=0;n<p.count;++n){assert(p.slots[n].valid);out.insert({p.slots[n].x,p.slots[n].y});}assert(int(out.size())==p.count);return out;}
 static bool sameSlots(const formation::Preview&a,const formation::Preview&b){return a.count==b.count&&std::memcmp(a.slots,b.slots,sizeof a.slots)==0;}
@@ -134,6 +139,9 @@ static void drainExact(const formation::Preview&preview){
 }
 int main(){
  int cases=0;
+ // A transient null entry in the selected vector must be rejected before
+ // the bridge reads an object's vtable or identity.
+ setup();activate();selected[0]=0;assert(!formationSelectionMatchesPreview());++cases;
  // No WM_MOUSEMOVE or clock advancement occurs between distinct shape keys.
  setup();activate();std::set<Geometry> shapes;
  for(int shape=0;shape<6;++shape){auto before=sh->formationPreview;int samples=selections;message(WM_SYSKEYDOWN,shapeKeys[shape]);auto p=sh->formationPreview;
@@ -199,6 +207,31 @@ int main(){
  // A double-hold enters on the second key-down and ends when its prefix goes.
  setup();sh->formationPolicy.hold='G'|0xb200;assert(!dispatch(WM_KEYDOWN,VK_CONTROL));assert(!dispatch(WM_KEYDOWN,'G'));assert(!sh->formationPreview.active);assert(!dispatch(WM_KEYUP,'G'));clockValue+=100;message(WM_KEYDOWN,'G');assert(formationHolding&&sh->formationPreview.active);
  assert(!dispatch(WM_KEYUP,VK_CONTROL));assert(!formationHolding&&!sh->formationPreview.active);++cases;
+ // Game at 240 FPS, Host world snapshot still frame 100. A held drag
+ // must remain active and submit native Move orders despite 125 new frames.
+ setup();put(0xA8ED84,180);activate();
+ assert(sh->formationPreview.active&&sh->formationPreview.count==25);
+ message(WM_RBUTTONDOWN);
+ clockValue+=40;put(0xA8ED84,225);
+ formationTick(lastHouse,225,clockValue,false);
+ assert(sh->formationPreview.active&&formationButton);
+ message(WM_MOUSEMOVE,0,false,185,145);
+ assert(sh->formationPreview.active&&sh->formationPreview.dragging);
+ auto highFpsPreview=sh->formationPreview;
+ message(WM_RBUTTONUP,0,false,185,145);
+ assert(!sh->formationPreview.active);checkJobs(highFpsPreview);++cases;
+ // Brief Host sampling stalls must not consume an already captured drag,
+ // but a genuinely dead Host still retires it within a bounded 600 ms.
+ setup();activate();message(WM_RBUTTONDOWN);held[VK_RBUTTON]=true;
+ clockValue+=400;put(0xA8ED84,250);formationTick(lastHouse,250,clockValue,false);
+ assert(sh->formationPreview.active&&formationButton);
+ clockValue+=220;put(0xA8ED84,350);formationTick(lastHouse,350,clockValue,false);
+ assert(!sh->formationPreview.active);held[VK_RBUTTON]=false;++cases;
+ // A real live house switch still cancels the gesture immediately.
+ setup();activate();message(WM_RBUTTONDOWN);
+ clockValue+=30;put(0xA8ED84,280);put(0xA83D4C,lastHouse+4);
+ formationTick(lastHouse,280,clockValue,false);
+ assert(!sh->formationPreview.active&&formationJobCount==0);++cases;
  std::cout<<"PASS "<<cases<<" production bridge cases: stationary six-shape switch, same-clock cycling, repeat suppression, exact per-ID preview/job/nativeMission destinations for both buttons, moved units and jitter without recomputation, obstacle resolution, release freeze and membership cancellation, Press/EXT compatibility, unsupported modes, chord cancellation/repeat/rebind, drag ownership, modal Alt and double-hold\n";
 }
 '''

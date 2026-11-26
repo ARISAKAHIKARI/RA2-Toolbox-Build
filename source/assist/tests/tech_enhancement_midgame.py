@@ -97,6 +97,10 @@ def main():
         if "static bool scanTypes(" in bridge:
             pieces += ["#define SAMPLED_CATALOGUE 1", function(bridge, "static void requestTypeCatalogue("),
                        function(bridge, "static bool scanTypes(")]
+            if "static bool scanTypes(bool direct=false" in bridge:
+                pieces.append("#define DIRECT_CATALOGUE 1")
+            if "scanTypes(bool direct=false,const std::array<std::vector<external::catalogue::TypeProbe>,4>* probes" in bridge:
+                pieces.append("#define SHARED_CATALOGUE_PROBE 1")
         else:
             pieces.append(function(bridge, "static void scanTypes("))
         for sig in ("static int typeSlot(uint32_t type)", "static int canonicalKind(", "static int typeTab(",

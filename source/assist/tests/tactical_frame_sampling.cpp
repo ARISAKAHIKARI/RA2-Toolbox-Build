@@ -32,6 +32,7 @@ static bool fault=false,externalInputFrame=true;static DWORD clockNow=1000;
 static uint64_t readRequests=0;
 static unsigned leaseChecks=0;static bool leaseAllowed=true;
 static unsigned nativeCalls=0,hostNotifies=0,submissions=0,liveReads=0,liveRosterReads=0,missingLiveReads=0;
+static unsigned liveMapHeaderReads=0;
 static bool denyLivePage=false;static uint32_t missingPage=0,nextAddress=0x100000;static int enterResult=3;
 static std::vector<uint8_t> memory(0xC00000);
 static std::function<void()> nativeMutation;
@@ -76,16 +77,11 @@ static bool verifyCandidatePointer(uint32_t pointer){
  if(sampleReadDepth)return worldFrameCandidateRoster.objects->contains(pointer);
  std::memcpy(&id,memory.data()+pointer+0x10,4);return worldFrameCandidateRoster.objects->byId(id)==pointer;
 }
-static bool commandRosterReady(){
- return worldFrameReady&&worldFrameCommandWorker.enabled()&&
-        worldFrameCommandRoster.current(worldFrame.key)&&
-        worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
-        worldFrame.key.house==lastHouse&&
-        worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal);
-}
+static bool commandRosterReady();
 #include "sample_scope_production.h"
 static bool liveRead(uint32_t at,void*out,size_t n){
- ++liveReads;if(at==0xA8EC78||(at>=0x800000&&at<0x810000))++liveRosterReads;
+ ++liveReads;if(at==0x87F7E8+316||at==0x87F7E8+320)++liveMapHeaderReads;
+ if(at==0xA8EC78||(at>=0x800000&&at<0x810000))++liveRosterReads;
  if(missingPage&&at<missingPage+4096&&uint64_t(at)+n>missingPage){++missingLiveReads;if(denyLivePage)return false;}
  if(at<0x10000||uint64_t(at)+n>memory.size())return false;
  std::memcpy(out,memory.data()+at,n);return true;
@@ -190,6 +186,14 @@ static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const 
 }
 static int indexedFrame=-1,indexedCount=-1,globalVehicleCandidateCount=0;
 static uint32_t indexedItems=0,indexedVehicleHouse=0,globalVehicleCandidates[16384]{};static bool indexedGlobalVehicles=false;
+static bool commandRosterReady(){
+ if(runtimeDirectActions)return indexedFrame==snap.frame&&indexedCount>=0&&indexedVehicleHouse==lastHouse&&indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal);
+ return worldFrameReady&&worldFrameCommandWorker.enabled()&&
+        worldFrameCommandRoster.current(worldFrame.key)&&
+        worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
+        worldFrame.key.house==lastHouse&&
+        worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal);
+}
 static void minerDefenseReindexManual(ManualVersions&){}
 #include "tactical_frame_production.h"
 static void cancelDodge(uint32_t id){for(int i=0;i<dodgeCount;++i)if(dodgeJobs[i].id==id){dodgeJobs[i]=dodgeJobs[--dodgeCount];++dodgeCancelled;return;}}
@@ -246,7 +250,7 @@ static void testCooperative(){
  // Exercise the legacy Host observation-only path explicitly; product policy fixes all action planners in Runtime.
  reset();sh->computeApplied=0;const uint32_t tt=makeType(),bt=makeType();set<double>(tt+0x380,3.);set<bool>(tt+0xD2E,true);set<bool>(bt+0x16AB,true);std::memcpy(memory.data()+bt+0x24,"TEST",5);
  uint32_t p=object(tt,2,7,lastHouse,25600,25600),target=object(bt,3,8,lastHouse,25600,25600);vectorAt(0xA8EC78,0x800000,{p,target});seal();
- cooperative::Request request{};request.serial=1;request.match=match;request.target=8;request.type=bt;request.mode=cooperative::Enter;request.count=1;request.sources[0]={7,0};request.cameraX=-320;request.cameraY=2700;request.viewWidth=640;request.viewHeight=480;
+ cooperative::Request request{};request.serial=1;request.match=match;request.pointerRequest=1;sh->pointer.request=sh->pointer.ack=1;request.target=8;request.type=bt;request.mode=cooperative::Enter;request.count=1;request.sources[0]={7,0};request.cameraX=-320;request.cameraY=2700;request.viewWidth=640;request.viewHeight=480;
  compute::QuotaConfig quotas{};quotas.count=1;std::memcpy(quotas.entries[0].id,"TEST",5);quotas.entries[0].quota.first=7;
  cooperative::Input input;check(collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets.size()==1,"cooperative complete capture");
  set<int>(p+0x6C,0);std::memcpy(memory.data()+bt+0x24,"LIVE",5);check(collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets[0].quota.first==7,"cooperative shares frozen objects and quota type bytes");check(liveReads==0,"cooperative pure converter made a live read");
@@ -403,7 +407,7 @@ static void testBoardingLedgerUnknown(){
  setupLoad(0);const uint32_t passenger=get<uint32_t>(0x820000),carrier=get<uint32_t>(0x800000),passengerID=get<uint32_t>(passenger+0x10),carrierID=get<uint32_t>(carrier+0x10);
  const int sourceKind=kind(passenger);
  loading::Reservation r{passenger,passengerID,carrier,carrierID,1,snap.frame};
- r.kind=sourceKind;r.initial=loadingObservation(passenger);r.lastSent=snap.frame;r.progress=snap.frame;r.retryAfter=snap.frame+30;
+ r.kind=sourceKind;r.initial=loadingObservation(passenger);r.lastSent=snap.frame;r.progress=snap.frame;r.lastSentAt=clockNow;r.progressAt=clockNow;r.retryAfterAt=clockNow+loading::RetryIntervalMs;
  check(loadLedger.add(r),"boarding ledger fixture did not reserve");
  interfacesReady=true;loadingFinished=loadingBoarded=loadingResends=0;
  // Unknown live UID/owner/motion must not cancel, send, or change the ledger.
@@ -425,7 +429,7 @@ static void testBoardingLedgerUnknown(){
  // A UID replacement cannot retain or complete the predecessor's reservation.
  setupLoad(0);const uint32_t p2=get<uint32_t>(0x820000),v2=get<uint32_t>(0x800000);
  loading::Reservation old{p2,get<uint32_t>(p2+0x10),v2,get<uint32_t>(v2+0x10),1,snap.frame};
- old.kind=kind(p2);old.initial=loadingObservation(p2);old.lastSent=snap.frame;old.retryAfter=snap.frame+30;
+ old.kind=kind(p2);old.initial=loadingObservation(p2);old.lastSent=snap.frame;old.progress=snap.frame;old.lastSentAt=clockNow;old.progressAt=clockNow;old.retryAfterAt=clockNow+loading::RetryIntervalMs;
  check(loadLedger.add(old),"replacement fixture ledger missing");
  loadingFinished=loadingBoarded=loadingResends=0;
  set<uint32_t>(p2+0x10,old.id+1000);advance();autoLoadTick(lastHouse,snap.frame);
@@ -520,6 +524,19 @@ static void testMissile(){
  const auto oldReads=readRequests;readRequests=0;int motions[32];std::fill_n(motions,32,-2);
  {SampleReadScope scope;for(int n=0;n<32;++n){const int record=missileRecord(500+n);for(int t=0;t<32;++t){const auto edge=missileEdgeFacts(sources[n],targets[t],weapon,0,1,record,&motions[t]);check(!std::memcmp(&edge,&beforeEdges[n][t],sizeof edge),"cached missile edge changed");}}check(scope.complete(),"indexed matrix incomplete");}
  const auto newReads=readRequests;check(newReads*4<oldReads,"missile pair loop repeated per-target lookup");
+ // The raw selector already produced these immutable facts. Edge projection
+ // must match the unbatched path, even after the batch epoch is invalidated.
+ static CombatProbeTargetSample edgeSamples[32]{};
+ CombatProbeBatch edgeBatch{edgeSamples};
+ {SampleReadScope scope;
+  for(int t=0;t<32;++t){const auto q=targets[t];edgeSamples[t]={q,airType,edgeBatch.epoch,0,get<int>(airType+0x9C),get<int>(q+0x9C),get<int>(q+0xA0),get<int>(q+0xA4),planner::Airborne};}
+  for(int n=0;n<32;++n){const auto p=sources[n];edgeBatch.sourcePointer=p;edgeBatch.sourceKind=2;edgeBatch.sourceEpoch=edgeBatch.epoch;
+   edgeBatch.source.x=get<int>(p+0x9C);edgeBatch.source.y=get<int>(p+0xA0);edgeBatch.source.z=get<int>(p+0xA4);
+   for(int t=0;t<32;++t){const auto edge=missileEdgeFacts(p,targets[t],weapon,0,1,992+n,&motions[t],&edgeBatch,t);check(!std::memcmp(&edge,&beforeEdges[n][t],sizeof edge),"batched coordinates or armor changed edge");}
+  }
+  edgeBatch.invalidate();const auto edge=missileEdgeFacts(sources[0],targets[0],weapon,0,1,992,&motions[0],&edgeBatch,0);
+  check(!std::memcmp(&edge,&beforeEdges[0][0],sizeof edge)&&scope.complete(),"invalidated batch did not use current fields");
+ }
  std::printf("PASS missile dense edge parity: 1024 pairs, logical field reads %llu -> %llu; source history lookup once per row and motion identity once per column\n",(unsigned long long)oldReads,(unsigned long long)newReads);
  }
  std::puts("PASS missile raw/fresh selector facts, missing retention, manual generations and native query boundaries");
@@ -653,6 +670,145 @@ static void testRepair(){
  worldFrameReady=false;check(collectRepairs(lastHouse,clockNow,true)==-6&&sh->repairTask==task&&repairCount==2,"repair absent sample published empty work");
  std::puts("PASS repair internal/Host outputs, pending-toggle facts and failed refresh retention");
 }
+static void testDodgeThreatIndex(){
+ static dodgecompute::ThreatIndex index;index.clear();
+ check(index.add(100,4)&&index.add(200,2)&&index.add(100,2)&&index.add(200,5)&&index.add(300,1)&&index.add(100,0),"threat index admission");
+ index.seal();int seen[8]{},count=0;
+ index.visit(100,200,[&](int n){seen[count++]=n;return true;});
+ check(count==4&&seen[0]==0&&seen[1]==2&&seen[2]==4&&seen[3]==5,"threat index must preserve collection order and deduplicate two keys");
+ count=0;index.visit(100,100,[&](int n){seen[count++]=n;return count<2;});
+ check(count==2&&seen[0]==0&&seen[1]==2,"same-key query or threat cap");
+ count=0;index.visit(400,500,[&](int){++count;return true;});check(!count,"unrelated threats visited");
+ index.clear();index.seal();index.visit(100,200,[&](int){++count;return true;});check(!count,"old threats survived callback reset");
+ std::puts("PASS ordered native dodge index, duplicate keys, cap and callback reset");
+}
+static void testDirectCombatDodge(){
+ reset();sh->computeApplied=compute::All;sh->flags=AdvancedInput;sh->dodgeEnabled=1;
+ const uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),
+  target=object(type,2,30,0x30000,1200,1000),owner=object(airType,0,21,0x30000),bullet=alloc();
+ makeWeapon(type);nativeOrders[0]={20,0,0,planner::OrdinaryMove,false,p};nativeCount=1;
+ set<uint32_t>(bullet,0x7E46E4);set<uint32_t>(bullet+0x10,50);set<int>(bullet+0x6C,25);
+ set<bool>(bullet+0x90,true);set<uint32_t>(bullet+0xB0,owner);set<uint32_t>(bullet+0x10C,p);
+ set<int>(bullet+0x140,1000);set<int>(bullet+0x144,1000);set<double>(bullet+0xE8,5.);
+ vectorAt(0xA8EC78,0x800000,{target,p,owner});vectorAt(0xA8ED40,0x810000,{bullet});
+ // Model the dispatcher-local native index without copying a single page.
+ worldObjects.unbind();worldObjects.clear();worldObjects.add(p,20);worldObjects.add(target,30);worldObjects.add(owner,21);
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct combat boundary");
+ worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ // Emulate the current native roster proof (the worker remains a fixture
+ // seam for the other cases). No graph is available on this boundary.
+ indexedFrame=snap.frame;indexedCount=3;indexedVehicleHouse=lastHouse;indexedGlobalVehicles=false;
+ check(advancedTargetInRange(20,lastHouse),"native movement range recheck required full graph");
+ check(worldFrame.pages.size()==0&&runtimeWorldDemands.empty(),"native range recheck registered graph dependencies");
+ int a=0,b=0;
+ const auto initialSequence=sh->worldSeq;
+ const auto initialSharedFrame=sh->world.frame;
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count>=2&&planningWorld.actors[0].id==20&&planningWorld.actors[0].x==1000&&planningWorld.actors[1].id==30,
+       "native planner required a copied graph");
+ check(sh->worldSeq==initialSequence&&sh->world.frame==initialSharedFrame,
+       "all-Runtime local publication needlessly copied the Host mailbox");
+ // A legacy Host consumer still tracking work can arrive on the same frame.
+ sh->plannerTracking=AdvancedInput;
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&sh->worldSeq==initialSequence+2&&
+       sh->world.frame==snap.frame&&sh->world.count==planningWorld.count&&sh->world.actors[0].id==20,
+       "Host tracking did not restore same-frame mailbox publication");
+ sh->plannerTracking=0;
+ const auto hostSequence=sh->worldSeq;
+ check(collectDodgeThreats()&&collectDodgeInput(lastHouse,snap.frame,clockNow,a,b)&&dodgeInput.count==1&&dodgeInput.sources[0].shots[0]==50,
+       "native dodge required a copied graph");
+ reversedodge::Point delta{};
+ check(collectReverseTargets(dodgeThreatRefs[0],lastHouse,delta)&&reverseTargetCount==1&&reverseTargets[0].id==20,
+       "native reverse targets required a copied graph");
+ ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);set<int>(p+0x9C,1100);set<uint32_t>(bullet+0x10,51);
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.frame==snap.frame&&planningWorld.actors[0].x==1100,
+       "native planner did not use current game frame");
+ check(sh->worldSeq==hostSequence,"local-only frame republished stale Host work");
+ check(collectDodgeThreats()&&collectDodgeInput(lastHouse,snap.frame,clockNow,a,b)&&dodgeInput.sources[0].shots[0]==51,
+       "native dodge reused old projectile facts");
+ check(worldFrame.pages.size()==0&&runtimeWorldDemands.empty()&&!sampleReadDepth,
+       "direct tactical collectors copied pages or registered dependencies");
+ // Retiring the final native planning task must publish an empty world
+ // without touching the Techno vector, including if the old roster is gone.
+ sh->flags=0;sh->runtimeTracking=AdvancedInput;nativeCount=0;
+ ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ const auto emptyRosterReads=liveRosterReads;
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count==0&&planningWorld.intentCount==0,
+       "empty native planning publication could not drain old actors");
+ check(liveRosterReads==emptyRosterReads&&sh->worldSeq==hostSequence,
+       "empty native planning publication read the Techno roster or copied Host mailbox");
+ runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
+ std::puts("PASS direct native combat and dodge collectors without copied world pages");
+}
+static void testDirectMissileLoad(){
+ reset();sh->computeApplied=compute::All;
+ const uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),q=object(airType,0,40,0x30000,1300,1000);
+ const uint32_t weapon=makeWeapon(type);set<int>(type+0x808,1);set<bool>(airType+0xD68,true);set<int>(q+0xA4,200);sh->missileScope=0;
+ vectorAt(0xA8EC78,0x800000,{p,q});
+ worldObjects.unbind();worldObjects.clear();worldObjects.add(p,20);worldObjects.add(q,40);
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct missile boundary");
+ worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ int sc=0,tc=0,mc=0;
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.count==1&&missileInput.targetCount==1&&missileInput.edges[0][0].damage==40,"native missile required copied pages");
+ const auto distance=missileInput.edges[0][0].distance;
+ set<int>(q+0x9C,1700);
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].distance!=distance,"native missile reused old target coordinates");
+ // A target outside the firing circle can still be inside acquisition.
+ // Keep the exact inclusive advance boundary, and the still-valid cached
+ // weapon range even if fresh type metadata changes in this callback.
+ set<int>(q+0xA4,0);set<int>(q+0x9C,1000+4096+missilecompute::AdvanceLeash);
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].damage==40&&!missileInput.edges[0][0].close,
+       "AA spatial screening lost exact advance boundary");
+ set<int>(weapon+0xB4,2048);
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].damage==40,
+       "AA spatial screening lost cached-range acquisition");
+ set<int>(q+0x9C,1000+4096+missilecompute::AdvanceLeash+1);
+ check(collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileInput.edges[0][0].damage==0,
+       "AA spatial screening admitted a distant target");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,"native missile registered page requests");
+ runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
+ setupLoad(0);const int legacy=autoLoad(lastHouse);const auto expected=assignments;
+ setupLoad(0);worldObjects.unbind();worldObjects.clear();
+ Vec all=vec(0xA8EC78);for(int n=0;n<all.count;++n){const auto p=item(all,n);if(p)worldObjects.add(p,get<uint32_t>(p+0x10));}
+ key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct boarding boundary");
+ worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ check(autoLoad(lastHouse)==legacy&&assignments==expected&&!assignments.empty(),"native boarding changed assignment or required a copied graph");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,"native boarding registered page requests");
+ runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
+ std::puts("PASS direct missile and boarding collectors without world copies");
+}
+static void testDirectRuntimeRepair(){
+ reset();const uint32_t type=makeType(),p=object(type,3,20);
+ set<int>(type+0xA0,200);set<uint8_t>(type+0x157A,1);
+ set<int>(p+0x6C,100);vectorAt(0xA8EB40,0x840000,{p});
+ sh->computeApplied=1u<<compute::Repair;
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct boundary seal");
+ worldFrameReady=worldFrameBoundaryOnly=true;runtimeDirectActions=true;
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ {SampleReadScope legacy;check(!legacy,"unmigrated collector accepted direct boundary");}
+ check(collectRepairs(lastHouse,clockNow)==1&&repairOrders[0].id==20&&liveReads&&!hostNotifies,
+       "direct repair did not collect native facts");
+ set<int>(p+0x6C,200);
+ check(collectRepairs(lastHouse,clockNow)==0,"direct repair reused stale object fields");
+ set<int>(p+0x6C,100);
+ check(collectRepairs(lastHouse,clockNow)==1,"direct repair missed native change");
+ // Native scalar access does not emulate snapshot missing-page behavior.
+ // Keep the single bounded roster admission check before traversing objects.
+ set<int>(0xA8EB40+16,16385);
+ check(collectRepairs(lastHouse,clockNow)==-6&&repairCount==1&&repairOrders[0].id==20,
+       "invalid native roster destroyed previous candidate list");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,
+       "direct collector copied pages, created dependencies or leaked scope");
+ runtimeDirectActions=false;
+ check(collectRepairs(lastHouse,clockNow)==-6,"direct collector escaped dispatcher admission");
+ worldFrameBoundaryOnly=false;worldFrameReady=false;
+ std::puts("PASS direct repair: native changes, invalid roster retention, explicit admission and zero copied pages");
+}
 struct OreFixture {uint32_t miner,type,refinery,refineryType,links,resource,distant;};
 static uint32_t resource(int x,int y){uint32_t cell=alloc();set<int16_t>(cell+0x24,int16_t(x));set<int16_t>(cell+0x26,int16_t(y));set<int>(cell+0x44,0);set<int>(cell+0xEC,0);set<uint32_t>(0x400000+uint32_t(y*512+x)*4,cell);return cell;}
 static OreFixture setupOre(){
@@ -675,6 +831,48 @@ static void testOre(){
  oreHarvestTick(lastHouse,snap.frame,clockNow);check(harvestEvents==1&&harvestLast.destination==62056&&!oreHarvestPending(),"ore retry failed to find/send exact nearest cell");
  f=setupOre();oreHarvestObserve(lastHouse,snap.frame,clockNow);unloaded(f);advance();set<int>(f.resource+0x44,-1);oreHarvestTick(lastHouse,snap.frame,clockNow);check(!harvestEvents,"ore execution guard used stale sampled resource");
  std::puts("PASS ore Unit/Building observation, failed transaction/search retry and live admission guard");
+}
+static void testDirectOre(){
+ auto f=setupOre();sh->computeApplied=compute::All;
+ worldObjects.unbind();worldObjects.clear();worldObjects.add(f.miner,20);worldObjects.add(f.refinery,30);
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;
+ worldFrame.resetBoundary(key);check(worldFrame.seal(),"direct ore boundary");
+ worldFrameReady=worldFrameBoundaryOnly=runtimeDirectActions=true;
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ oreHarvestObserve(lastHouse,snap.frame,clockNow);check(oreHarvestPending()&&!oreHarvestNeedsWork(),"native ore failed to detect unloading");
+ const auto&job=oreHarvestJobs[0];
+ OreHarvestState observed{};const auto readsBefore=liveReads;
+ check(oreHarvestState(job,lastHouse,observed)==1&&observed.unloading,"batched native miner facts changed");
+ check(liveReads-readsBefore==9,"native miner field grouping did not reduce read count");
+ const auto refineryReads=liveReads;
+ check(oreHarvestRefinery(job,lastHouse)==1,"batched refinery radio facts changed");
+ check(liveReads-refineryReads==7,"native refinery field grouping did not reduce read count");
+ unloaded(f);++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ oreHarvestTick(lastHouse,snap.frame,clockNow);
+ check(harvestEvents==1&&harvestLast.destination==62056&&!oreHarvestPending(),"native ore failed to find and submit exact nearest resource");
+ check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,"native ore required copied pages");
+ // Unsorted native dock metadata must retain its original membership, and
+ // an off-map unloading miner must remain in the planner with OffMap set.
+ const auto extraType=makeType(),otherType=makeType();
+ const auto extraDock=object(extraType,3,31,lastHouse,54*256,60*256);
+ const auto otherBuilding=object(otherType,3,32,lastHouse,58*256,60*256);
+ const auto docks=get<uint32_t>(f.type+0x3EC);
+ vectorAt(f.type+0x3E8,docks,{extraType,f.refineryType,extraType});
+ vectorAt(0xA8EC78,0x800000,{f.miner,f.refinery,extraDock,otherBuilding});
+ worldObjects.add(extraDock,31);worldObjects.add(otherBuilding,32);
+ ++oreConfigRevision;++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ set<bool>(f.miner+0x74,false);set<bool>(f.miner+0x6D1,true);
+ set<uint32_t>(f.miner+0x5A4,0); // No unrelated destination cell lookup.
+ const auto mapHeaderReads=liveMapHeaderReads;
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count==3,
+       "native planning lost dock membership or unloading miner");
+ check(planningWorld.actors[0].id==20&&(planningWorld.actors[0].flags&planner::OffMap)&&
+       (planningWorld.actors[0].flags&planner::Unloading)&&planningWorld.actors[1].id==30&&planningWorld.actors[2].id==31,
+       "native planning changed own roster order, dock membership or off-map flags");
+ check(planningWorld.refineryCount==2&&liveMapHeaderReads-mapHeaderReads==2,
+       "native waiting rings repeatedly read the same map-vector header");
+ runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
+ std::puts("PASS native ore unload transition and resource search with no copied graph");
 }
 static void testDelayedPlanning(){
  auto f=setupOre();sh->computeApplied=0;const auto sourceFrame=snap.frame;const auto sourceTick=clockNow;
@@ -704,5 +902,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDodgeThreatIndex();testDirectCombatDodge();testDirectMissileLoad();testOre();testDirectOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif

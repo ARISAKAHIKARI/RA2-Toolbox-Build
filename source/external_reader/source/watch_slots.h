@@ -16,6 +16,15 @@ template<class Read> bool locate(GameView<Read>&g,Target t,int&x,int&y,int&z){
 template<class InputRead,class Read> Track capture(InputRead input,Read read){
  GameView<InputRead> g(input);GameView<Read> world(read);Track out;Target hover;
  for(auto p:g.vec(0xA8ECB8)){Target t{p,g.template get<uint32_t>(p+0x10)};if(valid(g,t)&&std::find(out.members.begin(),out.members.end(),t)==out.members.end())out.members.push_back(t);}
+ // A single selected unit already identifies the pinned camera. Scanning the
+ // complete Techno world just to discover a hovered member is unnecessary
+ // and can make a single hotkey wait for a stalled visual roster.
+ if(out.members.size()==1){
+  out.target=out.members.front();
+  out.located=locate(g,out.target,out.x,out.y,out.z);out.spatial=out.target;
+  observeTransition(read,out.target,out.transition);
+  return out;
+ }
  for(auto p:world.vec(0xA8EC78))if(world.template get<uint8_t>(p+0x431)){Target t{p,world.template get<uint32_t>(p+0x10)};if(valid(g,t)){hover=t;break;}}
  if(!out.members.empty())out.target=hover&&std::find(out.members.begin(),out.members.end(),hover)!=out.members.end()?hover:out.members.front();
  else if(hover){out.target=hover;out.members.push_back(hover);}

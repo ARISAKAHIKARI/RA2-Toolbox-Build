@@ -17,6 +17,31 @@ struct Feature {
 // The original HWND IDs remain the settings owners. The key identifies a
 // card, and only a primary control stays visible when its settings are folded.
 inline constexpr Feature Features[]={
+ // Each gesture owns its shortcut / mouse choice under the same settings fold.
+ {458,categories::Tactical,L"移动、攻击与操作手势",L"高级移动攻击",true,{458,450,729,787,818,802}},
+ {705,categories::Tactical,L"移动、攻击与操作手势",L"飞机分配攻击",true,{705,706,707,708,709,710,711,712,713,714,715,716,717,718,733,734,751,9195,9794,9795}},
+ {459,categories::Entry,L"进驻、装卸与超武目标选择",L"智能卸载",true,{459,451,453}},
+ {477,categories::Tactical,L"移动、攻击与操作手势",L"磁电轮换攻击",true,{477,478,730}},
+ {702,categories::Entry,L"移动、攻击与操作手势",L"高级进驻",true,{702,703,704,732}},
+ {719,categories::Tactical,L"移动、攻击与操作手势",L"飞碟主武器攻击",true,{719,725,726,735}},
+ {720,categories::Tactical,L"移动、攻击与操作手势",L"出售被吸取目标",true,{720,727,728,737}},
+ {721,categories::Tactical,L"移动、攻击与操作手势",L"出售战车",true,{721,789,738}},
+ {795,categories::Keyboard,L"移动、攻击与操作手势",L"Shift 五连点",true,{795,796,797}},
+ {724,categories::Keyboard,L"键鼠与选兵",L"按当前武器选择同类单位",true,{724}},
+ // The legacy "下令与巡逻参数" button is only a Win32 presentation fold.
+ // Each command owns its own switch, key, mouse and related parameters.
+ {9400,categories::Tactical,L"队形、巡逻与飞机路径",L"模糊下令",true,{9400,9440,9441,9480,9481}},
+ {9401,categories::Tactical,L"队形、巡逻与飞机路径",L"区域目标分配",true,{9401,9442,9443}},
+ {9402,categories::Tactical,L"队形、巡逻与飞机路径",L"自定义巡逻圈",true,{9402,9444,9445,9482,9483,9484,9485,9486}},
+ {803,categories::Tactical,L"队形、巡逻与飞机路径",L"飞机路径点",true,{803,894,866}},
+ {111,categories::Entry,L"进驻、装卸与超武目标选择",L"自动装车",true,{111,211,700,701}},
+ {100,categories::Automatic,L"维修与自动救援",L"自动维修",true,{100,200,312,780}},
+ {455,categories::Automatic,L"维修与自动救援",L"载员自动逃生",true,{455,456}},
+ {899,categories::Automatic,L"自动战斗与防空",L"磁电全局自动摔落",true,{899,9502}},
+ {804,categories::Automatic,L"自动战斗与防空",L"防御建筑优先攻击渗透单位",true,{804,9506}},
+ {880,categories::Automatic,L"自动战斗与防空",L"防空火控",true,{880,9508,9040,9041,9181,9509,881,9499}},
+ {885,categories::Automatic,L"自动战斗与防空",L"自动躲弹",true,{885,9507,895}},
+ {9530,categories::Automatic,L"维修与自动救援",L"绑弹步兵自动上车",true,{9530,9535,9531,9532}},
  {9494,categories::Rules,L"单机速度与暂停",L"单机游戏速度",true,{9494,9495}},
  {9403,categories::Rules,L"单机速度与暂停",L"暂停与逐帧",true,{9403,9454,9455,9406}},
  {420,categories::Rules,L"科技与建造",L"科技全开",true,{420,896,9753,421,422,423,424,425,426,427,428,814,815}},
@@ -47,7 +72,7 @@ inline constexpr Feature Features[]={
  {810,categories::Experimental,L"暂不可用",L"步兵强制进入建筑",false,{810,811,812,9180,813}},
  {861,categories::Experimental,L"暂不可用",L"切换操控方",false,{861,862,863,864}},
  {722,categories::Experimental,L"暂不可用",L"快捷键变卖对手建筑",false,{722,9540}},
- {9496,categories::Automatic,L"采矿、倒矿与防蜘蛛",L"自动点杀蜘蛛",true,{9496,9505,9240,9241,9497,9498}},
+ {9496,categories::Automatic,L"采矿、倒矿与防蜘蛛",L"自动点杀蜘蛛",true,{9496,9505,9497,9498}},
 };
 
 inline const Feature* feature(int id){
@@ -65,30 +90,41 @@ struct TypeScope {
 inline const TypeScope* typeScope(int index){
  using namespace assist::featuretypes;
  static constexpr TypeScope scopes[]={
-  {Aircraft,L"飞机分配攻击",L"限定飞机类型",L"飞机类型 ID"},
-  {Disk,L"飞碟主武器",L"限定飞碟类型",L"飞碟类型 ID"},
-  {Magnetron,L"磁电轮换攻击",L"限定磁电类型",L"磁电类型 ID"},
-  {AdvancedAttack,L"高级移动攻击",L"限定参战单位",L"参战单位类型 ID"},
-  {LoadPassenger,L"自动装车",L"限定乘员类型",L"乘员类型 ID"},
-  {LoadPassenger,L"自动装车",L"限定载具类型",L"载具类型 ID"},
-  {EnterSource,L"高级进驻",L"限定参与单位",L"参与单位类型 ID"},
-  {EnterSource,L"高级进驻",L"限定目标建筑或载具",L"目标建筑／载具类型 ID"},
-  {UnloadTransport,L"智能卸载",L"限定卸载载具",L"卸载载具类型 ID"},
-  {UnloadTransport,L"智能卸载",L"限定执行后续任务的乘员",L"后续任务乘员类型 ID"},
-  {EscapeTransport,L"逃生助手",L"限定逃生载具",L"逃生载具类型 ID"},
-  {EscapeTransport,L"逃生助手",L"限定逃生乘员",L"逃生乘员类型 ID"},
-  {SellVehicle,L"变卖战车",L"限定可变卖载具",L"可变卖载具类型 ID"},
-  {RepairBuilding,L"维修",L"限定参与维修的建筑",L"维修建筑类型 ID"},
-  {AntiTheftDefense,L"防偷点杀",L"限定参与防御的建筑",L"防御建筑类型 ID"},
-  {MissileDefense,L"防空火控",L"限定参与拦截的防空单位",L"防空单位类型 ID"},
-  {MissileDefense,L"防空火控",L"限定空中目标",L"空中目标类型 ID"},
+  {Aircraft,L"飞机分配攻击",L"飞机分配攻击 · 飞机",L"飞机分配攻击 · 飞机类型 ID"},
+  {Disk,L"飞碟主武器",L"飞碟主武器 · 飞碟",L"飞碟主武器 · 飞碟类型 ID"},
+  {Magnetron,L"磁电轮换攻击",L"磁电轮换攻击 · 磁电",L"磁电轮换攻击 · 磁电类型 ID"},
+  {AdvancedAttack,L"高级移动攻击",L"高级移动攻击 · 参战单位",L"高级移动攻击 · 参战单位类型 ID"},
+  {LoadPassenger,L"自动装车",L"自动装车 · 乘员",L"自动装车 · 乘员类型 ID"},
+  {LoadPassenger,L"自动装车",L"自动装车 · 载具",L"自动装车 · 载具类型 ID"},
+  {EnterSource,L"高级进驻",L"高级进驻 · 参与单位",L"高级进驻 · 参与单位类型 ID"},
+  {EnterSource,L"高级进驻",L"高级进驻 · 目标建筑／载具",L"高级进驻 · 目标建筑／载具类型 ID"},
+  {UnloadTransport,L"智能卸载",L"智能卸载 · 卸载载具",L"智能卸载 · 卸载载具类型 ID"},
+  {UnloadTransport,L"智能卸载",L"智能卸载 · 后续任务乘员",L"智能卸载 · 后续任务乘员类型 ID"},
+  {EscapeTransport,L"载员自动逃生",L"载员自动逃生 · 逃生载具",L"载员自动逃生 · 逃生载具类型 ID"},
+  {EscapeTransport,L"载员自动逃生",L"载员自动逃生 · 逃生乘员",L"载员自动逃生 · 逃生乘员类型 ID"},
+  {SellVehicle,L"出售战车",L"出售战车 · 可出售载具",L"出售战车 · 可出售载具类型 ID"},
+  {RepairBuilding,L"自动维修",L"自动维修 · 维修建筑",L"自动维修 · 维修建筑类型 ID"},
+  {AntiTheftDefense,L"防偷点杀",L"防偷点杀 · 防御建筑",L"防偷点杀 · 防御建筑类型 ID"},
+  {MissileDefense,L"防空火控",L"防空火控 · 防空单位",L"防空火控 · 防空单位类型 ID"},
+  {MissileDefense,L"防空火控",L"防空火控 · 空中目标",L"防空火控 · 空中目标类型 ID"},
   {BurstRefresh,nullptr,nullptr,nullptr}, // Obsolete INI entry, no adjustable control.
-  {Dodge,L"自动躲弹",L"限定参与躲避的单位",L"躲避单位类型 ID"},
-  {MagnetronDrop,L"磁电自动摔落",L"限定参与摔落的磁电",L"摔落磁电类型 ID"},
-  {SpiderDefense,L"自动点杀蜘蛛",L"限定参与点杀的单位",L"点杀单位类型 ID"},
+  {Dodge,L"自动躲弹",L"自动躲弹 · 躲避单位",L"自动躲弹 · 躲避单位类型 ID"},
+  {MagnetronDrop,L"磁电自动摔落",L"磁电自动摔落 · 磁电",L"磁电自动摔落 · 磁电类型 ID"},
+  {SpiderDefense,L"自动点杀蜘蛛",L"自动点杀蜘蛛 · 点杀单位",L"自动点杀蜘蛛 · 点杀单位类型 ID"},
  };
  static_assert(sizeof(scopes)/sizeof(scopes[0])==Count,"every saved filter has a presentation decision");
  return index>=0&&index<Count&&scopes[index].title?&scopes[index]:nullptr;
+}
+
+// Optional type restrictions are advanced configuration, not feature cards.
+// Preserve the original control IDs and settings owners.
+inline constexpr Feature ManualCommandTypes{9610,categories::Tactical,L"命令类型手动指定",L"命令类型手动指定",false,{781,782,783,784}};
+inline const Feature* ownerFeature(int id){
+ if(id==905||id==ManualCommandTypes.key)return &ManualCommandTypes;
+ if(id>=9200&&id<9200+2*assist::featuretypes::Count)
+  return typeScope((id-9200)/2)?&ManualCommandTypes:nullptr;
+ for(int control:ManualCommandTypes.controls)if(id==control)return &ManualCommandTypes;
+ return feature(id);
 }
 
 inline const wchar_t* label(int id){
@@ -127,8 +163,10 @@ inline const wchar_t* label(int id){
  case 9180:return L"强制进入方式";
  case 862:return L"目标所属方";
  case 9254:return L"自毁快捷键";
- case 783:return L"矿车类型 ID";
- case 784:return L"矿场类型 ID";
+ case 781:return L"矿车自动卸矿 · 矿车";
+ case 782:return L"矿车自动卸矿 · 矿场";
+ case 783:return L"矿车自动卸矿 · 矿车类型 ID";
+ case 784:return L"矿车自动卸矿 · 矿场类型 ID";
  default:return nullptr;
  }
 }

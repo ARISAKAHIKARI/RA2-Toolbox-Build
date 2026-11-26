@@ -33,8 +33,53 @@ struct Fixture {
 };
 static std::vector<uint32_t> resolvedMatches;
 static void resolveCameo(um::Type&t,uint32_t match){resolvedMatches.push_back(match);auto name="LIVE"+std::to_string(match)+".SHP";strcpy(t.cameo,name.c_str());}
+static Memory* artFixture=nullptr;
+static bool iconAvailable=false,sidebarUnavailable=false;
+static bool fixtureArt(uint32_t p,void*out,size_t n){
+ const uint32_t first=0x87F7E8+0x1544;
+ if(sidebarUnavailable&&p>=first&&p<first+4*3988)return false;
+ return artFixture&&artFixture->read(p,out,n);
+}
+static void fixtureResolveCameo(um::Type&t,uint32_t){
+ assert(std::string(t.cameo)=="E1ICON");
+ strcpy(t.cameo,iconAvailable?"RIGHT.SHP":"WRONG.SHP");
+}
+static bool fixtureAssets(const char*name,std::vector<uint8_t>&out){
+ if(!strcmp(name,"cameo.pal")){out.assign(768,0);out[21]=63;return true;}
+ if(!iconAvailable||strcmp(name,"RIGHT.SHP"))return false;
+ out.assign(33,0);out[2]=out[4]=out[12]=out[14]=1;out[28]=32;out[32]=7;return true;
+}
 int main(){
  int cases=0;
+ {Fixture f;artFixture=&f.m;constexpr uint32_t second=0x220000;
+  memcpy(f.m.data.data()+second,f.m.data.data()+Infantry,4096);
+  memcpy(f.m.data.data()+second+36,"E2",3);
+  f.m.vector(0xA8E348,0x300100,{Infantry,second});
+  f.m.put(Self+um::OwnedOffsets[0]+4,uint32_t(0x320000));f.m.put(Self+um::OwnedOffsets[0]+8,2);
+  f.m.put(0x320000,5);f.m.put(0x320004,7);
+  const uint32_t strip=0x87F7E8+0x1544+2*3988;
+  f.m.put(strip+84,2);f.m.put(strip+88,1);f.m.put(strip+92,16);
+  f.m.put(strip+140,0);f.m.put(strip+144,16);
+  f.sampler=std::make_unique<um::Sampler<Read,Resolve>>(Read{&f.m},Resolve{},nullptr,nullptr,nullptr,fixtureArt);
+  auto check=[&](uint32_t tick,bool reversed){
+   f.m.bookends=0;const auto&s=f.sampler->sample(tick,true);
+   assert(s.status==1&&s.typeCount==2&&s.playerCount==2);
+   assert(s.types[0].index==(reversed?1:0)&&s.types[1].index==(reversed?0:1));
+   assert(s.players[0].cells[0].owned==(reversed?7:5)&&s.players[0].cells[1].owned==(reversed?5:7));
+  };
+  check(100,true);
+  f.m.put(strip+88,0);f.m.put(strip+140,1);sidebarUnavailable=true;check(700,true);
+  sidebarUnavailable=false;check(1300,false);artFixture=nullptr;++cases;
+ }
+ {Fixture f;artFixture=&f.m;iconAvailable=false;
+  f.sampler=std::make_unique<um::Sampler<Read,Resolve>>(Read{&f.m},Resolve{},nullptr,fixtureAssets,fixtureResolveCameo,fixtureArt);
+  f.m.bookends=0;const auto&first=f.sampler->sample(100,true);
+  assert(first.status==1&&first.typeCount==1&&first.types[0].iconReady==0&&first.missingIcons==1);
+  iconAvailable=true;f.m.bookends=0;const auto&next=f.sampler->sample(700,true);
+  assert(next.status==1&&next.types[0].iconReady==1&&next.types[0].icon[0]==7&&next.missingIcons==0);
+  assert(std::string(next.types[0].cameo)=="RIGHT.SHP"&&next.players[0].cells[0].owned==5);
+  artFixture=nullptr;iconAvailable=false;++cases;
+ }
  {Fixture f(nullptr,resolveCameo);f.m.data[Infantry+1750]=0;auto&first=f.sample();assert(first.typeCount==1&&resolvedMatches.back()==first.match);auto old=first.match;
   f.m.put(0xA8ED84,1);auto&next=f.sample();assert(next.typeCount==1&&next.match!=old&&resolvedMatches.back()==next.match);assert(std::string(next.types[0].cameo)=="LIVE"+std::to_string(next.match)+".SHP");++cases;
  }

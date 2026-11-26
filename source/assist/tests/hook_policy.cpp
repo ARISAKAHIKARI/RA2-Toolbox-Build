@@ -17,15 +17,19 @@ int main(){
  assert(resolve(s,true,false,false)==0);
  s.eject=false;s.autoCS=true;
  f=resolve(s,true,false,true);
- assert(f==AutoCS && needsCSInputPatch(f)&&!needsNativeInputPatch(f));
+ assert(f==(featureavailability::AutoCS?uint32_t(AutoCS):0u));
+ assert(!needsCSInputPatch(f)&&!needsNativeInputPatch(f));
  s.autoCS=false;s.advanced=true;
  assert(resolve(s,false,false,false)==0);
  f=resolve(s,true,false,false);
- assert(f==(AdvancedInput|NativeOrders) && needsCSInputPatch(f)&&needsNativeInputPatch(f));
+ assert(f==(AdvancedInput|NativeOrders) && !needsCSInputPatch(f)&&!needsNativeInputPatch(f));
  s.smartUnload=true;s.eject=true;s.autoCS=true;
  f=resolve(s,true,true,true);
- assert((f&(AutoCS|NativeOrders|AdvancedInput|SmartUnloadOrders|EjectAssist)) ==
-  (AutoCS|NativeOrders|AdvancedInput|SmartUnloadOrders|EjectAssist));
+ assert(f==(uint32_t(NativeOrders|AdvancedInput|SmartUnloadOrders|EjectAssist)|(featureavailability::AutoCS?uint32_t(AutoCS):0u)));
+ // The policy must reject patch demand even for stale saved flag combinations.
+ for(uint32_t flag:{0u, uint32_t(AdvancedInput),uint32_t(MagnetronInput),uint32_t(CustomCS),uint32_t(AutoCS),0xFFFFFFFFu}){
+  assert(!needsCSInputPatch(flag)&&!needsNativeInputPatch(flag));
+ }
  // MO-style cooperative mouse capture must not patch the outgoing mission
  // constructor nor the local input event dispatch as an unrelated dependency.
  for(uint32_t f:{uint32_t(AdvancedEnter),uint32_t(AircraftSpread),uint32_t(DiskPrimary),uint32_t(SellDrained),uint32_t(SellVehicles),uint32_t(SellEnemy)}){
@@ -36,11 +40,12 @@ int main(){
  assert(!needsCSInputPatch(AutoOreReturn|SmartUnloadOrders|EjectAssist));
  assert(!needsNativeInputPatch(AutoOreReturn|SmartUnloadOrders|EjectAssist));
  // Enabling an input feature alone does not scan the world while idle.
- for(uint32_t flag:{uint32_t(AdvancedInput),uint32_t(MagnetronInput),uint32_t(CustomCS),uint32_t(SmartUnloadOrders),uint32_t(AutoCS)}){
+ for(uint32_t flag:{uint32_t(AdvancedInput),uint32_t(MagnetronInput),uint32_t(CustomCS),uint32_t(AutoCS)}){
   assert(!needsWorldIndex(false,false,flag,false));
   assert(needsWorldIndex(true,false,flag,false));
   assert(needsWorldIndex(false,true,flag,false));
  }
+ assert(needsWorldIndex(false,false,SmartUnloadOrders,false));
  assert(needsWorldIndex(false,false,AutoOreReturn,false));
  assert(needsWorldIndex(false,false,EjectAssist,false));
  assert(needsWorldIndex(false,false,0,true));

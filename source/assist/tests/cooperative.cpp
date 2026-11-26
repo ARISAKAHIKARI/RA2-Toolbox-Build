@@ -11,7 +11,20 @@ int main(){auto w=make(7,3);auto a=allocate(w);auto n=counts(a);assert(a.size()=
  w=make(10,3);w.targets[0].quota={2,3,2};w.targets[1].quota={1,2,1};w.targets[2].quota={0,0,0};n=counts(allocate(w));assert(n[100]==2&&n[101]==1&&n[102]==7);for(auto&t:w.targets)t.quota.maximum=1;assert(allocate(w).size()==3);
  w=make(2,2);w.compatible={1,1,1,0};n=counts(allocate(w));assert(n[100]==1&&n[101]==1);
  w=make(3,2,Enter);w.units[0].slots=3;w.units[1].slots=w.units[2].slots=2;w.targets[0].free=4;w.targets[1].free=3;a=allocate(w);assert(a.size()==3);std::map<uint32_t,int> slots;for(auto&o:a)slots[o.target]+=w.units[o.id-1].slots;assert(slots[100]<=4&&slots[101]<=3);
- w.compatible.pop_back();assert(allocate(w).empty());Request r{};r.serial=r.match=1;r.mode=Enter;r.count=MaxSources+1;assert(!valid(r));r.count=1;r.viewWidth=1920;r.viewHeight=1080;assert(valid(r));
+ w.compatible.pop_back();assert(allocate(w).empty());Request r{};r.serial=r.match=1;r.pointerRequest=1;r.mode=Enter;r.count=MaxSources+1;assert(!valid(r));r.count=1;r.viewWidth=1920;r.viewHeight=1080;assert(valid(r));
+ // A single pointer request can be admitted over several game frames. Its
+ // identity remains stable even when the simulation advances by hundreds of
+ // frames; a genuinely new physical pointer request starts a new cohort.
+ r.serial=9;r.match=7;r.target=88;r.mode=Enter;r.pointerRequest=41;r.count=24;
+ assert(sameInputRequest(r,41,7,88,Enter,0,0));
+ assert(sameInputRequest(r,41,7,88,Enter,0,0)); // later frame, same pointer serial
+ assert(!sameInputRequest(r,42,7,88,Enter,0,0));
+ assert(!sameInputRequest(r,41,8,88,Enter,0,0));
+ assert(!sameInputRequest(r,41,7,89,Enter,0,0));
+ assert(!sameInputRequest(r,41,7,88,AirFirst,0,0));
+ r.mode=AirDamage;r.airRadiusCells=5;r.airDamagePercent=120;
+ assert(sameInputRequest(r,41,7,88,AirDamage,5,120));
+ assert(!sameInputRequest(r,41,7,88,AirDamage,6,120));
  assist::AdditionalSettings defaults;assert(defaults.enterKey==18&&defaults.airKey1==17&&!defaults.airKey2&&defaults.defaults.first==1&&defaults.defaults.second==2&&!defaults.defaults.maximum);
  {
  using namespace assist::pointerinput;uint8_t keys[256]{};
@@ -21,8 +34,8 @@ int main(){auto w=make(7,3);auto a=allocate(w);auto n=counts(a);assert(a.size()=
  assert(!clickFresh(Enhanced,enterClick,true,false,1000,1151,2,42));
  assert(!clickFresh(Enhanced,enterClick,true,true,1000,2501,2,402));
  assert(!clickFresh(Enhanced,enterClick,true,false,1000,1030,42,2));
- assert(!clickFresh(Enhanced,enterClick,false,false,1000,1110,2,42));
- assert(!clickFresh(Enhanced,enterClick|Advanced,true,false,1000,1110,2,42));
+ assert(clickFresh(Enhanced,enterClick,false,false,1000,1110,2,42));
+ assert(clickFresh(Enhanced,enterClick|Advanced,true,false,1000,1110,2,42));
  Bindings c{0,0,0,0,0,0,0,0,1023};
  auto b=resolveBindings(keys,Enhanced,c);
  assert((b&(Advanced|Magnetron|CS|assist::pointerinput::Enter|assist::pointerinput::AirFirst|Control))==(Advanced|Magnetron|CS|assist::pointerinput::Enter|assist::pointerinput::AirFirst|Control));assert(!(b&assist::pointerinput::AirSecond));
@@ -61,6 +74,39 @@ int main(){auto w=make(7,3);auto a=allocate(w);auto n=counts(a);assert(a.size()=
  independent.sell=0;assert(!resolveMouse(keys,3,buttons,independent,SellDrainedInput).operation);
  independent.cs=0;buttons[MouseCS]=4;auto right=resolveMouse(keys,4,buttons,independent,0);assert(right.operation==Enhanced&&(right.bindings&(CS|RightClick))==(CS|RightClick));
 
+ for(auto&v:buttons)v=0;buttons[MouseAttack]=2;
+ independent.enabled=bindingOptions(0,'G');MouseRoute matched[MouseCount+1]{};
+ assert(!resolveMouse(keys,2,buttons,independent,0).operation);
+ assert(resolveMouseMatches(keys,2,buttons,independent,0,true,matched)==0);
+ keys['G']=1;assert(resolveMouse(keys,2,buttons,independent,0).operation==AttackMove);
+ assert(resolveMouseMatches(keys,2,buttons,independent,0,true,matched)==1&&matched[0].operation==AttackMove);
+ keys['G']=0;independent.enabled=bindingOptions(0,0);
+ assert(resolveMouse(keys,2,buttons,independent,0).operation==AttackMove);
+ // Same sampled state, no synthesized mouse click: keyboard-only, double
+ // press, combined double-hold, both unbound, and independent sell chords.
+ for(auto&v:buttons)v=0;
+ uint32_t edges[256]{};KeyOnlyEdges edgeRoute;
+ independent.enabled=bindingOptions(0,'G');
+ assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,1,matched));
+ keys['G']=1;edges['G']=1;
+ assert(edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,1,matched)==1&&matched[0].operation==AttackMove);
+ assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,1,matched));
+ keys['G']=0;edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,1,matched);
+ independent.enabled=bindingOptions(0,'G'|keygesture::Double);
+ assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,2,matched));
+ keys['G']=1;edges['G']=2;assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,2,matched));
+ keys['G']=0;edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,2,matched);
+ keys['G']=3;edges['G']=3;assert(edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,2,matched)==1);
+ buttons[MouseAttack]=2;assert(resolveMouse(keys,2,buttons,independent,0).operation==AttackMove);
+ keys['G']=1;assert(!resolveMouse(keys,2,buttons,independent,0).operation);
+ keys['G']=0;buttons[MouseAttack]=0;independent.enabled=0;
+ assert(!edgeRoute.resolve(keys,edges,buttons,independent,0,false,true,1,3,matched));
+ independent.enabled=512|IndependentSellKeys;independent.sell=packedSellKeys('G','H');
+ buttons[MouseSellDrained]=buttons[MouseSellVehicle]=2;keys['G']=1;
+ assert((resolveMouse(keys,2,buttons,independent,SellDrainedInput|SellVehicleInput).bindings&(SellDrainedInput|SellVehicleInput))==SellDrainedInput);
+ keys['G']=0;keys['H']=1;
+ assert((resolveMouse(keys,2,buttons,independent,SellDrainedInput|SellVehicleInput).bindings&(SellDrainedInput|SellVehicleInput))==SellVehicleInput);
+ keys['H']=0;
  }
  std::cout<<"PASS: both aircraft priorities, per-target caps/unlimited, AA/AG scarcity, garrison size best-fit, malformed request/viewport guards and defaults\n";
 }

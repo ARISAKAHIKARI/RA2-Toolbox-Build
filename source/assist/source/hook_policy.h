@@ -13,7 +13,9 @@ inline uint32_t resolve(Switches v,bool advancedKeyBound,bool ejectRunning,bool 
  if(r&(AdvancedInput|SmartUnloadOrders|EjectAssist))r|=NativeOrders;
  return r;
 }
-inline bool needsCSInputPatch(uint32_t flags){return (featuregate::flags(flags)&(AutoCS|AdvancedInput|MagnetronInput|CustomCS))!=0;}
-inline bool needsNativeInputPatch(uint32_t flags){return (flags&(AdvancedInput|MagnetronInput|CustomCS))!=0;}
+// Ordinary command execution must not request feature-specific executable patches.
+// Runtime message scheduling and rule-changing options are separate policies.
+inline constexpr bool needsCSInputPatch(uint32_t){return false;}
+inline constexpr bool needsNativeInputPatch(uint32_t){return false;}
 inline bool needsWorldIndex(bool command,bool activeJobs,uint32_t flags,bool repairDue){return command||activeJobs||repairDue||(flags&(AutoOreReturn|EjectAssist|AntiTheft|SmartUnloadOrders));}
 }}

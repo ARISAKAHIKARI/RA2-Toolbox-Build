@@ -119,6 +119,7 @@ static bool submitProvenMission(uint32_t house,uint32_t id,int mission,uint32_t 
 #ifdef ORE_HARVEST_OBSERVER_HEADER
 #include ORE_HARVEST_OBSERVER_HEADER
 #else
+static bool runtimeDirectActions=false;
 #include "../source/ore_harvest_bridge.h"
 #endif
 #include "ore_admission_extract.h"

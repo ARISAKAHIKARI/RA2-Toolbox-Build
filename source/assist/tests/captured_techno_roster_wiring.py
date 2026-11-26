@@ -19,7 +19,16 @@ index=(root.parent.parent/"shared"/"source"/"world_frame_command_index.h").read_
 refreshStart=bridge.index("static bool refreshWorldIndex(int frame")
 refreshBody=bridge.index("{",refreshStart)+1
 refresh=bridge[refreshBody:bridge.index("// Identity-index publication",refreshBody)]
-workerRefresh=refresh.split("if(worldFrameCommandWorker.enabled()){",1)[1].split("\n const uint32_t now",1)[0]
+# Runtime-direct execution is a separate branch after the worker's early return.
+# Keep the no-rescan assertion scoped to the worker-owned path, not the native
+# branch which deliberately indexes the live roster under execution guards.
+workerRefresh, directBoundary, directAndFallback = refresh.split("if(worldFrameCommandWorker.enabled()){",1)[1].partition("\n if(runtimeDirectActions){")
+assert directBoundary and workerRefresh.rstrip().endswith("return true;\n }")
+directRefresh, fallbackBoundary, _ = directAndFallback.partition("\n const uint32_t now")
+assert fallbackBoundary
+assert "if(!executionGuards)return false;" in directRefresh
+assert directRefresh.index("if(!executionGuards)return false;") < directRefresh.index("indexWorld(frame)")
+assert "indexWorld(frame);return indexedFrame==frame&&commandRosterReady();" in directRefresh
 assert "self->stagingRoster_.build(self->staging_" in worker
 assert "snapshot.read(pointer+0x10,&id,4)" in index
 assert "objects->add(pointer,id)" in index

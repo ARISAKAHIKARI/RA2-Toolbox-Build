@@ -36,7 +36,8 @@ static bool oreHarvestContext(uint32_t house,int frame,OreHarvestWorld&out,bool 
 }
 static bool oreHarvestSameWorld(const OreHarvestWorld&a,const OreHarvestWorld&b){return a.match==b.match&&a.scenario==b.scenario&&a.house==b.house&&a.houseID==b.houseID&&a.session==b.session;}
 static bool oreHarvestInventory(int frame,DWORD now){
- ObservationReadScope frameRead;if(!frameRead||!refreshOreConfig())return false;
+ const auto collect=[&](ObservationReadScope* frameRead)->bool{
+ if(!refreshOreConfig())return false;
  Vec units{};static uint32_t pointers[16384];
  if(!read(0x8B4108,&units,sizeof units)||units.count<0||units.count>16384||units.capacity<units.count||
     (units.count&&(units.items<0x10000||!read(units.items,pointers,size_t(units.count)*4))))return false;
@@ -47,7 +48,7 @@ static bool oreHarvestInventory(int frame,DWORD now){
  // new UniqueID/type. Revalidate metadata at a bounded cadence, not every frame.
  const bool metadataFresh=oreHarvestInventoryFrame>=0&&frame>=oreHarvestInventoryFrame&&
   frame-oreHarvestInventoryFrame<30&&DWORD(now-oreHarvestInventoryAt)<500;
- if(hash==oreHarvestUnitsHash&&oreHarvestConfigRevision==oreConfigRevision&&metadataFresh)return frameRead.complete();
+ if(hash==oreHarvestUnitsHash&&oreHarvestConfigRevision==oreConfigRevision&&metadataFresh)return !frameRead||frameRead->complete();
  static OreHarvestMiner nextMiners[ore::MaxJobs*8];int nextCount=0;
  for(int n=0;n<units.count&&nextCount<ore::MaxJobs*8;++n){uint32_t p=pointers[n],vt=0,id=0,type=0,typeID=0;int capacity=0;uint8_t flags[2]{};
   if(p<0x10000||!oreHarvestRead(p,vt)||vt!=0x7F5C70||!oreHarvestRead(p+0x10,id)||!id||!oreHarvestRead(p+0x6C4,type)||type<0x10000||
@@ -60,12 +61,15 @@ static bool oreHarvestInventory(int frame,DWORD now){
   for(int old=0;old<oreHarvestMinerCount;++old){const auto&m=oreHarvestMiners[old];if(m.pointer==p&&m.id==id&&m.type==type&&m.typeID==typeID){candidate=m;break;}}
   nextMiners[nextCount++]=candidate;
  }
- if(!frameRead.complete())return false;
+ if(frameRead&&!frameRead->complete())return false;
  oreHarvestMinerCount=nextCount;for(int n=0;n<nextCount;++n)oreHarvestMiners[n]=nextMiners[n];
  oreHarvestUnitsHash=hash;oreHarvestConfigRevision=oreConfigRevision;oreHarvestInventoryAt=now;oreHarvestInventoryFrame=frame;return true;
+ };
+ if(runtimeDirectActions)return collect(nullptr);
+ ObservationReadScope frameRead;return frameRead&&collect(&frameRead);
 }
 static bool oreHarvestMapCapture(){
- ObservationReadScope frameRead;if(!frameRead)return false;
+ const auto collect=[&](ObservationReadScope* frameRead)->bool{
  OreHarvestMap next{};next.bounds=external::mapbounds::sample([](uint32_t at,void*out,size_t n){return read(at,out,n);});
  Vec overlays=vec(0xA83D80,4096),tiberiums=vec(0xB0F4E8,64);
  if(!next.bounds.valid()||!oreHarvestRead(0x87F924,next.cells)||next.cells<0x10000||!oreHarvestRead(0x87F928,next.count)||next.count<=0||next.count>512*512||
@@ -83,8 +87,11 @@ static bool oreHarvestMapCapture(){
    if(resource)next.value[index]=value;
   }
  }
- if(!frameRead.complete())return false;
+ if(frameRead&&!frameRead->complete())return false;
  next.ready=true;oreHarvestMap=next;return true;
+ };
+ if(runtimeDirectActions)return collect(nullptr);
+ ObservationReadScope frameRead;return frameRead&&collect(&frameRead);
 }
 static bool oreHarvestMapCurrent(){
  if(!oreHarvestMap.ready)return false;uint32_t cells=0;int count=0;Vec overlays=vec(0xA83D80,4096),tiberiums=vec(0xB0F4E8,64);
@@ -118,7 +125,20 @@ static int oreHarvestCell(int x,int y,int speed,uint32_t*pointer=nullptr){
 struct OreHarvestState {double cargo=-1;int mission=-1,queued=-1;bool unloading=false,onMap=false,limbo=true;uint32_t destination=0;};
 static int oreHarvestState(const OreHarvestJob&j,uint32_t house,OreHarvestState&out){
  uint32_t vt=0,id=0,type=0,typeID=0,owner=0,carrier=0;int hp=0;uint8_t alive=0,disabled=0,unloading=0,onMap=0,limbo=1;float storage[4]{};
- if(!oreHarvestRead(j.pointer,vt)||!oreHarvestRead(j.pointer+0x10,id)||!oreHarvestRead(j.pointer+0x6C,hp)||
+ if(runtimeDirectActions&&!sampleReadDepth){
+  // Nearby native fields can be copied in small contiguous groups. Keep
+  // these facts callback-local; no whole-object snapshot or page lease.
+  uint8_t identity[0x14],state[0x4C],typeState[0xE];
+  if(!read(j.pointer,identity,sizeof identity)||!read(j.pointer+0x6C,state,sizeof state)||
+     !read(j.pointer+0x6C4,typeState,sizeof typeState)||
+     !oreHarvestRead(j.pointer+0x21C,owner)||!oreHarvestRead(j.pointer+0x1C8,disabled)||
+     !oreHarvestRead(j.pointer+0x11C,carrier)||!read(j.pointer+0x33C,storage,sizeof storage)||
+     !oreHarvestRead(j.pointer+0x5A4,out.destination))return 0;
+  memcpy(&vt,identity,4);memcpy(&id,identity+0x10,4);
+  memcpy(&hp,state,4);onMap=state[0x74-0x6C];limbo=state[0x81-0x6C];alive=state[0x90-0x6C];
+  memcpy(&out.mission,state+0xAC-0x6C,4);memcpy(&out.queued,state+0xB4-0x6C,4);
+  memcpy(&type,typeState,4);unloading=typeState[0x6D1-0x6C4];
+ }else if(!oreHarvestRead(j.pointer,vt)||!oreHarvestRead(j.pointer+0x10,id)||!oreHarvestRead(j.pointer+0x6C,hp)||
     !oreHarvestRead(j.pointer+0x21C,owner)||!oreHarvestRead(j.pointer+0x6C4,type)||!oreHarvestRead(j.pointer+0x90,alive)||
     !oreHarvestRead(j.pointer+0x1C8,disabled)||!oreHarvestRead(j.pointer+0x11C,carrier)||!oreHarvestRead(j.pointer+0x6D1,unloading)||
     !oreHarvestRead(j.pointer+0x74,onMap)||!oreHarvestRead(j.pointer+0x81,limbo)||!read(j.pointer+0x33C,storage,sizeof storage)||
@@ -129,7 +149,14 @@ static int oreHarvestState(const OreHarvestJob&j,uint32_t house,OreHarvestState&
 }
 static int oreHarvestRefinery(const OreHarvestJob&j,uint32_t house){
  uint32_t id=0,owner=0,type=0,typeID=0,links=0;int hp=0,count=0;uint8_t alive=0,onMap=0,limbo=1;
- if(!oreHarvestRead(j.refineryPointer+0x10,id)||!oreHarvestRead(j.refineryPointer+0x21C,owner)||!oreHarvestRead(j.refineryPointer+0x520,type)||
+ if(runtimeDirectActions&&!sampleReadDepth){
+  uint8_t state[0x25];uint32_t radio[2];
+  if(!oreHarvestRead(j.refineryPointer+0x10,id)||!oreHarvestRead(j.refineryPointer+0x21C,owner)||
+     !oreHarvestRead(j.refineryPointer+0x520,type)||!read(j.refineryPointer+0x6C,state,sizeof state)||
+     !read(j.refineryPointer+0xE4,radio,sizeof radio))return -2;
+  memcpy(&hp,state,4);onMap=state[0x74-0x6C];limbo=state[0x81-0x6C];alive=state[0x90-0x6C];
+  links=radio[0];memcpy(&count,&radio[1],4);
+ }else if(!oreHarvestRead(j.refineryPointer+0x10,id)||!oreHarvestRead(j.refineryPointer+0x21C,owner)||!oreHarvestRead(j.refineryPointer+0x520,type)||
     !oreHarvestRead(j.refineryPointer+0x6C,hp)||!oreHarvestRead(j.refineryPointer+0x90,alive)||!oreHarvestRead(j.refineryPointer+0x74,onMap)||
     !oreHarvestRead(j.refineryPointer+0x81,limbo)||!oreHarvestRead(j.refineryPointer+0xE8,count)||!oreHarvestRead(j.refineryPointer+0xE4,links))return -2;
  if(id!=j.refinery||owner!=house||type!=j.refineryType||hp<=0||!alive||!onMap||limbo)return -1;
@@ -183,12 +210,13 @@ static void oreHarvestObserve(uint32_t house,int frame,DWORD now){
  OreHarvestWorld world{};if(!oreHarvestContext(house,frame,world,true))return;
  if(!oreHarvestSameWorld(world,oreHarvestWorld)||world.frame<oreHarvestWorld.frame){oreHarvestReset();oreHarvestWorld=world;}else oreHarvestWorld.frame=world.frame;
  if(oreHarvestObservedFrame==frame||oreHarvestAttemptFrame==frame)return;
- ObservationReadScope frameRead;if(!frameRead)return;oreHarvestAttemptFrame=frame;
+ const auto observe=[&](ObservationReadScope* frameRead){
+ oreHarvestAttemptFrame=frame;
  // Delayed observations may establish new candidates, never conclusively
  // remove an existing work item merely because an old frame says absent.
- const bool oldObservation=sampleWorldSource==&worldFrameCandidate;
+ const bool oldObservation=frameRead&&sampleWorldSource==&worldFrameCandidate;
  static OreHarvestJob previousJobs[ore::MaxJobs];static OreHarvestMiner previousMiners[ore::MaxJobs*8];
- memcpy(previousJobs,oreHarvestJobs,sizeof oreHarvestJobs);memcpy(previousMiners,oreHarvestMiners,sizeof oreHarvestMiners);
+ if(frameRead){memcpy(previousJobs,oreHarvestJobs,sizeof oreHarvestJobs);memcpy(previousMiners,oreHarvestMiners,sizeof oreHarvestMiners);}
  const int previousCount=oreHarvestMinerCount,previousInventoryFrame=oreHarvestInventoryFrame;
  const uint32_t previousHash=oreHarvestUnitsHash;const long previousRevision=oreHarvestConfigRevision;const DWORD previousAt=oreHarvestInventoryAt;
  if(oreHarvestInventory(frame,now))for(int n=0;n<oreHarvestMinerCount;++n){auto&m=oreHarvestMiners[n];uint32_t owner=0,id=0,type=0,typeID=0;uint8_t unloading=0;
@@ -212,19 +240,23 @@ static void oreHarvestObserve(uint32_t house,int frame,DWORD now){
   if(!state.onMap||state.limbo||refinery)continue;
   if(!j.ready){j.ready=true;j.readyAt=now;j.search.begin(j.originX,j.originY);}
  }
- if(!frameRead.complete()){
+ if(frameRead&&!frameRead->complete()){
   memcpy(oreHarvestJobs,previousJobs,sizeof oreHarvestJobs);memcpy(oreHarvestMiners,previousMiners,sizeof oreHarvestMiners);
   oreHarvestMinerCount=previousCount;oreHarvestUnitsHash=previousHash;oreHarvestConfigRevision=previousRevision;
   oreHarvestInventoryAt=previousAt;oreHarvestInventoryFrame=previousInventoryFrame;return;
  }
  oreHarvestObservedFrame=frame;
+ };
+ if(runtimeDirectActions)observe(nullptr);
+ else {ObservationReadScope frameRead;if(frameRead)observe(&frameRead);}
 }
 static void oreHarvestTick(uint32_t house,int frame,DWORD now,bool indexedWorkReady=true){
  oreHarvestObserve(house,frame,now);
  if(!oreHarvestNeedsWork())return;
  OreHarvestWorld world{};if(!oreHarvestContext(house,frame,world)||!oreHarvestSameWorld(world,oreHarvestWorld))return;
  bool current=false;
- {ObservationReadScope frameRead;if(!frameRead)return;current=oreHarvestMapCurrent();if(!frameRead.complete())return;}
+ if(runtimeDirectActions)current=oreHarvestMapCurrent();
+ else {ObservationReadScope frameRead;if(!frameRead)return;current=oreHarvestMapCurrent();if(!frameRead.complete())return;}
  if(!current){
   if(!oreHarvestMapCapture())return;
   for(auto&j:oreHarvestJobs)if(j.id&&j.ready)j.search.begin(j.originX,j.originY);
@@ -233,14 +265,15 @@ static void oreHarvestTick(uint32_t house,int frame,DWORD now,bool indexedWorkRe
  // search, and a completed exact-nearest ring proof does not re-run every frame.
  int budget=2048;for(unsigned n=0;n<ore::MaxJobs*8&&budget>0;++n){unsigned index=(oreHarvestCursor+n)%ore::MaxJobs;auto&j=oreHarvestJobs[index];if(!j.id||!j.ready)continue;
   int local=std::min(budget,256),before=local;
-  {
-   ObservationReadScope frameRead;if(!frameRead)return;
+  const auto search=[&](ObservationReadScope* frameRead){
    auto next=j.search;bool certain=true;
    next.advance(local,[&](int x,int y){const int result=oreHarvestCell(x,y,j.speed);if(result<0)certain=false;return result<0?0:result;});budget-=before-local;
    // Visit the bounded batch to subscribe all missing Cell pages, then retry
    // that same search checkpoint next frame. Failed bytes never prove no ore.
-   if(!certain||!frameRead.complete())continue;j.search=next;
-  }
+   if(!certain||(frameRead&&!frameRead->complete()))return false;j.search=next;return true;
+  };
+  if(runtimeDirectActions){if(!search(nullptr))continue;}
+  else {ObservationReadScope frameRead;if(!frameRead)return;if(!search(&frameRead))continue;}
   if(!indexedWorkReady||!j.search.done||j.attemptedFrame==frame)continue;j.attemptedFrame=frame;
   if(!j.search.best){j={};continue;}
   OreHarvestState state{};uint32_t target=0;

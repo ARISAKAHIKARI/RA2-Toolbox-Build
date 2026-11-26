@@ -70,11 +70,13 @@ static void tacticalCards(){
   if(i==featuretypes::BurstRefresh){check(!scope);continue;}
   check(scope&&scope->toggle&&scope->editor);
   const int id=9200+2*i;
-  const int key=i==featuretypes::SpiderDefense?9496:9200+2*scope->owner;
+  const int key=ManualCommandTypes.key;
   check(featuretypes::isListEditor(id+1)&&!featuretypes::isListEditor(id));
   for(int field:{id,id+1}){
    const auto h=item(ui,field);
    check(getProp(h,L"RA2.Console.Feature")==reinterpret_cast<HANDLE>(INT_PTR(key)));
+   check(std::wstring(static_cast<const wchar_t*>(getProp(h,L"RA2.Console.Group")))==ManualCommandTypes.title);
+   check(std::wstring(static_cast<const wchar_t*>(getProp(h,L"RA2.Console.Section")))==ManualCommandTypes.section);
    check(!getProp(h,L"RA2.Console.Skip")&&!getProp(h,L"RA2.Console.GroupHeader"));
    check(std::wstring(static_cast<const wchar_t*>(getProp(h,L"RA2.Console.Label")))==label(field));
   }
@@ -84,7 +86,7 @@ static void tacticalCards(){
   check(settingsdeps::decision(id+1,state).enabled());
   scopeCards.insert(key);
  }
- check(scopeCards.size()==15);
+ check(scopeCards.size()==1);
 }
 int main(){
  std::set<int>groups;for(int group:{9601,9602,9603,9604,9605,9606,9607,9608,9610,9611,9612,9613,9614,9615}){int page=(group-9601)%5,y=(group-9601)*80;groups.insert(group);add(group,page,y);add(10000+group,page,y);add(20000+group,page,y+40,group);}add(9185,4,1800);add(9470,4,1840);auto status=add(9471,4,1880);for(int n:{989,990,991})add(n,4,1900+n);
@@ -96,7 +98,18 @@ int main(){
  for(int id:{423,449,453})check(getProp(item(ui,id),L"RA2.Console.ActionRole")==HANDLE(1));
  for(int id:{108,426,443,814,9185})check(getProp(item(ui,id),L"RA2.Console.ActionRole")==HANDLE(2));
  check(!getProp(item(ui,9176),L"RA2.Console.ActionRole")&&getProp(item(ui,9176),L"RA2.Console.Immediate"));
- for(int id:{9400,9401,9402,9440,9441,9442,9443,9444,9445,9460,9461}){auto h=item(ui,id);check(getProp(h,L"RA2.Console.Group")==getProp(item(ui,9615),L"RA2.Console.Group"));check(bool(getProp(h,L"RA2.Console.GroupHeader"))==(id>=9400&&id<=9402));check(getProp(h,L"RA2.Console.Collapsible")&&getProp(h,L"RA2.Console.CollapsedDefault"));check(!getProp(h,L"RA2.Console.Skip"));}
+ // Named patrol commands own their own settings, not the old 9615 fold.
+ // The remaining dynamic status labels retain the native shared group.
+ for(int id:{9400,9401,9402,9440,9441,9442,9443,9444,9445,9460,9461}){
+  auto h=item(ui,id);const auto*entry=suite::consolelayout::feature(id);
+  if(entry){
+   check(std::wstring(static_cast<const wchar_t*>(getProp(h,L"RA2.Console.Group")))==entry->title);
+   check(getProp(h,L"RA2.Console.Feature")==reinterpret_cast<HANDLE>(INT_PTR(entry->key)));
+   check(bool(getProp(h,L"RA2.Console.GroupHeader"))==(entry->primary&&id==entry->key));
+  }else check(getProp(h,L"RA2.Console.Group")==getProp(item(ui,9615),L"RA2.Console.Group"));
+  check(getProp(h,L"RA2.Console.Collapsible")&&getProp(h,L"RA2.Console.CollapsedDefault"));
+  check(!getProp(h,L"RA2.Console.Skip"));
+ }
  for(int state=-7;state<=2;++state){storage.techEnhanceParameterStatus=state;storage.techEnhanceParameterError=123;storage.techEnhanceParameterExceptions=5;storage.techEnhanceParameterSlots=3;parameterStatus();check(bool(getProp(status,L"RA2.Console.RuntimeError"))==(state<0));check(texts[status].find(L"命中 5")!=std::wstring::npos);check(texts[status].find(L"占用 3 槽")!=std::wstring::npos);check((texts[status].find(L"错误 123")!=std::wstring::npos)==(state<0));}
  extra.techProductionCompatibility=true;storage.techProductionEnhancePasses=42;parameterStatus();check(texts[status].find(L"放行 42")!=std::wstring::npos);
  shared=nullptr;parameterStatus();check(!getProp(status,L"RA2.Console.RuntimeError")&&texts[status].find(L"关闭")!=std::wstring::npos);setConsoleRuntimeError(nullptr,true);check(!getProp(nullptr,L"RA2.Console.RuntimeError"));

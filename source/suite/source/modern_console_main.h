@@ -162,7 +162,7 @@ static void publishModels(){
 static void selectPage(bool persist){
  const unsigned module=selectedCategory==0?unsigned(videoSection):2u;
  suite::frontend.navigate(module,selectedCategory==0?0:selectedCategory,selectedCategory==0?(videoSection?"monitor":"cursor"):"tactical/"+std::to_string(selectedCategory));
- if(persist&&bootReady){asyncini::write(L"UI",L"Category5",std::to_wstring(selectedCategory).c_str(),config.c_str());asyncini::write(L"UI",L"VideoSection",std::to_wstring(videoSection).c_str(),config.c_str());asyncini::write(L"UI",L"PageIndex",std::to_wstring(selectedPageIndex).c_str(),config.c_str());}
+ if(persist&&bootReady){asyncini::write(L"UI",L"Category5",std::to_wstring(selectedCategory).c_str(),config.c_str());asyncini::write(L"UI",L"VideoSection",std::to_wstring(videoSection).c_str(),config.c_str());asyncini::write(L"UI",L"PageIndex",std::to_wstring(selectedPageIndex).c_str(),config.c_str());asyncini::write(L"UI",L"PageLayoutVersion",L"2",config.c_str());}
 }
 static DWORD WINAPI runModule(void* context){
  const unsigned i=unsigned(reinterpret_cast<uintptr_t>(context));auto command=const_cast<LPWSTR>(args.c_str());
@@ -175,7 +175,7 @@ static void startServices(){
  if(!settings.ok){error=utf8(L"无法建立默认配置，请将工具箱放到可写入的文件夹后重试。");publishShell();return;}
  active[0]=settings.cursor;active[1]=settings.monitor;active[2]=true;
  if(!userNavigated){selectedCategory=settings.category;videoSection=settings.video;selectedPageIndex=settings.pageIndex;}
- servicesStarted=true;selectPage(userNavigated);
+ servicesStarted=true;selectPage(true);
  for(unsigned i=0;i<3;++i){workers[i]=CreateThread(nullptr,0,runModule,reinterpret_cast<void*>(uintptr_t(i)),0,nullptr);if(!workers[i]){active[i]=false;error=utf8(L"部分功能服务未能启动，请重新打开工具箱。");}}
  publishShell();
 }
@@ -186,13 +186,29 @@ static DWORD WINAPI prepareSettings(void*){
   const int cursorDefault=int(GetPrivateProfileIntW(L"Startup",L"AutoStart",0,(root+L"\\settings.ini").c_str()));
   result.cursor=read(L"Video",L"CursorEnabled",read(L"Modules",L"Cursor",cursorDefault))!=0;
   result.monitor=read(L"Video",L"MonitorEnabled",read(L"Modules",L"Units",0))!=0;
-  result.category=std::clamp(read(L"UI",L"Category5",0),0,5);result.video=std::clamp(read(L"UI",L"VideoSection",0),0,1);
-  const int legacyPage=result.category?result.category+2:(result.video?2:0);
-  result.pageIndex=read(L"UI",L"PageIndex",legacyPage);
-  if(result.pageIndex<0||result.pageIndex>9)result.pageIndex=legacyPage;
+  result.category=std::clamp(read(L"UI",L"Category5",0),0,7);result.video=std::clamp(read(L"UI",L"VideoSection",0),0,1);
+  const int oldCategory=std::clamp(read(L"UI",L"Category5",0),0,5);
+  const int layoutVersion=read(L"UI",L"PageLayoutVersion",0);
+  const int savedPage=read(L"UI",L"PageIndex",-1);
+  if(layoutVersion>=2){
+   if(savedPage>=0&&savedPage<=10)result.pageIndex=savedPage;
+   else{constexpr int categoryPages[]={0,3,4,5,6,8,9,10};result.pageIndex=result.category?categoryPages[result.category]:(result.video?2:0);}
+  }else if(savedPage>=0&&savedPage<=9){
+   constexpr int migrate[]={0,1,2,3,6,8,9,10,7,2};
+   result.pageIndex=migrate[savedPage];
+  }else{
+   constexpr int legacyCategoryPage[]={0,3,6,8,9,10};
+   result.pageIndex=oldCategory?legacyCategoryPage[oldCategory]:(result.video?2:0);
+  }
+  if(result.pageIndex<0||result.pageIndex>10)result.pageIndex=0;
   if(result.pageIndex<3){result.category=0;result.video=result.pageIndex==2?1:0;}
-  else if(result.pageIndex==9){result.category=0;result.video=1;}
-  else result.category=result.pageIndex==8?2:result.pageIndex-2;
+  else if(result.pageIndex==3)result.category=1;
+  else if(result.pageIndex==4)result.category=2;
+  else if(result.pageIndex==5)result.category=3;
+  else if(result.pageIndex==6||result.pageIndex==7)result.category=4;
+  else if(result.pageIndex==8)result.category=5;
+  else if(result.pageIndex==9)result.category=6;
+  else result.category=7;
  }
  {std::lock_guard<std::mutex> lock(bootMutex);bootSettings=result;}
  if(auto w=notificationWindow.load())PostMessageW(w,BootReady,0,0);return 0;
@@ -278,7 +294,8 @@ static void onMessage(const std::string& json){
  if(message.kind==consolemodel::MessageKind::Navigate){
   userNavigated=true;selectedCategory=message.shell.module==2?message.shell.category:0;
   if(message.shell.module<2)videoSection=int(message.shell.module);
-  selectedPageIndex=message.shell.pageIndex>=0?message.shell.pageIndex:(selectedCategory?selectedCategory+2:(videoSection?2:0));
+  static constexpr int categoryPages[]={0,3,4,5,6,8,9,10};selectedPageIndex=message.shell.pageIndex>=0?message.shell.pageIndex:(selectedCategory?categoryPages[std::clamp(selectedCategory,0,7)]:(videoSection?2:0));
+  if(message.shell.module==1&&selectedPageIndex==9)selectedPageIndex=2;
   error.clear();selectPage(servicesStarted);publishShell();return;
  }
  if(message.kind==consolemodel::MessageKind::Module){

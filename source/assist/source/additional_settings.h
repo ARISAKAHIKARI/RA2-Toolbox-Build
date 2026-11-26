@@ -64,7 +64,7 @@ struct AdditionalSettings {
  int aircraftAllocationPolicy=0; // 0=quotas, 1=variable-radius vehicle coverage, 2=single target + deselect sent
  int aircraftDamageRadiusCells=cooperative::DefaultDamageRadiusCells;
  int aircraftDamageCoveragePercent=cooperative::DefaultDamagePercent;
- uint32_t diskKey=17,sellKey=17;
+ uint32_t diskKey=17,sellKey=17,sellVehicleKey=17,attackMoveKey=0;
  uint32_t enterKey=18,airKey1=17,airKey2=0,variantKey='T'|(2<<8);
  cooperative::Quota defaults{};
  uint32_t controlRequest()const{return !controlAll?controlmode::Off:controlImplementation==1?controlmode::Native:controlImplementation==2?controlmode::Master:controlmode::Parameters;}

@@ -57,7 +57,8 @@ def main():
     missile = (source / 'missile_bridge.h').read_text()
     assert 'compute::copyInput(missileInput,i);' in missile
     assert 'compute::copyInput(sh->missileInput,i);' in missile
-    assert 'missilecompute::reset(i);' in missile
+    assert 'missilecompute::beginCapture(i);' in missile
+    assert 'missilecompute::resetActiveRow(i,n);' in missile
     load = (source / 'autoload_bridge.h').read_text()
     assert 'compute::copyInput(loadCaptureCohort,sh->loadInput);' in load
     assert 'compute::copyInput(sh->loadInput,in);' in load

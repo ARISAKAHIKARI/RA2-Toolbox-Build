@@ -78,14 +78,17 @@ static unloadcompute::Target unloadSampleTargets[unloadcompute::MaxTargets];
 static int unloadSampleTargetCount,unloadSampleTargetFrame=-1;static uint32_t unloadSampleTargetMatch,unloadSampleTargetHouse;
 static bool collectUnloadTargets(uint32_t house,int frame){
  if(unloadSampleTargetFrame==frame&&unloadSampleTargetMatch==match&&unloadSampleTargetHouse==house)return true;
- ObservationReadScope frameRead;if(!frameRead)return false;
  static unloadcompute::Target next[unloadcompute::MaxTargets];int count=0;
+ const auto collect=[&]()->bool{
  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
  for(int n=0;n<all.count&&count<unloadcompute::MaxTargets;++n){uint32_t p=item(all,n);
   if(!p||!live(p)||get<uint32_t>(p+0x21C)==house)continue;
   next[count++]={get<uint32_t>(p+0x10),p,get<int>(p+0x9C),get<int>(p+0xA0)};
  }
- if(!frameRead.complete())return false;
+ return true;
+ };
+ if(runtimeDirectActions){if(!collect())return false;}
+ else {ObservationReadScope frameRead;if(!frameRead||!collect()||!frameRead.complete())return false;}
  memcpy(unloadSampleTargets,next,size_t(count)*sizeof(next[0]));unloadSampleTargetCount=count;
  unloadSampleTargetMatch=match;unloadSampleTargetHouse=house;unloadSampleTargetFrame=frame;return true;
 }
@@ -93,8 +96,8 @@ static bool collectUnloadSource(unloadcompute::Input&input,const UnloadPassenger
  if(input.count<0||input.count>=unloadcompute::MaxSources)return false;
  unloadcompute::Source next{};static uint8_t actions[unloadcompute::MaxTargets],queries[unloadcompute::MaxTargets];
  memset(actions,0,sizeof actions);memset(queries,0,sizeof queries);bool targets=false;
- {
-  ObservationReadScope frameRead;if(!frameRead)return false;
+ const auto collect=[&]()->bool{
+  if(runtimeDirectActions&&worldObjects.byId(r.id)!=r.p)return false;
   if(get<uint32_t>(r.p+0x10)!=r.id||kind(r.p)!=1)return false;
   next.job=r.job;next.id=r.id;next.pointer=r.p;next.type=typeOf(r.p,1);next.token=manualVersions.get(r.id);
   next.state=static_cast<const unloadcompute::State&>(r);next.view=unloadView(r,frame,false);
@@ -103,16 +106,18 @@ static bool collectUnloadSource(unloadcompute::Input&input,const UnloadPassenger
    if(!collectUnloadTargets(house,frame))return false;targets=true;
    planner::Actor source{};rawCombatInfo(r.p,next.type,1,source,true);
    for(int n=0;n<unloadSampleTargetCount;++n){const uint32_t p=unloadSampleTargets[n].pointer;const auto&v=next.view;
-    if(!p||!live(p)||get<uint32_t>(p+0x11C)||get<int>(p+0x220))continue;
+    if(!p||(runtimeDirectActions&&worldObjects.byId(unloadSampleTargets[n].id)!=p)||!live(p)||get<uint32_t>(p+0x11C)||get<int>(p+0x220))continue;
     queries[n]=(v.engineer||v.spy||v.c4)&&kind(p)==3&&unloadBuildingCandidate(p,house,v.engineer!=0);
     if(v.engineer||v.spy||!nativeEnemy(p,house))continue;
     const int k=kind(p);const uint32_t type=typeOf(p,k);if(!type)continue;
     planner::Actor target{};rawCombatInfo(p,type,k,target,false);if(planner::compatibleTarget(source,target,false))actions[n]=2;
    }
   }
-  if(!frameRead.complete())return false;
- }
- // Only native queries live here. In particular, neither the deployer virtual
+  return true;
+ };
+ if(runtimeDirectActions){if(!collect())return false;}
+ else {ObservationReadScope frameRead;if(!frameRead||!collect()||!frameRead.complete())return false;}
+ // Native queries follow candidate discovery. In particular, neither the deployer virtual
  // call nor GuardedEnterAction may execute under the sealed read adapter.
  if(worldByID(next.id)!=next.pointer||manualVersions.get(next.id)!=next.token||kind(next.pointer)!=1||typeOf(next.pointer,1)!=next.type)return false;
  if(next.view.deployer)next.view.ready=call<bool>(get<uint32_t>(get<uint32_t>(r.p)+0x314),r.p);

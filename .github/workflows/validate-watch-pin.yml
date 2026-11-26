@@ -1,0 +1,36 @@
+name: Validate one-press tracking camera
+on:
+  pull_request:
+    paths:
+      - 'source/assist/source/watch_host.h'
+      - 'source/external_reader/source/watch_slots.h'
+      - 'source/assist/tests/watch_slots.cpp'
+      - '.github/workflows/validate-watch-pin.yml'
+  push:
+    branches: [fix/watch-pin-and-control-ui-20261123]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  one-press-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and execute live-selection/watch-slot regression
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/watch_slots.cpp -o /tmp/watch-slots
+          /tmp/watch-slots single-pin
+      - name: Verify pending pin is bounded and identity checked
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path("source/assist/source/watch_host.h").read_text()
+          assert "PendingPinHorizonMs=10000" in text
+          assert "if(!captured)captured=external::watch::capture(live,live);" in text
+          assert "pendingPin={pid,key,GetTickCount(),std::move(captured)};" in text
+          assert "readLive(next.target.pointer+0x10,&liveId,sizeof(liveId))" in text
+          assert "acceptPin(pending.key,std::move(pending.target))" in text
+          print("PASS single pressed hotkey survives display unready and rechecks native UID")
+          PY

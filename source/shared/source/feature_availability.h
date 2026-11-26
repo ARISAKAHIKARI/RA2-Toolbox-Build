@@ -5,7 +5,9 @@ inline constexpr bool SceneRefresh=false,ViewZoom=true; // opt-in experimental n
 // Temporarily unavailable at the user's request. Runtime admission must also
 // enforce these gates when old settings or stale mailboxes still request them.
 inline constexpr bool AutoCS=false,InfantryForcedEntry=false;
-inline constexpr bool VariantSelection=false;
+// Variant selection is a one-shot command on the game thread, not an
+// unsupported per-frame asynchronous projection.
+inline constexpr bool VariantSelection=true;
 inline constexpr int refreshMode(int requested){return SceneRefresh&&requested>=0&&requested<=3?requested:0;}
 inline constexpr int zoomPercent(int requested){return ViewZoom?requested:100;}
 }

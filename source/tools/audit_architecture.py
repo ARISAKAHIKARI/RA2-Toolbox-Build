@@ -112,6 +112,32 @@ for family,channel in (('burst',3),('dodge',4)):
  assert not re.search(r'\b(?:get|put|call|callFast|nativeMission|enqueue|GuardedCombatWeapon)\s*\(',pure_code)
 assert 'burstControlTick(house,frame,now)' not in bridge
 assert 'resetBurstControl(); // Removed feature' in bridge
+# Retired settings must not reserve event budget or wake the dispatcher,
+# request a world graph or build the native roster from stale IPC flags.
+assert not re.search(r'\bsh->(?:burstEnabled|burstHoldEnabled|burstHeld)\b',bridge)
+# Local input maintenance must retain its scheduling but never require a
+# full tactical snapshot simply because either option is enabled.
+local_graph_gate=bridge.split('const bool noGraphJobs=',1)[1].split(';',1)[0]
+local_wake_gate=bridge.split('const bool runtimeActionDemand=',1)[1].split(';',1)[0]
+for option in ('keepInputUnlocked','blockTriggerCamera'):
+ assert 'sh->'+option not in local_graph_gate
+ assert 'sh->'+option in local_wake_gate
+assert 'inputLockTick();' in bridge and 'maintainTechParameters();playerMaintenance();' in bridge
+# A placement receipt and local House maintenance remain scheduled even
+# without an authoritative tactical sample. Keep mailbox/flag guards intact.
+local_frame_gate=bridge.split('bool frameDue=',1)[1].split(';',1)[0]
+for local_task in ('sh->superweaponGrant','sh->placementPreview.active','nativePlacementCompletionPending()'):
+ assert local_task not in local_graph_gate
+ assert local_task in local_frame_gate
+assert 'nativePlacementTick(now);' in bridge
+# Reuse only a sealed source's own exact roster, not a native or candidate
+# roster. Keep live UID validation and the checked fallback intact.
+index_builder=bridge.split('static void indexWorld(int frame){',1)[1].split('static bool refreshWorldIndex(',1)[0]
+assert 'sampleReadDepth&&sampleWorldSource==&worldFrame?' in index_builder
+assert 'capturedTechnoRoster(worldFrame.key,all.items,all.count)' in index_builder
+assert 'if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}' in index_builder
+assert 'else if(!read(p+0x10,&id,4)){complete=false;continue;}' in index_builder
+assert 'superweaponGrantTick(house,frame,now);' in bridge
 known=[
  {'id':'P08','status':'dual_backend','feature':'Threat evasion; burst refresh retired','detail':'Burst UI/settings are retired and the scheduler never calls burstControlTick, including with stale shared flags. Native Scatter/Move evasion events stay in Runtime. Five planning shares and actor arbitration. Native Scatter owns evasion destinations; pending/turning/moving jobs cannot be replaced by fresh shots. No timed restoration of old missions. No ability, rank, ROF or burst-index writes by automatic evasion.'},
  {'id':'P07','status':'dual_backend','feature':'Advanced attack-move actual weapon range','source':'assist/source/combat_probe_bridge.h','detail':'Runtime-only native SelectWeapon/GetWeapon/IsCloseEnough produces complete per-source facts. Shared pure ranking prefers actual in-range targets; approach Move switches to empty-destination Attack. Fresh admission discards obsolete Move without mailbox blockage. No new hook or direct mission writes.'},

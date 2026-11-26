@@ -22,13 +22,11 @@ static void pruneMissileManual(){
  // identity array and sorting it on the Game callback duplicated work
  // already completed by CommandRoster::build on the capture worker.
  static bool retired[1024];
- {
-  SampleReadScope source;if(!source)return;
-  const int frame=worldFrame.key.frame;
-  if(missileManualPruneMatch==worldFrame.key.match&&missileManualPruneFrame==frame)return;
+ const auto collect=[&](int frame,uint32_t epoch)->bool{
+  if(missileManualPruneMatch==epoch&&missileManualPruneFrame==frame)return false;
   // A candidate/stale index is not proof of absence. Bind the strict
   // current-frame roster and fail closed if that exact index is unavailable.
-  if(!refreshWorldIndex(frame)||indexedFrame!=frame||!commandRosterReady())return;
+  if(!refreshWorldIndex(frame)||indexedFrame!=frame||!commandRosterReady())return false;
   for(int n=0;n<missileManualCount;++n){const auto&r=missileManual[n];retired[n]=false;
    // An input can follow this frame's capture; older raw facts cannot
    // retire an intent that was created later in the same logic frame.
@@ -38,10 +36,13 @@ static void pruneMissileManual(){
    retired[n]=!get<uint32_t>(r.pointer+0x2B4)&&!get<uint32_t>(r.pointer+0x5A4)&&
     (mission==5||mission==6||mission==11||mission==13)&&(queued==-1||queued==mission)&&frame-r.frame>=12;
   }
-  if(!source.complete())return;
-  // Failed/missing fields never consume this frame's retry opportunity.
-  missileManualPruneMatch=worldFrame.key.match;missileManualPruneFrame=frame;
- }
+  return true;
+ };
+ const int frame=runtimeDirectActions?get<int>(0xA8ED84):worldFrame.key.frame;
+ const uint32_t epoch=runtimeDirectActions?match:worldFrame.key.match;
+ if(runtimeDirectActions){if(!collect(frame,epoch))return;}
+ else {SampleReadScope source;if(!source||!collect(frame,epoch)||!source.complete())return;}
+ missileManualPruneMatch=epoch;missileManualPruneFrame=frame;
  int kept=0;for(int n=0;n<missileManualCount;++n)if(!retired[n])missileManual[kept++]=missileManual[n];missileManualCount=kept;
 }
 static void pauseMissileForManual(uint32_t id,uint32_t pointer){
@@ -122,14 +123,22 @@ static void sampleMissileMotion(uint32_t p,int frame){
   if(std::abs(m.vx)>512||std::abs(m.vy)>512||std::abs(m.vz)>512)m.known=false;}
  m.id=id;m.pointer=p;m.frame=frame;m.x=x;m.y=y;m.z=z;
 }
-static missilecompute::Edge missileEdgeFacts(uint32_t p,uint32_t q,uint32_t weapon,int close,int airborne,int sourceRecord=-2,int*motionCache=nullptr){
+static missilecompute::Edge missileEdgeFacts(uint32_t p,uint32_t q,uint32_t weapon,int close,int airborne,int sourceRecord=-2,int*motionCache=nullptr,const CombatProbeBatch*batch=nullptr,int targetIndex=-1){
  missilecompute::Edge e{};e.close=0;if(!weapon||!airborne)return e;
- auto info=rawWeaponInfo(weapon,true);int armor=get<int>(typeOf(q,kind(q))+0x9C);
+ // Only the pure raw selector supplies this callback-local batch. Native
+ // selectors and final command admission still reread all live fields.
+ const bool sampled=batch&&targetIndex>=0&&targetIndex<missilecompute::MaxTargets&&
+  batch->sourceEpoch==batch->epoch&&batch->sourcePointer==p&&
+  batch->targets[targetIndex].epoch==batch->epoch&&batch->targets[targetIndex].pointer==q;
+ const auto*target=sampled?&batch->targets[targetIndex]:nullptr;
+ auto info=rawWeaponInfo(weapon,true);int armor=target?target->armor:get<int>(typeOf(q,kind(q))+0x9C);
  if(armor<0||armor>10||!(info.flags&planner::AirWeapon)||!(info.selectMask&(1u<<armor))||
     (info.flags&(planner::HealingWeapon|planner::MindControlWeapon|planner::TemporalWeapon|planner::ParasiteWeapon|planner::LocomotorWeapon)))return e;
  double damage=double(get<int>(weapon+0xA4))*info.effectiveness[armor];if(damage<=0)return e;
  if(sh->lowDamageFilter&&!(get<double>(get<uint32_t>(weapon+0xAC)+0xA0+armor*8)>0.02))return e;
- double dx=double(get<int>(q+0x9C))-get<int>(p+0x9C),dy=double(get<int>(q+0xA0))-get<int>(p+0xA0),dz=double(get<int>(q+0xA4))-get<int>(p+0xA4);
+ const int px=sampled?batch->source.x:get<int>(p+0x9C),py=sampled?batch->source.y:get<int>(p+0xA0),pz=sampled?batch->source.z:get<int>(p+0xA4);
+ const int qx=target?target->x:get<int>(q+0x9C),qy=target?target->y:get<int>(q+0xA0),qz=target?target->z:get<int>(q+0xA4);
+ double dx=double(qx)-px,dy=double(qy)-py,dz=double(qz)-pz;
  double distance=std::sqrt(dx*dx+dy*dy+dz*dz);if(!std::isfinite(distance)||distance>1048576)return e;
  int eta=0;
  if(!close){
@@ -141,8 +150,8 @@ static missilecompute::Edge missileEdgeFacts(uint32_t p,uint32_t q,uint32_t weap
   int at=sourceRecord==-2?missileRecord(get<uint32_t>(p+0x10)):sourceRecord;
   if(at>=0){const auto&r=missileSends[at];int frame=get<int>(0xA8ED84);
    if(r.releasedAt>=0&&frame-r.releasedAt<missilecompute::ReleaseGraceFrames)return e;
-   if(kind(p)!=3&&r.advanceStart>=0){double ax=double(get<int>(p+0x9C))-r.anchorX,ay=double(get<int>(p+0xA0))-r.anchorY;
-    double tx=double(get<int>(q+0x9C))-r.anchorX,ty=double(get<int>(q+0xA0))-r.anchorY;
+   if((sampled?batch->sourceKind:kind(p))!=3&&r.advanceStart>=0){double ax=double(px)-r.anchorX,ay=double(py)-r.anchorY;
+    double tx=double(qx)-r.anchorX,ty=double(qy)-r.anchorY;
     if(frame-r.advanceStart>=missilecompute::MaxAdvanceFrames||ax*ax+ay*ay>=double(missilecompute::AdvanceLeash)*missilecompute::AdvanceLeash||
        std::sqrt(tx*tx+ty*ty)>range+missilecompute::AdvanceLeash)return e;
    }
@@ -155,7 +164,7 @@ static missilecompute::Edge missileEdgeFacts(uint32_t p,uint32_t q,uint32_t weap
   const MissileMotion*motion=motionIndex>=0?&missileMotion[motionIndex]:nullptr;
   if(motion&&motion->known){double closing=distance>0?-(dx*motion->vx+dy*motion->vy+dz*motion->vz)/distance:0;
    if(sh->missileReserve&&(closing<=.5||gap/closing>missilecompute::LookAhead))return e;
-   if(kind(p)!=3&&closing<-.5)return e;
+   if((sampled?batch->sourceKind:kind(p))!=3&&closing<-.5)return e;
    eta=closing>.5?std::min(missilecompute::LookAhead,std::max(1,int(std::ceil(std::max(0.0,gap)/closing)))):missilecompute::LookAhead;
   }else eta=missilecompute::LookAhead;
  }
@@ -266,12 +275,12 @@ static void applyMissileResult(const missilecompute::Result&r,uint32_t house,int
 // after an optional native query only decodes that same immutable sample; it
 // cannot acquire new bytes or extend a sample across the native boundary.
 static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourceCursor,int&nextTargetCursor,int&nextManagedCursor){
- auto&i=missileCapture;missilecompute::reset(i);i.match=match;i.tick=now;i.frame=frame;i.mode=sh->missileAllocation|(sh->missileReserve?missilecompute::ReserveSleep:0);
+ auto&i=missileCapture;missilecompute::beginCapture(i);i.match=match;i.tick=now;i.frame=frame;i.mode=sh->missileAllocation|(sh->missileReserve?missilecompute::ReserveSleep:0);
  const bool native=sh->nativeCombatQueries!=0,deferredAir=native&&sh->missileScope!=0;
  struct Candidate {missilecompute::Target target;int after;};
  static Candidate candidates[16384]{};int candidateCount=0,allCount=0,visited=0;
- {
-  ObservationReadScope frameRead;if(!frameRead)return false;
+ const bool direct=runtimeDirectActions&&compute::inside(sh->computeApplied,compute::MissileDefense);
+ const auto collectTargets=[&]()->bool{
   // Retain the real observation age across the deferred native query phase.
   i.tick=sampleWorldSource&&sampleWorldSource->key.tick?sampleWorldSource->key.tick:now;
   Vec all{};if(!sampleRoster(0xA8EC78,all))return false;allCount=all.count;
@@ -279,8 +288,10 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
    uint32_t victim=get<uint32_t>(q+0x2B4);if(!worldObjects.contains(victim))victim=0;
    candidates[candidateCount++]={{get<uint32_t>(q+0x10),q,get<int>(q+0x6C),uint32_t(victim&&own(victim,house)?(std::abs(int64_t(get<int>(q+0x9C))-get<int>(victim+0x9C))+std::abs(int64_t(get<int>(q+0xA0))-get<int>(victim+0xA0))<=3*256?2:1):0)},visited+1};
   }
-  if(!frameRead.complete())return false;
- }
+  return true;
+ };
+ if(direct){if(!collectTargets())return false;}
+ else {ObservationReadScope frameRead;if(!frameRead||!collectTargets()||!frameRead.complete())return false;}
  int acceptedThrough=visited;
  for(int n=0;n<candidateCount&&i.targetCount<missilecompute::MaxTargets;++n){const auto&candidate=candidates[n];const auto&t=candidate.target;
   // Native airborne queries are never invoked in a raw read scope. Preserve
@@ -295,22 +306,54 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
  auto failed=[&]{memcpy(missileMotion,motionBefore,sizeof missileMotion);missileMotionCursor=motionCursorBefore;memcpy(weaponCache,cacheBefore,sizeof weaponCache);return false;};
  static bool eligible[missilecompute::MaxSources];
  static int motionIndices[missilecompute::MaxTargets];std::fill_n(motionIndices,missilecompute::MaxTargets,-2);
- {
-  ObservationReadScope frameRead;if(!frameRead)return failed();
-  Vec all{};if(!sampleRoster(0xA8EC78,all))return failed();
-  for(int t=0;t<i.targetCount;++t)sampleMissileMotion(i.targets[t].pointer,frame);
+ const auto collectSources=[&]()->bool{
+  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+  for(int t=0;t<i.targetCount;++t){const auto&target=i.targets[t];if(direct&&worldByID(target.id)!=target.pointer)return false;sampleMissileMotion(target.pointer,frame);}
   static CombatProbeTargetSample targetSamples[missilecompute::MaxTargets];
-  for(int t=0;t<i.targetCount;++t)targetSamples[t].epoch=0;
+  struct TargetPosition {int x,y;};
+  static TargetPosition positions[missilecompute::MaxTargets];
+  for(int t=0;t<i.targetCount;++t){
+   targetSamples[t].epoch=0;
+   if(!native){const auto q=i.targets[t].pointer;positions[t]={get<int>(q+0x9C),get<int>(q+0xA0)};}
+  }
   CombatProbeBatch batch{targetSamples};
+  // Raw selection uses the current weapon slots and a firing annulus; the
+  // subsequent Edge permits at most AdvanceLeash beyond its cached range.
+  // Take an upper bound of BOTH fresh and still-valid cached range facts.
+  // Native selector geometry is not approximated by this broad phase.
+  auto rawReach=[&](uint32_t p){
+   const uint32_t type=typeOf(p,kind(p));if(!type)return int64_t(0);
+   int slots[2];const int count=rawWeaponSlots(p,type,slots);
+   const float veteran=get<float>(p+0x150);
+   int range=0;
+   for(int n=0;n<count;++n){
+    const uint32_t weapon=rawWeapon(type,veteran,slots[n]);if(weapon<0x10000)continue;
+    const int fresh=get<int>(weapon+0xB4);
+    if(fresh>0&&fresh<65536)range=std::max(range,fresh);
+    const auto&cached=weaponCache[(weapon>>4)&1023];
+    if(cached.pointer==weapon&&cached.match==match&&frame>=cached.frame&&frame-cached.frame<30)
+     range=std::max(range,cached.data.range);
+   }
+   const int bonus=std::clamp(get<int>(type+0x68C),0,32768);
+   return int64_t(range)+bonus+missilecompute::AdvanceLeash;
+  };
   auto add=[&](uint32_t p){if(i.count>=missilecompute::MaxSources||!p)return;for(int n=0;n<i.count;++n)if(i.sources[n].pointer==p)return;
    uint32_t id=get<uint32_t>(p+0x10);int at=missileRecord(id);bool held=at>=0&&missileSends[at].held,managed=at>=0&&missileSends[at].controlled;
    const bool source=missileSource(p,house,true,native);if(!held&&!managed&&!source)return;
-   int n=i.count++;eligible[n]=source;auto&s=i.sources[n];s={id,p,manualVersions.get(id),rawObjectID(get<uint32_t>(p+0x2B4)),0};
+   int n=i.count++;missilecompute::resetActiveRow(i,n);eligible[n]=source;auto&s=i.sources[n];s={id,p,manualVersions.get(id),rawObjectID(get<uint32_t>(p+0x2B4)),0};
    s.cooldown=remaining(get<int>(p+0x2EC),get<int>(p+0x2F4),frame);s.held=held;s.managed=managed;
    if(at>=0){const auto&record=missileSends[at];s.pending=record.target;s.pendingMission=record.mission;s.advanceFrames=record.advanceStart>=0?std::max(0,frame-record.advanceStart):-1;s.releaseFrames=record.releasedAt>=0?std::max(0,missilecompute::ReleaseGraceFrames-(frame-record.releasedAt)):0;s.committedTarget=record.shotTarget;s.committedDamage=record.shotDamage;}
    if((held||managed)&&s.pendingMission<0){planner::Actor firing{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),firing,true,true);if(firing.flags&planner::BurstFiring)s.pendingMission=missilecompute::TransientBusy;}
-   if(source&&!native)for(int t=0;t<i.targetCount;++t){uint32_t weapon=0;int slot=0,close=0,airborne=0;
-    if(sampledCombatWeaponQuery(batch,t,p,i.targets[t].pointer,&weapon,&slot,&close,&airborne)>0)i.edges[n][t]=missileEdgeFacts(p,i.targets[t].pointer,weapon,close,airborne,at,&motionIndices[t]);
+   if(source&&!native){
+    const int64_t reach=rawReach(p);const int px=get<int>(p+0x9C),py=get<int>(p+0xA0);
+    for(int t=0;t<i.targetCount;++t){
+     const int64_t dx=int64_t(positions[t].x)-px,dy=int64_t(positions[t].y)-py;
+     // A square enclosing both possible range circles is sufficient; keep
+     // boundary points and every uncertain/close pair on the original path.
+     if(reach>0&&(dx>reach||dx< -reach||dy>reach||dy< -reach))continue;
+     uint32_t weapon=0;int slot=0,close=0,airborne=0;
+     if(sampledCombatWeaponQuery(batch,t,p,i.targets[t].pointer,&weapon,&slot,&close,&airborne)>0)i.edges[n][t]=missileEdgeFacts(p,i.targets[t].pointer,weapon,close,airborne,at,&motionIndices[t],&batch,t);
+    }
    }
   };
   int revisited=0,managedBudget=i.targetCount?missilecompute::MaxSources/2:missilecompute::MaxSources;
@@ -318,8 +361,10 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
   nextManagedCursor=missileSendCount?(missileManagedCursor+revisited)%missileSendCount:0;
   visited=0;if(i.targetCount)for(;visited<all.count&&i.count<missilecompute::MaxSources;++visited)add(item(all,(missileSourceCursor+visited)%all.count));
   nextSourceCursor=all.count?(missileSourceCursor+visited)%all.count:0;
-  if(!frameRead.complete())return failed();
- }
+  return true;
+ };
+ if(direct){if(!collectSources())return failed();}
+ else {ObservationReadScope frameRead;if(!frameRead||!collectSources()||!frameRead.complete())return failed();}
  if(native){
   struct Query {uint32_t weapon;int close,airborne,status;};
   static Query queries[missilecompute::MaxSources][missilecompute::MaxTargets];
@@ -329,19 +374,31 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
     int slot=0;q.status=combatWeaponQuery(s.pointer,target.pointer,&q.weapon,&slot,&q.close,&q.airborne);
    }
   }
-  ObservationReadScope frameRead;if(!frameRead)return failed();
-  for(int n=0;n<i.count;++n){const int record=missileRecord(i.sources[n].id);for(int t=0;t<i.targetCount;++t){const auto&q=queries[n][t];if(q.status>0)i.edges[n][t]=missileEdgeFacts(i.sources[n].pointer,i.targets[t].pointer,q.weapon,q.close,q.airborne,record,&motionIndices[t]);}}
-  if(!frameRead.complete())return failed();
+  const auto collectEdges=[&]()->bool{
+   for(int n=0;n<i.count;++n){
+    const auto&s=i.sources[n];
+    if(direct&&worldByID(s.id)!=s.pointer)continue;
+    const int record=missileRecord(s.id);
+    for(int t=0;t<i.targetCount;++t){const auto&q=queries[n][t];const auto&target=i.targets[t];
+     if(q.status>0&&(!direct||worldByID(target.id)==target.pointer))
+      i.edges[n][t]=missileEdgeFacts(s.pointer,target.pointer,q.weapon,q.close,q.airborne,record,&motionIndices[t]);
+    }
+   }
+   return true;
+  };
+  if(direct){if(!collectEdges())return failed();}
+  else {ObservationReadScope frameRead;if(!frameRead||!collectEdges()||!frameRead.complete())return failed();}
  }
  compute::copyInput(missileInput,i);missilecompute::observe(missileObservation,i);return true;
 }
 static bool missileControlTick(uint32_t house,int frame,DWORD now){
- pruneMissileSends(now);
+ // releaseMissileHolds owns its own prune on either cleanup branch.
  if(!sh->missileEnabled){missilePending=false;releaseMissileHolds(house,frame,now);if(!missileSendCount)resetMissileControl();return false;}
  if(missileManualOverflowed()){
   missileFrames.clear();missileApplied=sh->missileComputed;missilePending=missileScanned=false;missileFrame=-1;
   sh->missileSources=sh->missileTargets=0;releaseMissileHolds(house,frame,now);return false;
  }
+ pruneMissileSends(now);
  if(snap.chat||!simulationReady())return false;
  uint32_t settings=sh->missileScope|(sh->missileAllocation<<8)|(sh->missileReserve<<16)|(sh->lowDamageFilter<<17);
  if(settings!=missileSettings){missileFrames.clear();missileApplied=sh->missileComputed;missilePending=missileScanned=false;missileFrame=-1;missileSettings=settings;}

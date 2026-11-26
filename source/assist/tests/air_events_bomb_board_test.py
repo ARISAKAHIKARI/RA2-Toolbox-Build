@@ -10,7 +10,15 @@ def source():
     text=text.replace('#include "constructor_adapter.h"', '#include "constructor_adapter.h"\n#include "air_path_policy.h"\n#include "air_path_events.h"')
     text=text.replace('static bool validateMoSubmission(const intent::EventOrder&);','static bool validateMoSubmission(const intent::EventOrder&);\nstatic bool validateDirectAirSubmission(const intent::EventOrder&);\nstatic bool validateBombBoardSubmission(const intent::EventOrder&);\nstatic void(*beforeSubmit)()=nullptr;')
     text=text.replace('static int kind(uint32_t p){return worldObjects.contains(p)?1:0;}', 'static std::map<uint32_t,int> kinds;static int kind(uint32_t p){return kinds.count(p)?kinds[p]:1;}')
-    text=text.replace('struct Vec{int count=0;};static Vec vec(uint32_t p){assert(p==0xA8ECB8);return {int(selected.size())};}\nstatic uint32_t item(Vec,int n){return selected.at(n);}', 'struct Vec{int count=0;bool all=false;};static Vec vec(uint32_t p){return {int(p==0xA8EC78?actors.size():selected.size()),p==0xA8EC78};}\nstatic uint32_t item(Vec v,int n){return v.all?actors.at(n):selected.at(n);}')
+    # mo_source already exposes a richer Vec with native roster coordinates.
+    # Preserve its layout while adding the "all actors" view for bomb scanning.
+    old='struct Vec{int count=0;uint32_t items=0;};static Vec vec(uint32_t p){assert(p==0xA8ECB8);constexpr uint32_t items=0x110000;for(size_t i=0;i<selected.size();++i)put(items+uint32_t(i)*4,selected[i]);return {int(selected.size()),items};}'
+    new='struct Vec{int count=0;uint32_t items=0;bool all=false;};static Vec vec(uint32_t p){constexpr uint32_t items=0x110000;const auto&list=p==0xA8EC78?actors:selected;for(size_t i=0;i<list.size();++i)put(items+uint32_t(i)*4,list[i]);return {int(list.size()),items,p==0xA8EC78};}'
+    assert old in text
+    text=text.replace(old,new)
+    old_item='static uint32_t item(Vec,int n){return selected.at(n);}'
+    assert old_item in text
+    text=text.replace(old_item,'static uint32_t item(Vec v,int n){return v.all?actors.at(n):selected.at(n);}')
     text=text.replace('volatile long moOrdersPreviewSeq=0;', 'volatile long airEventSeq=0;airevents::Report airEventReport;uint32_t flags=0,nativeAirNetwork=0,bombBoardEnabled=0,bombBoardRangeCells=8,bombBoardActive=0,bombBoardIssued=0,bombBoardWaiting=0;volatile long moOrdersPreviewSeq=0;')
     text=text.replace('Formation,Generic}', 'Formation,Generic,BombBoard}')
     text=text.replace('if(!validateMoSubmission(o)||constructors::admit(o)', 'if(beforeSubmit)beforeSubmit();if(!validateDirectAirSubmission(o)||!validateBombBoardSubmission(o)||!validateMoSubmission(o)||constructors::admit(o)')
@@ -26,6 +34,7 @@ static struct {struct Capacity{int occupants=0,maximum=0,used=0;};
 ''' + text[end:]
     text=text.replace('static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}', 'static int fixtureAutoPendingSeats(uint32_t,uint32_t);static int entryReserved(uint32_t target,uint32_t ignore,uint32_t){int n=0;for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];if(r.id!=ignore&&r.target==get<uint32_t>(target+0x10))n+=r.slots;}return n+fixtureAutoPendingSeats(target,ignore);}')
     text+=r'''
+static bool readLiveWorld(uint32_t p,void*out,size_t n){return read(p,out,n);}
 constexpr uint32_t NativeAirWaypoints=0x80000000u;
 #include "air_path_events_bridge.h"
 struct SampleReadScope{static bool available;explicit operator bool()const{return available;}bool complete()const{return available;}};bool SampleReadScope::available=true;
@@ -35,18 +44,25 @@ static struct {struct Reservation{uint32_t id=0,vehicle=0,object=0;int slots=1;}
 static int fixtureAutoPendingSeats(uint32_t target,uint32_t ignore){int n=0;for(int i=0;i<loadLedger.count;++i){auto&r=loadLedger.records[i];if(r.id!=ignore&&r.vehicle==target&&incomingVehicle(r.object)!=target)n+=r.slots;}return n;}
 static bool loadQueryFailed=false;static std::set<uint32_t> illegal;
 static bool canEnter(uint32_t,uint32_t target){return !illegal.count(target);}
+static bool runtimeDirectActions=false;
 #include "bomb_board_bridge.h"
 static bool airMessage(UINT m,unsigned vk=0,int x=100,int y=100){MSG msg;msg.message=m;msg.wParam=vk;msg.lParam=MAKELPARAM(x,y);return directair::message(&msg);}
 static void keyTable(){
  put(0x87F680,0x200000u);put(0x87F684,1u);put(0x87F688,1u);put(0x200000,uint32_t('Z'));put(0x200004,0x210000u);put(0x210000,0x220000u);put(0x220004,0x600000u);
  const uint8_t getName[]={0xB8,0,0,0x90,0,0xC3};std::memcpy(memory.data()+0x600000,getName,6);std::memcpy(memory.data()+0x900000,"PlanningMode",13);
 }
-static void airBegin(){begin();directair::reset();directair::planning={};beforeSubmit=nullptr;events.clear();posted=0;queueRoom=256;sh->moFeatures=0;sh->flags=NativeAirWaypoints;kinds.clear();kinds[actors[0]]=0;held['Z']=true;keyTable();put(0x87F7E8+0x11B3,true);}
+static void airBegin(){begin();directair::reset();directair::planning={};beforeSubmit=nullptr;events.clear();posted=0;queueRoom=256;sh->moFeatures=0;sh->flags=NativeAirWaypoints;kinds.clear();kinds[actors[0]]=0;put<uint32_t>(actors[0],0x7E22A4);put<uint8_t>(actors[0]+0x74,1);put<uint8_t>(actors[0]+0x90,1);held['Z']=true;keyTable();put(0x87F7E8+0x11B3,true);}
 static void airStep(){++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;sh->heartbeat=clockValue;directair::tick(lastHouse,snap.frame,clockValue);}
 static uint32_t unit(unsigned id,int k,int x,int y){uint32_t p=0x10000+id*0x1000,t=0x500000+id*0x2000;actors.push_back(p);kinds[p]=k;put(p+0x10,id);put(p+0x21C,lastHouse);put(p+0x6C,100);put(p+0x6C4,t);put(p+0x9C,x*256);put(p+0xA0,y*256);if(k==2)put(t+0x5E0,1);return p;}
-static void bombBegin(){begin();bombboard::reset();directair::reset();directair::planning={};beforeSubmit=nullptr;kinds.clear();actors.clear();selected.clear();events.clear();commands.clear();illegal.clear();entryReservationCount=loadLedger.count=0;queueRoom=256;SampleReadScope::available=true;sh->bombBoardEnabled=1;}
+static void bombBegin(){begin();bombboard::reset();directair::reset();directair::planning={};beforeSubmit=nullptr;kinds.clear();actors.clear();selected.clear();events.clear();commands.clear();illegal.clear();entryReservationCount=loadLedger.count=0;queueRoom=256;SampleReadScope::available=true;runtimeDirectActions=false;sh->bombBoardEnabled=1;}
 static void bombStep(){++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;sh->heartbeat=clockValue;bombboard::tick(lastHouse,snap.frame);}
 int main(){
+ // Null, unmapped and freed selections must be rejected without raw pointer dereferences.
+ airBegin();selected[0]=0;check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending());
+ airBegin();selected[0]=0xFFFFFFF0u;check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending());
+ airBegin();check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));
+ held['Z']=false;check(airMessage(WM_KEYUP,'Z'));failAt=actors[0];airStep();
+ check(!directAirPending()&&events.empty());
  for(int session:{0,5,3,4}){
   airBegin();put(0xA8B238,session);snap.session=session;
   check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));check(airMessage(WM_LBUTTONDOWN,0,160,100));check(airMessage(WM_LBUTTONUP,0,160,100));
@@ -57,9 +73,22 @@ int main(){
   check(sh->airEventReport.status==airevents::Committed&&sh->airEventReport.points==2&&sh->airEventReport.accepted==2&&feedbacks==2);
   airStep();check(events.size()==2&&posted==1); // no synthetic Commit and no arrival resend
  }
+ // Current selection capture must not wait for the indexed world roster.
+ // MO patrol already captures player input without its command roster gate.
+ airBegin();rosterChecks=0;check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));check(rosterChecks==0);
+ held['Z']=false;check(airMessage(WM_KEYUP,'Z'));
+ queueRoom=0;for(int i=0;i<85;++i)airStep();
+ check(events.empty()&&posted==1&&!directAirPending()&&sh->airEventReport.status==airevents::Partial);
+ // The timeout also recovers after a first node queued but the tail stalls.
+ airBegin();check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));
+ check(airMessage(WM_LBUTTONDOWN,0,160,100));check(airMessage(WM_LBUTTONUP,0,160,100));
+ held['Z']=false;check(airMessage(WM_KEYUP,'Z'));
+ queueRoom=1;airStep();check(events.size()==1&&posted==0);
+ queueRoom=0;for(int i=0;i<85;++i)airStep();
+ check(events.size()==1&&posted==1&&!directAirPending()&&sh->airEventReport.status==airevents::Partial);
  airBegin();check(airMessage(WM_LBUTTONDOWN));check(airMessage(WM_LBUTTONUP));beforeSubmit=[](){++manualVersions.tokens[get<uint32_t>(actors[0]+0x10)];beforeSubmit=nullptr;};airStep();check(events.empty());airStep();check(!directAirPending());
  airBegin();airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);held['Z']=false;airMessage(WM_KEYUP,'Z');++match;airStep();check(posted==0&&events.empty());
- airBegin();kinds[actors[0]]=1;check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending()&&events.empty());
+ airBegin();put<uint32_t>(actors[0],0x7F5C70);check(!airMessage(WM_LBUTTONDOWN)&&!directAirPending()&&events.empty());
  airBegin();airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);airMessage(WM_KEYDOWN,VK_ESCAPE);check(events.empty()&&!directAirPending());
  airBegin();held['Z']=false;held['S']=true;put(0x200000,uint32_t('S'));airMessage(WM_LBUTTONDOWN);airMessage(WM_LBUTTONUP);airMessage(WM_KEYDOWN,'S');check(directAirPending());held['S']=false;check(airMessage(WM_KEYUP,'S'));airStep();check(events.size()==1&&posted==1);
  // Nearest legal vehicle; full and incompatible vehicles cannot absorb seats.
@@ -73,6 +102,14 @@ int main(){
  // latches manual ownership for this bomb even if it later stays idle.
  bombBegin();p=unit(1,1,20,20);near=unit(2,2,30,20);put(p+0x38,0x700000u);bombStep();check(events.empty());put(near+0x9C,21*256);++manualVersions.tokens[1];bombStep();check(events.empty()&&bombboard::jobs[0].cancelled);put(p+0x38,0x720000u);bombStep();check(events.size()==1);
  bombBegin();p=unit(1,1,20,20);near=unit(2,2,21,20);put(p+0x38,0x700000u);SampleReadScope::available=false;bombStep();check(events.empty()&&bombboard::jobs.empty());SampleReadScope::available=true;bombStep();check(events.size()==1);
+ // Native collection works without graph pages. A failed live field read
+ // retains the complete prior projection, then recovers on the same frame.
+ bombBegin();p=unit(1,1,20,20);near=unit(2,2,21,20);
+ for(uint32_t actor:{p,near}){put(actor,uint32_t(actor==p?0x7EB058:0x7F5C70));put(actor+0x74,uint8_t(1));put(actor+0x90,uint8_t(1));}
+ put(p+0x38,0x700000u);runtimeDirectActions=true;SampleReadScope::available=false;
+ check(bombboard::collect()&&bombboard::armed.size()==1&&bombboard::vehicles.size()==1);
+ failAt=p+0x38;check(!bombboard::collect()&&bombboard::armed.size()==1);
+ failAt=0;put(p+0x38,0u);check(bombboard::collect()&&bombboard::armed.empty());
  // Final queue guard rechecks a bomb removed across an external callback.
  bombBegin();p=unit(1,1,20,20);near=unit(2,2,21,20);put(p+0x38,0x700000u);beforeSubmit=[](){put(actors[0]+0x38,0u);beforeSubmit=nullptr;};bombStep();check(events.empty()&&!entryReservationCount);bombStep();check(bombboard::jobs.empty());
  bombBegin();p=unit(1,1,20,20);near=unit(2,2,21,20);put(p+0x38,0x700000u);queueRoom=0;bombStep();check(events.empty());queueRoom=256;bombStep();check(events.size()==1);sh->bombBoardEnabled=0;bombStep();check(bombboard::jobs.empty());

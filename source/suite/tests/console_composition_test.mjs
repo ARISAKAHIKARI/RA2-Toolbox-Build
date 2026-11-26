@@ -84,9 +84,9 @@ const test=(name,run)=>cases.push({name,run});
 
 test('top-level display pages route, restore and show only their controls',()=>{
  const f=setup(),node=id=>f.document.getElementById(id);
- const nav=Array.from({length:8},(_,i)=>navButton(node('navigation'),i));
+ const nav=Array.from({length:11},(_,i)=>navButton(node('navigation'),i));
  assert.deepEqual(node('navigation').children.filter(child=>child.className==='nav-group-label').map(child=>child.textContent),['对局工具','显示','高级']);
- assert.deepEqual(nav.map(b=>b.attributes.get('aria-label')),['光标','渲染','监控视图','控制','自动功能','游戏规则','实验功能','调试']);
+ assert.deepEqual(nav.map(b=>b.attributes.get('aria-label')),['鼠标','渲染','监控视图','键鼠与选兵','战术操作','进驻与装卸','自动功能','生产','游戏规则','实验功能','调试']);
  const state=(module,revision,controls)=>({kind:'state',protocol:1,module,generation:1,revision,controls,page:module?'monitor':'cursor'});
  f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:0,videoSection:1});
  f.receive(state(1,1,[{id:11,type:'toggle',label:'副相机',group:'副相机'}]));
@@ -96,10 +96,10 @@ test('top-level display pages route, restore and show only their controls',()=>{
  assert.equal(f.find('setting-row').length,1);
  f.dispatch(nav[0],'click');
  assert.equal(f.sent.at(-1).module,0);
- f.receive(state(0,2,[{id:12,type:'toggle',label:'光标补帧',group:'光标设置'},{id:13,type:'toggle',label:'画质选项',group:'渲染'}]));
+ f.receive(state(0,2,[{id:12,type:'toggle',label:'鼠标补帧',group:'鼠标设置'},{id:13,type:'toggle',label:'画质选项',group:'渲染'}]));
  f.render();
- assert.equal(node('pageTitle').textContent,'光标');
- assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['光标补帧']);
+ assert.equal(node('pageTitle').textContent,'鼠标');
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['鼠标补帧']);
  const sent=f.sent.length;
  f.dispatch(nav[1],'click');f.render();
  assert.equal(f.sent.length,sent+1);
@@ -118,9 +118,9 @@ test('top-level display pages route, restore and show only their controls',()=>{
 });
 
 test('automatic features have one level of expansion and no empty fold',()=>{
- const f=setup(),node=id=>f.document.getElementById(id),select=navButton(f.document.getElementById('navigation'),4);
+ const f=setup(),node=id=>f.document.getElementById(id),select=navButton(f.document.getElementById('navigation'),6);
  f.dispatch(select,'click');
- assert.equal(f.sent.at(-1).category,2);
+ assert.equal(f.sent.at(-1).category,4);
  const controls=[
   {id:11,type:'heading',label:'自动功能'},
   {id:12,type:'toggle',label:'过滤低伤害自动目标',groupHeader:true},
@@ -129,65 +129,72 @@ test('automatic features have one level of expansion and no empty fold',()=>{
   {id:15,type:'number',label:'血量阈值',group:'维修',text:'40'},
   {id:16,type:'label',label:'维修范围暂不可用',group:'维修',runtimeError:true},
  ];
- const state=revision=>({kind:'state',protocol:1,module:2,generation:1,revision,page:'tactical/2',controls});
+ const state=revision=>({kind:'state',protocol:1,module:2,generation:1,revision,page:'tactical/4',controls});
  f.receive(state(1));f.render();
- assert.equal(f.find('group-summary').length,2);
+ assert.equal(f.find('group-summary').length,1);
  assert.equal(f.find('group-summary')[0].tagName,'DIV');
- assert.equal(f.find('group-summary')[0].hidden,false);
- assert.equal(f.find('group-summary')[1].hidden,false);
+ assert.equal(f.find('group-summary')[0].hidden,true);
+ // Flat automatic page has no second subsection summary.
  const buttons=f.find('feature-config-toggle');
  assert.equal(buttons.length,2);
- assert.equal(buttons[1].hidden,true);
- assert.equal(buttons[0].attributes.get('aria-expanded'),'false');
- assert.equal(buttons[0].textContent,'展开','inline child settings use the same expand action everywhere');
- assert.ok(f.find('group-status')[0].textContent.includes('维修范围暂不可用'));
- f.dispatch(buttons[0],'click');
- assert.equal(buttons[0].attributes.get('aria-expanded'),'true');
- assert.equal(buttons[0].textContent,'收起');
+ const active=buttons.filter(button=>!button.hidden);
+ assert.equal(active.length,1,'only the feature with editable parameters has a fold');
+ const fold=active[0];
+ assert.equal(fold.attributes.get('aria-expanded'),'false');
+ assert.equal(fold.textContent,'展开');
+ assert.ok(f.find('group-status').some(status=>status.textContent.includes('维修范围暂不可用')));
+ f.dispatch(fold,'click');
+ assert.equal(fold.attributes.get('aria-expanded'),'true');
+ assert.equal(fold.textContent,'收起');
  assert.ok(f.find('setting-label').some(label=>label.textContent==='血量阈值'));
- f.dispatch(buttons[0],'click');
- assert.equal(buttons[0].textContent,'展开');
+ f.dispatch(fold,'click');
+ assert.equal(fold.textContent,'展开');
  const search=node('search');search.value='血量阈值';f.dispatch(search,'input');f.render();
- assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'true');
+ assert.equal(f.find('feature-config-toggle').find(button=>!button.hidden).attributes.get('aria-expanded'),'true');
  f.dispatch(node('foldAll'),'click');f.receive(state(2));f.render();
- assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'false');
+ assert.equal(f.find('feature-config-toggle').find(button=>!button.hidden).attributes.get('aria-expanded'),'false');
  search.value='';f.dispatch(search,'input');f.render();
- assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'false');
+ assert.equal(f.find('feature-config-toggle').find(button=>!button.hidden).attributes.get('aria-expanded'),'false');
 });
 
-test('production settings have a single page and keep their tactical owner',()=>{
+test('production queue is one compact expanded block; reminders stay with monitor settings',()=>{
  const f=setup(),node=id=>f.document.getElementById(id);
- f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:2,pageIndex:8});
- f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/2',controls:[
+ f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:4,pageIndex:7});
+ f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/4',controls:[
   {id:71,nativeId:799,type:'toggle',label:'生产预定',group:'生产预定',groupHeader:true},
-  {id:72,nativeId:817,type:'number',label:'预定面板缩放',group:'生产预定',text:'100'},
-  {id:73,nativeId:100,type:'toggle',label:'自动维修',group:'自动维修',groupHeader:true}
+  {id:72,nativeId:9796,type:'toggle',label:'显示已可生产单位（批量预定）',group:'生产预定'},
+  {id:73,nativeId:817,type:'number',label:'建筑预定面板缩放',group:'生产预定',text:'100'},
+  {id:74,nativeId:100,type:'toggle',label:'自动维修',group:'自动维修',groupHeader:true}
  ]});
  f.render();
  assert.equal(node('pageTitle').textContent,'生产');
- assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['生产预定']);
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['生产预定','显示已可生产单位（批量预定）','建筑预定面板缩放']);
+ assert.equal(f.find('feature-config-toggle').length,1);
+ assert.equal(f.find('feature-config-toggle')[0].hidden,true,'the small production queue must not get a redundant fold');
+ assert.equal(node('foldAll').hidden,true,'no bulk-fold action for this tiny page');
  assert.equal(f.store.act(71,'toggle',true),true);
  assert.equal(f.actions().at(-1).module,2);
  assert.equal(f.actions().at(-1).id,71);
- f.dispatch(navButton(node('navigation'),4),'click');f.render();
+ f.dispatch(navButton(node('navigation'),6),'click');f.render();
+ assert.equal(f.sent.at(-1).category,4);
+ f.receive({kind:'state',protocol:1,module:2,generation:1,revision:2,page:'tactical/4',controls:[
+  {id:71,nativeId:799,type:'toggle',label:'生产预定',group:'生产预定',groupHeader:true},
+  {id:74,type:'toggle',label:'自动维修',group:'自动维修',groupHeader:true}
+ ]});
+ f.render();
  assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['自动维修']);
  f.dispatch(navButton(node('navigation'),8),'click');
  assert.equal(f.sent.at(-1).pageIndex,8);
- assert.equal(f.sent.at(-1).category,2);
- f.dispatch(node('productionNotices'),'click');
+ assert.equal(f.sent.at(-1).category,5);
+ f.dispatch(navButton(node('navigation'),2),'click');
  assert.equal(f.sent.at(-1).module,1);
- assert.equal(f.sent.at(-1).pageIndex,9);
+ assert.equal(f.sent.at(-1).pageIndex,2);
  f.receive({kind:'state',protocol:1,module:1,generation:1,revision:1,page:'monitor',controls:[
-  {id:74,type:'toggle',label:'显示建造时间',group:'生产提醒'},
-  {id:75,type:'toggle',label:'副相机',group:'副相机'}
+  {id:75,type:'toggle',label:'显示建造时间',group:'生产提醒'},
+  {id:76,type:'toggle',label:'副相机',group:'副相机'}
  ]});
  f.render();
- assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['显示建造时间']);
- assert.equal(navButton(node('navigation'),8).attributes.get('aria-current'),'page');
- assert.equal(f.store.act(74,'toggle',true),true);
- assert.equal(f.actions().at(-1).module,1);
- f.dispatch(navButton(node('navigation'),2),'click');f.render();
- assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['副相机']);
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['显示建造时间','副相机']);
 });
 
 test('native shared rows and status notes have no redundant configuration title',()=>{
@@ -212,6 +219,67 @@ test('native shared rows and status notes have no redundant configuration title'
  const groupLabel=f.find('setting-label').find(label=>label.textContent==='防御选项');
  assert.ok(groupLabel&&!groupLabel.hidden,'semantic group labels remain visible; only explanatory notes are tucked away');
 });
+test('legacy self-named master settings infer one fold, broad groups stay separate',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ const canonical=controls=>controls.map(control=>core.canonical(control));
+ const master=canonical([
+  {id:11,type:'toggle',label:'自动装车',group:'自动装车',row:10,column:10},
+  {id:12,type:'hotkey',label:'自动装车',group:'自动装车',row:10,column:200},
+  {id:13,type:'number',label:'装车距离',group:'自动装车',row:60,column:20},
+  {id:14,type:'choice',label:'装车策略',group:'自动装车',row:110,column:20}
+ ]);
+ const blocks=core.featureBlocks(master);
+ assert.equal(blocks.length,1);assert.equal(blocks[0].title,'自动装车');
+ assert.deepEqual([...blocks[0].headers.map(c=>c.id)],[11,12]);
+ assert.deepEqual([...blocks[0].details.map(c=>c.id)],[13,14]);
+ assert.equal(core.hasFeatureConfig(blocks[0]),true);
+ const unrelated=core.featureBlocks(canonical([
+  {id:21,type:'toggle',label:'装车',group:'自动功能',row:10,column:10},
+  {id:22,type:'toggle',label:'维修',group:'自动功能',row:55,column:10},
+  {id:23,type:'number',label:'修理阈值',group:'自动功能',row:100,column:10}
+ ]));
+ assert.ok(unrelated.every(block=>!block.title&&!block.headers.length),'a broad legacy section must not become a titled fold');
+});
+test('one feature-row grammar on every tactical page including independent rows',()=>{
+ const sections={3:'移动、攻击与操作手势',4:'维修与自动救援',5:'科技与建造',6:'命令与兼容'};
+ for(const navIndex of [3,4,5,6]){
+  const f=setup(),nav=f.document.getElementById('navigation');
+  f.dispatch(navButton(nav,navIndex),'click');
+  const section=sections[navIndex],controls=[
+   {id:4001,nativeId:7001,type:'toggle',groupHeader:true,featureId:7001,group:'功能甲',section,label:'功能甲',checked:true},
+   {id:4002,nativeId:7002,type:'number',featureId:7001,group:'功能甲',section,label:'阈值',text:'50'},
+   {id:4003,nativeId:7003,type:'hotkey',featureId:7001,group:'功能甲',section,label:'快捷键',options:['hold']},
+   {id:4011,nativeId:7011,type:'toggle',group:'独立功能',label:'独立功能',checked:true},
+   {id:4012,nativeId:7012,type:'button',group:'立即操作',label:'执行操作'}
+  ];
+  f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/'+(navIndex-2),controls});
+  f.render();
+  assert.equal(f.find('feature-card').length,1,'one feature owner on page '+navIndex);
+  assert.equal(f.find('feature-common').length,2,'plain commands use same row on page '+navIndex);
+  const [button]=f.find('feature-config-toggle');
+  assert.equal(button.hidden,false);
+  assert.equal(button.textContent,'展开');
+  assert.equal(f.find('setting-row').length,3,'no invisible child controls mounted');
+  f.dispatch(button,'click');
+  assert.equal(f.find('setting-row').length,5);
+  assert.ok(f.find('feature-subheading').every(node=>node.hidden),'no redundant parameter/shortcut headings');
+  assert.deepEqual(f.find('settings-group').map(node=>node.children[0].children[0].textContent).filter(Boolean).length>0,true);
+ }
+});
+test('all page types share flat neutral feature surfaces and consistent nested controls',()=>{
+ const css=fs.readFileSync(path.join(here,'../frontend/app.css'),'utf8');
+ const start=css.indexOf('/* Universal feature hierarchy:');
+ const end=css.indexOf('.group-status {',start);
+ assert.ok(start>=0&&end>start);
+ const featureCss=css.slice(start,end);
+ assert.match(featureCss,/\.feature-card, \.feature-common\s*\{/);
+ assert.match(featureCss,/border-bottom:1px solid var\(--divider\)/);
+ assert.match(featureCss,/\.feature-card \.feature-details\s*\{/);
+ assert.match(featureCss,/border-left:1px solid var\(--divider\)/);
+ assert.doesNotMatch(featureCss,/var\(--blush/,'no colored second-level cards');
+ assert.match(css,/\.settings-line:not\(\.compound-row\) > \.setting-row:not\(\[data-type="toggle"\]\)/);
+ assert.match(css,/\.setting-row\[data-type="toggle"\] > \.setting-editor\s*\{/);
+});
 test('compact shortcuts retain trigger, double-click, special keys and clear',()=>{
  const f=setup(),row=f.row(3);
  assert.equal(row.input.textContent,'未绑定');
@@ -234,7 +302,7 @@ test('compact shortcuts retain trigger, double-click, special keys and clear',()
  assert.equal(f.actions().at(-1).value,0xa24b);
  row.special.value='27';f.dispatch(row.special,'change');
  assert.equal(f.actions().at(-1).value,0xa21b);
- assert.equal(row.hotkeyDetails.open,false);
+ assert.equal(row.hotkeyDetails.open,true);
  f.dispatch(row.hotkeySummary,'click');f.dispatch(row.clear,'click');
  assert.equal(f.actions().at(-1).value,0);
  assert.equal(row.hotkeyDetails.open,false);
@@ -331,6 +399,88 @@ test('ordinary Escape still cancels an editor and clears search',()=>{
  const fixture=setup(),input=fixture.edit(1,'取消的修改');fixture.dispatch(input,'keydown',{key:'Escape',code:'Escape',keyCode:27});
  assert.equal(fixture.actions().length,0);assert.equal(fixture.store.drafts.size,0);
  const search=fixture.document.getElementById('search');search.value='搜索';fixture.dispatch(search,'keydown',{key:'Escape',keyCode:27});assert.equal(search.value,'');
+});
+test('ordinary settings never expose native numeric fallback or duplicate status rows',()=>{
+ const f=setup(),core=f.context.RA2ConsoleCore;
+ const field=(id,type,label,extra={})=>core.canonical({id,type,label,...extra});
+ assert.equal(core.displaySettingLabel(field(1,'hotkey','设置 441')),'快捷键');
+ assert.equal(core.displaySettingLabel(field(2,'choice','设置 410')),'选项');
+ assert.equal(core.displaySettingLabel(field(3,'number','搜索半径')),'搜索半径');
+ const controls=[
+  field(4,'toggle','保持操作权限',{group:'实验功能'}),
+  field(5,'label','保持操作权限：关闭',{nativeId:9537,group:'实验功能'}),
+  field(6,'label','操控私有队列：原实现',{nativeId:9751,group:'实验功能'}),
+  field(7,'label','保持操作权限：未能解除输入锁',{nativeId:9537,group:'实验功能',runtimeError:true}),
+  field(8,'label','当前：60 Hz',{nativeId:9161,group:'实验功能'}),
+  field(9,'label','小图相机：入口冲突或还原未完成',{nativeId:9464,group:'实验功能'})
+ ];
+ const ids=[...core.layoutGroups(controls,'',6).values()].flat().map(c=>c.id);
+ assert.ok(!ids.includes(5)&&!ids.includes(6));
+ assert.ok(ids.includes(4)&&ids.includes(7)&&ids.includes(8)&&ids.includes(9));
+ assert.ok([...core.layoutGroups(controls,'',10).values()].flat().some(c=>c.id===5));
+});
+test('participant filters share their master feature and never create a duplicate card',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ const controls=[];
+ for(const [master,key,policy,scope,title] of [[885,9507,895,9236,'自动躲弹'],[880,9508,9040,9230,'防空火控'],[705,0,9195,9200,'飞机分配攻击']]){
+  const row=(id,type,label,y,x,extra={})=>core.canonical({id:id+60000,nativeId:id,type,label,row:y,column:x,group:title,featureId:master,...extra});
+  controls.push(row(master,'toggle',title,master,20,{groupHeader:true}));
+  if(key)controls.push(row(key,'hotkey',title,master,345));
+  controls.push(row(policy,'choice','运行方式',master+1,290));
+  controls.push(row(scope,'toggle','限定参与单位',master+2,380));
+  controls.push(row(scope+1,'text','单位类型 ID',master+3,20,{text:'E1'}));
+ }
+ const groups=core.layoutGroups(controls,'',4);
+ const blocks=core.featureBlocks([...groups.values()][0]);
+ assert.equal(blocks.length,3);
+ for(const block of blocks){
+  assert.equal(block.headers.filter(c=>c.type==='toggle').length,1);
+  assert.ok(block.details.some(c=>c.type==='text'));
+  assert.ok(block.details.some(c=>c.type==='choice'));
+ }
+ const searched=core.featureBlocks([...core.layoutGroups(controls,'单位类型 ID',4).values()][0]);
+ assert.equal(searched.length,3);
+ assert.ok(searched.every(b=>b.headers.some(c=>c.type==='toggle')));
+});
+test('all manual command type restrictions share one collapsed control entry',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ const title='命令类型手动指定';
+ const fields=[];
+ for(let f=0;f<21;f++){
+  if(f===17)continue;
+  fields.push(core.canonical({id:9200+2*f,type:'toggle',label:'功能 '+f+' · 单位',group:title,section:title,featureId:9610,checked:false,row:100+f*2,column:20}));
+  fields.push(core.canonical({id:9201+2*f,type:'text',label:'功能 '+f+' · 类型 ID',group:title,section:title,featureId:9610,enabled:false,row:101+f*2,column:20}));
+ }
+ for(const [id,type,label] of [[781,'toggle','矿车'],[783,'text','矿车类型 ID'],[782,'toggle','矿场'],[784,'text','矿场类型 ID']])
+  fields.push(core.canonical({id,type,label,group:title,section:title,featureId:9610,row:200+id,column:20}));
+ const master=core.canonical({id:705,type:'toggle',label:'飞机分配攻击',group:'飞机分配攻击',featureId:705,groupHeader:true});
+ const blocks=core.featureBlocks([...core.layoutGroups([master,...fields],'',4).values()][0]);
+ assert.equal(blocks.length,2);
+ const manual=blocks.find(b=>b.title===title);
+ assert.equal(manual.headers.length,0);
+ assert.equal(manual.details.length,44);
+ assert.equal(core.hasFeatureConfig(manual),true);
+ assert.equal(blocks.find(b=>b.title==='飞机分配攻击').details.length,0);
+ const searched=core.featureBlocks([...core.layoutGroups([master,...fields],'矿车类型 ID',4).values()][0]);
+ assert.equal(searched.length,1);
+ assert.equal(searched[0].title,title);
+});
+test('new top-level control pages and legacy restoration map to the expanded backend categories',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ assert.deepEqual(JSON.parse(JSON.stringify([3,4,5,6,7,8,9,10].map(i=>core.targetFor(i)))),[
+  {module:2,category:1},{module:2,category:2},{module:2,category:3},{module:2,category:4},
+  {module:2,category:4},{module:2,category:5},{module:2,category:6},{module:2,category:7}
+ ]);
+ assert.deepEqual([1,2,3,4,5,6,7].map(i=>core.restoredIndex(i,0)),[3,4,5,6,8,9,10]);
+ assert.deepEqual(JSON.parse(JSON.stringify(core.targetFor(7))),{module:2,category:4});
+ const controls=[
+  core.canonical({id:1,type:'toggle',label:'生产预定',group:'生产预定'}),
+  core.canonical({id:2,type:'toggle',label:'生产提醒',group:'生产提醒'}),
+  core.canonical({id:3,type:'toggle',label:'副相机',group:'副相机'})
+ ];
+ assert.deepEqual(core.displayPageControls(controls,2).map(c=>c.id),[1,2,3]);
+ assert.deepEqual(core.displayPageControls(controls,6).map(c=>c.id),[2,3]);
+ assert.deepEqual(core.displayPageControls(controls,7).map(c=>c.id),[1]);
 });
 let failures=0;
 for(const {name,run} of cases){try{run();console.log(`PASS ${name}`)}catch(error){failures++;console.error(`FAIL ${name}\n${error.stack}`)}}

@@ -111,7 +111,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
   heading=ctl(L"STATIC",L"红警工具箱",0,0);modernui::heading(heading);
   subtitle=ctl(L"STATIC",L"v" RA2_RELEASE_VERSION_W,0,0);
   for(int i=0;i<suite::categories::Count;++i)nav[i]=ctl(L"BUTTON",suite::categories::name(i),BS_PUSHBUTTON|WS_TABSTOP,200+i);
-  videoNav[0]=ctl(L"BUTTON",L"光标与渲染",BS_PUSHBUTTON|WS_TABSTOP,210);videoNav[1]=ctl(L"BUTTON",L"监控视图",BS_PUSHBUTTON|WS_TABSTOP,211);
+  videoNav[0]=ctl(L"BUTTON",L"鼠标与渲染",BS_PUSHBUTTON|WS_TABSTOP,210);videoNav[1]=ctl(L"BUTTON",L"监控视图",BS_PUSHBUTTON|WS_TABSTOP,211);
   footer=ctl(L"STATIC",L"每项功能独立启用 · 设置自动保存",0,0);SetTimer(w,1,100,nullptr);applyDpi(consoleDpi);layout();return 0;}
  case PaneReady:{int i=int(wp);if(i>=0&&i<3&&suite::frontend.window(unsigned(i))==(HWND)lp){layout();suite::frontend.post(unsigned(i),suite::ModuleEnable,active[i]);if(closePhase==2)suite::frontend.post(unsigned(i),WM_CLOSE,suite::CloseToken);}return 0;}
  case frontendpanes::DestroyedMessage:case frontendpanes::ActivityMessage:layoutPanes();InvalidateRect(w,&paneRect,FALSE);return 0;

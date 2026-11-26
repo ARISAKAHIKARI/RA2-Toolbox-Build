@@ -159,10 +159,13 @@ public:
    ((uint64_t(frame->key.connectionHigh)<<32)|frame->key.connectionLow)==generation()&&
    uint32_t(now-worldSubscribedAt_)<50&&worldClient_->unchanged(worldframe::authoritative(frame),now);
  }
+ bool tryVisualStatistics(worldframe::VisualCache::Statistics&out){return worldClient_&&worldClient_->tryVisualStatistics(out);}
  std::shared_ptr<void> worldPublicationSignal(){return worldClient_?worldClient_->publicationSignal():std::shared_ptr<void>{};}
  void endWorldFrame(){
   if(worldClient_&&!worldDemands_.empty()){
-   if(worldframe::visualDemand(worldDemand_))worldClient_->requestVisual(worldDemands_,!worldComplete_);
+   // The requested profile may have changed before the current scope ends.
+   // Route dependencies by the immutable sample that actually supplied them.
+   if(worldFrame_&&worldFrame_->controlSource)worldClient_->requestVisual(worldDemands_,!worldComplete_,worldFrame_);
   else worldClient_->request(worldDemands_,!worldComplete_);
   }
   for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}

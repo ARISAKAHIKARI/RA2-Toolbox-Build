@@ -7,38 +7,40 @@
 #include "../../external_reader/source/unit_info_panel_model.h"
 #include "../../shared/source/overlay_stack.h"
 #include "unit_info_panel_cameos.h"
+#include "unit_info_panel_layout.h"
 
 // RA2 Toolbox's original unit panel implementation. No MO source/assets,
 // engine hooks, game events or game-memory reads live in this UI object.
-// Only page/collapse/detail interactions are accepted in v1. The popup HWND
-// consumes panel clicks, unlike a WS_EX_TRANSPARENT world overlay.
+// Only page/collapse interactions are accepted. Expanded single-unit views
+// show passenger Cameos automatically; folding hides the cargo with the panel.
 namespace unitpanelhost {
 class Panel {
  HWND window_=nullptr;
  external::unitpanel::Model model_{};
  uint64_t signature_=0;DWORD lastGoodAt_=0;unitpanelcameo::Cache cameos_{};uint32_t cameoRevision_=0;
- bool folded_=false,details_=false;
+ bool folded_=false;
  int page_=0,focused_=-1,width_=390,height_=40;
  static constexpr int Header=38,Footer=30;
  static std::wstring name(const std::array<uint16_t,40>&src){
   std::wstring value;for(uint16_t c:src){if(!c)break;if(c>=32)value.push_back(wchar_t(c));}
   return value.empty()?L"未知单位":value;
  }
- static constexpr int CellW=60,CellH=48,ButtonW=26,Pad=7,Gap=1;
- int entries()const{return model_.selected==1?model_.passengerCount:model_.groupCount;}
- int perPage()const{return model_.selected==1?7:9;}
- int pages()const{return external::unitpanel::pageCount(entries(),perPage());}
- int slots()const{return model_.selected==1?2+std::min(7,std::max(0,entries()-page_*perPage())):
-   std::min(9,std::max(0,entries()-page_*perPage()));}
- int cols()const{int n=slots();return n<=1?1:n<=4?2:3;}
- int rows()const{return std::max(1,(slots()+cols()-1)/cols());}
+ static constexpr int CellW=panelmetrics::CellW,CellH=panelmetrics::CellH,ButtonW=26,Pad=7,Gap=1;
+ int entries()const{return panelmetrics::entries(model_,!folded_);}
+ int perPage()const{return panelmetrics::perPage(model_);}
+ int pages()const{return panelmetrics::pages(model_,!folded_);}
+ int slots()const{return panelmetrics::slots(model_,!folded_,page_);}
+ int cols()const{return panelmetrics::cols(slots());}
+ int rows()const{return panelmetrics::rows(slots());}
  int wantedWidth()const{
   if(folded_)return ButtonW+3;
-  return ButtonW+Pad*2+4+cols()*CellW+(cols()-1)*Gap;
+  return ButtonW+Pad*2+5+cols()*CellW+(cols()-1)*Gap;
  }
  int wantedHeight()const{
   if(folded_)return ButtonW+3;
-  return Pad*2+rows()*CellH+(rows()-1)*Gap+(details_?42:0)+(pages()>1?22:0);
+  // Preserve the outer border and 20px pagination strip (previously
+  // clipped by the five-pixel top offset of the inset grid).
+  return Pad*2+rows()*CellH+(rows()-1)*Gap+(pages()>1?22:0)+6;
  }
  static void label(Gdiplus::Graphics&g,const std::wstring&s,float x,float y,float size,
                    Gdiplus::Color color,bool strong=false){
@@ -61,15 +63,15 @@ class Panel {
   Gdiplus::Pen pen(color,1);g.DrawRectangle(&pen,x,y,w-1,h-1);
  }
  void cameo(Gdiplus::Graphics&g,uint32_t type,int kind,int x,int y,
-            const std::array<uint16_t,40>&nm){
+            const std::array<uint16_t,40>&nm,int w=CellW,int h=CellH){
   if(const auto*icon=cameos_.get(type)){
    auto*buf=reinterpret_cast<BYTE*>(const_cast<uint32_t*>(icon->argb.data()));
    Gdiplus::Bitmap bmp(um::IW,um::IH,um::IW*4,PixelFormat32bppARGB,buf);
-   g.DrawImage(&bmp,Gdiplus::Rect(x,y,CellW,CellH),0,0,um::IW,um::IH,Gdiplus::UnitPixel);
+   g.DrawImage(&bmp,Gdiplus::Rect(x,y,w,h),0,0,um::IW,um::IH,Gdiplus::UnitPixel);
   }else{
-   box(g,float(x),float(y),CellW,CellH,Gdiplus::Color(255,32,42,52));
-   box(g,float(x+3),float(y+3),CellW-6,CellH-6,tint(kind));
-   label(g,name(nm).substr(0,1),float(x+20),float(y+10),20,
+   box(g,float(x),float(y),float(w),float(h),Gdiplus::Color(255,32,42,52));
+   box(g,float(x+3),float(y+3),float(w-6),float(h-6),tint(kind));
+   label(g,name(nm).substr(0,1),float(x+w/2-10),float(y+h/2-13),w==CellW?20:16,
          Gdiplus::Color(255,21,28,35),true);
   }
  }
@@ -79,21 +81,14 @@ class Panel {
   g.SetInterpolationMode(InterpolationModeNearestNeighbor);
   g.SetPixelOffsetMode(PixelOffsetModeHalf);
   g.Clear(Color(255,10,12,15));
-  // Original MO-style compact 60x48 cameo grid: close spacing, bevel border,
-  // and a left-side fold/details button column. Artwork is never copied.
+  // Compact 60x48 vehicle cameo grid. Passenger icons use a smaller nested
+  // 44x36 raster, and are never drawn while the panel is folded.
   const int fx=2,fy=height_-ButtonW-1;
   box(g,float(fx),float(fy),ButtonW-2,ButtonW-2,Color(255,47,55,66));
   outline(g,fx,fy,ButtonW-2,ButtonW-2,Color(255,159,165,175));
   label(g,folded_?L"▸":L"◂",float(fx+5),float(fy+2),17,
         Color(255,230,222,147),true);
   if(folded_)return;
-  if(height_>=ButtonW*2+6){
-   int dy=fy-ButtonW-2;
-   box(g,float(fx),float(dy),ButtonW-2,ButtonW-2,
-       details_?Color(255,80,89,100):Color(255,40,47,57));
-   outline(g,fx,dy,ButtonW-2,ButtonW-2,Color(255,133,148,164));
-   label(g,L"i",float(fx+9),float(dy+3),15,Color(255,244,240,214),true);
-  }
   int bx=ButtonW+4,by=Pad-2;
   int gw=Pad*2+cols()*CellW+(cols()-1)*Gap;
   int gh=Pad*2+rows()*CellH+(rows()-1)*Gap;
@@ -114,9 +109,15 @@ class Panel {
          hp<maxHP/3?Color(255,230,81,72):Color(255,95,203,105));
      label(g,u.level>=2?L"精英":u.level?L"老兵":L"普通",float(x+3),float(y+29),10,
            Color(255,231,211,126));
-    }else{
-     const auto&u=slot==0?model_.single:model_.passenger[page_*7+slot-2];
+    }else if(slot==0){
+     const auto&u=model_.single;
      cameo(g,u.type,u.kind,x,y,u.name);
+    }else{ // Passenger Cameos are visible whenever the whole panel is expanded.
+     const auto&u=model_.passenger[page_*panelmetrics::CargoPerPage+slot-2];
+     cameo(g,u.type,u.kind,
+       x+(CellW-panelmetrics::PassengerCameoW)/2,
+       y+(CellH-panelmetrics::PassengerCameoH)/2,u.name,
+       panelmetrics::PassengerCameoW,panelmetrics::PassengerCameoH);
     }
    }else{
     const auto&u=model_.groups[page_*9+slot];
@@ -131,25 +132,9 @@ class Panel {
    outline(g,x,y,CellW,CellH,slot==focused_?Color(255,242,220,115):Color(255,89,97,107));
   }
   int footer=by+gh+2;
-  if(details_){
-   box(g,float(bx),float(footer),float(gw),39,Color(255,22,27,36));
-   outline(g,bx,footer,gw,39,Color(255,89,100,113));
-   if(model_.selected==1){
-    const auto&u=model_.single;
-    label(g,name(u.name).substr(0,16),float(bx+5),float(footer+1),11,Color(255,225,233,245),true);
-    std::wstring more=L"HP "+std::to_wstring(std::max(0,u.health))+L"/"+std::to_wstring(std::max(0,u.strength));
-    if(u.ammoMax>0)more+=L" 弹 "+std::to_wstring(std::max(0,u.ammo))+L"/"+std::to_wstring(u.ammoMax);
-    else if(u.passengers>0)more+=L" 载员 "+std::to_wstring(u.passengers);
-    label(g,more.substr(0,27),float(bx+5),float(footer+20),10,Color(255,187,206,224));
-   }else if(focused_>=0&&focused_<slots()){
-    const auto&u=model_.groups[page_*9+focused_];
-    label(g,name(u.name).substr(0,19),float(bx+5),float(footer+2),11,Color(255,238,243,248),true);
-    label(g,L"×"+std::to_wstring(u.count),float(bx+5),float(footer+20),10,Color(255,193,215,227));
-   }else{
-    label(g,std::to_wstring(model_.selected)+L" / "+std::to_wstring(model_.groupCount),float(bx+5),float(footer+8),11,Color(255,216,231,236));
-   }
-   footer+=42;
-  }
+  // The old "i" details footer repeated information already shown in the
+  // HP tile and did not explain cargo. The +/− action now controls cargo
+  // rows directly; no redundant footer is reserved.
   if(pages()>1){
    box(g,float(bx),float(footer),float(gw),20,Color(255,26,30,39));
    label(g,L"◀",float(bx+5),float(footer+1),12,Color(255,230,220,143),true);
@@ -158,19 +143,19 @@ class Panel {
    label(g,L"▶",float(bx+gw-22),float(footer+1),12,Color(255,230,220,143),true);
   }
  }
- void click(int x,int y,bool right=false){
+ void click(int x,int y,bool /*right*/=false){
   if(x<ButtonW+3){
-   // Bottom button folds; upper 'i' toggles details. Right-click fold
-   // mirrors the reference panel's details gesture.
    const int foldY=height_-ButtonW-1;
-   if(right||(!folded_&&y<foldY-2))details_=!details_;
-   else{folded_=!folded_;page_=0;}
+   // The single fold control collapses the whole panel, including cargo.
+   if(y>=foldY&&y<foldY+ButtonW-2){
+    folded_=!folded_;page_=0;focused_=-1;
+   }
    InvalidateRect(window_,nullptr,FALSE);return;
   }
   if(folded_)return;
   int bx=ButtonW+4,by=Pad-2;
   const int gh=Pad*2+rows()*CellH+(rows()-1)*Gap;
-  int footer=by+gh+(details_?44:2);
+  int footer=by+gh+2;
   if(pages()>1&&y>=footer){
    if(x<bx+40)page_=(page_+pages()-1)%pages();
    else if(x>bx+Pad*2+cols()*CellW+(cols()-1)*Gap-42)page_=(page_+1)%pages();
@@ -251,8 +236,9 @@ public:
   if(!ensure())return;
   lastGoodAt_=GetTickCount();
   const uint64_t key=model.visualSignature();
-  bool newEpoch=model_.match!=model.match;
-  if(newEpoch){page_=0;focused_=-1;}
+  const bool differentUnit=model_.match!=model.match||model_.selected!=model.selected||
+    (model.selected==1&&model_.single.id!=model.single.id);
+  if(differentUnit){page_=0;focused_=-1;}
   if(key!=signature_){model_=model;signature_=key;InvalidateRect(window_,nullptr,FALSE);}
   page_=external::unitpanel::clampPage(page_,entries(),perPage());
   int newWidth=std::min(wantedWidth(),availableWidth);

@@ -6,6 +6,7 @@ namespace directair {
 struct Actor {uint32_t pointer=0,id=0,token=0;};
 static Actor actors[airevents::MaxActors];static unsigned count=0,pointCount=0,nodeAt=0,actorAt=0;
 static uint32_t cells[airevents::MaxPoints],epoch=0,house=0,started=0,button=0,accepted=0;
+static uint32_t lastProgress=0,releasedAt=0;
 static bool down=false,submitting=false;static NativePlanningInput planning;
 static bool enabled(){return sh&&airpathpolicy::direct(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork);}
 static bool pending(){return down||count||planning.active;}
@@ -15,10 +16,23 @@ static void report(int status,unsigned rejected=0){
 }
 static void reset(int status=airevents::Cancelled){
  if(count||down)report(accepted?airevents::Partial:status);
- down=submitting=false;count=pointCount=nodeAt=actorAt=button=accepted=0;planning.reset();
+ down=submitting=false;count=pointCount=nodeAt=actorAt=button=accepted=0;lastProgress=releasedAt=0;planning.reset();
 }
-static bool valid(const Actor&a){return worldByID(a.id)==a.pointer&&own(a.pointer,lastHouse)&&kind(a.pointer)==0&&live(a.pointer)&&
- !get<bool>(a.pointer+0x81)&&!get<uint32_t>(a.pointer+0x11C)&&manualVersions.get(a.id)==a.token;}
+// The selection is a current game-thread input fact. Its world-index page
+// can lag the input frame; never dereference a captured pointer until a guarded
+// live read proves the complete identity/mission fields are still readable.
+static bool aircraftState(uint32_t p,uint32_t&id){
+ uint8_t raw[0x220]{};if(!p||!readLiveWorld(p,raw,sizeof raw))return false;
+ uint32_t vtable=0,owner=0,mission=0;int32_t health=0;uint8_t active=0,limbo=0,alive=0;
+ memcpy(&vtable,raw,sizeof vtable);memcpy(&id,raw+0x10,sizeof id);
+ memcpy(&health,raw+0x6C,sizeof health);memcpy(&active,raw+0x74,sizeof active);
+ memcpy(&limbo,raw+0x81,sizeof limbo);memcpy(&alive,raw+0x90,sizeof alive);
+ memcpy(&mission,raw+0x11C,sizeof mission);memcpy(&owner,raw+0x21C,sizeof owner);
+ return id&&vtable==0x7E22A4&&owner==lastHouse&&health>0&&active&&!limbo&&alive&&!mission;
+}
+static bool valid(const Actor&a){
+ uint32_t id=0;return aircraftState(a.pointer,id)&&id==a.id&&manualVersions.get(id)==a.token;
+}
 static bool validate(const intent::EventOrder&o){
  if(!submitting)return true;
  return enabled()&&epoch==match&&house==lastHouse&&moOrdersContext()&&actorAt<count&&nodeAt<pointCount&&valid(actors[actorAt])&&
@@ -37,14 +51,16 @@ static bool held(){
 }
 static bool capture(MSG*msg){
  Vec selected=vec(0xA8ECB8);if(selected.count<=0||selected.count>int(airevents::MaxActors))return false;
- for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i),id=get<uint32_t>(p+0x10);
-  if(!p||!worldObjects.contains(p)||!own(p,lastHouse)||kind(p)!=0||!live(p)||get<bool>(p+0x81)||get<uint32_t>(p+0x11C)||!manualVersions.trackable(id))return false;
+ uint32_t ids[airevents::MaxActors]{};
+ for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i),id=0;
+  if(!aircraftState(p,id)||!manualVersions.trackable(id))return false;
+  ids[i]=id;
  }
  uint8_t editor=0;if(!read(0x87F7E8+0x11B3,&editor,1)||editor!=1||!planning.capture(msg))return false;
  if(!planning.native){planning.reset();return false;}
- epoch=match;house=lastHouse;started=sampleClock(sh);pointCount=nodeAt=actorAt=accepted=0;
+ epoch=match;house=lastHouse;started=lastProgress=sampleClock(sh);releasedAt=0;pointCount=nodeAt=actorAt=accepted=0;
  count=unsigned(selected.count);
- for(unsigned i=0;i<count;++i){uint32_t p=item(selected,int(i));cancelNative(p,false);uint32_t id=get<uint32_t>(p+0x10);actors[i]={p,id,manualVersions.get(id)};}
+ for(unsigned i=0;i<count;++i){uint32_t p=item(selected,int(i));cancelNative(p,false);actors[i]={p,ids[i],manualVersions.get(ids[i])};}
  return true;
 }
 static bool message(MSG*msg){
@@ -67,7 +83,9 @@ static bool message(MSG*msg){
  if(!edge.down||(edge.button!=4&&edge.button!=6)||!enabled()||!moOrdersContext()||!held())return false;
  if(moOrdersPending()||formationView.active)return false;
  int x=0,y=0,px=0,py=0;uint32_t hover=0;if(!formationPoint(msg,x,y,px,py,nullptr,&hover)||hover){if(count)reset();return false;}
- if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady()){report(airevents::Invalid);return false;}
+ // Unlike the patrol gesture, this used to leak the click to vanilla UI
+ // whenever the world index missed the exact input frame. Capture the
+ // physical selection now; defer indexed command admission until Runtime tick.
  if(count?!sameSelection():!capture(msg)){report(airevents::Invalid);return false;}
  down=true;button=edge.button;return swallow();
 }
@@ -76,20 +94,33 @@ static void tick(uint32_t currentHouse,int frame,DWORD now){
  if(!pending())return;
  if(!enabled()||epoch!=match||house!=currentHouse||!moOrdersContext(true)){reset();return;}
  if(DWORD(now-started)>30000){reset();return;}
+ // Keep the original Z key-up owned only while append packets are making
+ // progress. Failure to materialize a node must never strand native editor.
+ if(planning.count&&!planning.physicalHeld()){
+  if(!releasedAt)releasedAt=now;
+  // Also recover a completed node queue whose final native commit/replay
+  // cannot be posted; no pending input may own the real Z-up indefinitely.
+  if(DWORD(now-lastProgress)>1200&&DWORD(now-releasedAt)>750){
+   reset(airevents::Partial);return;
+  }
+ }
  if(!moOrdersContext())return;
- for(unsigned i=0;i<count;++i)if(!valid(actors[i])){reset();return;}
+ // Validate each actor only at its own native submission boundary. Re-reading
+ // every selected object on every fast game frame multiplies RPM traffic by
+ // selection size; key-up and final commit still validate the whole cohort.
  while(nodeAt<pointCount&&outgoingRoom()>0){
   auto&a=actors[actorAt];uint32_t cell=cells[nodeAt];
   bool sent=false;runtimeunwind::run([&]{submitting=true;sent=nativeMission(currentHouse,a.id,2,0,cell,11,cell,11,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::Local,true);},[&]{submitting=false;});
-  if(!sent)break;
-  ++accepted;if(!actorAt)inputFeedback(a.pointer,0,false); // once per clicked node, never on arrival
+  if(!sent){if(!valid(a)){reset();return;}break;}
+  lastProgress=now;++accepted;if(!actorAt)inputFeedback(a.pointer,0,false); // once per clicked node, never on arrival
   if(++actorAt==count){actorAt=0;++nodeAt;}report(airevents::Sending);
  }
  if(!down&&nodeAt==pointCount&&planning.count&&!planning.physicalHeld()){
+  for(unsigned i=0;i<count;++i)if(!valid(actors[i])){reset();return;}
   // Nodes are already in the normal ordered SP/MP transport. The unchanged
   // real key-up now lets native UI enqueue its one House-wide PlanCommit.
   if(!planning.finish(currentHouse))return;
-  report(airevents::Committed);count=pointCount=nodeAt=actorAt=button=accepted=0;
+  report(airevents::Committed);count=pointCount=nodeAt=actorAt=button=accepted=0;lastProgress=releasedAt=0;
  }
 }
 }

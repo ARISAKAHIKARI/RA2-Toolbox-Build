@@ -10,8 +10,16 @@ static void runtimePlanningTick(uint32_t house,int frame,DWORD now){
  bool drop=sh->magnetronDrop&&compute::inside(sh->computeApplied,compute::MagnetronDrop);
  if(!selected&&!drop&&!runtimePlanner.hasJobs()){sh->runtimeTracking=0;return;}
  if(snap.chat||!freshness::valid(planningWorld.match,match,planningWorld.tick,planningWorld.frame,now,frame,freshness::Tactical))return;
+ const int veteran=int(sh->veteranPercent),elite=int(sh->elitePercent),timeout=int(sh->pathTimeout),
+  scanHz=int(sh->advancedScanHz),priority=int(sh->advancedPriority),range=int(sh->advancedRangeCells);
+ const uint32_t modes=compute::magnetronIntents(sh->computeApplied,true);
+ const bool observeDrop=sh->magnetronDrop!=0;
+ // The local publication has already validated its active array counts.
+ // Skip timing, allocations and tracking traversal for an unchanged input;
+ // retain the last actual work duration rather than report a false zero.
+ if(sh->computeApplied==compute::All&&runtimePlanner.alreadyProcessed(planningWorld,selected,veteran,elite,timeout,scanHz,priority,range,drop,modes,observeDrop))return;
  LARGE_INTEGER begin{},end{},frequency{};QueryPerformanceCounter(&begin);
- auto orders=runtimePlanner.step(planningWorld,selected,int(sh->veteranPercent),int(sh->elitePercent),int(sh->pathTimeout),int(sh->advancedScanHz),int(sh->advancedPriority),int(sh->advancedRangeCells),drop,compute::magnetronIntents(sh->computeApplied,true),sh->magnetronDrop!=0);
+ auto orders=runtimePlanner.step(planningWorld,selected,veteran,elite,timeout,scanHz,priority,range,drop,modes,observeDrop);
  for(const auto&o:orders){
   if(!freshness::valid(planningWorld.match,match,planningWorld.tick,planningWorld.frame,sampleClock(sh),get<int>(0xA8ED84),freshness::Tactical)){runtimePlanner.expired(o);continue;}
   int result=admitPlannerOrder(o,house,planningWorld.match,planningWorld.tick);

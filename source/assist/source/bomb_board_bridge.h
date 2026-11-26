@@ -28,7 +28,38 @@ static bool validate(const intent::EventOrder&o){
  return sh&&sh->bombBoardEnabled&&o.domain==vanilla::Domain::MegaMission&&!o.appendWaypoint&&o.player==get<int>(lastHouse+0x30)&&
  uint32_t(o.a)==j.unit.id&&o.mission==7&&!o.b&&o.tagC==0x34&&worldByID(uint32_t(o.c))==destination&&targetValid(j,destination,destinationSlots);
 }
+static bool collectNative(){
+ // The dispatcher has a strict native UID index. Read the current roster
+ // once; failed field reads must not retire existing bomb jobs.
+ if(!commandRosterReady())return false;
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+ static uint32_t pointers[16384];
+ if(all.count&& !read(all.items,pointers,size_t(all.count)*sizeof(uint32_t)))return false;
+ candidateArmed.clear();candidateVehicles.clear();
+ for(int i=0;i<all.count;++i){
+  const uint32_t p=pointers[i];if(!p)continue;
+  uint32_t house=0;if(!read(p+0x21C,&house,4))return false;if(house!=lastHouse)continue;
+  uint32_t vt=0;if(!read(p,&vt,4))return false;
+  const int k=vt==0x7EB058?1:vt==0x7F5C70?2:-1;if(k<0)continue;
+  int hp=0;uint8_t active=0,limbo=0,alive=0,disabled=0;uint32_t carrier=0;
+  if(!read(p+0x6C,&hp,4)||!read(p+0x74,&active,1)||!read(p+0x81,&limbo,1)||
+     !read(p+0x90,&alive,1)||!read(p+0x1C8,&disabled,1)||!read(p+0x11C,&carrier,4))return false;
+  if(hp<=0||!active||limbo||!alive||disabled||carrier)continue;
+  uint32_t bomb=0;
+  if(k==1){if(!read(p+0x38,&bomb,4))return false;if(bomb<0x10000)continue;}
+  else {uint32_t type=0;int slots=0;
+   if(!read(p+0x6C4,&type,4))return false;if(type<0x10000)continue;
+   if(!read(type+0x5E0,&slots,4))return false;if(slots<=0)continue;
+  }
+  Fact f{p,0,bomb,0,0};
+  if(!read(p+0x10,&f.id,4)||!read(p+0x9C,&f.x,4)||!read(p+0xA0,&f.y,4)||
+     worldByID(f.id)!=p)return false;
+  (k==1?candidateArmed:candidateVehicles).push_back(f);
+ }
+ armed.swap(candidateArmed);vehicles.swap(candidateVehicles);return true;
+}
 static bool collect(){
+ if(runtimeDirectActions)return collectNative();
  SampleReadScope sample;if(!sample)return false;Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
  // A partial page may describe a subset of the fleet. Stage its facts and
  // publish them only after the whole sealed observation is complete.

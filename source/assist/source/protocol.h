@@ -29,7 +29,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=112; // appended sampling diagnostics, both components must match
+constexpr uint32_t Magic=0x41533130, Version=116; // Append sampling admission diagnostics; both components must match
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -299,7 +299,7 @@ struct Shared {
  // Host preferences only: a click snapshots these into cooperative::Request.
  volatile uint32_t aircraftDamageRadiusCells=cooperative::DefaultDamageRadiusCells;
  volatile uint32_t aircraftDamageCoveragePercent=cooperative::DefaultDamagePercent;
- // ABI v112, append-only. All values are fixed-width counters copied into
+ // ABI v114, append-only. All values are fixed-width counters copied into
  // shared IPC by Runtime; Host logs them at most once per five seconds.
  // A stale/absent diagnostic is never permission to execute a native order.
  struct SamplingDiagnostic {
@@ -312,6 +312,11 @@ struct Shared {
   volatile uint32_t workerLastCalls=0,workerLastBytes=0,workerLastPages=0;
   volatile int32_t workerFirstFrame=-1,workerLastFrame=-1;
   volatile uint32_t workerLastDurationUs=0; // Uses the former 4-byte tail padding.
+  // v116: actual producer work, not just calls to the capture entry.
+  volatile uint32_t syncGraphAttempts=0,syncGraphCompleted=0,boundaryAttempts=0,boundaryCompleted=0,reuseHits=0;
+  // Exclusive subscription context of synchronous graph attempts; the last
+  // two counters are independent context flags, not causal proof.
+  volatile uint32_t graphHostDemand=0,graphDisplayOnly=0,graphNoHost=0,graphCatalogue=0,graphRequestedPages=0;
  } sampling{};
 };
 inline int remaining(int start,int duration,int frame){

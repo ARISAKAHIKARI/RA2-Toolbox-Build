@@ -1,0 +1,69 @@
+name: Validate high FPS input gestures
+on:
+  pull_request:
+    paths:
+      - 'source/assist/source/formation_bridge.h'
+      - 'source/assist/source/formation.h'
+      - 'source/assist/source/pointer_intent.h'
+      - 'source/assist/source/pointer_host.h'
+      - 'source/assist/source/pointer_bridge.h'
+      - 'source/assist/source/cooperative_bridge.h'
+      - 'source/assist/source/cooperative_types.h'
+      - 'source/assist/source/extra_settings_io.h'
+      - 'source/assist/source/bridge.cpp'
+      - 'source/assist/source/construction_message_bridge.h'
+      - 'source/assist/source/autoload.h'
+      - 'source/assist/source/autoload_bridge.h'
+      - 'source/assist/source/dodge_compute.h'
+      - 'source/assist/source/dodge_bridge.h'
+      - 'source/assist/source/reverse_dodge.h'
+      - 'source/assist/source/reverse_dodge_bridge.h'
+      - 'source/assist/source/reverse_dodge.h'
+      - 'source/assist/source/reverse_dodge_bridge.h'
+      - 'source/assist/tests/formation_switch_test.py'
+      - 'source/assist/tests/cooperative_read_only_recovery.py'
+      - 'source/assist/tests/cooperative_snapshot.cpp'
+      - 'source/assist/tests/reverse_dodge_hotpath.cpp'
+      - 'source/assist/tests/reverse_dodge_hotpath.py'
+      - 'source/assist/tests/high_fps_input_freshness.cpp'
+      - 'source/assist/tests/high_fps_gesture_contract.py'
+      - 'source/assist/tests/reverse_dodge_hotpath.cpp'
+      - 'source/assist/tests/reverse_dodge_hotpath.py'
+      - '.github/workflows/validate-high-fps-gestures.yml'
+  push:
+    branches: [fix/watch-pin-and-control-ui-20261123]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  high-fps-gesture-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Exercise real production pointer admission code at 240+ FPS
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Wno-error=misleading-indentation -UNDEBUG source/assist/tests/high_fps_input_freshness.cpp -o /tmp/ra2-high-fps-pointer
+          /tmp/ra2-high-fps-pointer
+          python3 source/assist/tests/high_fps_gesture_contract.py
+      - name: Exercise production cooperative, formation and boarding policies
+        run: |
+          set -euo pipefail
+          for test in cooperative formation autoload; do
+            g++ -std=c++17 -O2 -Wall -Wextra -Werror -Wno-error=misleading-indentation -UNDEBUG source/assist/tests/$test.cpp -o /tmp/ra2-$test
+            /tmp/ra2-$test
+          done
+          python3 source/assist/tests/dodge_compute_routing.py
+          python3 source/assist/tests/reverse_dodge_hotpath.py --out /tmp/ra2-reverse-dodge
+          python3 source/assist/tests/reverse_dodge_hotpath.py --out /tmp/ra2-reverse-dodge
+          python3 source/assist/tests/tactical_frame_sampling.py
+          python3 source/assist/tests/cooperative_read_only_recovery.py --out /tmp/ra2-cooperative-readonly
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Wno-error=misleading-indentation -Wno-error=parentheses -Wno-error=class-memaccess -UNDEBUG source/assist/tests/cooperative_snapshot.cpp -o /tmp/ra2-cooperative-snapshot
+          /tmp/ra2-cooperative-snapshot
+          python3 source/assist/tests/construction_delivery_test.py
+      - name: Run native formation bridge fixture including high-FPS mouse hold
+        run: |
+          python3 source/assist/tests/formation_switch_test.py

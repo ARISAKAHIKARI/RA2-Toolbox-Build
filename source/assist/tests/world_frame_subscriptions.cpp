@@ -41,7 +41,16 @@ void runtimeResume(){
  CHECK(pinned->read(ActorA+0x6C,&hp,4)&&hp==100);
  currentPid=GamePid;const auto slot=channel()->active;const auto seq=slot>=0?channel()->slots[slot].seq:0;
  const auto allocations=dataCreates;
+ const auto observationSeq=channel()->observationSeq;
+ const auto observationTick=channel()->observedTick;
+ const auto captureSerial=worldFrame.key.serial;
  for(unsigned i=0;i<100;++i)CHECK(captureWorldFrame(read,before,House,fixture::clock,worldframe::Base));
+ CHECK(channel()->observationSeq==observationSeq&&channel()->observedTick==observationTick);
+ fixture::clock+=15;CHECK(captureWorldFrame(read,before,House,fixture::clock,worldframe::Base));
+ CHECK(channel()->observationSeq==observationSeq&&worldFrame.key.serial==captureSerial);
+ ++fixture::clock;CHECK(captureWorldFrame(read,before,House,fixture::clock,worldframe::Base));
+ CHECK(channel()->observationSeq==observationSeq+2&&channel()->observedTick==fixture::clock);
+ CHECK(worldFrame.key.serial==captureSerial&&memory.calls.size()==readsBefore);
  result.repeatedExports=(channel()->active!=slot)||(slot>=0&&channel()->slots[slot].seq!=seq)||(dataCreates!=allocations);
  retireWorldFrame();worldFrameServer.disconnect();currentPid=HostPid;client.reset();CHECK(mappedBytes==0);
 }

@@ -43,6 +43,28 @@ inline std::vector<Group> group(const external::enemies::Frame&f){
  }
  return groups;
 }
+// Camera-only updates and repeated observations do not change group topology.
+// Match every field used by group(), including input order, before reuse.
+class GroupCache {
+ using Key=std::tuple<uint32_t,uint32_t,uint32_t,uint32_t,int,int,int>;
+ std::vector<Key> keys_;
+ std::vector<Group> groups_;
+ uint32_t match_=0,house_=0;
+ bool valid_=false;
+ static Key key(const external::enemies::Marker&m){return {m.id,m.object,m.owner,m.type,m.kind,m.worldX,m.worldY};}
+public:
+ void clear(){valid_=false;keys_.clear();groups_.clear();}
+ const std::vector<Group>& update(const external::enemies::Frame&f){
+  const int n=std::clamp(f.count,0,external::enemies::Maximum);
+  bool same=valid_&&match_==f.match&&house_==f.house&&keys_.size()==size_t(n);
+  if(same)for(int i=0;i<n;++i)if(keys_[i]!=key(f.items[i])){same=false;break;}
+  if(!same){
+   groups_=group(f);keys_.resize(n);for(int i=0;i<n;++i)keys_[i]=key(f.items[i]);
+   match_=f.match;house_=f.house;valid_=true;
+  }
+  return groups_;
+ }
+};
 // Aggregate already-smoothed individual anchors. Merge/split never feeds a
 // group centroid back into Motion, so there is no invented velocity or lag.
 template<class View>int render(const external::enemies::Frame&raw,const View*positions,int n,

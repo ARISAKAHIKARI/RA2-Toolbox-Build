@@ -26,6 +26,11 @@ struct EnterReservation{uint32_t id,target,type,token;DWORD queuedAt;int slots;}
 static EnterReservation entryReservations[128];static int entryReservationCount=0;
 struct Member{uint32_t pointer,id;};
 struct {std::vector<Member>members;} worldFrameCommandRoster;
+static bool runtimeDirectActions=false;
+static struct {bool enabled()const{return true;}}worldFrameCommandWorker;
+struct Vec{int count=0;};
+static bool sampleRoster(uint32_t,Vec&v){v.count=int(worldFrameCommandRoster.members.size());return true;}
+static uint32_t item(Vec,int n){return worldFrameCommandRoster.members[n].pointer;}
 static bool pageComplete=true;
 struct SampleReadScope{
  explicit operator bool()const{return pageComplete;}

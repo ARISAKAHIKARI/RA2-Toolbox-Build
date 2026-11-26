@@ -78,10 +78,11 @@ static void loadAdditionalSettings(){
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.destructSelectedOwner=value(L"Experimental",L"DestructSelectedOwner",0)!=0;
  extra.destructSelectedOwnerKey=uint32_t(value(L"Hotkeys",L"DestructSelectedOwner",0))&65535;
- extra.privateOutMode=std::clamp(value(L"Experimental",L"PrivateOutMode",0),0,2);
+ // Legacy command interception preferences are retired in the normal product.
+ extra.privateOutMode=0;
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
  extra.nativeSellCursor=value(L"Experimental",L"NativeSellCursor",0)!=0;
- extra.nativeMegaGateway=explicitPatchPreferences&&value(L"Experimental",L"NativeMegaGateway",0)!=0;
+ extra.nativeMegaGateway=false;
  extra.nativeCombatQueries=value(L"Experimental",L"NativeCombatQueries",0)!=0;
  extra.controlCommandOwner=value(L"Experimental",L"ControlCommandOwner",0)!=0;
  // Slot 0 now selects hardware parameters; retain native slot 1 and legacy Master slot 2
@@ -159,7 +160,7 @@ static void loadAdditionalSettings(){
   extra.aircraftDamageCoveragePercent=std::clamp(value(L"Cooperative",L"AirDamagePercent",cooperative::DefaultDamagePercent),cooperative::MinDamagePercent,cooperative::MaxDamagePercent);
  extra.enterKey=value(L"Cooperative",L"EnterHoldKey",18)&65535;extra.airKey1=value(L"Cooperative",L"AirHoldKey1",17)&65535;extra.airKey2=value(L"Cooperative",L"AirHoldKey2",0)&65535;
 
- extra.diskKey=value(L"SpecialClick",L"DiskHoldKey",17)&65535;extra.sellKey=value(L"SpecialClick",L"SellHoldKey",17)&65535;
+ extra.diskKey=value(L"SpecialClick",L"DiskHoldKey",17)&65535;extra.sellKey=value(L"SpecialClick",L"SellHoldKey",17)&65535;extra.sellVehicleKey=value(L"SpecialClick",L"SellVehicleHoldKey",extra.sellKey)&65535;extra.attackMoveKey=value(L"SpecialClick",L"AttackMoveHoldKey",0)&65535;
  extra.disk=value(L"SpecialClick",L"DiskPrimary",0)!=0;extra.sellDrained=value(L"SpecialClick",L"SellDrained",0)!=0;extra.sellVehicles=value(L"SpecialClick",L"SellVehicles",0)!=0;const bool sellOptIn=value(L"Experimental",L"EnemyBuildingSellOptInVersion",0)>=1;extra.sellEnemy=playertest::SellAvailable&&sellOptIn&&value(L"SpecialClick",L"SellEnemyBuildings",0)!=0;extra.controlAll=playertest::Available&&value(L"Experimental",L"ControlAll",0)!=0;extra.switchPlayerEnabled=false;
  extra.frozen=value(L"Display",L"Frozen",0)!=0;extra.variantKey=value(L"TypeSelection",L"VariantKey",'T'|(2<<8))&65535;
  extra.defaults=cooperative::bounded({value(L"AircraftQuota",L"First",1),value(L"AircraftQuota",L"Second",2),value(L"AircraftQuota",L"Maximum",0)});
@@ -266,7 +267,7 @@ static bool saveAdditionalSettings(){
 
  write(L"AutoLoad",L"Logic",extra.loadMode);write(L"AutoLoad",L"RangeCells",extra.loadRadius);
  write(L"Cooperative",L"AircraftAllocationPolicy",extra.aircraftAllocationPolicy);write(L"Cooperative",L"AirDamageRadiusCells",extra.aircraftDamageRadiusCells);write(L"Cooperative",L"AirDamagePercent",extra.aircraftDamageCoveragePercent);write(L"Cooperative",L"AdvancedEnter",extra.enter);write(L"Cooperative",L"AircraftSpread",extra.air);write(L"Cooperative",L"EnterHoldKey",extra.enterKey);write(L"Cooperative",L"AirHoldKey1",extra.airKey1);write(L"Cooperative",L"AirHoldKey2",extra.airKey2);
- write(L"SpecialClick",L"DiskHoldKey",extra.diskKey);write(L"SpecialClick",L"SellHoldKey",extra.sellKey);
+ write(L"SpecialClick",L"DiskHoldKey",extra.diskKey);write(L"SpecialClick",L"SellHoldKey",extra.sellKey);write(L"SpecialClick",L"SellVehicleHoldKey",extra.sellVehicleKey);write(L"SpecialClick",L"AttackMoveHoldKey",extra.attackMoveKey);
  write(L"SpecialClick",L"DiskPrimary",extra.disk);write(L"SpecialClick",L"SellDrained",extra.sellDrained);write(L"SpecialClick",L"SellVehicles",extra.sellVehicles);write(L"SpecialClick",L"SellEnemyBuildings",playertest::SellAvailable&&extra.sellEnemy);
  write(L"Experimental",L"PlayerCommandOptionsVersion",1);write(L"Experimental",L"EnemyBuildingSellOptInVersion",1);write(L"Experimental",L"ControlAll",playertest::Available&&extra.controlAll);write(L"Experimental",L"SwitchPlayerEnabled",0);
  write(L"Display",L"Frozen",extra.frozen);write(L"TypeSelection",L"VariantKey",extra.variantKey);
@@ -326,7 +327,8 @@ static void syncAdditional(){
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;
  shared->networkHousePreserve=extra.networkHouseRequested();shared->nativeSellCursor=extra.nativeSellCursor;
- shared->nativeMegaGateway=extra.nativeMegaGateway;shared->privateOutMode=extra.privateOutMode;
+ // Do not publish a command-interception request, even from stale UI settings.
+ shared->nativeMegaGateway=0;shared->privateOutMode=0;
  shared->nativeCombatQueries=extra.nativeCombatQueries;
  shared->controlCommandOwner=extra.commandOwnerRequested();
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
@@ -372,6 +374,10 @@ static void serviceCooperative(){
  if(!retry&&!freshness::intentAlive(request.tick,now)){
   cooperativeDelivered=request.serial;retryCooperative=false;notify(L"协同请求已超时，请重新下令。");return;
  }
+ // Do not allocate from a partial prefix of a pointer cohort that is still
+ // being admitted/retried by Runtime.
+ if(shared->pointer.request!=shared->pointer.ack)return;
+ if(request.pointerRequest!=shared->pointer.request){cooperativeDelivered=request.serial;retryCooperative=false;return;}
  // Read the immutable game-thread frame capture; never independently scan
  // another game frame from the host/UI while preparing this command.
  shared->cooperativeFrameWanted=request.serial;
@@ -389,7 +395,7 @@ static void serviceCooperative(){
  if(retry)cooperative::reserveAccepted(input,acceptedCooperative);
  auto assignments=cooperative::allocate(input);
  if(!freshness::valid(request.match,shared->computeFrameMatch,acquired,frameBefore,GetTickCount(),shared->computeFrame,freshness::Cooperative)||
-    (!retry&&!freshness::intentAlive(request.tick,GetTickCount()))||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeSeq!=seq){wakeGame();return;}
+    (!retry&&!freshness::intentAlive(request.tick,GetTickCount()))||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeRequest.pointerRequest!=request.pointerRequest||shared->pointer.request!=request.pointerRequest||shared->pointer.ack!=request.pointerRequest||shared->cooperativeSeq!=seq){wakeGame();return;}
  // An older sample can propose a target, but cannot prove there are none now.
  if(candidate&&assignments.empty()){wakeGame();return;}
  shared->cooperativeFrameWanted=0;

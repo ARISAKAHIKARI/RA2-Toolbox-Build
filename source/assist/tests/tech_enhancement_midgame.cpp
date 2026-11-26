@@ -4,6 +4,7 @@
 #error This fixture requires assertions
 #endif
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <climits>
@@ -35,6 +36,7 @@ static Settings*sh=&options;
 static bool fault=false,enhancementChangedCatalogue=false,catalogueDirty=false,catalogueReady=false,techPending=false;
 static uint64_t catalogueHash=0,techScanCatalogue=0;
 static DWORD catalogueAt=0,catalogueRequestedAt=0,worldFrameCatalogueProbeAt=0;
+static external::catalogue::ProbeRetryGate nativeCatalogueProbe;
 static DWORD GetTickCount(){return 1000;}
 static unsigned sampleReadDepth=0;
 static bool sampleReadComplete=true;
@@ -162,6 +164,95 @@ static void setup(){
  assert(!scanTypes());
 #endif
  assert(fixtureCatalogue());
+#ifdef DIRECT_CATALOGUE
+ // 130 types span two full pointer chunks and a short tail. Repeated
+ // pointers are deliberate: the stamp must preserve roster order/count.
+ const uint32_t list=Items+0x1000;
+ for(int n=0;n<130;++n)put<uint32_t>(list+uint32_t(n)*4,n%2?Normal:Bus);
+ put<Vec>(0xA83CE0,{0,list,130,0,130,1});
+ unsigned reads=0;
+ auto counted=[&](uint32_t p,void*out,size_t n){++reads;return read(p,out,n);};
+ external::catalogue::Stamp batched;
+ assert(external::catalogue::capture(counted,batched)&&batched.count==130);
+ assert(reads==8+3+130*6);
+ external::catalogue::Stamp reference;
+ assert(external::catalogue::capture(read,reference)&&reference.hash==batched.hash);
+ put<uint32_t>(list+129*4,Bus);
+ assert(external::catalogue::capture(read,reference)&&reference.hash!=batched.hash);
+ put<uint32_t>(list+129*4,Normal);
+ unreadable=list+128*4;reference=batched;
+ assert(!external::catalogue::capture(read,reference)&&reference.hash==batched.hash&&reference.count==130);
+ unreadable=0;
+ put<Vec>(0xA83CE0,{0,Items,2,0,2,1});
+ const int nativeCount=snap.typeCount;
+ const int nativeSlot=typeSlot(Normal);
+ assert(nativeSlot>=0&&scanTypes(true)&&snap.typeCount==nativeCount);
+ put<int>(Normal+0x610,725);
+ assert(scanTypes(true)&&snap.types[nativeSlot].cost==725&&!sampleReadDepth);
+ put<int>(Normal+0x610,500);
+ assert(scanTypes(true)&&snap.types[nativeSlot].cost==500);
+ // A later vector failure must retain the entire previously published
+ // catalogue, not quietly replace it with a partial set of types.
+ unreadable=0xA83CE0+4;
+ assert(!scanTypes(true)&&snap.typeCount==nativeCount&&typeSlot(Normal)==nativeSlot);
+ unreadable=Items+4;
+ assert(!scanTypes(true)&&snap.typeCount==nativeCount&&snap.types[nativeSlot].cost==500);
+ // Scalar metadata failures must be transactional as well. In particular
+ // an unreadable owner/filter bit cannot be mistaken for an excluded type.
+ for(uint32_t offset:{0x610u,0x634u,0x232u,0xD54u,0x6CCu,0x60u,0xCCEu}){
+  unreadable=Normal+offset;
+  assert(!scanTypes(true)&&snap.typeCount==nativeCount&&typeSlot(Normal)==nativeSlot&&
+         snap.types[nativeSlot].cost==500);
+ }
+ unreadable=0;
+ assert(scanTypes(true)&&snap.typeCount==nativeCount);
+#ifdef SHARED_CATALOGUE_PROBE
+ // Capture the same ordered facts that produce the hash, without changing
+ // the number of reads or the old stamp's exact value.
+ std::array<std::vector<external::catalogue::TypeProbe>,4> probes;
+ const auto collect=[&](uint32_t array,int index,const external::catalogue::TypeProbe&probe){
+  const int k=array==0xA8B218?0:array==0xA8E348?1:array==0xA83CE0?2:3;
+  assert(index==int(probes[k].size()));probes[k].push_back(probe);
+ };
+ external::catalogue::Stamp shared,ordinary;
+ assert(external::catalogue::capture(read,ordinary));
+ reads=0;
+ assert(external::catalogue::captureVisit(counted,shared,collect)&&
+        shared.hash==ordinary.hash&&shared.count==ordinary.count&&reads==8+1+2*6);
+ assert(probes[2].size()==2&&probes[2][0].pointer==Bus&&probes[2][1].pointer==Normal&&
+        probes[2][1].items==Items&&!std::strcmp(probes[2][1].id,"MTNK"));
+ const auto expected=snap.types[nativeSlot];
+ techAllowed[nativeSlot]=1;
+ assert(scanTypes(true,&probes)&&snap.typeCount==nativeCount&&
+        !std::memcmp(&snap.types[nativeSlot],&expected,sizeof expected)&&techAllowed[nativeSlot]==1);
+ // Metadata acquired by the probe is not read a second time by projection.
+ unreadable=Normal+0x634;
+ assert(scanTypes(true,&probes)&&snap.typeCount==nativeCount);
+ unreadable=0;
+ // A changed vector address/count must reject the old batch, not publish it.
+ put<Vec>(0xA83CE0,{0,list,2,0,2,1});
+ assert(!scanTypes(true,&probes)&&snap.typeCount==nativeCount&&typeSlot(Normal)==nativeSlot);
+ put<Vec>(0xA83CE0,{0,Items,2,0,1,1});
+ assert(!scanTypes(true,&probes)&&snap.typeCount==nativeCount);
+ put<Vec>(0xA83CE0,{0,Items,2,0,2,1});
+ techAllowed[nativeSlot]=0;
+ // Native localized names use the actual UTF-16 pointer. A failed bulk
+ // read after the terminator must not discard a valid short name.
+ const uint32_t localized=Items+0x3000;
+ put<uint32_t>(Normal+0x60,localized);
+ put<uint16_t>(localized,0x4E2D);put<uint16_t>(localized+2,0x6587);put<uint16_t>(localized+4,0);
+ assert(scanTypes(true)&&snap.types[nativeSlot].name[0]==0x4E2D&&
+        snap.types[nativeSlot].name[1]==0x6587&&snap.types[nativeSlot].name[2]==0);
+ unreadable=localized+10;
+ assert(scanTypes(true)&&snap.types[nativeSlot].name[0]==0x4E2D&&
+        snap.types[nativeSlot].name[1]==0x6587&&snap.types[nativeSlot].name[2]==0);
+ unreadable=localized;
+ assert(scanTypes(true)&&snap.types[nativeSlot].name[0]=='M'&&snap.types[nativeSlot].name[3]=='K');
+ unreadable=0;put<uint32_t>(Normal+0x60,0);
+ assert(scanTypes(true));
+#endif
+ {ObservationReadScope sample;assert(!scanTypes(true));}
+#endif
 #ifdef SAMPLED_CATALOGUE
  const int retained=snap.typeCount;unreadable=Normal+0x610;
  assert(!fixtureCatalogue()&&snap.typeCount==retained);unreadable=0;

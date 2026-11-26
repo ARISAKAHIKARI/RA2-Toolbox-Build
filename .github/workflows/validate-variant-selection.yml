@@ -1,0 +1,34 @@
+name: Validate current-weapon variant selection
+on:
+  pull_request:
+    paths:
+      - 'source/assist/source/type_select_bridge.h'
+      - 'source/assist/source/variant_keys.h'
+      - 'source/assist/tests/capacity_admission.*'
+      - 'source/assist/tests/variant_selection_entry_test.py'
+      - 'source/shared/source/feature_availability.h'
+      - 'source/assist/source/tactical_controls.h'
+      - 'source/suite/source/tactical_console_layout.h'
+      - '.github/workflows/validate-variant-selection.yml'
+  push:
+    branches: [fix/watch-pin-and-control-ui-20261123]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  variant-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise normal-weapon match, viewport, stale identities, and 16K capacity
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/variant_selection_entry_test.py
+          python3 source/assist/tests/capacity_admission.py --out /tmp/ra2-variant-regression --case variant
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2-Variant-Selection-Regression
+          path: /tmp/ra2-variant-regression/
+          retention-days: 7

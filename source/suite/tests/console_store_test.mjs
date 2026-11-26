@@ -140,10 +140,10 @@ test('unsupported controls remain visible as readonly explanatory entries', () =
   assert.equal(result.type,'label'); assert.equal(result.readonly,true); assert.ok(result.hint);
 });
 test('group filtering includes labels, hints, options and respects native visibility', () => {
-  const controls = [{id:1,type:'heading',label:'画面'},canonical({id:2,type:'toggle',label:'渲染',hint:'GPU',checked:true}),canonical({id:3,type:'choice',group:'光标',label:'样式',options:['琥珀','冰蓝']}),canonical({id:4,type:'text',label:'隐藏',visible:false})];
+  const controls = [{id:1,type:'heading',label:'画面'},canonical({id:2,type:'toggle',label:'渲染',hint:'GPU',checked:true}),canonical({id:3,type:'choice',group:'鼠标',label:'样式',options:['琥珀','冰蓝']}),canonical({id:4,type:'text',label:'隐藏',visible:false})];
   assert.equal(groupControls(controls).size,2);
   assert.equal(groupControls(controls,'gpu').get('画面')[0].id,2);
-  assert.equal(groupControls(controls,'冰蓝').get('光标')[0].id,3);
+  assert.equal(groupControls(controls,'冰蓝').get('鼠标')[0].id,3);
   assert.equal(groupControls(controls,'隐藏').size,0);
 });
 test('gesture capture preserves release/hold/double and exact native modifier bits', () => {
@@ -290,19 +290,16 @@ test('compound manual commands and shared parameters retain their own boundaries
     {id:16,type:'label',label:'共享参数',row:156,column:20,groupHeader:true,group:'键鼠操作'},
     {id:17,type:'number',label:'巡逻范围',row:184,column:20,group:'键鼠操作'}
   ].map(canonical);
-  const groups=layoutGroups(controls,'',3);
-  assert.deepEqual([...groups.keys()],['移动、攻击与操作手势','队形、巡逻与飞机路径']);
-  const action=featureBlocks(groups.get('移动、攻击与操作手势'));
-  const formation=featureBlocks(groups.get('队形、巡逻与飞机路径'));
-  // Semantic owner mapping must preserve all controls and compound command rows;
-  // exact fold cardinality depends on whether an old native label is a feature.
-  assert.deepEqual(Array.from(groups.get('移动、攻击与操作手势'),c=>c.id),[11,12,13]);
-  assert.deepEqual(Array.from(groups.get('队形、巡逻与飞机路径'),c=>c.id),[14,15,16,17]); // Shared patrol-range parameters stay beside patrol gestures.
-  assert.deepEqual(Array.from(action[0].controls,c=>c.id).slice(0,3),[11,12,13]);
-  assert.deepEqual(Array.from(formation,block=>Array.from(block.controls,c=>c.id)),[[14,15],[16,17]]);
+  const groups=layoutGroups(controls,'',4);
+  assert.deepEqual([...groups.keys()],['战术操作']);
+  const blocks=featureBlocks(groups.get('战术操作'));
+  // The old control sub-sections are now one top-level page, while feature
+  // boundaries and shared patrol parameters remain distinct.
+  assert.deepEqual(Array.from(groups.get('战术操作'),c=>c.id),[11,12,13,14,15,16,17]);
+  assert.deepEqual(Array.from(blocks,block=>Array.from(block.controls,c=>c.id)),[[11,12,13],[14,15],[16,17]]);
   assert.deepEqual(Array.from(groupControls(controls,'检测频率').values()).flat().map(c=>c.id),[11,12,13]);
-  const filtered=layoutGroups(controls,'模糊下令',3);
-  assert.deepEqual(Array.from(filtered.get('队形、巡逻与飞机路径'),c=>c.id),[14,15]);
+  const filtered=layoutGroups(controls,'模糊下令',4);
+  assert.deepEqual(Array.from(filtered.get('战术操作'),c=>c.id),[14,15]);
 });
 
 test('named semantic sections retain stable feature boundaries and do not depend on row ordering',()=>{
@@ -314,13 +311,15 @@ test('named semantic sections retain stable feature boundaries and do not depend
     canonical({id:9182,type:'toggle',group:'低伤害自动过滤',label:'过滤低伤害自动目标'}),
     canonical({id:9183,type:'toggle',group:'低伤害自动过滤',label:'原生索敌'})
   ];
-  const control=layoutGroups(input.slice(0,4),'',3);
-  assert.deepEqual([...control.keys()],['选兵与编组','移动、攻击与操作手势']);
-  assert.deepEqual([...control.get('选兵与编组')].map(x=>x.id),[80,81]);
-  assert.deepEqual([...control.get('移动、攻击与操作手势')].map(x=>x.id),[82,83]);
-  const automatic=layoutGroups(input.slice(4),'',4);
-  assert.deepEqual([...automatic.keys()],['自动战斗与防空']);
-  assert.deepEqual(Array.from(automatic.get('自动战斗与防空'),x=>x.id),[9182,9183]);
+  const keyboard=layoutGroups(input.slice(0,2),'',3);
+  assert.deepEqual([...keyboard.keys()],['键鼠与选兵']);
+  assert.deepEqual([...keyboard.get('键鼠与选兵')].map(x=>x.id),[80,81]);
+  const tactical=layoutGroups(input.slice(2,4),'',4);
+  assert.deepEqual([...tactical.keys()],['战术操作']);
+  assert.deepEqual([...tactical.get('战术操作')].map(x=>x.id),[82,83]);
+  const automatic=layoutGroups(input.slice(4),'',6);
+  assert.deepEqual([...automatic.keys()],['自动功能']);
+  assert.deepEqual(Array.from(automatic.get('自动功能'),x=>x.id),[9182,9183]);
 });
 
 test('action hierarchy accepts explicit semantic roles and defaults unknown legacy metadata to secondary',()=>{
@@ -416,11 +415,11 @@ if (!failed && process.argv.includes('--browser')) {
       {id:5,type:'range',label:'覆盖层透明度',group:'渲染',text:'80',selected:80,min:0,max:100,step:1},
       {id:6,type:'button',label:'显示设备',group:'渲染',hint:'重新读取可用设备与刷新率。',text:'重新检测'},
       {id:101,type:'heading',label:'操作与资源'},
-      {id:7,type:'text',label:'游戏目录',group:'光标',text:'C:\\Games\\Red Alert 2',hint:'素材与地图将从此目录读取。'},
-      {id:8,type:'choice',label:'常驻单位类型',group:'光标',selected:0,options:['步兵','坦克','矿车','基地车'],presentation:'list',readonly:true,hint:'双击列表项可执行原有对应操作。'},
-      {id:9,type:'hotkey',label:'队形预览快捷键',group:'光标',selected:0xb34a,options:['hold'],hint:'支持 Ctrl、Shift、Alt 与双击按住。'},
-      {id:10,type:'label',label:'设置会自动保存；每项功能独立启用。',group:'光标'},
-      {id:11,type:'toggle',label:'未连接时的功能',group:'光标',checked:false,enabled:false,hint:'连接游戏后可用。'}
+      {id:7,type:'text',label:'游戏目录',group:'鼠标',text:'C:\\Games\\Red Alert 2',hint:'素材与地图将从此目录读取。'},
+      {id:8,type:'choice',label:'常驻单位类型',group:'鼠标',selected:0,options:['步兵','坦克','矿车','基地车'],presentation:'list',readonly:true,hint:'双击列表项可执行原有对应操作。'},
+      {id:9,type:'hotkey',label:'队形预览快捷键',group:'鼠标',selected:0xb34a,options:['hold'],hint:'支持 Ctrl、Shift、Alt 与双击按住。'},
+      {id:10,type:'label',label:'设置会自动保存；每项功能独立启用。',group:'鼠标'},
+      {id:11,type:'toggle',label:'未连接时的功能',group:'鼠标',checked:false,enabled:false,hint:'连接游戏后可用。'}
     ];
     let revision=1;
     const snapshot=(patch={})=>({kind:'state',protocol:1,module:0,generation:1,revision:revision++,page:'cursor',title:'显示',status:'已连接 · 170 Hz',controls,...patch});
@@ -433,7 +432,7 @@ if (!failed && process.argv.includes('--browser')) {
       await item.click();
       await page.waitForFunction(name=>document.querySelector('#navigation [aria-current="page"]')?.getAttribute('aria-label')===name,name);
     };
-    assert.deepEqual(await nav.getByRole('button').evaluateAll(buttons=>buttons.slice(0,3).map(button=>button.getAttribute('aria-label'))),['控制','自动功能','生产'],'navigation retains the current product-first section order');
+    assert.deepEqual(await nav.getByRole('button').evaluateAll(buttons=>buttons.slice(0,3).map(button=>button.getAttribute('aria-label'))),['键鼠与选兵','战术操作','进驻与装卸'],'control pages lead the navigation');
     assert.equal(await page.getByRole('tab').count(),0);
     await openPage('渲染');
     await page.getByLabel('增强渲染',{exact:true}).waitFor();
@@ -461,7 +460,7 @@ if (!failed && process.argv.includes('--browser')) {
     await page.keyboard.press('Enter');
     await page.waitForFunction(()=>document.getElementById('pageTitle').textContent==='监控视图');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),1,'Monitor remains the separate native service module');
-    await openPage('光标');
+    await openPage('鼠标');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),0);
     const noteHelp=page.locator('.page-title-bar .label-help');
     assert.equal(await noteHelp.locator('summary').textContent(),'ⓘ');
@@ -488,15 +487,15 @@ if (!failed && process.argv.includes('--browser')) {
     await page.locator('#search').focus();await page.keyboard.press('Escape');
     await page.waitForFunction(()=>document.getElementById('search').value==='');
     await page.getByLabel('绘制方式',{exact:true}).waitFor();
-    await openPage('光标');
+    await openPage('鼠标');
     for(const viewport of [{width:720,height:780},{width:540,height:720},{width:390,height:720}]){
-      await page.setViewportSize(viewport);await page.getByRole('button',{name:'队形预览快捷键',exact:true}).scrollIntoViewIfNeeded();await assertFits();
+      await page.setViewportSize(viewport);await page.locator('.setting-row[data-type="hotkey"]').first().scrollIntoViewIfNeeded();await assertFits();
       await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
       await page.screenshot({path:diagnosticsPrefix+'-'+viewport.width+'.png',fullPage:false});
     }
     await page.setViewportSize({width:1240,height:880});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
-    assert.equal(await page.getByRole('heading',{name:'光标',exact:true}).count(),1);
+    assert.equal(await page.getByRole('heading',{name:'鼠标',exact:true}).count(),1);
     assert.equal(await page.getByLabel('未连接时的功能',{exact:true}).isDisabled(),true);
     await openPage('渲染');
     const switchBox=await page.getByLabel('增强渲染',{exact:true}).boundingBox();assert.ok(switchBox.width>=24 && switchBox.height>=24,'accessible switch owns a full pointer target');
@@ -518,7 +517,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),33);
     await page.getByRole('button',{name:'显示设备',exact:true}).click();
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).action),'press');
-    await openPage('光标');
+    await openPage('鼠标');
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=700;});
     const directory=page.getByLabel('游戏目录',{exact:true}); await directory.waitFor();
     await directory.fill('C:\\RA2');
@@ -527,7 +526,7 @@ if (!failed && process.argv.includes('--browser')) {
     await directory.press('Enter'); assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),'C:\\RA2');
     const list=page.getByLabel('常驻单位类型',{exact:true}); await list.selectOption('2'); await list.press('Enter');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).action),'activate'); assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),2);
-    const hotkey=page.getByRole('button',{name:'队形预览快捷键',exact:true}); await hotkey.click(); await page.keyboard.down('Control'); await page.keyboard.press('k'); await page.keyboard.up('Control');
+    const hotkeyRow=page.locator('.setting-row[data-type="hotkey"]').first();await hotkeyRow.scrollIntoViewIfNeeded();await hotkeyRow.locator('.hotkey-options summary').click();const hotkey=hotkeyRow.locator('.hotkey-capture');await hotkey.click();await page.keyboard.down('Control'); await page.keyboard.press('k'); await page.keyboard.up('Control');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).action),'hotkey'); assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),0xb24b,'hold and double flags must survive chord capture');
     await receive({kind:'shell',protocol:1,config:{pending:1,busy:true,failed:false},error:''});
     await page.waitForFunction(()=>document.getElementById('saveState').textContent!=='已保存');
@@ -537,12 +536,12 @@ if (!failed && process.argv.includes('--browser')) {
     await page.screenshot({path:diagnosticsPrefix+'-save-error.png',fullPage:false});
     await receive({kind:'shell',protocol:1,error:'',config:{pending:0,busy:false,failed:false}});
     await page.getByRole('button',{name:'自动功能',exact:true}).click();
-    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2); assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),2);
-    await receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/2',title:'自动功能',controls:[{id:1,type:'toggle',label:'自动维修',checked:true}],status:''});
+    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2); assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),4);
+    await receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/4',title:'自动功能',controls:[{id:1,type:'toggle',label:'自动维修',checked:true}],status:''});
     await page.getByLabel('自动维修',{exact:true}).waitFor();
     assert.equal(await page.getByRole('heading',{name:'自动功能',exact:true}).count(),1);
     assert.equal(await page.locator('#foldAll').isVisible(),false);
-    await openPage('光标');
+    await openPage('鼠标');
     const large=Array.from({length:3000},(_,index)=>({id:index+1,type:'text',label:`设置 ${index+1}`,text:String(index),group:'全部设置'}));
     await receive({kind:'state',protocol:1,module:0,generation:2,revision:1,page:'cursor',title:'显示',controls:large,status:'受控虚拟化检查'});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
@@ -555,9 +554,10 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'narrow layout must not overflow');
     await receive({kind:'state',protocol:1,module:0,generation:3,revision:1,page:'cursor',controls:[{id:1,type:'label',label:'<img src=x onerror=window.__bad=1>',group:'文字显示'}],status:''});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
-    const unsafeNote=page.locator('.group-summary .label-help-text');
-    await unsafeNote.waitFor({state:'attached'});
-    assert.equal(await unsafeNote.textContent(),'<img src=x onerror=window.__bad=1>','explanatory labels remain inert plain text inside the collapsed info panel');
+    const unsafeNote=page.locator('.page-title-bar .label-help-text');
+    const unsafeText='<img src=x onerror=window.__bad=1>';
+    await page.waitForFunction(expected=>document.querySelector('.page-title-bar .label-help-text')?.textContent===expected,unsafeText);
+    assert.equal(await unsafeNote.textContent(),unsafeText,'explanatory labels remain inert plain text inside the collapsed info panel');
     assert.equal(await page.locator('#settings img').count(),0);
     assert.equal(await page.evaluate(()=>window.__bad),undefined);
     // Exercise real DOM folds, pinned switches, hover-only explanations and
@@ -568,7 +568,7 @@ if (!failed && process.argv.includes('--browser')) {
     await page.getByLabel('主开关 9601',{exact:true}).waitFor();
     assert.equal(await page.locator('button.group-summary').count(),0);
     assert.equal(await page.locator('#foldAll').textContent(),'全部展开');
-    const first=page.locator('.settings-group').filter({has:page.getByText('参数组 9601',{exact:true})});
+    const first=page.locator('.feature-card').filter({has:page.getByLabel('主开关 9601',{exact:true})});
     const firstConfig=first.locator('.feature-config-toggle');
     await page.locator('#foldAll').click();await page.getByLabel('子参数 9601',{exact:true}).waitFor();
     assert.equal(await firstConfig.getAttribute('aria-expanded'),'true');
@@ -578,18 +578,21 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await first.locator('.feature-main-control .setting-row').getAttribute('title'),'只在悬停时显示说明');
     assert.equal(await first.locator('.setting-description:visible').count(),0,'ordinary help must not occupy a row');
     const failing=new Set([9607,9612,9613,9614]);await receive(foldedState(folded.map(c=>failing.has(Math.floor(c.id/10))&&c.type==='label'?{...c,label:'错误待还原 '+Math.floor(c.id/10),runtimeError:true}:c)));
+    const pageGroup=page.locator('.settings-group').first();
+    const status=pageGroup.locator('.group-status[data-tone="error"]');
     for(const n of failing){
-      const section=page.locator('.settings-group').filter({has:page.getByText('参数组 '+n,{exact:true})});await section.scrollIntoViewIfNeeded();
-      const status=section.locator('.group-status[data-tone="error"]');await status.waitFor();assert.ok((await status.textContent()).includes('错误待还原 '+n));
-      const config=section.locator('.feature-config-toggle');
+      const feature=page.locator('.feature-card').filter({has:page.getByLabel('主开关 '+n,{exact:true})});await feature.scrollIntoViewIfNeeded();
+      await status.waitFor();assert.ok((await status.textContent()).includes('错误待还原 '+n));
+      const config=feature.locator('.feature-config-toggle');
       assert.equal(await config.getAttribute('aria-expanded'),'false','errors do not silently reopen parameters');
       await config.click();assert.equal(await config.getAttribute('aria-expanded'),'true');
       await config.click();assert.equal(await config.getAttribute('aria-expanded'),'false');
-      assert.equal(await status.isVisible(),true,'error text stays outside the collapsed parameters');
+      assert.equal(await status.isVisible(),true,'error text stays outside the collapsed feature card');
     }
     await page.locator('#foldAll').click();await page.waitForFunction(()=>document.getElementById('foldAll').textContent==='全部收起');
     await page.locator('#foldAll').click();await page.waitForFunction(()=>document.getElementById('foldAll').textContent==='全部展开');
-    assert.equal(await page.locator('.group-status[data-tone="error"]:visible').count(),4,'bulk folding retains every error');
+    assert.equal(await page.locator('.group-status[data-tone="error"]:visible').count(),1,'page-level status retains every error');
+    for(const n of failing)assert.ok((await status.textContent()).includes('错误待还原 '+n));
     await receive(foldedState(folded));await page.waitForFunction(()=>[...document.querySelectorAll('.group-status[data-tone="error"]')].every(element=>!element.getClientRects().length));
     await page.locator('#search').fill('子参数 9601');await page.getByLabel('子参数 9601',{exact:true}).waitFor();
     assert.equal(await page.locator('.settings-group').count(),1);
@@ -610,54 +613,79 @@ if (!failed && process.argv.includes('--browser')) {
     const compactState=(patch={})=>({kind:'state',protocol:1,module:0,generation:6,revision:revision++,page:'cursor',controls:compound,status:'',...patch});
     await receive(compactState());await page.setViewportSize({width:1240,height:880});await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
     const line=page.locator('.compound-row');await line.waitFor();
-    assert.equal(await line.count(),1);assert.equal(await line.locator('.setting-row').count(),4);
+    // The preset is represented by the same native hotkey value. The legacy
+    // four tokens now render as a switch plus one keyboard/mouse options menu.
+    assert.equal(await line.count(),1);
+    assert.equal(await line.locator('.setting-row').count(),3);
+    assert.equal(await line.locator('#control-0-703').count(),0,'no redundant preset editor');
     const compoundHotkey=line.locator('.setting-row[data-type="hotkey"]');
-    const compoundHotkeyLayout=await compoundHotkey.evaluate(element=>({basis:getComputedStyle(element).flexBasis,row:element.getBoundingClientRect(),editor:element.querySelector('.setting-editor').getBoundingClientRect()}));
-    assert.equal(compoundHotkeyLayout.basis,'auto','compound shortcuts keep a stable compact intrinsic width instead of forcing a full-width line');
-    assert.ok(Math.abs(compoundHotkeyLayout.row.right-compoundHotkeyLayout.editor.right)<2,'compound shortcut editors share the right alignment');
+    const options=compoundHotkey.getByLabel('快捷键选项 · 高级进驻',{exact:true});
+    const compactKey=compoundHotkey.locator('.hotkey-capture');
+    const mouse=line.locator('#control-0-740');
     assert.equal(await line.locator('.setting-label').filter({hasText:/^高级进驻$/}).count(),1);
     assert.equal(await line.locator('[data-setting-level="primary"]').count(),1);
-    assert.equal(await line.locator('[data-setting-level="secondary"]').count(),3);
-    const hierarchy=await line.evaluate(element=>{const labels=[...element.querySelectorAll('.setting-label')],main=getComputedStyle(labels[0]),sub=getComputedStyle(labels[1]),name=labels[0].getBoundingClientRect(),toggle=element.querySelector('.toggle').getBoundingClientRect();return{mainSize:parseFloat(main.fontSize),subSize:parseFloat(sub.fontSize),mainWeight:Number(main.fontWeight),subWeight:Number(sub.fontWeight),mainColor:main.color,subColor:sub.color,switchOffset:element.getBoundingClientRect().right-toggle.right,switchCenterDelta:(toggle.top+toggle.height/2)-(name.top+name.height/2)};});
-    assert.ok(hierarchy.mainSize>hierarchy.subSize && hierarchy.mainWeight>hierarchy.subWeight,'feature names must read above their smaller subsettings');
-    assert.notEqual(hierarchy.mainColor,hierarchy.subColor,'secondary captions must use their quieter color');
-    console.log('COMPOUND_HIERARCHY',JSON.stringify(hierarchy));
+    assert.equal(await line.locator('[data-setting-level="secondary"]').count(),2);
+    assert.equal(await options.isVisible(),true);
+    assert.equal(await compactKey.isVisible(),false,'keyboard editor starts in the closed menu');
+    assert.equal(await mouse.isVisible(),false,'mouse editor starts in the closed menu');
+    const hierarchy=await line.evaluate(element=>{
+      const name=element.querySelector('[data-setting-level="primary"] > .setting-copy > .setting-label');
+      const toggle=element.querySelector('.toggle').getBoundingClientRect(),box=name.getBoundingClientRect();
+      return {switchOffset:element.getBoundingClientRect().right-toggle.right,switchCenterDelta:(toggle.top+toggle.height/2)-(box.top+box.height/2)};
+    });
     assert.ok(Math.abs(hierarchy.switchOffset)<2 && Math.abs(hierarchy.switchCenterDelta)<3,'the feature name and fixed right switch share one line');
-    assert.ok((await line.boundingBox()).height<=96,'the complete feature must fit in at most two compact lines on desktop');
-    await page.getByLabel('高级进驻 · 鼠标',{exact:true}).selectOption('1');
+    assert.ok((await line.boundingBox()).height<=96,'closed feature fits at most two compact lines on desktop');
+    await options.click();await mouse.waitFor();await compactKey.waitFor();
+    assert.equal(await mouse.inputValue(),'5');
+    assert.equal(await compactKey.getAttribute('data-bound'),'true');
+    await mouse.selectOption('1');
     action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,740);assert.equal(action.action,'select');assert.equal(action.value,1);
-    const compactKey=page.getByRole('button',{name:'高级进驻 · 自定义键',exact:true});await compactKey.click();
+    await compactKey.click();
     await compactKey.evaluate(element=>{window.__compactKey=element;});await receive(compactState({controls:compound.map(c=>c.id===702?{...c,checked:false}:c)}));
     await page.waitForFunction(()=>!document.getElementById('control-0-702').checked);
     assert.equal(await compactKey.evaluate(element=>element===window.__compactKey && document.activeElement===element),true,'background revisions preserve the focused editor node');
-    await page.keyboard.press('Escape');
+    await page.keyboard.down('Control');await page.keyboard.press('k');await page.keyboard.up('Control');
+    action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,704);assert.equal(action.action,'hotkey');assert.equal(action.value,0x224b);
+    await page.keyboard.press('Escape');assert.equal(await mouse.isVisible(),false);
     for(const viewport of [{width:1794,height:900},{width:1240,height:880},{width:720,height:780},{width:390,height:720}]) {
       await page.setViewportSize(viewport);await assertFits();
       await page.screenshot({path:diagnosticsPrefix+'-compact-'+viewport.width+'.png',fullPage:false});
+      await options.click();await mouse.waitFor();await assertFits();
+      await page.keyboard.press('Escape');assert.equal(await mouse.isVisible(),false);
     }
-    await page.setViewportSize({width:1240,height:880});await page.getByLabel('高级进驻',{exact:true}).click();
+    await page.setViewportSize({width:1240,height:880});await page.locator('#control-0-702').click();
     action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,702);assert.equal(action.action,'toggle');
     await page.locator('#search').fill('左键');await page.waitForFunction(()=>document.getElementById('resultCount').textContent==='找到 4 项设置');
-    assert.equal(await line.locator('.setting-row').count(),4,'search retains sibling editors and the feature switch');await page.locator('#search').fill('');
+    assert.equal(await options.isVisible(),true,'search retains the unified editor and the feature switch');
+    await options.click();await mouse.waitFor();await compactKey.waitFor();
+    await page.keyboard.press('Escape');await page.locator('#search').fill('');
     const pairedShortcut=[
       {id:9042,type:'toggle',label:'磁电全局无限吸',checked:true,row:120,column:20},
       {id:9511,type:'hotkey',label:'磁电全局无限吸',selected:0,options:['press','release'],row:120,column:345}
     ];
     await receive(compactState({controls:pairedShortcut}));
     const pairedRow=page.locator('.compound-row');
-    await pairedRow.locator('#control-0-9511').waitFor();
+    const pairedOptions=pairedRow.locator('.hotkey-options > summary');
+    const pairedKey=pairedRow.locator('#control-0-9511');
+    await pairedOptions.waitFor();
+    assert.equal(await pairedKey.isVisible(),false,'standalone keyboard editor starts in its closed menu');
     for (const width of [1240,720,390]) {
       await page.setViewportSize({width,height:880});
       const bounds=await pairedRow.evaluate(element=>{
         const box=selector=>element.querySelector(selector).getBoundingClientRect();
-        return {line:element.getBoundingClientRect(),toggle:box('.toggle'),editor:box('.hotkey-editor'),button:box('.hotkey-capture')};
+        return {line:element.getBoundingClientRect(),toggle:box('.toggle'),editor:box('.hotkey-editor'),button:box('.hotkey-options > summary')};
       });
       assert.ok(Math.abs(bounds.line.right-bounds.toggle.right)<2,'the switch occupies the same right column with a companion hotkey');
       if (width>=720) {
-        assert.ok(Math.abs(bounds.toggle.top-bounds.editor.top)<8,'an unbound shortcut stays beside its switch when there is room');
-        assert.ok(bounds.editor.width<120 && bounds.button.height<=29,'the unbound shortcut uses a compact button and options trigger');
+        assert.ok(Math.abs(bounds.toggle.top-bounds.editor.top)<8,'the shortcut launcher stays beside its switch when there is room');
+        assert.ok(bounds.editor.width<120 && bounds.button.height<=29,'the shortcut launcher remains compact');
       }
       await assertFits();
+      await pairedOptions.click();await pairedKey.waitFor();
+      assert.equal(await pairedKey.getAttribute('data-bound'),'false');
+      await assertFits();
+      await page.keyboard.press('Escape');
+      assert.equal(await pairedKey.isVisible(),false,'closing the menu hides the keyboard editor again');
     }
     await page.setViewportSize({width:1240,height:880});
     const pinned=[
@@ -689,8 +717,8 @@ if (!failed && process.argv.includes('--browser')) {
     await receive(compactState({generation:7,controls:pinned.map(control=>control.id===880?{...control,checked:action.value}:control)}));
     // A clean, correctly routed acceptance view: ordinary saved settings,
     // two complete feature rows, and an expanded master/detail group.
-    await page.getByRole('button',{name:'控制',exact:true}).click();
-    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2);assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),1);
+    await page.getByRole('button',{name:'战术操作',exact:true}).click();
+    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2);assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),2);
     const hierarchyControls=[
       ...compound.map(control=>control.type==='hotkey'?{...control,selected:0x3012}:control),
       {id:477,type:'toggle',label:'磁电轮换攻击',checked:true,row:164,column:20,group:'键鼠组合操作'},
@@ -701,7 +729,7 @@ if (!failed && process.argv.includes('--browser')) {
       {id:751,type:'choice',label:'目标优先级',selected:0,options:['当前目标','剩余生命','距离最近'],readonly:true,group:'飞机分配攻击',collapsible:true},
       {id:752,type:'label',label:'设置已保存 · 进入对局后生效',group:'飞机分配攻击',collapsible:true}
     ];
-    const controlPage=(revision,controls=hierarchyControls)=>({kind:'state',protocol:1,module:2,generation:2,revision,page:'tactical/1',title:'控制',controls,status:'设置已保存 · 可在进入游戏前调整'});
+    const controlPage=(revision,controls=hierarchyControls)=>({kind:'state',protocol:1,module:2,generation:2,revision,page:'tactical/2',title:'战术操作',controls,status:'设置已保存 · 可在进入游戏前调整'});
     await receive(controlPage(1));await page.getByLabel('飞机分配攻击',{exact:true}).waitFor();
     await page.getByLabel('飞机分配攻击',{exact:true}).click();action=await page.evaluate(()=>window.__sent.at(-1));
     assert.equal(action.module,2);assert.equal(action.id,705);assert.equal(action.value,true);
@@ -715,7 +743,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.getByText('设置已保存 · 进入对局后生效',{exact:true}).isVisible(),true);
     await aircraftHelp.click();
     await page.locator('#toast').waitFor({state:'hidden',timeout:10000});
-    assert.equal(await page.getByRole('button',{name:'控制',exact:true}).getAttribute('aria-current'),'page');
+    assert.equal(await page.getByRole('button',{name:'战术操作',exact:true}).getAttribute('aria-current'),'page');
     await page.locator('.settings-group').filter({hasText:'飞机分配攻击'}).locator('.feature-config-toggle').first().click();
     await page.getByLabel('每个目标分配上限',{exact:true}).waitFor();await page.mouse.move(0,0);
     for(const viewport of [{width:1240,height:880},{width:720,height:780},{width:390,height:720}]) {
@@ -734,9 +762,13 @@ if (!failed && process.argv.includes('--browser')) {
       tech(815,{type:'label',label:'生产进度：等待游戏',text:'生产进度：等待游戏'})
     ];
     await page.getByRole('button',{name:'游戏规则',exact:true}).click();
-    await receive(tacticalCardPage(3,10,rules));
+    await receive(tacticalCardPage(5,10,rules));
     const ruleSwitch=page.getByLabel('科技全开',{exact:true});await ruleSwitch.waitFor();
-    assert.deepEqual(await page.locator('.group-title').allTextContents(),['单机速度与暂停','科技与建造']);
+    assert.deepEqual(await page.locator('.group-title').allTextContents(),['游戏规则']);
+    const speedField=page.getByLabel('目标游戏帧率（0 = 原版）',{exact:true});
+    await speedField.waitFor();
+    assert.equal(await speedField.inputValue(),'60');
+    assert.equal(await ruleSwitch.isVisible(),true,'flattening preserves independent feature headers');
     const ruleFold=page.getByRole('button',{name:'展开 科技全开 的设置',exact:true});
     const ruleMode=page.getByLabel('科技全开实现',{exact:true});
     assert.equal(await ruleMode.isVisible(),false);
@@ -750,7 +782,7 @@ if (!failed && process.argv.includes('--browser')) {
 
     const zoom=(id,attrs)=>cardField(id,9090,'视角缩放','视角与界面',attrs);
     await page.getByRole('button',{name:'实验功能',exact:true}).click();
-    await receive(tacticalCardPage(4,11,[
+    await receive(tacticalCardPage(6,11,[
       zoom(9090,{type:'toggle',label:'高危：视角缩放',groupHeader:true}),
       zoom(9091,{type:'choice',label:'视角倍率',selected:0,options:['100%','125%'],readonly:true}),
       zoom(9450,{type:'hotkey',label:'缩小视野快捷键',selected:0x12bd,options:['press','release','keyboardOnly']})
@@ -767,21 +799,20 @@ if (!failed && process.argv.includes('--browser')) {
     await page.keyboard.press('Escape');assert.equal(await trigger.isVisible(),false);
     await page.screenshot({path:diagnosticsPrefix+'-experimental.png',fullPage:false});
 
-    const types=(id,attrs)=>cardField(id,9208,'自动装车','适用单位清单',attrs);
-    await page.getByRole('button',{name:'自动功能',exact:true}).click();
+    const types=(id,attrs)=>cardField(id,9610,'命令类型手动指定','命令类型手动指定',attrs);
+    await page.getByRole('button',{name:'战术操作',exact:true}).click();
     await receive(tacticalCardPage(2,12,[
-      types(9208,{type:'toggle',label:'限定乘员类型',checked:true}),
-      types(9209,{type:'text',label:'乘员类型 ID',text:'E1,E2'}),
-      types(9210,{type:'toggle',label:'限定载具类型',checked:true}),
-      types(9211,{type:'text',label:'载具类型 ID',text:'HTK'}),
-      cardField(9216,9216,'智能卸载','适用单位清单',{type:'toggle',label:'限定卸载载具'})
+      types(9208,{type:'toggle',label:'自动装车 · 限定乘员类型',checked:true}),
+      types(9209,{type:'text',label:'自动装车 · 乘员类型 ID',text:'E1,E2'}),
+      types(9210,{type:'toggle',label:'自动装车 · 限定载具类型',checked:true}),
+      types(9211,{type:'text',label:'自动装车 · 载具类型 ID',text:'HTK'}),
+      types(9216,{type:'toggle',label:'智能卸载 · 限定卸载载具'})
     ]));
-    await page.getByRole('heading',{name:'适用单位清单',exact:true}).waitFor();
-    const typeFold=page.getByRole('button',{name:'展开 自动装车 的设置',exact:true});
-    assert.equal(await page.getByLabel('乘员类型 ID',{exact:true}).isVisible(),false);
-    await typeFold.click();await page.getByLabel('乘员类型 ID',{exact:true}).waitFor();
-    assert.equal(await page.getByLabel('载具类型 ID',{exact:true}).inputValue(),'HTK');
-    assert.equal(await page.getByLabel('限定卸载载具',{exact:true}).isVisible(),false);
+    const typeFold=page.getByRole('button',{name:'展开 命令类型手动指定 的设置',exact:true});
+    assert.equal(await page.getByLabel('自动装车 · 乘员类型 ID',{exact:true}).isVisible(),false);
+    await typeFold.click();await page.getByLabel('自动装车 · 乘员类型 ID',{exact:true}).waitFor();
+    assert.equal(await page.getByLabel('自动装车 · 载具类型 ID',{exact:true}).inputValue(),'HTK');
+    assert.equal(await page.getByLabel('智能卸载 · 限定卸载载具',{exact:true}).isVisible(),true);
     for(const viewport of [{width:1240,height:880},{width:390,height:720}]){
       await page.setViewportSize(viewport);await assertFits();
       await page.screenshot({path:diagnosticsPrefix+'-type-filters-'+viewport.width+'.png',fullPage:false});

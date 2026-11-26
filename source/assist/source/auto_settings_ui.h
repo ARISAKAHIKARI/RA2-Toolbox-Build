@@ -123,8 +123,8 @@ static bool autoSettingChanged(int id,int notification){
   if(id==9187)extra.networkHousePreserve=on;else extra.nativeSellCursor=on;
   pointerMatches.clear();changedSetting();syncAdditional();updatePlayerTestUI(true);return true;
  }
- if(id==9750&&notification==CBN_SELCHANGE){extra.privateOutMode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();syncAdditional();return true;}
- if(id==9191&&notification==BN_CLICKED){extra.nativeMegaGateway=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
+ if(id==9750&&notification==CBN_SELCHANGE){extra.privateOutMode=0;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,0,0);syncAdditional();return true;}
+ if(id==9191&&notification==BN_CLICKED){extra.nativeMegaGateway=false;SendMessageW(GetDlgItem(ui,id),BM_SETCHECK,BST_UNCHECKED,0);syncAdditional();return true;}
  if(id==9198&&notification==BN_CLICKED){extra.nativeCombatQueries=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9193&&notification==BN_CLICKED){extra.controlCommandOwner=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();syncAdditional();return true;}
  if(id==9250&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode<0||mode>2)return true;
@@ -185,7 +185,8 @@ static bool autoSettingChanged(int id,int notification){
  if(id==798&&notification==BN_CLICKED){extra.idleAircraft=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==795&&notification==BN_CLICKED){shiftClickEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==796&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=2){shiftClickMode=mode;changedSetting();}return true;}
- if(id==789&&edit){extra.sellKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));ControlUpdate guard;SendMessageW(extraControls[SellPreset],CB_SETCURSEL,holdPreset(extra.sellKey),0);SendMessageW(extraControls[SellCustom],HKM_SETHOTKEY,extra.sellKey,0);changedSetting();return true;}
+ if(id==9797&&edit){extra.attackMoveKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));pointerMatches.clear();changedSetting();return true;}
+ if(id==789&&edit){extra.sellVehicleKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));pointerMatches.clear();changedSetting();return true;}
  if(id==788&&notification==BN_CLICKED){extra.overrideNative=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==786&&notification==BN_CLICKED){extra.allHotkeys=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;typeTap.clear();registerKeys();changedSetting();return true;}
  if((id==892||id==893)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==892)extra.parasiteMarker=on;else extra.crateBuffMarkers=on;changedSetting();return true;}
@@ -264,7 +265,7 @@ static bool autoSettingChanged(int id,int notification){
   const auto raw=uint32_t(SendMessageW(extraControls[custom],HKM_GETHOTKEY,0,0));
   auto key=edit?raw:presetKey(int(SendMessageW(extraControls[preset],CB_GETCURSEL,0,0)),raw);
   if(edit)SendMessageW(extraControls[preset],CB_SETCURSEL,holdPreset(key),0);
-  (disk?extra.diskKey:extra.sellKey)=key;if(!disk)SendMessageW(GetDlgItem(ui,789),HKM_SETHOTKEY,key,0);SendMessageW(extraControls[custom],HKM_SETHOTKEY,key,0);changedSetting();return true;
+  (disk?extra.diskKey:extra.sellKey)=key;SendMessageW(extraControls[custom],HKM_SETHOTKEY,key,0);changedSetting();return true;
  }
  if(id>=729&&id<729+pointerinput::MouseCount&&select){
   const int slot=id-729;int key=int(SendMessageW(extraControls[MouseFirst+slot],CB_GETCURSEL,0,0));

@@ -394,15 +394,15 @@ static void updatePrimaryAction(){
  suite::reportEnabled(0,enabled);
 #endif
  textIfChanged(primaryAction,enabled?L"暂停":L"开启");
- textIfChanged(subTitleLabel,mode==L"hide"?L"隐藏原光标 · 保留名称和价格提示":mode==L"sha"?L"透明 SHA · 外置光标":L"保留原光标 · 外置光标");
- std::wstring state=manualCursorPause?L"光标已暂停（F9 恢复）":!autoStart?L"已关闭":autoPaused?L"需要检查 · 展开高级设置":running?L"运行中":L"等待游戏启动";
+ textIfChanged(subTitleLabel,mode==L"hide"?L"隐藏原鼠标指针 · 保留名称和价格提示":mode==L"sha"?L"透明 SHA · 外置鼠标指针":L"保留原鼠标指针 · 外置鼠标指针");
+ std::wstring state=manualCursorPause?L"鼠标已暂停（F9 恢复）":!autoStart?L"已关闭":autoPaused?L"需要检查 · 展开高级设置":running?L"运行中":L"等待游戏启动";
  if(running&&enabled&&!manualCursorPause&&mode==L"hide"){
-  if(!shared||shared->state==0)state=L"等待游戏执行隐藏原光标";
-  else if(shared->state==2||shared->command==2)state=L"原光标恢复待完成";
-  else if(shared->state<0)state=L"隐藏原光标未成功 · 展开查看原因";
-  else if(shared->tooltipState<0)state=L"原光标已隐藏 · 名称和价格提示修复未成功";
-  else if(shared->tooltipState==0)state=L"原光标已隐藏 · 等待提示修复";
-  else state=L"运行中 · 原光标已隐藏";
+  if(!shared||shared->state==0)state=L"等待游戏执行隐藏原鼠标指针";
+  else if(shared->state==2||shared->command==2)state=L"原鼠标指针恢复待完成";
+  else if(shared->state<0)state=L"隐藏原鼠标指针未成功 · 展开查看原因";
+  else if(shared->tooltipState<0)state=L"原鼠标指针已隐藏 · 名称和价格提示修复未成功";
+  else if(shared->tooltipState==0)state=L"原鼠标指针已隐藏 · 等待提示修复";
+  else state=L"运行中 · 原鼠标指针已隐藏";
  }
  textIfChanged(statusw,state);
  static int lastPaint=-1;int paint=running?2:enabled?1:0;
@@ -533,7 +533,7 @@ static void visibilityDiagnostic(const wchar_t* reason,DWORD foregroundPid=0){
  DWORD now=GetTickCount();std::wstring why=reason;
  if(why==lastVisibilityReason&&uint32_t(now-lastVisibilityLogAt)<5000)return;
  lastVisibilityReason=why;lastVisibilityLogAt=now;
- std::wstring detail=L"光标显示等待："+why+L"；游戏PID="+std::to_wstring(pid)+L"，前台PID="+std::to_wstring(foregroundPid);
+ std::wstring detail=L"鼠标显示等待："+why+L"；游戏PID="+std::to_wstring(pid)+L"，前台PID="+std::to_wstring(foregroundPid);
  log(detail);status(detail);
 }
 
@@ -677,7 +677,7 @@ static bool hookStart(bool hide=true){
  if(!selectGameWindow()||!gameinput::nativeWindow(pid,threadId))fail("Game main window is still initializing; waiting to connect");
  if(!gameinput::runtimeAvailable()){
   const DWORD error=GetLastError();
-  if(error==ERROR_IO_PENDING){hookStartupPending=true;status(L"正在连接光标运行组件…");return false;}
+  if(error==ERROR_IO_PENDING){hookStartupPending=true;status(L"正在连接鼠标指针运行组件…");return false;}
   fail("GameRuntime.dll or x86 hook broker missing/incompatible; replace the complete paired package");
  }
  bridgeFrame.clear();lanboStream.reset();lastSampleProbeAt=0;nativeStartAt=GetTickCount();nativeInvisibleAt=0;hideConfirmed=false;lastRehideSeen=0;wchar_t name[80];mapName(name,pid);mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,NULL,PAGE_READWRITE,0,sizeof(Shared),name);if(!mapping)fail("Shared mapping failed");shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared)fail("Map view failed");memset(shared,0,sizeof(*shared));shared->magic=MAGIC;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->heartbeat=GetTickCount();
@@ -697,7 +697,7 @@ static bool hookStart(bool hide=true){
    // there is no game subscription whose restore acknowledgement to await.
    if(shared){UnmapViewOfFile(shared);shared=nullptr;}
    if(mapping){CloseHandle(mapping);mapping=nullptr;}
-   hookStartupPending=true;status(L"正在等待上一条光标连接退出…");return false;
+   hookStartupPending=true;status(L"正在等待上一条鼠标指针连接退出…");return false;
   }
   fail("Unified runtime subscription failed");
  }
@@ -798,7 +798,7 @@ static void stop(){
 #ifdef RA2_UNIFIED
  suite::publishHardwareCursor(false);
 #endif
-bridgeFrame.clear();lanboStream.reset();usingHeldSample=false;lastPhase=size_t(-1);diagFrame=diagHotX=diagHotY=-1;nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();wasInside=false;refreshTries=0;SetRectEmpty(&clickRegion);burst.cancel();tween.reset();timing.resetObservation();activeMotion.reset();running=false;ShowWindow(overlay,SW_HIDE);if(hud)ShowWindow(hud,SW_HIDE);hookStop();status(mode==L"sha"?L"外部光标已停止。透明版游戏内可能看不到指针；Ctrl+Alt+F11 可重新启动。":L"已停止；如使用 HideCursor，已请求配对恢复操作。");}
+bridgeFrame.clear();lanboStream.reset();usingHeldSample=false;lastPhase=size_t(-1);diagFrame=diagHotX=diagHotY=-1;nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();wasInside=false;refreshTries=0;SetRectEmpty(&clickRegion);burst.cancel();tween.reset();timing.resetObservation();activeMotion.reset();running=false;ShowWindow(overlay,SW_HIDE);if(hud)ShowWindow(hud,SW_HIDE);hookStop();status(mode==L"sha"?L"外部鼠标已停止。透明版游戏内可能看不到指针；Ctrl+Alt+F11 可重新启动。":L"已停止；如使用 HideCursor，已请求配对恢复操作。");}
 static void start(){if(!playbackReady){status(L"准备播放缓存，完成后自动连接游戏");return;}if(running)return;if(!live()||!IsWindow(game))attach();if(!loaded)fail("Bundled original.sha or palette.bgra missing; check assets folder");if(!readRestricted)mouse();
  bool managedBlank=exists(gameDir+L"\\mouse.sha.cursor-preview-state");
  bool manualBlank=!managedBlank && manuallyBlankSHA();
@@ -833,9 +833,9 @@ static void applyHideMode(){
  noCursorMode=blank;
  mode=selected;WritePrivateProfileStringW(L"Startup",L"Mode",mode.c_str(),ini().c_str());
  WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
- if(noCursorMode)status(L"已选择无光标诊断模式；Ctrl+Alt+F11 停止并恢复，F10 切换覆盖层。");
- else if(mode==L"hide")status(L"已选择隐藏原光标；使用原生 HideCursor，并保留单位名称和建造价格提示。");
- else status(L"已选择不隐藏：不修改游戏文件，原始光标和外部光标可能同时出现。");
+ if(noCursorMode)status(L"已选择无鼠标诊断模式；Ctrl+Alt+F11 停止并恢复，F10 切换覆盖层。");
+ else if(mode==L"hide")status(L"已选择隐藏原鼠标指针；使用原生 HideCursor，并保留单位名称和建造价格提示。");
+ else status(L"已选择不隐藏：不修改游戏文件，原始鼠标指针和外部鼠标可能同时出现。");
  if(shouldResume){try{start();}catch(const std::exception& e){autoPaused=true;status(L"切换后未能启动："+widen(e.what()));}}
 }
 static void syncTargetSelection(){
@@ -871,7 +871,7 @@ static void pollOriginalResource(){
  }
  if(!shared||(shared->resourceState!=2&&shared->resourceState!=-1&&shared->resourceState!=-2))return;
  LONG state=shared->resourceState,seq=shared->resourceSeq;
- if(state<0){shared->resourceState=3;log(L"原始光标资源采集暂不可用；保留已有缓存");return;}
+ if(state<0){shared->resourceState=3;log(L"原始鼠标资源采集暂不可用；保留已有缓存");return;}
  if(!cursorseq::committed(uint32_t(seq)))return;
  unsigned n=shared->resourceBytes;if(n<8||n>RESOURCE_MAX_BYTES){shared->resourceState=3;return;}
  Bytes bytes(n),colors(1024);memcpy(bytes.data(),shared->resourcePixels,n);memcpy(colors.data(),shared->resourcePalette,1024);
@@ -892,7 +892,7 @@ static void pollOriginalResource(){
   }
   shared->cursorFrameCount=LONG(asset.frames.size());shared->cursorCanvasW=asset.w;shared->cursorCanvasH=asset.h;
   gameResourceConfirmed=true;
-  log(L"原始光标资源已缓存 · "+std::to_wstring(asset.frames.size())+L" 帧");
+  log(L"原始鼠标资源已缓存 · "+std::to_wstring(asset.frames.size())+L" 帧");
  }catch(const std::exception& e){log(L"Original resource rejected: "+widen(e.what()));}
 }
 static void draw(){
@@ -970,7 +970,7 @@ static void draw(){
  if(!(nativeCursorPresentation()&&mode==L"hide")&&!noCursorMode&&!ensureCoordinateWindows(coordinates)){
   const DWORD error=GetLastError();coordinateDiagnostic(L"mapped-window-unavailable",coordinates,presentedPoint,true,presentation.output,gw,gh,0,0,0,0,1,1,0,0,error);
   if(mode==L"hide")hookStop();
-  leaveGame();visibilityDiagnostic(L"光标窗口坐标域暂不可用，等待自动恢复",fp);return;
+  leaveGame();visibilityDiagnostic(L"鼠标窗口坐标域暂不可用，等待自动恢复",fp);return;
  }
  if(!wasInside){
   // Normally the subscription survived Alt-Tab; resume presentation in place.
@@ -981,9 +981,9 @@ static void draw(){
  // A new subscription or a resumed menuSuspend==2 needs the same route flags.
  applyCursorPresentation(presentation.mapped);
  if(noCursorMode){
-  ShowWindow(overlay,SW_HIDE);diagAnimation=L"无光标诊断：不发布鼠标图像";
+  ShowWindow(overlay,SW_HIDE);diagAnimation=L"无鼠标诊断：不发布鼠标图像";
   if(!manualCursorPause&&shared&&shared->state!=1&&uint32_t(GetTickCount()-nativeStartAt)>2000){
-   autoPaused=true;stop();status(L"无光标模式：隐藏未确认，已停止并请求恢复");
+   autoPaused=true;stop();status(L"无鼠标指针模式：隐藏未确认，已停止并请求恢复");
   }
   return;
  }
@@ -1080,14 +1080,14 @@ static void draw(){
    // Probe at most ten times/sec. Keep HUD visible for diagnostics.
    DWORD now=GetTickCount();
    if(uint32_t(now-lastSampleProbeAt)>=100){lastSampleProbeAt=now;gameinput::wake(hook);}
-   diagAnimation=L"等待 Hook 首次发布有效光标帧（尚非静态帧）";
+   diagAnimation=L"等待 Hook 首次发布有效鼠标帧（尚非静态帧）";
    return;
   }
   if(mode==L"hide"){
    // Never keep the original pointer hidden if we have NEVER received one
    // usable frame in this connection. This case differs from a stalled frame.
-   autoPaused=true;stop();status(L"Hook 已连接但首次光标帧超时；已请求恢复原光标");
-  }else visibilityDiagnostic(L"光标帧读取失败",fp);
+   autoPaused=true;stop();status(L"Hook 已连接但首次鼠标帧超时；已请求恢复原鼠标指针");
+  }else visibilityDiagnostic(L"鼠标帧读取失败",fp);
   lastFrame=-2;tween.reset();activeMotion.reset();
   return;}
  presentationDiagnostic(presentationInput,presentation);
@@ -1097,7 +1097,7 @@ static void draw(){
   if(shared->nativeVisible)nativeInvisibleAt=0;
   else if(!nativeInvisibleAt)nativeInvisibleAt=GetTickCount();
   else if(uint32_t(GetTickCount()-nativeInvisibleAt)>2000){
-   autoPaused=true;stop();status(L"游戏线程光标未显示，已恢复原光标");return;
+   autoPaused=true;stop();status(L"游戏线程鼠标指针未显示，已恢复原鼠标指针");return;
   }
  }
  commandcursor::Mode commandMode=commandcursor::None;
@@ -1109,12 +1109,13 @@ static void draw(){
  const bool mapPoint=cursorMapPoint(presentedPoint,presentation.output,mapGW,mapGH,presentation.mapped);
  if(hint.mode!=commandcursor::None&&mapPoint&&!nativeMenuHold&&!(shared&&shared->menuSuspend)&&
     (commandcursor::ordinary(cursorID)||(hint.mode==commandcursor::Enter&&cursorID==25))&&gameinput::heldBinding(hint.binding))commandMode=hint.mode;
- if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=GetTickCount();lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
+ const uint32_t commandAnimationNow=inputNow();
+ if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=commandAnimationNow;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
  if(commandMode!=commandcursor::None){
   const auto&d=commandDefs[commandcursor::definition(commandMode)];int chx=0,chy=0;
   if(cursorRangeMatches(d.first,d.count,d.first,asset.frames.size())&&hot(unsigned(d.hotX),w,chx)&&hot(unsigned(d.hotY),h,chy)){
    unsigned duration=unsigned(std::clamp(d.interval,1,60))*1000u/60u;
-   frame=d.first+int(uint32_t(GetTickCount()-commandSince)/std::max(1u,duration)%unsigned(d.count));
+   frame=d.first+int((commandAnimationNow-commandSince)/std::max(1u,duration)%unsigned(d.count));
    animStart=d.first;animCount=d.count;animKey=2000+int(commandMode);hx=chx;hy=chy;approx=false;inferredRange=false;
   }else commandMode=commandcursor::None;
  }
@@ -1147,7 +1148,7 @@ static void draw(){
   nativeMenuCandidateAt=0;nativeMenuHold=false;
  }
  bool animationChanged=frame!=tween.frame||animKey!=tween.group;
- uint32_t animationNow=inputNow();timing.observe(frame,animKey,animStart,animCount,animationNow);
+ uint32_t animationNow=commandAnimationNow;timing.observe(frame,animKey,animStart,animCount,animationNow);
  if(animationChanged)transitionMs=timing.duration(animKey,smoothMs,adaptive);
  if(animKey==160)transitionMs=lanboStream.duration(smoothMs);
  tween.update(frame,animKey,animStart,animCount,animationNow,smoothing);
@@ -1161,9 +1162,17 @@ static void draw(){
   // wasting a whole interval interpolating the PREVIOUS-to-current pair.
   if(smoothing&&predictedNext>=0){auto it=motionCache.find(pairKey(frame,predictedNext));if(it!=motionCache.end())activeMotion=it->second;}
  }
- if(predictedNext>=0&&!allowedPairs.count(pairKey(frame,predictedNext)))predictedNext=-1;
+ const bool commandTransition=commandMode!=commandcursor::None&&predictedNext>=0&&
+  commandcursor::animationTransition(animStart,animCount,frame,predictedNext,displayAsset.frames.size());
+ const unsigned nextPair=predictedNext>=0?pairKey(frame,predictedNext):0;
+ const bool preparedTransition=predictedNext>=0&&allowedPairs.count(nextPair);
+ if(predictedNext>=0&&!preparedTransition&&!commandTransition)predictedNext=-1;
  if(smoothing&&predictedNext>=0&&!activeMotion){auto it=motionCache.find(pairKey(frame,predictedNext));if(it!=motionCache.end())activeMotion=it->second;}
- if(smoothing&&predictedNext>=0&&!activeMotion&&(!profileId.empty()||gameResourceConfirmed))
+ // Command cursor sequences are valid animation edges even when the user's
+ // generic cursor groups omit them. Queue the same offline 1001-sample
+ // timeline; drawing remains read-only and never computes optical flow.
+ if(smoothing&&predictedNext>=0&&!activeMotion&&(preparedTransition||commandTransition)&&
+    (!profileId.empty()||gameResourceConfirmed))
   prepareQueue.request(pairKey(frame,predictedNext),displayAsset.frames.size());
  uint32_t animationElapsedMs=animationNow-timing.changedAt;
  bool stalled=animationElapsedMs>transitionMs*2u;
@@ -1258,21 +1267,21 @@ static void draw(){
    // No draw-first gate: however if the overlay actually fails, release the
    // Hook on failure to prevent an indefinitely missing pointer.
    if(mode==L"hide")hookStop();
-   wasInside=false;visibilityDiagnostic(L"置顶外部光标窗口失败，暂停隐藏",fp);
+   wasInside=false;visibilityDiagnostic(L"置顶外部鼠标窗口失败，暂停隐藏",fp);
   }
 }
  else ShowWindow(overlay,SW_HIDE);
  if(!lastVisibilityReason.empty()){
   lastVisibilityReason.clear();lastVisibilityLogAt=0;
-  status(L"光标已显示");
+  status(L"鼠标已显示");
  }
  if(frame>=0&&hudLastFrame>=0&&frame!=hudLastFrame)++hudChanges;hudLastFrame=frame;
  uint32_t hn=inputNow(),hudElapsed=hn-hudEpoch;if(hudElapsed>=1000){updateFps=hudUpdates*1000.0/hudElapsed;commitFps=hudCommits*1000.0/hudElapsed;motionFps=hudMotion*1000.0/hudElapsed;changeFps=hudChanges*1000.0/hudElapsed;hudUpdates=hudCommits=hudMotion=hudChanges=0;hudEpoch=hn;}
  std::wstring stateLabel;
- if(manualCursorPause)stateLabel=L"外部光标手动隐藏 (F9恢复)";
- else if(nativeMenuHold)stateLabel=L"检测到系统光标接管，已隐藏残影";
+ if(manualCursorPause)stateLabel=L"外部鼠标手动隐藏 (F9恢复)";
+ else if(nativeMenuHold)stateLabel=L"检测到系统鼠标指针接管，已隐藏残影";
  else if(!smoothing)stateLabel=L"运动补间关闭";else if(!recognition)stateLabel=L"读取失败：原图/布局校验失败";else if(recognition==2)stateLabel=L"类型标记单帧：等待真实换帧验证";else if(recognition==1)stateLabel=L"类型定义未匹配：观察连续换帧中";else if(inferredRange&&phaseIndex!=size_t(-1))stateLabel=L"连续换帧已识别：提交预生成中间帧";else if(inferredRange)stateLabel=L"连续换帧已识别：运动帧准备/等待中";else if(w>128||h>128)stateLabel=L"画布超过128：暂不支持运动补间";else if(phaseIndex!=size_t(-1))stateLabel=L"正在从预生成时间轴取帧";else if(stalled)stateLabel=L"游戏动画停顿：回退真实帧";else if(activeMotion)stateLabel=L"预生成时间轴就绪，等待下一原帧";else if(animCount>1&&motionCache.count(pairKey(frame,animStart+(frame-animStart+1)%animCount)))stateLabel=L"预生成时间轴就绪，等待相邻帧";else stateLabel=L"此段无预生成文件，显示原帧";
- diagAnimation=usingHeldSample?L"等待新光标帧；继续显示已验证原图（不虚报补间 FPS）":stateLabel;
+ diagAnimation=usingHeldSample?L"等待新鼠标帧；继续显示已验证原图（不虚报补间 FPS）":stateLabel;
 
 }
 static void diagnosticHud(){
@@ -1299,7 +1308,7 @@ static void diagnosticHud(){
    if(ss==shared->sampleSeq){frame=sf;hx=sx;hy=sy;gw=sw;gh=sh;age=now-stamp;}
   }
  }
- const wchar_t* kind=noCursorMode?L"无光标":mappedCursorPresentation?L"全屏映射外置光标":nativeCursorPresentation()&&mode==L"hide"?L"原生光标":L"外部图层";
+ const wchar_t* kind=noCursorMode?L"无鼠标指针":mappedCursorPresentation?L"全屏映射外置鼠标指针":nativeCursorPresentation()&&mode==L"hide"?L"原生鼠标指针":L"外置鼠标指针图层";
  const wchar_t* ares=!aresKnown?L"检测未知":nativeFive?L"已检测到":L"未检测到";
  const wchar_t* runText=running?(manualCursorPause?L"手动暂停":L"运行中"):
    (!autoStart?L"已关闭":autoPaused?L"已暂停自动连接":L"等待自动连接");
@@ -1309,9 +1318,9 @@ static void diagnosticHud(){
  const wchar_t* animationText=!running?L"未运行（无补帧数据）":diagAnimation.c_str();
  const wchar_t* sourceText=!running?L"未启动":usingHeldSample?L"延用最近有效帧":bridgeFrame.has()?L"Hook 帧已验证":L"等待有效帧";
  wchar_t message[1800];
- swprintf(message,1800,L"高刷光标 v" RA2_RELEASE_VERSION_W L" 诊断  |  心跳 #%u  |  %ls / %ls\n"
+ swprintf(message,1800,L"高刷鼠标 v" RA2_RELEASE_VERSION_W L" 诊断  |  心跳 #%u  |  %ls / %ls\n"
  L"PID=%lu HWND=%p 前台PID=%lu  客户区=%ld×%ld\n"
- L"Hook=%ld (%ls)  错误=%ld  原生光标确认=%ld\n"
+ L"Hook=%ld (%ls)  错误=%ld  原生鼠标指针确认=%ld\n"
  L"Frame=%ls  热点=%ls  游戏=%d×%d  样本年龄=%ls  %ls\n"
  L"图像序号=%ld 已接收=%ld  提交=%.1f/s  补间=%.1f/s（非游戏FPS）\n"
  L"Hook采样=%ld 有效=%ld 读帧错误=%ld  原帧换帧=%.1f/s\n"
@@ -1437,7 +1446,7 @@ static void applyControlDpi(HWND w,UINT next){
  uiDpi=next;
  if(uiReady){setUiFont();viewport(w,scrollX,scrollY);relayout(w);}
 }
-static void error(const std::exception& e){std::wstring s=widen(e.what());status(L"错误："+s);cursorDialog(s.c_str(),L"高刷光标 v" RA2_RELEASE_VERSION_W,MB_OK|MB_ICONWARNING);}
+static void error(const std::exception& e){std::wstring s=widen(e.what());status(L"错误："+s);cursorDialog(s.c_str(),L"高刷鼠标 v" RA2_RELEASE_VERSION_W,MB_OK|MB_ICONWARNING);}
 static int numeric(HWND w,int min,int max){wchar_t b[32];GetWindowTextW(w,b,32);wchar_t* end;long n=wcstol(b,&end,10);if(end==b||*end||n<min||n>max)fail("Invalid numeric setting; check the range in README");return (int)n;}
 static void applyTargetRate(){
  wchar_t text[32];GetWindowTextW(targetBox,text,32);
@@ -1460,7 +1469,7 @@ static bool liveControl(HWND h){return h==scaleBox||h==offsetXBox||h==offsetYBox
 // Previews are rendered from local game resource cache in a separate process.
 // It never injects/reads the game; user can scrub/compare 1000Hz samples offline.
 static void previewCurrent(){
- if(!displayLoaded||workProfile.empty())fail("光标原图和色盘尚未就绪，请先选择图案或连接游戏");
+ if(!displayLoaded||workProfile.empty())fail("鼠标原图和色盘尚未就绪，请先选择图案或连接游戏");
  const std::wstring page=workProfile+L"\\preview.html";
  if(exists(page)){ShellExecuteW(mainw,L"open",page.c_str(),NULL,NULL,SW_SHOWNORMAL);return;}
  previewQueued=true;prepareQueue.reset();
@@ -1473,7 +1482,7 @@ static void togglePrimary(){
  if(autoStart&&!autoPaused){
   autoStart=false;autoPaused=true;
   if(running||hookStartupPending)stop();
-  status(L"已关闭外部光标与自动检测。原游戏光标是否显示由当前隐藏模式决定。");
+  status(L"已关闭外部鼠标与自动检测。原游戏鼠标指针是否显示由当前隐藏模式决定。");
  }else{
   autoStart=true;autoPaused=false;lastAutoCheck=0;
   status(L"已开启自动检测：等待兼容游戏窗口（支持随机进程名）。");
@@ -1589,7 +1598,7 @@ static void importStyle(){
  if(colors.size()==768){Bytes rgba(1024,255);int maxColor=*std::max_element(colors.begin(),colors.end());for(int i=0;i<256;i++)for(int c=0;c<3;c++)rgba[4*i+c]=uint8_t(std::min(255,int(colors[3*i+2-c])*(maxColor<=63?4:1)));colors=std::move(rgba);}
  if(colors.size()!=1024)fail("色盘必须为 768 字节 PAL 或 1024 字节 BGRA");for(int c=0;c<4;c++)colors[c]=0;
  CreateDirectoryW((root+L"\\profiles").c_str(),NULL);std::wstring id=L"user-"+std::to_wstring(GetTickCount64());std::wstring folder=root+L"\\profiles\\"+id;
- if(!CreateDirectoryW(folder.c_str(),NULL))fail("无法创建独立光标包目录");
+ if(!CreateDirectoryW(folder.c_str(),NULL))fail("无法创建独立鼠标包目录");
  save(folder+L"\\original.sha",bytes);save(folder+L"\\palette.bgra",colors);
  auto groups=parent/L"groups.json";save(folder+L"\\groups.json",file(exists(groups.wstring())?groups.wstring():root+L"\\assets\\groups.json"));
  save(folder+L"\\pairs.txt",file(root+L"\\assets\\pairs.txt"));save(folder+L"\\profile.ini",Bytes{0xff,0xfe});
@@ -1619,7 +1628,7 @@ static std::wstring preparePowerShell(){
  }
 #endif
  const auto program=base+L"\\WindowsPowerShell\\v1.0\\powershell.exe";
- if(!exists(program))fail("缺少 Windows PowerShell，无法准备可选的光标预处理依赖");
+ if(!exists(program))fail("缺少 Windows PowerShell，无法准备可选的鼠标指针预处理依赖");
  return program;
 }
 static bool cancelPrepare(){
@@ -1633,18 +1642,18 @@ static void closePrepare(){
 }
 static void materializeWorkProfile(){
  if(workProfile.empty()||workOriginal.empty()||workColors.size()!=1024||workGroups.empty())
-  fail("光标原图、色盘或动画分组尚未就绪");
+  fail("鼠标原图、色盘或动画分组尚未就绪");
  if(materializedProfile==workProfile)return;
  std::filesystem::create_directories(std::filesystem::path(workProfile));
  auto input=[&](const wchar_t*name,const Bytes&bytes){
   const std::wstring target=workProfile+L"\\"+name;
-  if(exists(target)){if(file(target)!=bytes)fail("光标缓存身份不匹配，请保留现有文件并更换缓存目录后重试");return;}
+  if(exists(target)){if(file(target)!=bytes)fail("鼠标缓存身份不匹配，请保留现有文件并更换缓存目录后重试");return;}
   static unsigned serial=0;
   const std::wstring temporary=target+L".source-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64())+L"-"+std::to_wstring(++serial);
   save(temporary,bytes);
   if(!MoveFileExW(temporary.c_str(),target.c_str(),MOVEFILE_WRITE_THROUGH)){
    DeleteFileW(temporary.c_str());
-   if(!exists(target)||file(target)!=bytes)fail("无法保存光标计算输入，请检查缓存目录权限后重试");
+   if(!exists(target)||file(target)!=bytes)fail("无法保存鼠标计算输入，请检查缓存目录权限后重试");
   }
  };
  input(L"original.sha",workOriginal);input(L"palette.bgra",workColors);
@@ -1653,7 +1662,7 @@ static void materializeWorkProfile(){
 static std::wstring prepareTaskDirectory(){
  const std::wstring parent=workProfile+L"\\.preprocess";
  if(!CreateDirectoryW(parent.c_str(),NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)
-  fail("无法创建预处理任务目录，请检查光标包目录的写入权限");
+  fail("无法创建预处理任务目录，请检查鼠标包目录的写入权限");
  static unsigned sequence=0;
  for(unsigned attempt=0;attempt<16;++attempt){
   const std::wstring task=parent+L"\\"+std::to_wstring(GetCurrentProcessId())+L"-"+
@@ -1666,7 +1675,7 @@ static std::wstring prepareTaskDirectory(){
 static void beginPrepare(){
  if(prepareProcess){
   prepareQueue.block();previewQueued=false;
-  textIfChanged(prepareInfo,cancelPrepare()?L"正在取消准备或预处理，已完成内容会保留":L"取消失败：无法写入光标包目录，请检查目录权限后重试");return;
+  textIfChanged(prepareInfo,cancelPrepare()?L"正在取消准备或预处理，已完成内容会保留":L"取消失败：无法写入鼠标包目录，请检查目录权限后重试");return;
  }
  prepareQueue.reset();previewQueued=false;materializedProfile.clear();
  launchPrepare(cursorondemand::Mode::All,{},false);
@@ -1687,7 +1696,7 @@ static void launchPrepare(cursorondemand::Mode mode,const std::vector<unsigned>&
  // User/machine settings are untouched; enforced Group Policy still applies.
  const std::wstring command=prepareArgument(program)+L" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "+prepareArgument(script)+
   L" -Profile "+prepareArgument(preparedProfile)+L" -Status "+prepareArgument(prepareStatus)+L" -Cancel "+prepareArgument(prepareCancel);
- if(command.size()>=32767)fail("工具箱或光标包目录路径过长，请移到较短的目录后重试");
+ if(command.size()>=32767)fail("工具箱或鼠标包目录路径过长，请移到较短的目录后重试");
  std::vector<wchar_t> args(command.begin(),command.end());args.push_back(0);STARTUPINFOW si{};si.cb=sizeof(si);PROCESS_INFORMATION pi{};
  if(!CreateProcessW(program.c_str(),args.data(),NULL,NULL,FALSE,CREATE_NO_WINDOW,NULL,root.c_str(),&si,&pi))
   fail("无法启动依赖准备，请检查 Windows PowerShell、目录权限和系统策略后重试");
@@ -1703,7 +1712,7 @@ static void serviceAutomaticPrepare(){
      (profileId.empty()&&!gameResourceConfirmed))return;
   prepareQueue.discardReady([](unsigned pair){return motionCache.count(pair)!=0;});
   const auto pairs=prepareQueue.take();if(!pairs.empty())launchPrepare(cursorondemand::Mode::Pairs,pairs,true);
- }catch(const std::exception&e){prepareQueue.block();previewQueued=false;log(L"按需光标缓存准备失败："+widen(e.what()));
+ }catch(const std::exception&e){prepareQueue.block();previewQueued=false;log(L"按需鼠标缓存准备失败："+widen(e.what()));
   textIfChanged(prepareButton,L"重试预处理");textIfChanged(prepareInfo,L"暂时使用原帧："+widen(e.what())+L"；可点击重试预处理");}
 }
 static void pollPrepare(){
@@ -1746,14 +1755,14 @@ static void pollPrepare(){
    textIfChanged(prepareInfo,std::wstring(L"依赖准备失败：")+(*message?message:L"请检查网络和目录权限")+L"；可点击重试预处理");
   else if(!*state)
    textIfChanged(prepareInfo,L"依赖准备未启动或已中断；检查 Windows PowerShell、系统策略和目录权限后重试");
-  else textIfChanged(prepareInfo,L"预处理失败：详情见光标包 .preprocess 内的任务日志，可点击重试");
+  else textIfChanged(prepareInfo,L"预处理失败：详情见鼠标包 .preprocess 内的任务日志，可点击重试");
   log(L"Preprocessing failed (exit="+std::to_wstring(code)+L"): "+prepareStatus);
  }
 }
 
 static bool cursorCloseAllowed(){
  if(mode==L"sha"&&live()&&(exists(gameDir+L"\\mouse.sha.cursor-preview-state")||manuallyBlankSHA()))
-  return cursorDialog(L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明光标文件",MB_YESNO|MB_ICONWARNING)==IDYES;
+  return cursorDialog(L"游戏正在使用透明鼠标指针。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明鼠标指针文件",MB_YESNO|MB_ICONWARNING)==IDYES;
  return true;
 }
 #include "refresh_settings_ui.h"
@@ -1891,24 +1900,24 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  if(!wcsstr(cmd,L"restore")&&explicitCursorSelection)WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
  WNDCLASSW wc={};wc.hInstance=inst;wc.lpfnWndProc=wndproc;wc.lpszClassName=L"RA2CursorControl3";wc.hCursor=LoadCursor(NULL,IDC_ARROW);panelBrush=CreateSolidBrush(modernui::Background);headerBrush=CreateSolidBrush(modernui::Field);statusBrush=CreateSolidBrush(modernui::Surface);wc.hbrBackground=panelBrush;RegisterClassW(&wc);wc.lpfnWndProc=overlayProc;wc.lpszClassName=L"RA2CursorOverlay3";wc.hbrBackground=NULL;wc.hCursor=NULL;RegisterClassW(&wc);
  wc.lpfnWndProc=hudProc;wc.lpszClassName=L"RA2CursorHUD9";RegisterClassW(&wc);
- std::wstring title=L"高刷光标 v" RA2_RELEASE_VERSION_W;
+ std::wstring title=L"高刷鼠标 v" RA2_RELEASE_VERSION_W;
  mainw=CreateWindowExW(0,L"RA2CursorControl3",title.c_str(),WS_OVERLAPPEDWINDOW|WS_VSCROLL|WS_HSCROLL|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,490,405,NULL,NULL,inst,NULL);
  {cursorcoordinates::CoordinateScope coordinates;if(!ensureCoordinateWindows(coordinates))log(L"Cursor presentation windows are not ready; retrying on the next active frame");}
- const wchar_t* labels[]={L"连接游戏",L"游戏目录",L"安装透明光标",L"恢复原文件",L"启动",L"停止"};
+ const wchar_t* labels[]={L"连接游戏",L"游戏目录",L"安装透明鼠标指针",L"恢复原文件",L"启动",L"停止"};
  for(int i=0;i<6;i++){HWND bt=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,15+(i%3)*245,15+(i/3)*45,226,34,mainw,(HMENU)(INT_PTR)(i+1),inst,NULL);SendMessageW(bt,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);if(i==2){installBox=bt;EnableWindow(bt,FALSE);ShowWindow(bt,SW_HIDE);}if(i==3){restoreBox=bt;SetWindowPos(bt,NULL,505,15,226,34,SWP_NOZORDER|SWP_NOACTIVATE);}if(i>=4)SetWindowPos(bt,NULL,15+((i-1)%3)*245,15+((i-1)/3)*45,226,34,SWP_NOZORDER|SWP_NOACTIVATE);}
  statusw=CreateWindowW(L"STATIC",L"等待游戏",WS_CHILD|WS_VISIBLE,15,115,735,44,mainw,NULL,inst,NULL);SendMessageW(statusw,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- HWND labelMode=CreateWindowW(L"STATIC",L"光标模式",WS_CHILD|WS_VISIBLE,15,172,90,22,mainw,NULL,inst,NULL);SendMessageW(labelMode,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+ HWND labelMode=CreateWindowW(L"STATIC",L"鼠标模式",WS_CHILD|WS_VISIBLE,15,172,90,22,mainw,NULL,inst,NULL);SendMessageW(labelMode,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  modeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS,105,168,380,110,mainw,NULL,inst,NULL);
- for(const wchar_t* text:{L"保留原光标",L"隐藏原光标",L"透明光标文件",L"无光标模式（高级）"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
+ for(const wchar_t* text:{L"保留原鼠标指针",L"隐藏原鼠标指针",L"透明鼠标指针文件",L"无鼠标指针模式（高级）"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
  SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);SendMessageW(modeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- disabledchoices::set(modeBox,0x0b);modernui::tip(modeBox,L"透明光标替换已停用；不会修改游戏原文件。");
+ disabledchoices::set(modeBox,0x0b);modernui::tip(modeBox,L"透明鼠标指针替换已停用；不会修改游戏原文件。");
 
 
  HWND note=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,15,212,735,58,mainw,NULL,inst,NULL);SendMessageW(note,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  scalePercent=(int)GetPrivateProfileIntW(L"Cursor",L"ScalePercent",100,ini().c_str());scalePercent=std::max(25,std::min(400,scalePercent));offsetX=(int)GetPrivateProfileIntW(L"Cursor",L"HotspotOffsetX",0,ini().c_str());offsetY=(int)GetPrivateProfileIntW(L"Cursor",L"HotspotOffsetY",0,ini().c_str());offsetX=std::max(-256,std::min(256,offsetX));offsetY=std::max(-256,std::min(256,offsetY));autoScale=GetPrivateProfileIntW(L"Cursor",L"AutoScale",0,ini().c_str())!=0;aspectFit=GetPrivateProfileIntW(L"Cursor",L"AspectFit",0,ini().c_str())!=0;
  if(lanboPreset){offsetX=offsetY=0;}
  auto label=[&](const wchar_t* text,int x,int y,int width){HWND q=CreateWindowW(L"STATIC",text,WS_CHILD|WS_VISIBLE,x,y,width,22,mainw,NULL,inst,NULL);SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);};
- label(L"光标缩放",15,280,65);scaleBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWN|WS_VSCROLL,80,276,90,180,mainw,NULL,inst,NULL);for(auto v:{100,125,150,200})SendMessageW(scaleBox,CB_ADDSTRING,0,(LPARAM)std::to_wstring(v).c_str());SetWindowTextW(scaleBox,std::to_wstring(scalePercent).c_str());
+ label(L"鼠标缩放",15,280,65);scaleBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWN|WS_VSCROLL,80,276,90,180,mainw,NULL,inst,NULL);for(auto v:{100,125,150,200})SendMessageW(scaleBox,CB_ADDSTRING,0,(LPARAM)std::to_wstring(v).c_str());SetWindowTextW(scaleBox,std::to_wstring(scalePercent).c_str());
  label(L"水平偏移",185,280,65);offsetXBox=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",std::to_wstring(offsetX).c_str(),WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,250,276,65,24,mainw,NULL,inst,NULL);
  label(L"垂直偏移",330,280,65);offsetYBox=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",std::to_wstring(offsetY).c_str(),WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,395,276,65,24,mainw,NULL,inst,NULL);
  autoBox=CreateWindowW(L"BUTTON",L"自动缩放",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,315,220,26,mainw,NULL,inst,NULL);fitBox=CreateWindowW(L"BUTTON",L"保持纵横比",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,245,315,255,26,mainw,NULL,inst,NULL);
@@ -1919,7 +1928,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  label(L"位置映射",15,350,110);positionModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,130,346,595,160,mainw,NULL,inst,NULL);
  for(const wchar_t* text:{L"自动匹配游戏",L"跟随系统鼠标",L"游戏画布拉伸到全屏"})SendMessageW(positionModeBox,CB_ADDSTRING,0,(LPARAM)text);
  SendMessageW(positionModeBox,CB_SETCURSEL,positionMode,0);SendMessageW(positionModeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- modernui::tip(positionModeBox,L"如果游戏画面被拉伸到全屏而光标位置不准，可选择“游戏画布拉伸到全屏”。自动模式会根据游戏和屏幕分辨率匹配光标位置。");
+ modernui::tip(positionModeBox,L"如果游戏画面被拉伸到全屏而鼠标位置不准，可选择“游戏画布拉伸到全屏”。自动模式会根据游戏和屏幕分辨率匹配鼠标位置。");
  auto edit=[&](int v,int x,int y,int width){HWND q=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",std::to_wstring(v).c_str(),WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,x,y,width,24,mainw,NULL,inst,NULL);SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);return q;};
  label(L"游戏分辨率（宽 / 高）",15,390,75);gameWBox=edit(gameWOverride,90,386,70);gameHBox=edit(gameHOverride,170,386,70);label(L"屏幕分辨率（宽 / 高）",265,390,80);screenWBox=edit(screenWOverride,350,386,70);screenHBox=edit(screenHOverride,430,386,70);label(L"系统缩放（%）",520,390,105);dpiBox=edit(dpiOverride,635,386,90);
  label(L"缩放方式",15,430,345);dpiModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,365,426,360,140,mainw,NULL,inst,NULL);for(const wchar_t* text:{L"物理像素",L"系统缩放",L"抵消缩放"})SendMessageW(dpiModeBox,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(dpiModeBox,CB_SETCURSEL,dpiMode,0);SendMessageW(dpiModeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
@@ -1943,7 +1952,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  nativeGameRefresh=mode==L"hide"&&GetPrivateProfileIntW(L"Display",L"GameThreadRefresh",0,ini().c_str())!=0;
  if(wcsstr(cmd,L"--game-refresh")&&mode==L"hide")nativeGameRefresh=true;
  nativeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,114,174,226,130,mainw,(HMENU)12,inst,NULL);
- SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置光标");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"游戏内光标（需隐藏模式）");
+ SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置鼠标指针");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"游戏内鼠标指针（需隐藏模式）");
  SendMessageW(nativeBox,CB_SETCURSEL,nativeGameRefresh?1:0,0);
  hudEnabled=GetPrivateProfileIntW(L"Display",L"HUD",0,ini().c_str())!=0;hudBox=CreateWindowW(L"BUTTON",L"状态面板",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,540,705,210,26,mainw,(HMENU)9,inst,NULL);SendMessageW(hudBox,BM_SETCHECK,hudEnabled?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(hudBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  // Keep the existing settings intact, but move them into an initially hidden
@@ -1963,8 +1972,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   else if(child!=nativeBox){logical.y+=advancedOffsetY;advancedControls.push_back(child);ShowWindow(child,SW_HIDE);}
   controlOrigins.push_back({child,logical});
  }
- titleLabel=CreateWindowW(L"STATIC",L"显示设置",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
- subTitleLabel=CreateWindowW(L"STATIC",L"调整光标样式与画面效果。",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
+ titleLabel=CreateWindowW(L"STATIC",L"鼠标设置",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
+ subTitleLabel=CreateWindowW(L"STATIC",L"调整鼠标样式与画面效果。",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
  primaryAction=CreateWindowW(L"BUTTON",L"暂停",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,20,128,132,34,mainw,(HMENU)101,inst,nullptr);
  advancedAction=CreateWindowW(L"BUTTON",L"高级设置 ▾",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,164,128,176,34,mainw,(HMENU)102,inst,nullptr);
  quickInfo=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,20,250,320,20,mainw,nullptr,inst,nullptr);
@@ -1976,15 +1985,15 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  auto extra=[&](HWND h,uidpi::Rect r){controlOrigins.push_back({h,r});advancedControls.push_back(h);};
  settingsHint=CreateWindowW(L"STATIC",L"",WS_CHILD,180,222,555,22,mainw,NULL,inst,NULL);extra(settingsHint,{180,222,555,22});
  styleBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST,20,254,320,240,mainw,NULL,inst,NULL);extra(styleBox,{20,254,320,240});
- HWND import=CreateWindowW(L"BUTTON",L"导入光标资源",WS_CHILD|BS_PUSHBUTTON,350,254,108,30,mainw,(HMENU)130,inst,NULL);extra(import,{350,254,108,30});
+ HWND import=CreateWindowW(L"BUTTON",L"导入鼠标资源",WS_CHILD|BS_PUSHBUTTON,350,254,108,30,mainw,(HMENU)130,inst,NULL);extra(import,{350,254,108,30});
  prepareButton=CreateWindowW(L"BUTTON",L"预处理补帧",WS_CHILD|BS_PUSHBUTTON,468,254,128,30,mainw,(HMENU)131,inst,NULL);extra(prepareButton,{468,254,128,30});
- modernui::tip(prepareButton,L"准备光标资源；缺少的文件会自动下载。可随时取消或重试。");
+ modernui::tip(prepareButton,L"准备鼠标资源；缺少的文件会自动下载。可随时取消或重试。");
  HWND groupEdit=CreateWindowW(L"BUTTON",L"动画分组",WS_CHILD|BS_PUSHBUTTON,606,254,128,30,mainw,(HMENU)132,inst,NULL);extra(groupEdit,{606,254,128,30});
  prepareInfo=CreateWindowW(L"STATIC",L"",WS_CHILD,20,290,710,22,mainw,NULL,inst,NULL);extra(prepareInfo,{20,290,710,22});
  superCenter=GetPrivateProfileIntW(L"Cursor",L"SuperWeaponVisualCenter",0,ini().c_str())!=0;
- superCenterBox=CreateWindowW(L"BUTTON",L"超级武器光标居中",WS_CHILD|BS_AUTOCHECKBOX,20,1095,510,25,mainw,(HMENU)154,inst,NULL);extra(superCenterBox,{20,1095,510,25});
+ superCenterBox=CreateWindowW(L"BUTTON",L"超级武器鼠标指针居中",WS_CHILD|BS_AUTOCHECKBOX,20,1095,510,25,mainw,(HMENU)154,inst,NULL);extra(superCenterBox,{20,1095,510,25});
  SendMessageW(superCenterBox,BM_SETCHECK,superCenter?BST_CHECKED:BST_UNCHECKED,0);
- modernui::tip(superCenterBox,L"让超级武器光标的中心对准点击位置。");
+ modernui::tip(superCenterBox,L"让超级武器鼠标指针的中心对准点击位置。");
  detailLabel=CreateWindowW(L"STATIC",L"",WS_CHILD,20,1122,720,42,mainw,NULL,inst,NULL);extra(detailLabel,{20,1122,720,42});
  HWND displayLabel=CreateWindowW(L"STATIC",L"显示方式",WS_CHILD|WS_VISIBLE,20,178,88,22,mainw,nullptr,inst,nullptr);
  controlOrigins.push_back({displayLabel,{20,178,88,22}});
@@ -2002,10 +2011,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  };
  basic(L"STATIC",L"高刷范围",20,254,88,22,0);
  refreshModeBox=basic(L"COMBOBOX",L"",114,250,626,150,155,CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_TABSTOP);
- for(const wchar_t* text:{L"仅光标",L"光标＋拖屏（实验性）",L"全部（实验性）",L"强制高刷（实验性 · 联机待验证）"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
+ for(const wchar_t* text:{L"仅鼠标",L"鼠标＋拖屏（实验性）",L"全部（实验性）",L"强制高刷（实验性 · 联机待验证）"})SendMessageW(refreshModeBox,CB_ADDSTRING,0,(LPARAM)text);
  disabledchoices::set(refreshModeBox,1);
  refreshStateLabel=basic(L"STATIC",L"读取设置…",20,294,720,24,0);
- modernui::tip(refreshModeBox,L"选择光标刷新策略。");
+ modernui::tip(refreshModeBox,L"选择鼠标刷新策略。");
  modernui::tip(targetBox,L"选择自动刷新，或设置 30–500 FPS。");
  EnableWindow(refreshModeBox,FALSE);
 #endif
@@ -2027,11 +2036,11 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   if(!_wcsicmp(cls,L"BUTTON")||!_wcsicmp(cls,L"EDIT")||!_wcsicmp(cls,L"COMBOBOX"))
    SetWindowLongPtrW(c.handle,GWL_STYLE,GetWindowLongPtrW(c.handle,GWL_STYLE)|WS_TABSTOP);
  }
- modernui::tip(primaryAction,L"启用或停用高刷新率光标。快捷键：Ctrl+Alt+F11。");
- modernui::tip(styleBox,L"选择要使用的光标主题，不会覆盖游戏原文件。");
- modernui::tip(prepareButton,L"生成光标动画；可随时取消，已完成部分会保留。");
- modernui::tip(import,L"导入兼容红警与尤里的光标资源包。");
- modernui::tip(groupEdit,L"编辑当前光标包的动画分组。");
+ modernui::tip(primaryAction,L"启用或停用高刷新率鼠标指针。快捷键：Ctrl+Alt+F11。");
+ modernui::tip(styleBox,L"选择要使用的鼠标主题，不会覆盖游戏原文件。");
+ modernui::tip(prepareButton,L"生成鼠标动画；可随时取消，已完成部分会保留。");
+ modernui::tip(import,L"导入兼容红警与尤里的鼠标资源包。");
+ modernui::tip(groupEdit,L"编辑当前鼠标包的动画分组。");
  modernui::styleChildren(mainw);
  refreshStyleList();
  uiReady=true;
@@ -2076,7 +2085,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   SetPropW(c.handle,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(c.logical.y)+1));
   SetPropW(c.handle,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(c.logical.x)+1));
   if(std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end()){
-   SetPropW(c.handle,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(L"高级光标设置")));
+   SetPropW(c.handle,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(L"高级鼠标指针设置")));
    SetPropW(c.handle,L"RA2.Console.Collapsible",reinterpret_cast<HANDLE>(1));
    SetPropW(c.handle,L"RA2.Console.CollapsedDefault",reinterpret_cast<HANDLE>(1));
   }

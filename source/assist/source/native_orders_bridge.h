@@ -120,10 +120,10 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  // No 16K passenger walk on every game frame (which can exceed 800Hz).
  // The explicit Ctrl+D command independently gathers its own latest cohort.
  if(lastUnloadHistoryTick&&DWORD(now-lastUnloadHistoryTick)<33)return;
- SampleReadScope sample;if(!sample)return;
- Vec inf{};if(!sampleRoster(0xA83DE8,inf))return;
  static RecentPassenger staged[nativeorders::MaxPassengers];
  int stagedCount=recentPassengerCount;
+ const auto collect=[&]()->bool{
+ Vec inf{};if(!sampleRoster(0xA83DE8,inf))return false;
  std::memcpy(staged,recentPassengers,sizeof(RecentPassenger)*stagedCount);
  for(int n=0;n<stagedCount;){auto&r=staged[n];
   const bool expired=DWORD(now-r.tick)>1500||frame<r.frame;
@@ -148,7 +148,10 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
   if(at<0){if(stagedCount==nativeorders::MaxPassengers)continue;at=stagedCount++;history.add(p,at);}
   staged[at]={p,uid,carrier,carrierUID,typeOf(carrier,2),manualVersions.get(uid),now,frame};
  }
- if(!sample.complete())return;
+ return true;
+ };
+ if(runtimeDirectActions){if(!collect())return;}
+ else {SampleReadScope sample;if(!sample||!collect()||!sample.complete())return;}
  recentPassengerCount=stagedCount;
  std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
  lastUnloadHistoryTick=now;
@@ -183,7 +186,7 @@ struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
 static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*3];static UnloadRosterEntry unloadRosterScratch[nativeorders::MaxPassengers*3];static int unloadRosterCount;
 static bool buildUnloadAdmissionRoster(uint32_t house){
  unloadRosterCount=0;
- SampleReadScope sample;if(!sample)return false;
+ const auto collect=[&]()->bool{
  Vec inf{};if(!sampleRoster(0xA83DE8,inf))return false;
  for(int n=0;n<inf.count&&unloadRosterCount<nativeorders::MaxPassengers;++n){uint32_t p=item(inf,n),carrier=p?get<uint32_t>(p+0x11C):0;
   if(!carrier||!worldObjects.contains(carrier)||queuedUnload.find(carrier,get<uint32_t>(carrier+0x10))<0||!unloadPassengerEligible(p,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
@@ -208,7 +211,12 @@ static bool buildUnloadAdmissionRoster(uint32_t house){
   if(queuedUnload.find(r.carrier,r.carrierID)>=0)
    unloadRoster[unloadRosterCount++]={r.carrier,r.p,r.id,r.token,-n-2};
  }
- if(!sample.complete()||!unloadpolicy::radixSortRoster(unloadRoster,unloadRosterScratch,unloadRosterCount)){
+ return true;
+ };
+ bool collected=false;
+ if(runtimeDirectActions)collected=collect();
+ else {SampleReadScope sample;collected=sample&&collect()&&sample.complete();}
+ if(!collected||!unloadpolicy::radixSortRoster(unloadRoster,unloadRosterScratch,unloadRosterCount)){
   unloadRosterCount=0;
   return false;
  }
@@ -396,8 +404,8 @@ static int smartUnload(uint32_t house,bool candidateOnly=false){
  // This only remembers members of the explicitly selected own transports;
  // all UID/manual-command/owner/filter checks still run at admission.
  if(count&&!candidateOnly){
-  SampleReadScope sample;Vec inf{};
-  if(sample&&sampleRoster(0xA83DE8,inf)){
+  const auto capture=[&](SampleReadScope* sample)->bool{
+   Vec inf{};if(!sampleRoster(0xA83DE8,inf))return false;
    static RecentPassenger staged[nativeorders::MaxPassengers];
    int stagedCount=recentPassengerCount;
    std::memcpy(staged,recentPassengers,sizeof(RecentPassenger)*stagedCount);
@@ -411,7 +419,7 @@ static int smartUnload(uint32_t house,bool candidateOnly=false){
    if(at<0){if(stagedCount==nativeorders::MaxPassengers)continue;at=stagedCount++;tracked.add(q,at);}
    staged[at]={q,id,carrier,carrierID,typeOf(carrier,2),manualVersions.get(id),now,frame};
    }
-   if(sample.complete()){
+   if(!sample||sample->complete()){
     // Publish only an all-or-nothing click cohort. Keep still-pending other
     // carriers; a fresh Ctrl+D supersedes only its selected carrier identities.
     static RecentPassenger cohort[nativeorders::MaxPassengers];
@@ -440,14 +448,17 @@ static int smartUnload(uint32_t house,bool candidateOnly=false){
         get<uint32_t>(r.carrier+0x10)!=r.carrierID)continue;
      if(!append(r)){complete=false;break;}
     }
-    if(complete){
+    if(complete&&(!sample||sample->complete())){
      frozenUnloadCount=cohortCount;
      std::memcpy(frozenUnloadPassengers,cohort,sizeof(RecentPassenger)*cohortCount);
      recentPassengerCount=stagedCount;
      std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
     }
    }
-  }
+   return true;
+  };
+  if(runtimeDirectActions)capture(nullptr);
+  else {SampleReadScope sample;if(sample)capture(&sample);}
  }
  return count; // acknowledgement means arranged, not physically unloaded
 }
@@ -497,11 +508,11 @@ static void watchEjections(uint32_t house,int frame){
   for(int i=0;i<unloadCount;++i)watchedPassengers.add(unloadPassengers[i].p,unloadPassengers[i].id);
  };
  rebuildWatched();
- SampleReadScope frameRead;if(!frameRead)return;
- Vec inf{};if(!sampleRoster(0xA83DE8,inf))return;
  static UnloadPassenger pending[nativeorders::MaxPassengers];
  static ObjectIndex pendingIndex;
  pendingIndex.clear();int pendingCount=0,observed=0;
+ const auto collect=[&]()->bool{
+ Vec inf{};if(!sampleRoster(0xA83DE8,inf))return false;
  for(int j=0;j<inf.count;++j){
   const uint32_t p=item(inf,j);if(!p||!worldObjects.contains(p))continue;
   uint32_t owner=0,carrier=0;
@@ -530,9 +541,12 @@ static void watchEjections(uint32_t house,int frame){
   r.carrierID=carrierID;r.carrierType=carrierType;r.frame=frame;r.mode=1;
   r.manualToken=manualVersions.get(id);pendingIndex.add(p,id);
  }
- if(!frameRead.complete()){
-  snap.ejectWatched=0;rebuildWatched();return;
- }
+ return true;
+ };
+ bool collected=false;
+ if(runtimeDirectActions)collected=collect();
+ else {SampleReadScope frameRead;collected=frameRead&&collect()&&frameRead.complete();}
+ if(!collected){snap.ejectWatched=0;rebuildWatched();return;}
  snap.ejectWatched=observed;
  for(int i=0;i<pendingCount&&unloadCount<nativeorders::MaxPassengers;++i){
   auto&r=unloadPassengers[unloadCount++];r=pending[i];r.job=++unloadJobSerial;

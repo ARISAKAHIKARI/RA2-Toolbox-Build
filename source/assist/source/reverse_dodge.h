@@ -2,7 +2,16 @@
 #include <stdint.h>
 // Pure bounded geometry. One map cell is 256 leptons on either map axis.
 namespace assist {namespace reversedodge {
-constexpr int MergeFrames=12; // Fixed window from the accepted Move; never slides.
+constexpr uint32_t MergeMs=200,ProcessingMs=133,ShotRetentionMs=15000; // 12/8/900 frames at 60 FPS.
+inline bool withinMergeWindow(uint32_t now,uint32_t acceptedAt){
+ return int32_t(now-acceptedAt)>=0&&uint32_t(now-acceptedAt)<=MergeMs;
+}
+inline bool shotExpired(uint32_t now,uint32_t seenAt){
+ return int32_t(now-seenAt)>=0&&uint32_t(now-seenAt)>ShotRetentionMs;
+}
+inline bool processingExpired(uint32_t now,uint32_t firstSeenAt){
+ return int32_t(now-firstSeenAt)>=0&&uint32_t(now-firstSeenAt)>ProcessingMs;
+}
 struct Point{int x=0,y=0;};
 inline unsigned root(unsigned n){unsigned r=0,bit=1u<<30;while(bit>n)bit>>=2;while(bit){if(n>=r+bit){n-=r+bit;r=(r>>1)+bit;}else r>>=1;bit>>=2;}return r;}
 inline bool vector(double vx,double vy,Point&out){

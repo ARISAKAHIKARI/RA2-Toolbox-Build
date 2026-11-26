@@ -86,6 +86,29 @@ void setup(Memory&m){
 }
 
 void hostVisual(){
+ // Metadata loading may fail across many high-refresh callbacks. Only one
+ // attempt per 100 ms, including tick zero and rollover; reset permits an
+ // immediate explicit refresh without altering successful catalogue age.
+ {external::catalogue::ProbeRetryGate gate;CHECK(gate.begin(0));
+  for(uint32_t i=0;i<100;++i)CHECK(!gate.begin(i));
+  CHECK(gate.begin(100));CHECK(!gate.begin(101));gate.reset();CHECK(gate.begin(101));
+  gate.reset();CHECK(gate.begin(0xFFFFFFF0u));CHECK(!gate.begin(20));CHECK(gate.begin(84));
+ }
+ // At capacity, one expired lease is replaced by a new page. Total count
+ // remains MaxPages, but the previous graph no longer covers the demand.
+ {
+  worldframe::VisualCache cache;std::vector<uint32_t>pages;
+  for(uint32_t i=0;i<worldframe::MaxPages;++i)pages.push_back(0x10000000u+i*worldframe::PageSize);
+  CHECK(cache.request(pages,100,false));
+  CHECK(!cache.request({pages.front()},101,false));
+  std::vector<uint32_t>keep(pages.begin()+1,pages.end());
+  CHECK(!cache.request(keep,1101,false));
+  const uint32_t replacement=pages.back()+worldframe::PageSize;
+  CHECK(!cache.request({replacement},1101,false));
+  CHECK(cache.request({replacement},1102,false));
+  CHECK(!cache.request({replacement},1103,false));
+  CHECK(cache.request({},1103,true));
+ }
  Memory m;setup(m);Read live{&m};auto raw=std::make_shared<worldframe::Snapshot>();raw->reset(key());
  worldframe::CaptureGraph<Read>graph(*raw,live);CHECK(graph.capture(worldframe::Base,{}));CHECK(raw->seal());
  const auto rawBytes=raw->counters.bytes,rawCalls=raw->counters.calls;const size_t rawPages=raw->pages.size();
@@ -98,6 +121,13 @@ void hostVisual(){
  CHECK(raw->counters.bytes==rawBytes&&raw->counters.calls==rawCalls&&raw->pages.size()==rawPages);
  CHECK(visual->counters.bytes>=rawBytes+512*4096&&visual->pages.size()>=rawPages+512);
  const auto calls=m.calls.size();CHECK(cache.acquire(raw,worldframe::Resources,101,live)==visual&&m.calls.size()==calls);
+ // A first reader's dependency report for a fully covered graph page must
+ // renew the lease, not invalidate the immutable observation.
+ const uint32_t actorPage=ActorA&~4095u;
+ CHECK(visual->find(actorPage)&&visual->find(actorPage)->full);
+ CHECK(!cache.request({actorPage},101,false,visual));
+ CHECK(cache.acquire(raw,worldframe::Resources,101,live)==visual&&m.calls.size()==calls);
+ CHECK(cache.statistics.captures==1&&cache.statistics.buildInitial==1&&cache.statistics.coveredLeases==1);
  CHECK(worldframe::authoritative(visual)==raw&&!worldframe::sameObservation(raw,visual));
  CHECK(worldframe::visualDemand(worldframe::Resources|worldframe::Visual));
  CHECK(!worldframe::visualDemand(worldframe::Resources|worldframe::Combat));
@@ -112,6 +142,14 @@ void hostVisual(){
  CHECK(!cache.acquire(raw,worldframe::Resources,102,live));auto extended=cache.acquire(raw,worldframe::Resources,116,live);
  CHECK(extended&&extended!=visual&&extended->visualSerial>visual->visualSerial&&extended->read(extra,&value,4)&&value==456);
  CHECK(!visual->read(extra,&value,4)&&raw->key.tick==100&&extended->key.tick==100);
+ // An old consumer reports the same missing page after it was repaired.
+ // No new full graph capture is warranted; a current report still retries.
+ const auto repairedCalls=m.calls.size();
+ CHECK(!cache.request({extra&~4095u},117,true,visual));
+ CHECK(cache.acquire(raw,worldframe::Resources,117,live)==extended);
+ CHECK(m.calls.size()==repairedCalls);
+ CHECK(cache.statistics.buildRevision==1&&cache.statistics.buildSameSource==1&&cache.statistics.repairedReports==1);
+ CHECK(cache.request({extra&~4095u},117,true,extended));
  CHECK(!cache.acquire(extended,worldframe::Visual,133,live));
  // Independent world/frame guards, including a mutation during collection.
  cache.request({0xE01000},133,true);bool changed=false;
@@ -136,14 +174,37 @@ void hostVisual(){
  auto original=fast.acquire(first,worldframe::Resources,200,live);CHECK(original);
  m.put(0xA8ED84,60);auto next=boundary(60,208);
  CHECK(fast.acquire(next,worldframe::Resources,208,live)==original&&fast.statistics.captures==1);
+ const auto repeatedBoundaryReads=m.calls.size();
+ CHECK(fast.acquire(next,worldframe::Resources,209,live)==original);
+ CHECK(m.calls.size()==repeatedBoundaryReads&&fast.statistics.captures==1);
  CHECK(original->controlSource==first&&original->visualTick==200);
- auto refreshed=fast.acquire(next,worldframe::Resources,216,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
+ CHECK(worldframe::visualReuseWindow(256)==10&&worldframe::visualReuseWindow(257)==16);
+ CHECK(original->pages.size()<=256);
+ auto refreshed=fast.acquire(next,worldframe::Resources,210,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
+ CHECK(fast.acquire(next,worldframe::Resources,216,live)==refreshed);
+ CHECK(original->visualTick==200&&refreshed->visualTick==210);
+ const auto guardsBefore=m.calls.size();
+ auto stamp=worldframe::visualStamp(live,*next);
+ CHECK(stamp.valid&&m.calls.size()==guardsBefore+8);
+ m.denied.push_back({0x87F7E8+0x140,4});
+ CHECK(!worldframe::visualStamp(live,*next).valid);m.denied.pop_back();
  m.put(0xA8ED84,61);m.put(0x87F7E8+0x1240,64);
  auto resized=boundary(61,217);auto resizedCapture=fast.acquire(resized,worldframe::Resources,217,live);
  CHECK(resizedCapture&&resizedCapture->controlSource==resized&&fast.statistics.captures==3);
  m.put(0xA8ED84,59);auto rewound=boundary(59,218);
  auto rewindCapture=fast.acquire(rewound,worldframe::Resources,218,live);
  CHECK(rewindCapture&&rewindCapture->controlSource==rewound&&fast.statistics.captures==4);
+ // A consumer of the previous match may release its pinned snapshot after
+ // the new match has already built a display graph.
+ auto changedWorld=std::make_shared<worldframe::Snapshot>();auto changedKey=rewound->key;
+ ++changedKey.match;++changedKey.serial;changedWorld->reset(changedKey);CHECK(changedWorld->seal());
+ auto freshWorld=fast.acquire(changedWorld,worldframe::Resources,234,live);
+ CHECK(freshWorld&&freshWorld->controlSource==changedWorld);
+ const auto worldCalls=m.calls.size();const auto worldCaptures=fast.statistics.captures;
+ CHECK(!fast.request({0xE80000},235,true,rewindCapture));
+ CHECK(fast.acquire(changedWorld,worldframe::Resources,235,live)==freshWorld);
+ CHECK(m.calls.size()==worldCalls&&fast.statistics.captures==worldCaptures&&fast.statistics.retiredReports==1);
+ CHECK(fast.request({0xE80000},235,true,freshWorld));
  std::printf("PASS Host visual isolation: control %u reads/%u bytes/%zu pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection\n",rawCalls,rawBytes,rawPages);
 }
 
@@ -173,6 +234,40 @@ void overlap(){
  std::vector<worldframe::Page>pages(s.pages.data(),s.pages.data()+s.pages.size());pages[1].address=pages[0].address;CHECK(!imported.import(s.key,{},pages.data(),pages.size()));CHECK(!imported.sealed());
  pages.assign(s.pages.data(),s.pages.data()+s.pages.size());pages[0].address++;CHECK(!imported.import(s.key,{},pages.data(),pages.size()));pages.assign(s.pages.data(),s.pages.data()+s.pages.size());pages[0].full=2;CHECK(!imported.import(s.key,{},pages.data(),pages.size()));
  CHECK(!imported.import(s.key,{},nullptr,1));CHECK(!imported.import(s.key,{},s.pages.data(),size_t(worldframe::MaxPages)+1));CHECK(imported.import(s.key,{},nullptr,0));CHECK(!imported.read(0x10000,out.data(),4));
+ // Reuse one snapshot across full -> empty -> full imports. A zero-page
+ // boundary must hide old indices and preserve the empty read-set semantics.
+ CHECK(imported.import(s.key,s.counters,s.pages.data(),s.pages.size()));
+ auto emptyKey=s.key;emptyKey.demand|=worldframe::BoundaryOnlyKeyBit;
+ CHECK(imported.import(emptyKey,{},nullptr,0));
+ CHECK(imported.sealed()&&imported.pages.size()==0&&!imported.find(0x10000));
+ CHECK(!imported.observed(0x10FF8,24));
+ CHECK(imported.import(s.key,s.counters,s.pages.data(),s.pages.size()));
+ CHECK(imported.read(0x10FF8,out.data(),24));
+ // Swap full and zero-page snapshots in both directions. The valid
+ // lookup must follow its page buffer, never expose old boundary bytes.
+ worldframe::Snapshot boundary;
+ emptyKey.frame=51;CHECK(boundary.import(emptyKey,{},nullptr,0));
+ imported.swap(boundary);
+ CHECK(imported.key.frame==51&&imported.pages.size()==0&&!imported.find(0x10000));
+ CHECK(boundary.read(0x10FF8,out.data(),24)&&boundary.key.frame==s.key.frame);
+ imported.swap(boundary);
+ CHECK(imported.read(0x10FF8,out.data(),24)&&!boundary.find(0x10000));
+ // Both invalid indices can be skipped, but identities still move.
+ worldframe::Snapshot empty2;emptyKey.frame=52;
+ CHECK(empty2.import(emptyKey,{},nullptr,0));
+ boundary.swap(empty2);
+ CHECK(boundary.key.frame==52&&empty2.key.frame==51);
+ CHECK(!boundary.find(0x10000)&&!empty2.find(0x10000));
+ // Two valid lookup tables with different page order/content must swap.
+ const auto*last=s.pages.data()+s.pages.size()-1;
+ CHECK(boundary.import(key(53),{},last,1));
+ const uint32_t address=last->address;
+ imported.swap(boundary);
+ CHECK(imported.key.frame==53&&imported.pages.size()==1&&imported.find(address));
+ CHECK(boundary.read(0x10FF8,out.data(),24));
+ CHECK(!imported.read(0x10FF8,out.data(),24));
+ imported.swap(imported);
+ CHECK(imported.key.frame==53&&imported.find(address)&&imported.sealed());
 }
 void partial(){
  Memory m;for(uint32_t i=0x20000;i<0x21000;++i)m.bytes[i]=uint8_t(i);m.partialPages.insert(0x20000);m.denied.push_back({0x20020,8});
@@ -180,8 +275,62 @@ void partial(){
  CHECK(s.capture(read,0x20010,out.data(),8));CHECK(m.calls.size()==2&&m.calls[0].bytes==4096&&!m.calls[0].success&&m.calls[1].bytes==8);
  CHECK(s.capture(read,0x20014,out.data(),12));CHECK(m.calls.size()==3&&m.calls.back().address==0x20018&&m.calls.back().bytes==8);
  CHECK(!s.capture(read,0x20020,out.data(),8));const auto attempted=m.calls.size();CHECK(!s.capture(read,0x20022,out.data(),3));CHECK(m.calls.size()==attempted);
+ // Reuse already covered partial bytes, without a live read or a second
+ // recovery attempt. Confirmed failed bytes must not be treated as hits.
+ const auto hits=s.counters.pageHits;
+ CHECK(s.capture(read,0x20010,out.data(),16));
+ CHECK(s.counters.pageHits==hits+1&&m.calls.size()==attempted);
+ CHECK(!s.capture(read,0x2001C,out.data(),8));
+ CHECK(s.counters.pageHits==hits+1&&m.calls.size()==attempted);
  CHECK(s.counters.pageAttempts==1&&s.counters.rangeAttempts==3&&s.counters.failedReads==2);m.uniqueSuccessfulBytes();CHECK(s.seal());
  CHECK(s.read(0x20010,out.data(),16));for(unsigned i=0;i<16;++i)CHECK(out[i]==uint8_t(0x10+i));CHECK(!s.read(0x20020,out.data(),8));CHECK(s.observed(0x20020,8));CHECK(!s.observed(0x20030,4));CHECK(!s.read(0x20030,out.data(),4));
+ // Compare bitmap-word observation with a byte-by-byte oracle on two
+ // partial pages, including full words, a single unknown byte and a
+ // valid/failed transition across the page boundary.
+ worldframe::Page pages[2]{};
+ constexpr uint32_t start=0x30000;
+ pages[0].address=start;pages[1].address=start+worldframe::PageSize;
+ worldframe::mark(pages[0].valid,0,64);
+ worldframe::mark(pages[0].failed,64,64);
+ worldframe::mark(pages[0].valid,128,191);
+ worldframe::mark(pages[0].failed,320,worldframe::PageSize-320);
+ worldframe::mark(pages[1].valid,0,64);
+ worldframe::mark(pages[1].failed,64,64);
+ worldframe::Snapshot words;CHECK(words.import(key(),{},pages,2));
+ for(size_t at:{size_t(0),size_t(1),size_t(63),size_t(64),size_t(65),
+                size_t(127),size_t(128),size_t(318),size_t(319),size_t(320),
+                size_t(4095),size_t(4096),size_t(4159),size_t(4160),size_t(4223),size_t(4224)})
+  for(size_t len:{size_t(1),size_t(2),size_t(63),size_t(64),size_t(65),size_t(127),
+                  size_t(128),size_t(129),size_t(4096),size_t(4097)}){
+   bool expected=true;
+   for(size_t pos=at;pos<at+len;++pos){
+    if(pos>=2*worldframe::PageSize){expected=false;break;}
+    const auto&pg=pages[pos/worldframe::PageSize];const size_t offset=pos%worldframe::PageSize;
+    if(!worldframe::bit(pg.valid,offset)&&!worldframe::bit(pg.failed,offset)){expected=false;break;}
+   }
+   CHECK(words.observed(start+uint32_t(at),len)==expected);
+  }
+ CHECK(words.observed(start+64,64)); // failed is observed, never readable
+ CHECK(!words.read(start+64,out.data(),out.size()));
+ // Recovery must skip known runs without widening live reads across any
+ // successful or failed byte, including multiple complete bitmap words.
+ Memory mixed(0x50000);constexpr uint32_t mixedBase=0x40000;
+ mixed.partialPages.insert(mixedBase);mixed.denied.push_back({mixedBase+256,64});
+ worldframe::Snapshot recovery;recovery.reset(key());Read mixedRead{&mixed};
+ CHECK(recovery.prefetch(mixedRead,mixedBase+64,128));
+ CHECK(!recovery.prefetch(mixedRead,mixedBase+256,64));
+ CHECK(recovery.prefetch(mixedRead,mixedBase+512,64));
+ const auto prior=mixed.calls.size();
+ CHECK(!recovery.prefetch(mixedRead,mixedBase+32,568));
+ CHECK(mixed.calls.size()==prior+4);
+ const std::array<std::pair<uint32_t,size_t>,4> expectedRuns{{{32,32},{192,64},{320,192},{576,24}}};
+ for(size_t i=0;i<expectedRuns.size();++i){
+  CHECK(mixed.calls[prior+i].address==mixedBase+expectedRuns[i].first);
+  CHECK(mixed.calls[prior+i].bytes==expectedRuns[i].second&&mixed.calls[prior+i].success);
+ }
+ mixed.uniqueSuccessfulBytes();CHECK(recovery.seal());
+ CHECK(recovery.observed(mixedBase+32,568));
+ CHECK(!recovery.read(mixedBase+256,out.data(),out.size()));
 }
 struct GraphStats{uint32_t calls,bytes,rosters;};
 GraphStats graph(uint32_t demand){
@@ -218,6 +367,37 @@ void graphs(){
   CHECK(s.read(unitProduct+0x10,&uid,4)&&uid==62);
   CHECK(s.read(unitProduct+0x6C0,&unitType,4)&&unitType==type);
   CHECK(s.read(unitQueue,&unitType,4)&&unitType==type);
+  // The real passive Host acquisition must preserve the Resources profile.
+  // Verify the own factory products and queue without demand-page retries.
+  m.put(unitQueue,type);m.put(unitProduct+0x6C0,type);
+  auto boundary=std::make_shared<worldframe::Snapshot>();auto k=key();
+  k.demand=worldframe::BoundaryOnlyKeyBit;boundary->reset(k);CHECK(boundary->seal());
+  worldframe::VisualCache cache;Read live{&m};
+  // The lightweight Host profile retains normal factory summary fields,
+  // while full reservation/product data is requested only by its consumer.
+  CHECK(worldframe::visualDemand(worldframe::HostVisualBase));
+  CHECK(worldframe::runtimeDemand(worldframe::HostVisualBase)==worldframe::Base);
+  CHECK(worldframe::canonicalHostDemand(worldframe::HostVisualBase)==worldframe::Base);
+  CHECK(!worldframe::visualDemand(worldframe::HostVisualBase|worldframe::Combat));
+  CHECK(worldframe::visualDemand(worldframe::HostVisualBase|worldframe::HostVisualPassengers));
+  worldframe::VisualCache leanCache;
+  auto lean=leanCache.acquire(boundary,worldframe::HostVisualBase,200,live);
+  CHECK(lean&&lean->controlSource==boundary);
+  uint32_t factoryProduct=0;
+  CHECK(lean->read(factory+0x58,&factoryProduct,4)&&factoryProduct==product);
+  CHECK(!lean->read(unitQueue,&unitType,4));
+  CHECK(!lean->read(product+0x10,&uid,4));
+  const auto leanCalls=m.calls.size();
+  CHECK(leanCache.acquire(boundary,worldframe::HostVisualBase,201,live)==lean&&m.calls.size()==leanCalls);
+  auto observed=cache.acquire(boundary,worldframe::Resources,200,live);
+  CHECK(observed&&observed->controlSource==boundary);
+  CHECK(lean->pages.size()<observed->pages.size());
+  CHECK(observed->read(product+0x10,&uid,4)&&uid==61);
+  CHECK(observed->read(unitQueue,&unitType,4)&&unitType==type);
+  CHECK(observed->read(unitProduct+0x6C0,&unitType,4)&&unitType==type);
+  const auto calls=m.calls.size();
+  CHECK(cache.acquire(boundary,worldframe::Resources,201,live)==observed);
+  CHECK(m.calls.size()==calls&&cache.statistics.captures==1);
  }
  {Memory m;setup(m);
   constexpr uint32_t type=0x721100,counts=0x725100,factory=0x727100,product=0x729100,queue=0x72C100;
@@ -244,6 +424,17 @@ void graphs(){
   worldframe::CaptureGraph<Read>ordinary(baseOnly,Read{&m});
   CHECK(ordinary.capture(worldframe::Base,noRequests)&&baseOnly.seal());
   CHECK(!baseOnly.read(counts,&owned,4)&&!baseOnly.read(queue,&queued,4));
+  // Exercise the actual Host visual path, not just CaptureGraph directly.
+  auto boundary=std::make_shared<worldframe::Snapshot>();auto k=key();
+  k.demand=worldframe::BoundaryOnlyKeyBit;boundary->reset(k);CHECK(boundary->seal());
+  worldframe::VisualCache cache;Read live{&m};
+  auto observed=cache.acquire(boundary,worldframe::MonitorStats,200,live);
+  CHECK(observed&&observed->controlSource==boundary);
+  CHECK(observed->read(counts,&owned,4)&&owned==99);
+  CHECK(observed->read(queue,&queued,4)&&queued==0);
+  const auto calls=m.calls.size();
+  CHECK(cache.acquire(boundary,worldframe::MonitorStats,201,live)==observed);
+  CHECK(m.calls.size()==calls&&cache.statistics.captures==1);
  }
  std::printf("GRAPH Base %u reads/%u bytes/%u rosters; Combat %u/%u/%u; Passengers %u/%u/%u; Ore %u/%u/%u; Visual %u/%u/%u\n",base.calls,base.bytes,base.rosters,combat.calls,combat.bytes,combat.rosters,passengers.calls,passengers.bytes,passengers.rosters,ore.calls,ore.bytes,ore.rosters,visual.calls,visual.bytes,visual.rosters);
  for(int bad:{-1,16385}){Memory m;setup(m);m.put(0xA8EC78+16,bad);worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});CHECK(!g.capture(worldframe::Base,{}));}
@@ -349,6 +540,18 @@ void contiguousWarmBatch32(){
  CHECK(traditional.counters.bytes==64*worldframe::PageSize);
  CHECK(batched.counters.bytes==traditional.counters.bytes);
  CHECK(traditional.pages.size()==64&&batched.pages.size()==64);
+ // Required-page prefetch can overlap a fully warmed graph. Preserve the
+ // existing hit counters while avoiding another capture() lookup.
+ const auto hits=batched.counters.pageHits;
+ CHECK(batched.prefetchPages(Read{&large},addresses,largeScratch.data(),largeScratch.size(),true,32));
+ CHECK(large.calls.size()==2&&batched.counters.pageHits==hits+64&&batched.pages.size()==64);
+ // A speculative repeat must not increase required-page hit accounting.
+ CHECK(batched.prefetchPages(Read{&large},addresses,largeScratch.data(),largeScratch.size(),false,32));
+ CHECK(large.calls.size()==2&&batched.counters.pageHits==hits+64);
+ // Unaligned input spans two pages; never mistake it for a full-page hit.
+ std::vector<uint32_t>unaligned{addresses[0]+1};
+ CHECK(batched.prefetchPages(Read{&large},unaligned,largeScratch.data(),largeScratch.size(),true,32));
+ CHECK(large.calls.size()==2&&batched.counters.pageHits==hits+66);
  CHECK(traditional.seal()&&batched.seal());
  for(uint32_t i=0;i<64;++i){
   uint32_t a=0,b=0;
@@ -365,6 +568,16 @@ void contiguousWarmBatch32(){
  CHECK(skipped.prefetchPages(Read{&sparse},gapped,largeScratch.data(),
                              largeScratch.size(),false,32));
  CHECK(sparse.calls.empty()&&skipped.pages.size()==0&&skipped.seal());
+ // Optional warmup cannot do useful work without a two-page buffer.
+ worldframe::Snapshot noBatch;noBatch.reset(key());
+ CHECK(noBatch.prefetchPages(Read{&sparse},addresses,nullptr,0,false,32));
+ CHECK(noBatch.prefetchPages(Read{&sparse},addresses,smallScratch.data(),worldframe::PageSize,false,32));
+ CHECK(noBatch.prefetchPages(Read{&sparse},addresses,smallScratch.data(),smallScratch.size(),false,1));
+ CHECK(sparse.calls.empty()&&noBatch.pages.size()==0&&noBatch.counters.pageHits==0);
+ // Mandatory reads are not suppressed even with no scratch.
+ CHECK(noBatch.prefetchPages(Read{&large},std::vector<uint32_t>{addresses[0]},nullptr,0,true,32));
+ CHECK(noBatch.pages.size()==1&&noBatch.counters.calls==1);
+ CHECK(noBatch.seal());
  // Fault isolation is still bounded even when using the wider buffer.
  Memory fault;
  for(uint32_t i=0;i<32;++i)fault.put(addresses[i]+0x28,0xAB000000u+i);
@@ -383,6 +596,30 @@ void contiguousWarmBatch32(){
  std::printf("PASS contiguous warmup: 64 pages, 16-page=4 RPM calls, 32-page=2 calls, exact bytes and fault isolation retained\\n");
 }
 void capacity(){
+ // Distinct pages sharing a bucket must be inserted once, retain their
+ // own payloads and count repeated capture as hits, including after reset.
+ {
+  worldframe::Snapshot collisions;collisions.resetBoundary(key());
+  constexpr uint32_t first=0x10000,step=worldframe::IndexSize*worldframe::PageSize;
+  size_t reads=0;
+  auto live=[&](uint32_t p,void*out,size_t n){
+   ++reads;std::memset(out,int((p-first)/step)+1,n);return true;
+  };
+  for(uint32_t i=0;i<8;++i){
+   const uint32_t page=first+i*step;
+   CHECK(worldframe::bucket(page)==worldframe::bucket(first));
+   uint8_t byte=0;CHECK(collisions.capture(live,page,&byte,1)&&byte==i+1);
+  }
+  CHECK(reads==8&&collisions.pages.size()==8);
+  for(uint32_t i=8;i>0;--i){
+   uint8_t byte=0;CHECK(collisions.capture(live,first+(i-1)*step,&byte,1)&&byte==i);
+  }
+  CHECK(reads==8&&collisions.counters.pageHits==8&&collisions.seal());
+  collisions.resetBoundary(key());
+  uint8_t byte=0;CHECK(collisions.capture(live,first+7*step,&byte,1)&&byte==8);
+  CHECK(reads==9&&collisions.pages.size()==1&&collisions.counters.pageHits==0);
+  CHECK(collisions.seal()&&!collisions.read(first,&byte,1));
+ }
  worldframe::Snapshot s;s.reset(key());size_t calls=0;
  auto live=[&](uint32_t p,void*out,size_t n){++calls;std::memset(out,int(p>>12)&255,n);return true;};
  constexpr uint32_t begin=0x10000000,half=32u*1024u*1024u;
@@ -405,6 +642,19 @@ struct AllocationSpy {
  worldframe::PageAllocator allocator(){return {allocate,release,this};}
 };
 void nothrowPages(){
+ // The generic capture membership table must reuse a lookup without
+ // changing duplicate, growth, reset or allocation-failure semantics.
+ {AllocationSpy spy;{
+  worldframe::CaptureSet set(spy.allocator());
+  for(uint32_t i=0;i<1024;++i){CHECK(set.insert(i*4096+0x10000).second);CHECK(!set.insert(i*4096+0x10000).second);}
+  for(uint32_t i=0;i<1024;++i)CHECK(set.count(i*4096+0x10000));
+  const auto allocations=spy.calls;set.clear();
+  for(uint32_t i=0;i<1024;++i){CHECK(!set.count(i*4096+0x10000));CHECK(set.insert(i*4096+0x10000).second);}
+  CHECK(spy.calls==allocations&&set.valid());
+  set.clear();spy.failAt=spy.calls+1;
+  for(uint32_t i=0;i<1024;++i)CHECK(set.insert(i*4096+0x10000).second);
+  CHECK(!set.insert(0x700000).second&&!set.valid());set.clear();CHECK(set.valid()&&set.insert(0x700000).second);
+ }CHECK(spy.liveBytes==0);}
  AllocationSpy rejected;size_t liveReads=0;auto read=[&](uint32_t p,void*out,size_t n){++liveReads;std::memset(out,int(p>>12)&255,n);return true;};
  {
   worldframe::Snapshot sample(rejected.allocator());CHECK(rejected.calls==0&&!sample.pages.data()&&sample.pages.capacity()==0);sample.reset(key());rejected.failAt=1;
@@ -518,6 +768,21 @@ void transport(){
  currentPid=GamePid;worldframe::Server server;CHECK(server.wanted(HostPid,clock));auto first=publication(1,50,0x11112222);server.observe(first->key);server.publish(*first);
  currentPid=HostPid;const auto beforeRpm=rpmCalls;auto a=client->acquire(7);CHECK(a&&a->key.sameFrame(first->key));CHECK(client->acquire(7)==a);CHECK(!client->acquire(8));uint32_t value=0;CHECK(a->read(0x10000,&value,4)&&value==0x11112222);
  clock=105;client->request({0x13000,0x14000,0x13000,0xFFFF,0x15001});currentPid=GamePid;const auto&requests=server.requests();CHECK(requests.size()==2);CHECK(std::find(requests.begin(),requests.end(),0x13000)!=requests.end());CHECK(std::find(requests.begin(),requests.end(),0x14000)!=requests.end());
+ // Equal-size request revisions recycle the two staging buffers without
+ // reallocating. Torn or malformed descriptors retain the accepted bytes.
+ {auto*ch=channel();const auto savedRevision=ch->demandRevision;
+  const auto savedPage=ch->demands[0];const auto*firstBuffer=requests.data();
+  ++ch->demandRevision;CHECK(server.requests().size()==2);
+  const auto*secondBuffer=requests.data();CHECK(secondBuffer!=firstBuffer);
+  ++ch->demandRevision;CHECK(server.requests().data()==firstBuffer);
+  const auto acceptedRevision=server.demandRevision();
+  ++ch->demandSeq;++ch->demandRevision;ch->demands[0]=0x15001;
+  CHECK(server.requests().data()==firstBuffer&&server.demandRevision()==acceptedRevision);
+  ++ch->demandSeq;
+  CHECK(server.requests().data()==firstBuffer&&server.demandRevision()==acceptedRevision&&requests[0]==savedPage);
+  ch->demands[0]=savedPage;ch->demandRevision=savedRevision;
+  CHECK(server.requests().data()==secondBuffer&&server.demandRevision()==savedRevision);
+ }
  auto second=publication(2,51,0x33334444);server.observe(second->key);server.publish(*second);currentPid=HostPid;auto b=client->acquire(7);CHECK(b&&b!=a&&client->acquire(7)==b);CHECK(b->read(0x10000,&value,4)&&value==0x33334444);CHECK(a->read(0x10000,&value,4)&&value==0x11112222);CHECK(rpmCalls==beforeRpm);
  auto*c=channel();CHECK(c);auto&slot=c->slots[c->active];++slot.seq;CHECK(client->acquire(7)==b);++slot.seq;const auto count=slot.count;slot.count=worldframe::MaxPages+1;CHECK(!client->acquire(7));slot.count=count;CHECK(client->acquire(7)==b);
  // An actual independent producer observation can keep a paused frame usable;
@@ -632,8 +897,11 @@ void hostIsolation(){
  Read live{&m};worldframe::CaptureGraph<Read>graph(*raw,live);CHECK(graph.capture(worldframe::Base,{}));CHECK(raw->seal());server.observe(raw->key);server.publish(*raw);
  currentPid=HostPid;CHECK(reader.beginWorldFrame(7));auto derived=reader.worldFrameToken();CHECK(derived&&derived->controlSource);
   CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
- constexpr uint32_t extra=0x760100;m.put(extra,0x12345678u);uint32_t value=0;const auto before=rpmCalls;CHECK(!reader.read(extra,&value,4)&&rpmCalls==before&&!reader.worldFrameComplete());reader.endWorldFrame();
- CHECK(server.requests().empty());clock+=16;CHECK(reader.beginWorldFrame(7));derived=reader.worldFrameToken();CHECK(reader.read(extra,&value,4)&&value==0x12345678u);reader.endWorldFrame();CHECK(server.requests().empty());
+ constexpr uint32_t extra=0x760100;m.put(extra,0x12345678u);uint32_t value=0;const auto before=rpmCalls;CHECK(!reader.read(extra,&value,4)&&rpmCalls==before&&!reader.worldFrameComplete());
+ // Changing the next requested profile must not send this display miss
+ // into the producer's dependency queue.
+ reader.setWorldDemand(worldframe::Base);reader.endWorldFrame();
+ CHECK(server.requests().empty());reader.setWorldDemand(worldframe::Resources);clock+=16;CHECK(reader.beginWorldFrame(7));derived=reader.worldFrameToken();CHECK(reader.read(extra,&value,4)&&value==0x12345678u);reader.endWorldFrame();CHECK(server.requests().empty());
  // A command scope unwraps the frozen authoritative source. It cannot read
  // an additional display page, nor can it fall back to live memory.
  reader.setWorldDemand(worldframe::Base);CHECK(reader.beginWorldFrame(7,derived));
@@ -650,8 +918,18 @@ void hostIsolation(){
  auto next=std::make_shared<worldframe::Snapshot>();auto nextKey=raw->key;++nextKey.serial;++nextKey.frame;CHECK(next->import(nextKey,raw->counters,raw->pages.data(),raw->pages.size()));
  currentPid=GamePid;server.observe(nextKey);server.publish(*next);currentPid=HostPid;
  auto consumer=std::async(std::launch::async,[&]{return client->acquire(7);});const bool independent=consumer.wait_for(std::chrono::seconds(2))==std::future_status::ready;
+ // A slow capture must not block the Host diagnostics logger either.
+ auto diagnostic=std::async(std::launch::async,[&]{
+  worldframe::VisualCache::Statistics counters{};
+  return client->tryVisualStatistics(counters);
+ });
+ const bool diagnosticIndependent=diagnostic.wait_for(std::chrono::seconds(2))==std::future_status::ready;
  {std::lock_guard<std::mutex>lock(mutex);release=true;}cv.notify_all();auto observed=consumer.get();auto display=work.get();
  CHECK(independent&&observed&&observed->key.serial==nextKey.serial&&display);
+ CHECK(diagnosticIndependent&&!diagnostic.get());
+ worldframe::VisualCache::Statistics counters{};
+ CHECK(client->tryVisualStatistics(counters)&&counters.captures>0);
+ CHECK(counters.buildInitial+counters.buildRevision+counters.buildProfile+counters.buildRefresh>=counters.captures);
  reader.close();client.reset();currentPid=GamePid;server.disconnect();currentPid=HostPid;gameMemory=nullptr;CHECK(mappedBytes==0);
  std::puts("PASS Host transport isolation: visual requests remain local, command scopes unwrap authoritative bytes, derived wire publication rejected; a blocked display reader does not block producer publication or control acquisition");
 }
@@ -697,6 +975,16 @@ void runtime(){
   // native read arriving in this SAME frame must upgrade it atomically to a
   // new full graph; merely re-exporting the sealed boundary would lose input.
   setup(memory);before=worldlife::capture(read);snap.frame=before.frame;
+  // A migrated native task may use a zero-page boundary even without a
+  // Host subscription. No transport or strict sampled-read authority appears.
+  worldFrameServer.disconnect();
+  CHECK(!worldFrameServer.wanted(sh->owner,clock));
+  const auto noHostCreates=dataCreates;
+  CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
+  CHECK(worldFrameReady&&worldFrameBoundaryOnly&&worldFrame.pages.size()==0&&worldFrame.counters.calls==0);
+  CHECK(!worldFrameServer.hasPublication()&&dataCreates==noHostCreates);
+  {SampleReadScope blocked;CHECK(!blocked&&!blocked.complete());}
+  retireWorldFrame();
   // A command dependency requested before the display pulse must survive the
   // zero-page marker and be included in the later full capture.
   requestWorldRange(ActorA+0x6C,4);
@@ -755,7 +1043,7 @@ void displayLeaseTransition(){
  currentPid=HostPid;clock=1400;
  auto subscriber=worldframe::acquireClient(GamePid,71234);
  CHECK(!subscriber->acquire(7));
- subscriber->subscribe(79,worldframe::Resources);
+ subscriber->subscribe(79,worldframe::HostVisualBase);
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  subscriber->subscribe(79,worldframe::Base);
  CHECK(channel()->demandMask==worldframe::Base);
@@ -777,6 +1065,13 @@ void displayLeaseTransition(){
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  subscriber->subscribe(79,worldframe::Resources|worldframe::Ore);
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::Ore));
+ // A polling connection can remain alive after all reader leases expire.
+ // No active subscription means a passive producer has no graph demand.
+ clock+=252;CHECK(!subscriber->acquire(7));
+ CHECK(channel()->demandMask==0);
+ currentPid=GamePid;{worldframe::Server passive;CHECK(passive.wanted(HostPid,clock));CHECK(passive.demandMask()==0);}
+ currentPid=HostPid;subscriber->subscribe(79,worldframe::HostVisualBase);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  subscriber.reset();clock=2400;
 }
 void hostBoundaryCommandGuard(){
@@ -795,6 +1090,22 @@ void hostBoundaryCommandGuard(){
  // CaptureGraph. Host VisualCache must still decode its independent view.
  CHECK(shallow->seal()&&shallow->pages.size()==0&&shallow->counters.calls==0);
  server.observe(shallow->key);CHECK(server.publish(*shallow));
+ // Repeated passive wakeups neither rewrite the observation sequence nor
+ // retag its actual timestamp. A periodic heartbeat and changed frame do.
+ auto* observation=channel();CHECK(observation);
+ const auto firstSeq=observation->observationSeq;
+ const auto firstTick=observation->observedTick;
+ ++clock;server.observe(shallow->key,true);
+ CHECK(observation->observationSeq==firstSeq&&observation->observedTick==firstTick);
+ clock+=15;server.observe(shallow->key,true);
+ CHECK(observation->observationSeq==firstSeq+2&&observation->observedTick==clock);
+ auto changedBoundary=shallow->key;++changedBoundary.frame;
+ server.observe(changedBoundary,true);
+ CHECK(observation->observationSeq==firstSeq+4&&observation->observed.frame==changedBoundary.frame);
+ server.observe(shallow->key,true);
+ CHECK(observation->observationSeq==firstSeq+6&&observation->observed.frame==shallow->key.frame);
+ server.observe(shallow->key); // non-display observation is never throttled
+ CHECK(observation->observationSeq==firstSeq+8);
  currentPid=HostPid;CHECK(reader.beginWorldFrame(7));
  CHECK(reader.worldFrameToken()->controlSource);
  reader.endWorldFrame();reader.setWorldDemand(worldframe::Base);
