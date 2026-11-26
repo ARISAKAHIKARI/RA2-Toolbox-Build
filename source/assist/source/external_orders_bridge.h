@@ -135,10 +135,12 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0)|(minerDefense?1u<<29:0);
  nativeEnrichment=allowNativeRead&&(drop||(advanced&&sh->nativeCombatQueries));
  if(planningFrame==source.frame&&planningSerial==inputSerial&&lastMode==mode&&lastNativeEnrichment==nativeEnrichment&&lastHostPublication==hostPublication)return false;
- // Validate the roster before mutating any metadata. A pure native
- // collection with no concurrent defense configuration proof has no
- // fallible sealed-page phase and needs no rollback copy.
- Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+ // Validate a roster only when the collector will actually consume it.
+ // A native drain/empty publication carries residual intents and clears old
+ // actor arrays without reading a Techno vector it will never traverse.
+ // Preserve legacy sealed-roster completeness semantics.
+ const bool actorsNeeded=advanced||ore||minerDefense||defense||drop;
+ Vec all{};if((actorsNeeded||!native)&&!sampleRoster(0xA8EC78,all))return false;
  const bool rollbackNeeded=!native||defenseProven;
  static WeaponCacheEntry cacheBefore[1024]{};
  if(rollbackNeeded)memcpy(cacheBefore,weaponCache,sizeof weaponCache);
@@ -158,7 +160,6 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
    }
   }
  }
- const bool actorsNeeded=advanced||ore||minerDefense||defense||drop;
  // Preserve the existing own-first order and capacity priority. The native
  // collector performs no game calls in this loop, so the membership/class
  // facts need only be read once per invocation. The legacy snapshot lane
