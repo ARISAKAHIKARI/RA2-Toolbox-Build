@@ -2056,7 +2056,8 @@ static void tick(){
  }
  uint32_t worldDemand=worldframe::Base;
  if(graphCatalogueDue)worldDemand|=worldframe::TypeCatalogue;
- if(sharedWorldWanted)worldDemand|=worldFrameServer.demandMask();
+ const uint32_t hostDemand=sharedWorldWanted?worldFrameServer.demandMask():0u;
+ worldDemand|=hostDemand;
  if(sh->dodgeEnabled||dodgeCount)worldDemand|=worldframe::Bullets|worldframe::Combat;
  if(sh->missileEnabled||missileHoldCount||sh->minerDefenseEnabled||minerDefensePending()||sh->magnetronGlobal||sh->magnetronDrop||(sh->flags&(AdvancedInput|MagnetronInput|AircraftSpread|AdvancedEnter|AntiTheft))||nativeCount||runtimeCoopPending||unloadCount||queuedUnload.count)worldDemand|=worldframe::Combat;
  if(capturepolicy::passengerGraphNeeded(sh->flags,sh->externalDisplay!=0)||sh->bombBoardEnabled||loadLedger.count||loadCalculationPending||unloadCount||queuedUnload.count||cooperativeEffectCount)worldDemand|=worldframe::Passengers;
@@ -2101,13 +2102,17 @@ static void tick(){
  // retain their old path. Pointer admission is independent of visual publication.
  const bool directCommand=sh->request==sh->ack||
   sh->command==Repair||sh->command==AutoBoard||sh->command==SmartUnload||(sh->command>=CombatSelection&&sh->command<=IdleTransport);
- const bool directRuntime=sharedWorldWanted&&noGraphJobs&&!newMatch&&!resultsDue&&!graphCatalogueDue&&
+ // A missing Host subscription is not a graph consumer either. Preserve
+ // the existing direct-command eligibility and retain pending Runtime page
+ // requests when no Host display boundary is available.
+ const bool directRuntime=noGraphJobs&&!newMatch&&!resultsDue&&!graphCatalogueDue&&
   !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
   !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread|AutoOreReturn|AntiTheft|NativeAirWaypoints))&&
   !selectionPending&&!planPending&&!cooperativePending&&
   directCommand&&!repairCalculationPending&&
   sh->computeApplied==compute::All&&
-  worldFrameServer.demandMask()==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
+  (hostDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)||
+   (!hostDemand&&runtimeWorldDemands.empty()&&!runtimeDemandOverflow));
  // Display-only demand publishes a zero-page world boundary. The Host
  // VisualCache independently samples the read-only display graph; it never
  // becomes a source of Runtime commands or action-planning authority.
@@ -2116,11 +2121,11 @@ static void tick(){
  // work, unknown dependencies and every existing command lane unchanged.
  const bool idleWithoutGraph=noCommandWork&&sh->externalDisplay&&nativeCatalogue&&
   worldDemand==uint32_t(worldframe::Base)&&
-  (!sharedWorldWanted||!worldFrameServer.demandMask())&&
+  !hostDemand&&
   runtimeWorldDemands.empty()&&!runtimeDemandOverflow;
  if(hostDisplayOnly)
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
- else if(directRuntime)
+ else if(directRuntime&&!idleWithoutGraph)
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldframe::Base|worldframe::HostDisplayOnly,true);
  else if(!idleWithoutGraph&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
