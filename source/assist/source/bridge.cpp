@@ -1955,6 +1955,14 @@ static void applyCommandComputeEpoch(){
  if(commandComputeEpoch==match)return;
  sh->computeApplied=sh->computeRequested&compute::All;commandComputeEpoch=match;
 }
+// Both explicit read-only and view-only authority admit only the Host's
+// zero-page display boundary. Reject stale mixed/native subscriptions.
+static void captureDisplayOnlyWorld(const worldlife::Sample&world,uint32_t house,DWORD now,bool connected){
+ const uint32_t demand=connected?worldFrameServer.demandMask():0u;
+ if(demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly))
+  captureWorldFrame(readLiveWorld,world,house,now,demand,true);
+ else retireWorldFrame();
+}
 // Passive callbacks have no local snapshot consumer. A live mapping or
 // heartbeat alone does not establish an active world-data subscription.
 static void capturePassiveWorld(const worldlife::Sample&world,uint32_t house,DWORD now,bool connected){
@@ -1986,13 +1994,7 @@ static bool serviceReadOnlyRuntime(DWORD now){
  match=sessionTracker.epoch;lastHouse=house;lastFrame=world.frame;
  snap.status=1;snap.match=match;snap.frame=world.frame;snap.session=world.session;
  uint8_t chat=1;snap.chat=!readLiveWorld(0xA8BC79,&chat,1)||chat!=0;
- // Explicit read-only mode serves only the Host display boundary. A stale
- // command subscription must not start a full Runtime capture or worker.
- // Use the same admitted demand for capture; do not reread the mailbox.
- const uint32_t readOnlyDemand=wanted?worldFrameServer.demandMask():0u;
- if(readOnlyDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly))
-  captureWorldFrame(readLiveWorld,world,house,now,readOnlyDemand,true);
- else retireWorldFrame();
+ captureDisplayOnlyWorld(world,house,now,wanted);
  publishSnapshot(now);return true;
 }
 static void tick(){
@@ -2098,7 +2100,9 @@ static void tick(){
  if(!active){
   resetOwnGround();
   if(authority==worldlife::Authority::ViewOnly&&!commandDormant){cancelCooperativePlan(-3);reset(false);commandDormant=true;}
-  capturePassiveWorld(worldSample,house,now,sharedWorldWanted);
+  if(authority==worldlife::Authority::ViewOnly)
+   captureDisplayOnlyWorld(worldSample,house,now,sharedWorldWanted);
+  else capturePassiveWorld(worldSample,house,now,sharedWorldWanted);
   suspendedSnapshot(now,worldSample.running&&display.visible(),authority==worldlife::Authority::ViewOnly?activation::ViewOnly:!worldSample.running?activation::Paused:activation::DisplayHidden);return;
  }
  commandDormant=false;
