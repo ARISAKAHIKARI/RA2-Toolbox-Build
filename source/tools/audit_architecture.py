@@ -123,6 +123,14 @@ for option in ('keepInputUnlocked','blockTriggerCamera'):
  assert 'sh->'+option not in local_graph_gate
  assert 'sh->'+option in local_wake_gate
 assert 'inputLockTick();' in bridge and 'maintainTechParameters();playerMaintenance();' in bridge
+# A placement receipt and local House maintenance remain scheduled even
+# without an authoritative tactical sample. Keep mailbox/flag guards intact.
+local_frame_gate=bridge.split('bool frameDue=',1)[1].split(';',1)[0]
+for local_task in ('sh->superweaponGrant','sh->placementPreview.active','nativePlacementCompletionPending()'):
+ assert local_task not in local_graph_gate
+ assert local_task in local_frame_gate
+assert 'nativePlacementTick(now);' in bridge
+assert 'superweaponGrantTick(house,frame,now);' in bridge
 known=[
  {'id':'P08','status':'dual_backend','feature':'Threat evasion; burst refresh retired','detail':'Burst UI/settings are retired and the scheduler never calls burstControlTick, including with stale shared flags. Native Scatter/Move evasion events stay in Runtime. Five planning shares and actor arbitration. Native Scatter owns evasion destinations; pending/turning/moving jobs cannot be replaced by fresh shots. No timed restoration of old missions. No ability, rank, ROF or burst-index writes by automatic evasion.'},
  {'id':'P07','status':'dual_backend','feature':'Advanced attack-move actual weapon range','source':'assist/source/combat_probe_bridge.h','detail':'Runtime-only native SelectWeapon/GetWeapon/IsCloseEnough produces complete per-source facts. Shared pure ranking prefers actual in-range targets; approach Move switches to empty-destination Attack. Fresh admission discards obsolete Move without mailbox blockage. No new hook or direct mission writes.'},
