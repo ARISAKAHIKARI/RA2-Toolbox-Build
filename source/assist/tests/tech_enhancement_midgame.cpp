@@ -4,6 +4,7 @@
 #error This fixture requires assertions
 #endif
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <climits>
@@ -35,6 +36,7 @@ static Settings*sh=&options;
 static bool fault=false,enhancementChangedCatalogue=false,catalogueDirty=false,catalogueReady=false,techPending=false;
 static uint64_t catalogueHash=0,techScanCatalogue=0;
 static DWORD catalogueAt=0,catalogueRequestedAt=0,worldFrameCatalogueProbeAt=0;
+static external::catalogue::ProbeRetryGate nativeCatalogueProbe;
 static DWORD GetTickCount(){return 1000;}
 static unsigned sampleReadDepth=0;
 static bool sampleReadComplete=true;
