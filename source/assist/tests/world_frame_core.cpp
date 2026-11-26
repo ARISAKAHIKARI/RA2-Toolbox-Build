@@ -461,6 +461,18 @@ void contiguousWarmBatch32(){
  CHECK(traditional.counters.bytes==64*worldframe::PageSize);
  CHECK(batched.counters.bytes==traditional.counters.bytes);
  CHECK(traditional.pages.size()==64&&batched.pages.size()==64);
+ // Required-page prefetch can overlap a fully warmed graph. Preserve the
+ // existing hit counters while avoiding another capture() lookup.
+ const auto hits=batched.counters.pageHits;
+ CHECK(batched.prefetchPages(Read{&large},addresses,largeScratch.data(),largeScratch.size(),true,32));
+ CHECK(large.calls.size()==2&&batched.counters.pageHits==hits+64&&batched.pages.size()==64);
+ // A speculative repeat must not increase required-page hit accounting.
+ CHECK(batched.prefetchPages(Read{&large},addresses,largeScratch.data(),largeScratch.size(),false,32));
+ CHECK(large.calls.size()==2&&batched.counters.pageHits==hits+64);
+ // Unaligned input spans two pages; never mistake it for a full-page hit.
+ std::vector<uint32_t>unaligned{addresses[0]+1};
+ CHECK(batched.prefetchPages(Read{&large},unaligned,largeScratch.data(),largeScratch.size(),true,32));
+ CHECK(large.calls.size()==2&&batched.counters.pageHits==hits+66);
  CHECK(traditional.seal()&&batched.seal());
  for(uint32_t i=0;i<64;++i){
   uint32_t a=0,b=0;
