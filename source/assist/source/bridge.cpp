@@ -2071,8 +2071,10 @@ static void tick(){
  // objects. They still participate in command-index and frame scheduling.
  // An enabled gesture preference does not itself require a graph. A live
  // gesture still escalates through moOrdersPending(), including retries.
+ // Input-lock and trigger-view maintenance read their own live local
+ // state. They still wake the dispatcher, but do not consume CaptureGraph.
+ // Keep the other local features conservative until separately audited.
  const bool noGraphJobs=
-  !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&
   !sh->superweaponGrant&&
   !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput|AutoOreReturn))&&!sh->plannerTracking&&
   // Retired Burst flags are ABI compatibility fields, not graph demand.
