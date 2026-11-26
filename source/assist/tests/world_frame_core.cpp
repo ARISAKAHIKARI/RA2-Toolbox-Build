@@ -250,6 +250,13 @@ void partial(){
  CHECK(s.capture(read,0x20010,out.data(),8));CHECK(m.calls.size()==2&&m.calls[0].bytes==4096&&!m.calls[0].success&&m.calls[1].bytes==8);
  CHECK(s.capture(read,0x20014,out.data(),12));CHECK(m.calls.size()==3&&m.calls.back().address==0x20018&&m.calls.back().bytes==8);
  CHECK(!s.capture(read,0x20020,out.data(),8));const auto attempted=m.calls.size();CHECK(!s.capture(read,0x20022,out.data(),3));CHECK(m.calls.size()==attempted);
+ // Reuse already covered partial bytes, without a live read or a second
+ // recovery attempt. Confirmed failed bytes must not be treated as hits.
+ const auto hits=s.counters.pageHits;
+ CHECK(s.capture(read,0x20010,out.data(),16));
+ CHECK(s.counters.pageHits==hits+1&&m.calls.size()==attempted);
+ CHECK(!s.capture(read,0x2001C,out.data(),8));
+ CHECK(s.counters.pageHits==hits+1&&m.calls.size()==attempted);
  CHECK(s.counters.pageAttempts==1&&s.counters.rangeAttempts==3&&s.counters.failedReads==2);m.uniqueSuccessfulBytes();CHECK(s.seal());
  CHECK(s.read(0x20010,out.data(),16));for(unsigned i=0;i<16;++i)CHECK(out[i]==uint8_t(0x10+i));CHECK(!s.read(0x20020,out.data(),8));CHECK(s.observed(0x20020,8));CHECK(!s.observed(0x20030,4));CHECK(!s.read(0x20030,out.data(),4));
  // Compare bitmap-word observation with a byte-by-byte oracle on two
