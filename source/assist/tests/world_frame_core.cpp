@@ -169,6 +169,31 @@ void hostVisual(){
   auto source=std::make_shared<worldframe::Snapshot>();auto k=key(frame);k.tick=tick;k.serial=uint32_t(frame);k.demand=worldframe::BoundaryOnlyKeyBit;
   source->reset(k);CHECK(source->seal());return source;
  };
+ // A failed graph must not be retried on every new display boundary.
+ {
+  worldframe::VisualCache retry;
+  m.put(0xA8ED84,52);
+  m.denied.push_back({0xA8EC78,24});
+  CHECK(!retry.acquire(boundary(52,200),worldframe::Resources,200,live));
+  CHECK(retry.statistics.buildInitial==1&&retry.statistics.failed==1);
+  for(int frame=53;frame<=55;++frame){
+   m.put(0xA8ED84,frame);
+   CHECK(!retry.acquire(boundary(frame,200+uint32_t(frame-52)),worldframe::Resources,200+uint32_t(frame-52),live));
+  }
+  CHECK(retry.statistics.buildInitial==1&&retry.statistics.deferredFailedBuilds==3);
+  // New explicit dependency revision is not throttled by the old attempt.
+  CHECK(retry.request({0xE80000},204,true));
+  m.put(0xA8ED84,56);
+  CHECK(!retry.acquire(boundary(56,204),worldframe::Resources,204,live));
+  CHECK(retry.statistics.buildInitial==2&&retry.statistics.failed==2);
+  m.denied.pop_back();
+  m.put(0xA8ED84,57);
+  CHECK(!retry.acquire(boundary(57,219),worldframe::Resources,219,live));
+  CHECK(retry.statistics.buildInitial==2);
+  m.put(0xA8ED84,58);
+  auto recovered=retry.acquire(boundary(58,220),worldframe::Resources,220,live);
+  CHECK(recovered&&retry.statistics.buildInitial==3&&retry.statistics.captures==1);
+ }
  worldframe::VisualCache fast;
  m.put(0xA8ED84,52);auto first=boundary(52,200);
  auto original=fast.acquire(first,worldframe::Resources,200,live);CHECK(original);
