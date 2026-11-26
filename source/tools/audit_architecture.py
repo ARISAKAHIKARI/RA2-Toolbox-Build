@@ -130,6 +130,13 @@ for local_task in ('sh->superweaponGrant','sh->placementPreview.active','nativeP
  assert local_task not in local_graph_gate
  assert local_task in local_frame_gate
 assert 'nativePlacementTick(now);' in bridge
+# Reuse only a sealed source's own exact roster, not a native or candidate
+# roster. Keep live UID validation and the checked fallback intact.
+index_builder=bridge.split('static void indexWorld(int frame){',1)[1].split('static bool refreshWorldIndex(',1)[0]
+assert 'sampleReadDepth&&sampleWorldSource==&worldFrame?' in index_builder
+assert 'capturedTechnoRoster(worldFrame.key,all.items,all.count)' in index_builder
+assert 'if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}' in index_builder
+assert 'else if(!read(p+0x10,&id,4)){complete=false;continue;}' in index_builder
 assert 'superweaponGrantTick(house,frame,now);' in bridge
 known=[
  {'id':'P08','status':'dual_backend','feature':'Threat evasion; burst refresh retired','detail':'Burst UI/settings are retired and the scheduler never calls burstControlTick, including with stale shared flags. Native Scatter/Move evasion events stay in Runtime. Five planning shares and actor arbitration. Native Scatter owns evasion destinations; pending/turning/moving jobs cannot be replaced by fresh shots. No timed restoration of old missions. No ability, rank, ROF or burst-index writes by automatic evasion.'},
