@@ -1143,10 +1143,19 @@ static bool scanTypes(bool direct=false){
  int count=0;
  const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};
  const int kinds[]={3,16,40,7};
+ static uint32_t nativeTypes[4096];
  for(int k=0;k<4;++k){
-  const Vec types=vec(arrays[k],4096);
+  Vec types{};
+  if(direct){
+   // A failed header is not an empty type vector. Retain the previous
+   // published catalogue until the full native pointer list is available.
+   if(!read(arrays[k],&types,sizeof types)||types.count<0||types.count>4096||
+      types.capacity<types.count||types.capacity>65536||
+      (types.count&&(types.items<0x10000||uint64_t(types.items)+uint64_t(types.count)*4>=0x80000000ull)))return false;
+   if(count<MaxTypes&&types.count&&!read(types.items,nativeTypes,size_t(types.count)*4))return false;
+  }else types=vec(arrays[k],4096);
   for(int i=0;i<types.count&&count<MaxTypes;++i){
-   const uint32_t type=item(types,i);
+   const uint32_t type=direct?nativeTypes[i]:item(types,i);
    if(type<0x10000)return false;
    const int level=get<int>(type+0x634);
    const bool insignificant=get<bool>(type+0x232)&&!techEnhancementCatalogueIncludesInsignificant(type,arrays[k],i,level);
@@ -1160,6 +1169,11 @@ static bool scanTypes(bool direct=false){
    const auto prior=std::lower_bound(priorByPointer.begin(),priorByPointer.begin()+priorCount,std::make_pair(type,0));
    if(prior!=priorByPointer.begin()+priorCount&&prior->first==type)next.allowed[count]=techAllowed[prior->second];
    ++count;
+  }
+  if(direct){
+   Vec after{};
+   if(!read(arrays[k],&after,sizeof after)||after.items!=types.items||
+      after.count!=types.count||after.capacity!=types.capacity)return false;
   }
  }
  if(!direct&&!sampleReadComplete)return false;
