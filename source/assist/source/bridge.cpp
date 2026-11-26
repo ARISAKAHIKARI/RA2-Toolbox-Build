@@ -2191,7 +2191,9 @@ static void tick(){
  // Do not mistake a connected but unsubscribed Host, a fresh match or an
  // ordinary idle wake for a graph consumer. Keep legacy rendering, pending
  // work, unknown dependencies and every existing command lane unchanged.
- const bool idleWithoutGraph=noCommandWork&&sh->externalDisplay&&nativeCatalogue&&
+ // Catalogue mode itself is not a consumer between catalogue deadlines.
+ // An actual due graph catalogue still excludes this idle lane.
+ const bool idleWithoutGraph=noCommandWork&&sh->externalDisplay&&!graphCatalogueDue&&
   worldDemand==uint32_t(worldframe::Base)&&
   !hostDemand&&
   runtimeWorldDemands.empty()&&!runtimeDemandOverflow;
