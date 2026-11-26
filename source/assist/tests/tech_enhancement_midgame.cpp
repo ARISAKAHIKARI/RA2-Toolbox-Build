@@ -236,6 +236,20 @@ static void setup(){
  assert(!scanTypes(true,&probes)&&snap.typeCount==nativeCount);
  put<Vec>(0xA83CE0,{0,Items,2,0,2,1});
  techAllowed[nativeSlot]=0;
+ // Native localized names use the actual UTF-16 pointer. A failed bulk
+ // read after the terminator must not discard a valid short name.
+ const uint32_t localized=Items+0x3000;
+ put<uint32_t>(Normal+0x60,localized);
+ put<uint16_t>(localized,0x4E2D);put<uint16_t>(localized+2,0x6587);put<uint16_t>(localized+4,0);
+ assert(scanTypes(true)&&snap.types[nativeSlot].name[0]==0x4E2D&&
+        snap.types[nativeSlot].name[1]==0x6587&&snap.types[nativeSlot].name[2]==0);
+ unreadable=localized+10;
+ assert(scanTypes(true)&&snap.types[nativeSlot].name[0]==0x4E2D&&
+        snap.types[nativeSlot].name[1]==0x6587&&snap.types[nativeSlot].name[2]==0);
+ unreadable=localized;
+ assert(scanTypes(true)&&snap.types[nativeSlot].name[0]=='M'&&snap.types[nativeSlot].name[3]=='K');
+ unreadable=0;put<uint32_t>(Normal+0x60,0);
+ assert(scanTypes(true));
 #endif
  {ObservationReadScope sample;assert(!scanTypes(true));}
 #endif
