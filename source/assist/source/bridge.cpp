@@ -1986,9 +1986,12 @@ static bool serviceReadOnlyRuntime(DWORD now){
  match=sessionTracker.epoch;lastHouse=house;lastFrame=world.frame;
  snap.status=1;snap.match=match;snap.frame=world.frame;snap.session=world.session;
  uint8_t chat=1;snap.chat=!readLiveWorld(0xA8BC79,&chat,1)||chat!=0;
- // The normal immutable producer remains the only world sampler. No command
- // maintenance, native view update or suspendedSnapshot(render) runs here.
- if(wanted)capturePassiveWorld(world,house,now,wanted);
+ // Explicit read-only mode serves only the Host display boundary. A stale
+ // command subscription must not start a full Runtime capture or worker.
+ // Use the same admitted demand for capture; do not reread the mailbox.
+ const uint32_t readOnlyDemand=wanted?worldFrameServer.demandMask():0u;
+ if(readOnlyDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly))
+  captureWorldFrame(readLiveWorld,world,house,now,readOnlyDemand,true);
  else retireWorldFrame();
  publishSnapshot(now);return true;
 }
