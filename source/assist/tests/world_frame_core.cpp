@@ -243,6 +243,31 @@ void overlap(){
  CHECK(!imported.observed(0x10FF8,24));
  CHECK(imported.import(s.key,s.counters,s.pages.data(),s.pages.size()));
  CHECK(imported.read(0x10FF8,out.data(),24));
+ // Swap full and zero-page snapshots in both directions. The valid
+ // lookup must follow its page buffer, never expose old boundary bytes.
+ worldframe::Snapshot boundary;
+ emptyKey.frame=51;CHECK(boundary.import(emptyKey,{},nullptr,0));
+ imported.swap(boundary);
+ CHECK(imported.key.frame==51&&imported.pages.size()==0&&!imported.find(0x10000));
+ CHECK(boundary.read(0x10FF8,out.data(),24)&&boundary.key.frame==s.key.frame);
+ imported.swap(boundary);
+ CHECK(imported.read(0x10FF8,out.data(),24)&&!boundary.find(0x10000));
+ // Both invalid indices can be skipped, but identities still move.
+ worldframe::Snapshot empty2;emptyKey.frame=52;
+ CHECK(empty2.import(emptyKey,{},nullptr,0));
+ boundary.swap(empty2);
+ CHECK(boundary.key.frame==52&&empty2.key.frame==51);
+ CHECK(!boundary.find(0x10000)&&!empty2.find(0x10000));
+ // Two valid lookup tables with different page order/content must swap.
+ const auto*last=s.pages.data()+s.pages.size()-1;
+ CHECK(boundary.import(key(53),{},last,1));
+ const uint32_t address=last->address;
+ imported.swap(boundary);
+ CHECK(imported.key.frame==53&&imported.pages.size()==1&&imported.find(address));
+ CHECK(boundary.read(0x10FF8,out.data(),24));
+ CHECK(!imported.read(0x10FF8,out.data(),24));
+ imported.swap(imported);
+ CHECK(imported.key.frame==53&&imported.find(address)&&imported.sealed());
 }
 void partial(){
  Memory m;for(uint32_t i=0x20000;i<0x21000;++i)m.bytes[i]=uint8_t(i);m.partialPages.insert(0x20000);m.denied.push_back({0x20020,8});
@@ -250,8 +275,62 @@ void partial(){
  CHECK(s.capture(read,0x20010,out.data(),8));CHECK(m.calls.size()==2&&m.calls[0].bytes==4096&&!m.calls[0].success&&m.calls[1].bytes==8);
  CHECK(s.capture(read,0x20014,out.data(),12));CHECK(m.calls.size()==3&&m.calls.back().address==0x20018&&m.calls.back().bytes==8);
  CHECK(!s.capture(read,0x20020,out.data(),8));const auto attempted=m.calls.size();CHECK(!s.capture(read,0x20022,out.data(),3));CHECK(m.calls.size()==attempted);
+ // Reuse already covered partial bytes, without a live read or a second
+ // recovery attempt. Confirmed failed bytes must not be treated as hits.
+ const auto hits=s.counters.pageHits;
+ CHECK(s.capture(read,0x20010,out.data(),16));
+ CHECK(s.counters.pageHits==hits+1&&m.calls.size()==attempted);
+ CHECK(!s.capture(read,0x2001C,out.data(),8));
+ CHECK(s.counters.pageHits==hits+1&&m.calls.size()==attempted);
  CHECK(s.counters.pageAttempts==1&&s.counters.rangeAttempts==3&&s.counters.failedReads==2);m.uniqueSuccessfulBytes();CHECK(s.seal());
  CHECK(s.read(0x20010,out.data(),16));for(unsigned i=0;i<16;++i)CHECK(out[i]==uint8_t(0x10+i));CHECK(!s.read(0x20020,out.data(),8));CHECK(s.observed(0x20020,8));CHECK(!s.observed(0x20030,4));CHECK(!s.read(0x20030,out.data(),4));
+ // Compare bitmap-word observation with a byte-by-byte oracle on two
+ // partial pages, including full words, a single unknown byte and a
+ // valid/failed transition across the page boundary.
+ worldframe::Page pages[2]{};
+ constexpr uint32_t start=0x30000;
+ pages[0].address=start;pages[1].address=start+worldframe::PageSize;
+ worldframe::mark(pages[0].valid,0,64);
+ worldframe::mark(pages[0].failed,64,64);
+ worldframe::mark(pages[0].valid,128,191);
+ worldframe::mark(pages[0].failed,320,worldframe::PageSize-320);
+ worldframe::mark(pages[1].valid,0,64);
+ worldframe::mark(pages[1].failed,64,64);
+ worldframe::Snapshot words;CHECK(words.import(key(),{},pages,2));
+ for(size_t at:{size_t(0),size_t(1),size_t(63),size_t(64),size_t(65),
+                size_t(127),size_t(128),size_t(318),size_t(319),size_t(320),
+                size_t(4095),size_t(4096),size_t(4159),size_t(4160),size_t(4223),size_t(4224)})
+  for(size_t len:{size_t(1),size_t(2),size_t(63),size_t(64),size_t(65),size_t(127),
+                  size_t(128),size_t(129),size_t(4096),size_t(4097)}){
+   bool expected=true;
+   for(size_t pos=at;pos<at+len;++pos){
+    if(pos>=2*worldframe::PageSize){expected=false;break;}
+    const auto&pg=pages[pos/worldframe::PageSize];const size_t offset=pos%worldframe::PageSize;
+    if(!worldframe::bit(pg.valid,offset)&&!worldframe::bit(pg.failed,offset)){expected=false;break;}
+   }
+   CHECK(words.observed(start+uint32_t(at),len)==expected);
+  }
+ CHECK(words.observed(start+64,64)); // failed is observed, never readable
+ CHECK(!words.read(start+64,out.data(),out.size()));
+ // Recovery must skip known runs without widening live reads across any
+ // successful or failed byte, including multiple complete bitmap words.
+ Memory mixed(0x50000);constexpr uint32_t mixedBase=0x40000;
+ mixed.partialPages.insert(mixedBase);mixed.denied.push_back({mixedBase+256,64});
+ worldframe::Snapshot recovery;recovery.reset(key());Read mixedRead{&mixed};
+ CHECK(recovery.prefetch(mixedRead,mixedBase+64,128));
+ CHECK(!recovery.prefetch(mixedRead,mixedBase+256,64));
+ CHECK(recovery.prefetch(mixedRead,mixedBase+512,64));
+ const auto prior=mixed.calls.size();
+ CHECK(!recovery.prefetch(mixedRead,mixedBase+32,568));
+ CHECK(mixed.calls.size()==prior+4);
+ const std::array<std::pair<uint32_t,size_t>,4> expectedRuns{{{32,32},{192,64},{320,192},{576,24}}};
+ for(size_t i=0;i<expectedRuns.size();++i){
+  CHECK(mixed.calls[prior+i].address==mixedBase+expectedRuns[i].first);
+  CHECK(mixed.calls[prior+i].bytes==expectedRuns[i].second&&mixed.calls[prior+i].success);
+ }
+ mixed.uniqueSuccessfulBytes();CHECK(recovery.seal());
+ CHECK(recovery.observed(mixedBase+32,568));
+ CHECK(!recovery.read(mixedBase+256,out.data(),out.size()));
 }
 struct GraphStats{uint32_t calls,bytes,rosters;};
 GraphStats graph(uint32_t demand){
@@ -461,6 +540,18 @@ void contiguousWarmBatch32(){
  CHECK(traditional.counters.bytes==64*worldframe::PageSize);
  CHECK(batched.counters.bytes==traditional.counters.bytes);
  CHECK(traditional.pages.size()==64&&batched.pages.size()==64);
+ // Required-page prefetch can overlap a fully warmed graph. Preserve the
+ // existing hit counters while avoiding another capture() lookup.
+ const auto hits=batched.counters.pageHits;
+ CHECK(batched.prefetchPages(Read{&large},addresses,largeScratch.data(),largeScratch.size(),true,32));
+ CHECK(large.calls.size()==2&&batched.counters.pageHits==hits+64&&batched.pages.size()==64);
+ // A speculative repeat must not increase required-page hit accounting.
+ CHECK(batched.prefetchPages(Read{&large},addresses,largeScratch.data(),largeScratch.size(),false,32));
+ CHECK(large.calls.size()==2&&batched.counters.pageHits==hits+64);
+ // Unaligned input spans two pages; never mistake it for a full-page hit.
+ std::vector<uint32_t>unaligned{addresses[0]+1};
+ CHECK(batched.prefetchPages(Read{&large},unaligned,largeScratch.data(),largeScratch.size(),true,32));
+ CHECK(large.calls.size()==2&&batched.counters.pageHits==hits+66);
  CHECK(traditional.seal()&&batched.seal());
  for(uint32_t i=0;i<64;++i){
   uint32_t a=0,b=0;
@@ -477,6 +568,16 @@ void contiguousWarmBatch32(){
  CHECK(skipped.prefetchPages(Read{&sparse},gapped,largeScratch.data(),
                              largeScratch.size(),false,32));
  CHECK(sparse.calls.empty()&&skipped.pages.size()==0&&skipped.seal());
+ // Optional warmup cannot do useful work without a two-page buffer.
+ worldframe::Snapshot noBatch;noBatch.reset(key());
+ CHECK(noBatch.prefetchPages(Read{&sparse},addresses,nullptr,0,false,32));
+ CHECK(noBatch.prefetchPages(Read{&sparse},addresses,smallScratch.data(),worldframe::PageSize,false,32));
+ CHECK(noBatch.prefetchPages(Read{&sparse},addresses,smallScratch.data(),smallScratch.size(),false,1));
+ CHECK(sparse.calls.empty()&&noBatch.pages.size()==0&&noBatch.counters.pageHits==0);
+ // Mandatory reads are not suppressed even with no scratch.
+ CHECK(noBatch.prefetchPages(Read{&large},std::vector<uint32_t>{addresses[0]},nullptr,0,true,32));
+ CHECK(noBatch.pages.size()==1&&noBatch.counters.calls==1);
+ CHECK(noBatch.seal());
  // Fault isolation is still bounded even when using the wider buffer.
  Memory fault;
  for(uint32_t i=0;i<32;++i)fault.put(addresses[i]+0x28,0xAB000000u+i);
@@ -495,6 +596,30 @@ void contiguousWarmBatch32(){
  std::printf("PASS contiguous warmup: 64 pages, 16-page=4 RPM calls, 32-page=2 calls, exact bytes and fault isolation retained\\n");
 }
 void capacity(){
+ // Distinct pages sharing a bucket must be inserted once, retain their
+ // own payloads and count repeated capture as hits, including after reset.
+ {
+  worldframe::Snapshot collisions;collisions.resetBoundary(key());
+  constexpr uint32_t first=0x10000,step=worldframe::IndexSize*worldframe::PageSize;
+  size_t reads=0;
+  auto live=[&](uint32_t p,void*out,size_t n){
+   ++reads;std::memset(out,int((p-first)/step)+1,n);return true;
+  };
+  for(uint32_t i=0;i<8;++i){
+   const uint32_t page=first+i*step;
+   CHECK(worldframe::bucket(page)==worldframe::bucket(first));
+   uint8_t byte=0;CHECK(collisions.capture(live,page,&byte,1)&&byte==i+1);
+  }
+  CHECK(reads==8&&collisions.pages.size()==8);
+  for(uint32_t i=8;i>0;--i){
+   uint8_t byte=0;CHECK(collisions.capture(live,first+(i-1)*step,&byte,1)&&byte==i);
+  }
+  CHECK(reads==8&&collisions.counters.pageHits==8&&collisions.seal());
+  collisions.resetBoundary(key());
+  uint8_t byte=0;CHECK(collisions.capture(live,first+7*step,&byte,1)&&byte==8);
+  CHECK(reads==9&&collisions.pages.size()==1&&collisions.counters.pageHits==0);
+  CHECK(collisions.seal()&&!collisions.read(first,&byte,1));
+ }
  worldframe::Snapshot s;s.reset(key());size_t calls=0;
  auto live=[&](uint32_t p,void*out,size_t n){++calls;std::memset(out,int(p>>12)&255,n);return true;};
  constexpr uint32_t begin=0x10000000,half=32u*1024u*1024u;

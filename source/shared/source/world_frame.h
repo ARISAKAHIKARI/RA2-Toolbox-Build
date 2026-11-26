@@ -187,15 +187,33 @@ class Snapshot {
  std::array<uint32_t,IndexSize> index_{};
  bool sealed_=false,overflow_=false,indexFresh_=true;
  bool capacityFailure(){overflow_=true;++counters.overflows;return false;}
- Page* add(uint32_t address){
+ // Optionally report whether this page was already present, so capture
+ // does not need to probe the same bucket chain before inserting a miss.
+ Page* add(uint32_t address,bool* existing=nullptr){
+  if(existing)*existing=false;
   // A zero-page Host boundary does not touch the 128-KiB lookup array.
   // The first later full page reinitializes it before reading old indices.
   if(!indexFresh_){index_.fill(0);indexFresh_=true;}
   uint32_t slot=bucket(address);
-  while(index_[slot]){auto&p=pages[index_[slot]-1];if(p.address==address)return &p;slot=(slot+1)&(IndexSize-1);}
+  while(index_[slot]){auto&p=pages[index_[slot]-1];if(p.address==address){if(existing)*existing=true;return &p;}slot=(slot+1)&(IndexSize-1);}
   if(overflow_)return nullptr;
   if(!pages.append()){capacityFailure();return nullptr;}
   auto&p=pages.back();p.address=address;index_[slot]=uint32_t(pages.size());return &p;
+ }
+ // Return the first byte with different observation state, or end.
+ // Skip uniform bitmap words without changing exact live-read boundaries.
+ static size_t observationRunEnd(const Page&p,size_t at,size_t end,bool known){
+  while(at<end){
+   const unsigned shift=unsigned(at&63);
+   const size_t span=std::min<size_t>(end-at,64-shift);
+   const uint64_t bits=p.valid[at>>6]|p.failed[at>>6];
+   uint64_t different=(known?~bits:bits)>>shift;
+   if(!different){at+=span;continue;}
+   size_t same=0;
+   while(same<span&&!(different&1u)){++same;different>>=1;}
+   return at+same;
+  }
+  return end;
  }
  static bool covered(const Page&p,size_t offset,size_t n){
   if(p.full)return true;
@@ -215,10 +233,15 @@ public:
  Snapshot(const Snapshot&)=delete;Snapshot&operator=(const Snapshot&)=delete;
  // Transfer a completed worker-owned capture without allocating or copying any
  // page payloads. Both Snapshot owners must be exclusive and quiescent here.
- // The fixed 128 KiB lookup table is swapped, never rebuilt from game memory.
+ // The fixed lookup table travels with its pages. An invalid boundary
+ // index has no contents to preserve, so only transfer live indices.
  void swap(Snapshot&other)noexcept{
+  if(this==&other)return;
   using std::swap;
-  swap(index_,other.index_);swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
+  if(indexFresh_&&other.indexFresh_)swap(index_,other.index_);
+  else if(indexFresh_)other.index_=index_;
+  else if(other.indexFresh_)index_=other.index_;
+  swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
   swap(indexFresh_,other.indexFresh_);
   swap(key,other.key);swap(counters,other.counters);pages.swap(other.pages);
   swap(catalogue,other.catalogue);
@@ -265,7 +288,19 @@ public:
  bool observed(uint32_t address,size_t n)const{
   if(!sealed_||!range(address,n))return false;
   while(n){const size_t offset=address&(PageSize-1),count=std::min<size_t>(n,PageSize-offset);const auto*p=find(address&~(PageSize-1));
-   if(!p)return false;if(!p->full)for(size_t i=offset;i<offset+count;++i)if(!bit(p->valid,i)&&!bit(p->failed,i))return false;
+   if(!p)return false;
+   // Observation includes both successful and explicitly failed bytes.
+   // Check one bitmap word at a time rather than testing every byte.
+   if(!p->full){
+    size_t at=offset,remaining=count;
+    while(remaining){
+     const unsigned shift=unsigned(at&63);
+     const size_t span=std::min<size_t>(remaining,64-shift);
+     const uint64_t mask=span==64?~uint64_t(0):((uint64_t(1)<<span)-1)<<shift;
+     if(((p->valid[at>>6]|p->failed[at>>6])&mask)!=mask)return false;
+     at+=span;remaining-=span;
+    }
+   }
    address+=uint32_t(count);n-=count;}
   return true;
  }
@@ -273,22 +308,26 @@ public:
   if(sealed_||overflow_||!range(address,n))return false;
   auto*dest=static_cast<uint8_t*>(out);bool ok=true;
   while(n){const uint32_t base=address&~(PageSize-1);const size_t offset=address-base,count=std::min<size_t>(n,PageSize-offset);
-   Page*p=const_cast<Page*>(find(base));const bool existing=p!=nullptr;if(!p)p=add(base);if(!p)return false;
+   bool existing=false;Page*p=add(base,&existing);if(!p)return false;
    if(!existing){++counters.calls;++counters.pageAttempts;counters.bytes+=PageSize;
     if(live(base,p->bytes.data(),PageSize))p->full=1;else ++counters.failedReads;
    }
-   if(!p->full&&!covered(*p,offset,count)){
+   // Preserve the first coverage result; only recovery can change it.
+   bool complete=covered(*p,offset,count);
+   if(!complete){
     // A partly readable OS page is not an all-zero world object. Preserve
     // successful bytes and failed ranges separately; never reacquire overlap.
     size_t at=offset,end=offset+count;
-    while(at<end){if(bit(p->valid,at)||bit(p->failed,at)){++at;continue;}
-     size_t stop=at+1;while(stop<end&&!bit(p->valid,stop)&&!bit(p->failed,stop))++stop;
+    while(at<end){
+     at=observationRunEnd(*p,at,end,true);if(at==end)break;
+     const size_t stop=observationRunEnd(*p,at,end,false);
      ++counters.calls;++counters.rangeAttempts;counters.bytes+=uint32_t(stop-at);
      if(live(base+uint32_t(at),p->bytes.data()+at,stop-at))mark(p->valid,at,stop-at);
      else{mark(p->failed,at,stop-at);++counters.failedReads;}at=stop;
     }
+    complete=covered(*p,offset,count);
    }else if(existing)++counters.pageHits;
-   if(!covered(*p,offset,count))ok=false;
+   if(!complete)ok=false;
    else if(dest)std::memcpy(dest,p->bytes.data()+offset,count);
    if(dest)dest+=count;address+=uint32_t(count);n-=count;
   }return ok;
@@ -308,12 +347,24 @@ public:
   // prefiltered actor warmup can batch 32 adjacent pages in one live read.
   // Clamp to the caller's retained scratch and never read outside a run.
   const size_t limit=std::min({size_t(32),maxBatchPages,scratchBytes/PageSize});bool ok=true;
+  // Optional warmup never reads individual pages. Without room for a
+  // contiguous pair, it has no work even for a large address list.
+  if(!individualFallback&&(!scratch||limit<2))return true;
   // Bound the TOTAL number of extra speculative RPM calls per invocation.
   // Thousands of inaccessible actors must not multiply the split cost.
   unsigned splitBudget=32;
   for(size_t first=0;first<addresses.size();){
    const uint32_t at=addresses[first];size_t end=first+1;
-   if(scratch&&limit>1&&!(at&(PageSize-1))&&range(at,PageSize)&&!find(at)){
+   const bool aligned=!(at&(PageSize-1))&&range(at,PageSize);
+   const auto*existing=aligned?find(at):nullptr;
+   // Graph discovery and earlier warmup often already cover required pages.
+   // Reuse the first index lookup, preserving capture()'s hit accounting.
+   // Partial, malformed and missing pages still follow the original path.
+   if(existing&&existing->full){
+    if(individualFallback)++counters.pageHits;
+    ++first;continue;
+   }
+   if(scratch&&limit>1&&aligned&&!existing){
     while(end<addresses.size()&&end-first<limit&&
       uint64_t(at)+(end-first)*PageSize==addresses[end]&&range(addresses[end],PageSize)&&!find(addresses[end]))++end;
    }
