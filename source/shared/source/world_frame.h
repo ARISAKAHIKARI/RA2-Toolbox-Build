@@ -313,7 +313,16 @@ public:
   unsigned splitBudget=32;
   for(size_t first=0;first<addresses.size();){
    const uint32_t at=addresses[first];size_t end=first+1;
-   if(scratch&&limit>1&&!(at&(PageSize-1))&&range(at,PageSize)&&!find(at)){
+   const bool aligned=!(at&(PageSize-1))&&range(at,PageSize);
+   const auto*existing=aligned?find(at):nullptr;
+   // Graph discovery and earlier warmup often already cover required pages.
+   // Reuse the first index lookup, preserving capture()'s hit accounting.
+   // Partial, malformed and missing pages still follow the original path.
+   if(existing&&existing->full){
+    if(individualFallback)++counters.pageHits;
+    ++first;continue;
+   }
+   if(scratch&&limit>1&&aligned&&!existing){
     while(end<addresses.size()&&end-first<limit&&
       uint64_t(at)+(end-first)*PageSize==addresses[end]&&range(addresses[end],PageSize)&&!find(addresses[end]))++end;
    }
