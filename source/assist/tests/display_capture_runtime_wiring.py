@@ -20,8 +20,18 @@ passive=bridge.split("static void capturePassiveWorld(",1)[1].split("static bool
 assert "if(!connected)return;" in passive
 assert "const uint32_t demand=worldFrameServer.demandMask();" in passive
 assert "if(demand)captureWorldFrame(readLiveWorld,world,house,now,demand,true);" in passive
-assert "if(wanted)capturePassiveWorld(world,house,now,wanted);" in bridge
-assert "capturePassiveWorld(worldSample,house,now,sharedWorldWanted);" in bridge
+# Explicit read-only and view-only authority share the same strict boundary.
+displayonly=bridge.split("static void captureDisplayOnlyWorld(",1)[1].split("static void capturePassiveWorld(",1)[0]
+assert "const uint32_t demand=connected?worldFrameServer.demandMask():0u;" in displayonly
+assert "if(demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly))" in displayonly
+assert "captureWorldFrame(readLiveWorld,world,house,now,demand,true);" in displayonly
+assert "else retireWorldFrame();" in displayonly
+readonly=bridge.split("static bool serviceReadOnlyRuntime(",1)[1].split("static void tick()",1)[0]
+assert "captureDisplayOnlyWorld(world,house,now,wanted);" in readonly
+assert "capturePassiveWorld(" not in readonly
+assert "captureWorldFrame(" not in readonly
+assert "if(authority==worldlife::Authority::ViewOnly)\n   captureDisplayOnlyWorld(worldSample,house,now,sharedWorldWanted);" in bridge
+assert "else capturePassiveWorld(worldSample,house,now,sharedWorldWanted);" in bridge
 assert "if(hostDisplayOnly)" in bridge
 assert "else if(directRuntime&&!idleWithoutGraph)" in bridge
 assert "const uint32_t hostDemand=sharedWorldWanted?worldFrameServer.demandMask():0u;" in bridge
