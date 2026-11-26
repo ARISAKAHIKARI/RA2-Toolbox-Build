@@ -284,12 +284,20 @@ static void indexWorld(int frame){
  // One bounded roster read. A failed header, item span or UID read is UNKNOWN,
  // never an empty world and never permission to use a partial index.
  static uint32_t pointers[16384];
- if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}
+ // CaptureGraph already decoded this exact pointer vector. Borrow it only
+ // inside its original sealed read scope; never substitute it for live
+ // native membership or for a different observation candidate.
+ const uint32_t* roster=sampleReadDepth&&sampleWorldSource==&worldFrame?
+  worldFrameCaptureScratch.capturedTechnoRoster(worldFrame.key,all.items,all.count):nullptr;
+ if(!roster){
+  if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}
+  roster=pointers;
+ }
  worldObjects.unbind();worldObjects.clear();globalVehicleCandidateCount=0;
  indexedGlobalVehicles=bool(sh&&sh->magnetronGlobal);indexedVehicleHouse=lastHouse;
  bool complete=true;
  for(int i=0;i<all.count;++i){
-  const uint32_t p=pointers[i];if(p<0x10000)continue;
+  const uint32_t p=roster[i];if(p<0x10000)continue;
   const bool native=runtimeDirectActions&&!sampleReadDepth;
   if(native&&p>0x7ffffddfu){complete=false;continue;}
   uint32_t id=0;
