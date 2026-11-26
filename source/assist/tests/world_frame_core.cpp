@@ -489,6 +489,16 @@ void contiguousWarmBatch32(){
  CHECK(skipped.prefetchPages(Read{&sparse},gapped,largeScratch.data(),
                              largeScratch.size(),false,32));
  CHECK(sparse.calls.empty()&&skipped.pages.size()==0&&skipped.seal());
+ // Optional warmup cannot do useful work without a two-page buffer.
+ worldframe::Snapshot noBatch;noBatch.reset(key());
+ CHECK(noBatch.prefetchPages(Read{&sparse},addresses,nullptr,0,false,32));
+ CHECK(noBatch.prefetchPages(Read{&sparse},addresses,smallScratch.data(),worldframe::PageSize,false,32));
+ CHECK(noBatch.prefetchPages(Read{&sparse},addresses,smallScratch.data(),smallScratch.size(),false,1));
+ CHECK(sparse.calls.empty()&&noBatch.pages.size()==0&&noBatch.counters.pageHits==0);
+ // Mandatory reads are not suppressed even with no scratch.
+ CHECK(noBatch.prefetchPages(Read{&large},std::vector<uint32_t>{addresses[0]},nullptr,0,true,32));
+ CHECK(noBatch.pages.size()==1&&noBatch.counters.calls==1);
+ CHECK(noBatch.seal());
  // Fault isolation is still bounded even when using the wider buffer.
  Memory fault;
  for(uint32_t i=0;i<32;++i)fault.put(addresses[i]+0x28,0xAB000000u+i);
