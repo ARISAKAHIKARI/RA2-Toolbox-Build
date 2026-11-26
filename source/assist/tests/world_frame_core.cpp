@@ -850,6 +850,16 @@ void runtime(){
   // native read arriving in this SAME frame must upgrade it atomically to a
   // new full graph; merely re-exporting the sealed boundary would lose input.
   setup(memory);before=worldlife::capture(read);snap.frame=before.frame;
+  // A migrated native task may use a zero-page boundary even without a
+  // Host subscription. No transport or strict sampled-read authority appears.
+  worldFrameServer.disconnect();
+  CHECK(!worldFrameServer.wanted(sh->owner,clock));
+  const auto noHostCreates=dataCreates;
+  CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
+  CHECK(worldFrameReady&&worldFrameBoundaryOnly&&worldFrame.pages.empty()&&worldFrame.counters.calls==0);
+  CHECK(!worldFrameServer.hasPublication()&&dataCreates==noHostCreates);
+  {SampleReadScope blocked;CHECK(!blocked&&!blocked.complete());}
+  retireWorldFrame();
   // A command dependency requested before the display pulse must survive the
   // zero-page marker and be included in the later full capture.
   requestWorldRange(ActorA+0x6C,4);
