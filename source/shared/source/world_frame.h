@@ -289,7 +289,9 @@ public:
    if(!existing){++counters.calls;++counters.pageAttempts;counters.bytes+=PageSize;
     if(live(base,p->bytes.data(),PageSize))p->full=1;else ++counters.failedReads;
    }
-   if(!p->full&&!covered(*p,offset,count)){
+   // Preserve the first coverage result; only recovery can change it.
+   bool complete=covered(*p,offset,count);
+   if(!complete){
     // A partly readable OS page is not an all-zero world object. Preserve
     // successful bytes and failed ranges separately; never reacquire overlap.
     size_t at=offset,end=offset+count;
@@ -299,8 +301,9 @@ public:
      if(live(base+uint32_t(at),p->bytes.data()+at,stop-at))mark(p->valid,at,stop-at);
      else{mark(p->failed,at,stop-at);++counters.failedReads;}at=stop;
     }
+    complete=covered(*p,offset,count);
    }else if(existing)++counters.pageHits;
-   if(!covered(*p,offset,count))ok=false;
+   if(!complete)ok=false;
    else if(dest)std::memcpy(dest,p->bytes.data()+offset,count);
    if(dest)dest+=count;address+=uint32_t(count);n-=count;
   }return ok;
