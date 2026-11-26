@@ -2073,14 +2073,16 @@ static void tick(){
  // gesture still escalates through moOrdersPending(), including retries.
  // Input-lock and trigger-view maintenance read their own live local
  // state. They still wake the dispatcher, but do not consume CaptureGraph.
- // Keep the other local features conservative until separately audited.
+ // The native placement preview/completion reads only the current offer,
+ // cursor and viewport. Superweapon maintenance reads the local House list.
+ // All retain their existing wake and command guards; neither needs a
+ // tactical snapshot just to service an already active local task.
  const bool noGraphJobs=
-  !sh->superweaponGrant&&
-  !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput|AutoOreReturn))&&!sh->plannerTracking&&
+  !(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput|AutoOreReturn))&&!sh->plannerTracking&&
   // Retired Burst flags are ABI compatibility fields, not graph demand.
   !stickyCount&&
   !burstCount&&!loadCalculationPending&&
-  !ownground::job.pending&&!nativePlacementCompletionPending()&&
+  !ownground::job.pending&&
   !moOrdersPending()&&
   !directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
