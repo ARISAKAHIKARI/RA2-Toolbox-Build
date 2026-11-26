@@ -197,6 +197,21 @@ class Snapshot {
   if(!pages.append()){capacityFailure();return nullptr;}
   auto&p=pages.back();p.address=address;index_[slot]=uint32_t(pages.size());return &p;
  }
+ // Return the first byte with different observation state, or end.
+ // Skip uniform bitmap words without changing exact live-read boundaries.
+ static size_t observationRunEnd(const Page&p,size_t at,size_t end,bool known){
+  while(at<end){
+   const unsigned shift=unsigned(at&63);
+   const size_t span=std::min<size_t>(end-at,64-shift);
+   const uint64_t bits=p.valid[at>>6]|p.failed[at>>6];
+   uint64_t different=(known?~bits:bits)>>shift;
+   if(!different){at+=span;continue;}
+   size_t same=0;
+   while(same<span&&!(different&1u)){++same;different>>=1;}
+   return at+same;
+  }
+  return end;
+ }
  static bool covered(const Page&p,size_t offset,size_t n){
   if(p.full)return true;
   while(n){const unsigned shift=unsigned(offset&63);const size_t count=std::min<size_t>(n,64-shift);
@@ -295,8 +310,9 @@ public:
     // A partly readable OS page is not an all-zero world object. Preserve
     // successful bytes and failed ranges separately; never reacquire overlap.
     size_t at=offset,end=offset+count;
-    while(at<end){if(bit(p->valid,at)||bit(p->failed,at)){++at;continue;}
-     size_t stop=at+1;while(stop<end&&!bit(p->valid,stop)&&!bit(p->failed,stop))++stop;
+    while(at<end){
+     at=observationRunEnd(*p,at,end,true);if(at==end)break;
+     const size_t stop=observationRunEnd(*p,at,end,false);
      ++counters.calls;++counters.rangeAttempts;counters.bytes+=uint32_t(stop-at);
      if(live(base+uint32_t(at),p->bytes.data()+at,stop-at))mark(p->valid,at,stop-at);
      else{mark(p->failed,at,stop-at);++counters.failedReads;}at=stop;
