@@ -1221,7 +1221,7 @@ static bool featureRestorationComplete(){
 // Reserve a share for other active task families, then let a lone family use
 // the remaining capacity. All sends still obey the shared 64-event frame cap.
 static int recurringBudget(EventLane lane){
- bool external=sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||runtimeCoopPending||sh->plannerTracking||sh->runtimeTracking||sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck;
+ bool external=sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||runtimeCoopPending||sh->plannerTracking||sh->runtimeTracking||sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck;
  bool repairs=repairAt<repairCount,loading=loadLedger.count!=0,unloading=unloadCount!=0||queuedUnload.count!=0;
  if(lane==EventLane::Planning)return repairs||(sh->flags&AutoRepair)||loading||unloading?32:64;
  if(external)return 16;
@@ -1973,30 +1973,30 @@ static void tick(){
  if(worldChange==worldlife::Change::Unknown){retireWorldFrame();snap.status=hookWorld.bound?1:0;snap.bridgeStatus=1;suspendedSnapshot(now,false,activation::WorldUnknown);return;}
  const uint32_t runtimeActionFlags=AutoRepair|EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|MagnetronInput|AdvancedEnter|AircraftSpread|AirWaypoints|AntiTheft;
  const bool runtimeActionDemand=(sh->flags&runtimeActionFlags)||sh->magnetronGlobal||sh->magnetronDrop||
-  sh->missileEnabled||sh->dodgeEnabled||sh->burstEnabled||sh->burstHoldEnabled||sh->burstHeld||
+  sh->missileEnabled||sh->dodgeEnabled||
   sh->minerDefenseEnabled||sh->bombBoardEnabled||sh->loadMode||sh->cooperativeFrameWanted||
   sh->formationPolicy.enabled||sh->moFeatures||sh->runtimeTracking||sh->plannerTracking||
   sh->privateOutMode||sh->keepInputUnlocked||sh->blockTriggerCamera;
  const uint32_t runtimeFrameFlags=EjectAssist|AdvancedInput|SmartUnloadOrders|AutoOreReturn|MagnetronInput|AdvancedEnter|AircraftSpread|AntiTheft;
  const bool runtimeFrameDemand=(sh->flags&runtimeFrameFlags)||sh->magnetronGlobal||sh->magnetronDrop||
-  sh->missileEnabled||sh->dodgeEnabled||sh->burstEnabled||sh->burstHoldEnabled||sh->burstHeld||
+  sh->missileEnabled||sh->dodgeEnabled||
   sh->minerDefenseEnabled||sh->bombBoardEnabled||sh->loadMode||sh->cooperativeFrameWanted||
   sh->formationPolicy.enabled||sh->moFeatures||sh->runtimeTracking||sh->plannerTracking;
  DWORD period=sh->foreground?sh->scanMs:((runtimeActionDemand||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending())?64:500);if(period<2)period=2;if(period>1000)period=1000;
  // Runtime-owned actions bypass the ordinary display scan cadence. The game
  // frame remains the scheduler; this only bounds waits between frame callbacks.
- if(sh->foreground&&(runtimeActionDemand||scrollRefreshActive||sh->burstEnabled||sh->burstHeld||burstCount||sh->scrollRefreshHz))period=4;
+ if(sh->foreground&&(runtimeActionDemand||scrollRefreshActive||burstCount||sh->scrollRefreshHz))period=4;
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=worldSample.frame!=lastFrame&&
-   (sharedWorldWanted||(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->keepInputUnlocked||sh->blockTriggerCamera||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||hostFrameCaptureWanted(now)||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||queuedUnload.count||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||loadLedger.count||repairAt<repairCount||manualRepairPending||pendingRepairs.count||entryReservationCount||cooperativeEffectCount||missionObserver.pending()||actorLeaseArbiter.count||ownground::job.pending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
+   (sharedWorldWanted||(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->keepInputUnlocked||sh->blockTriggerCamera||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||hostFrameCaptureWanted(now)||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||queuedUnload.count||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||loadLedger.count||repairAt<repairCount||manualRepairPending||pendingRepairs.count||entryReservationCount||cooperativeEffectCount||missionObserver.pending()||actorLeaseArbiter.count||ownground::job.pending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
     runtimeFrameDemand||sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
  bool resultsDue=(loadCalculationPending&&compute::newer(sh->loadComputed,loadTaskSeen))||(repairCalculationPending&&compute::newer(sh->repairComputed,repairTaskSeen))||((sh->missileEnabled||missileHoldCount)&&compute::newer(sh->missileComputed,missileApplied))||((sh->dodgeEnabled||dodgeCount)&&compute::newer(sh->dodgeComputed,dodgeApplied))||(unloadCount&&compute::newer(sh->unloadComputed,unloadApplied));
  bool soundPending=sh->uiSoundRequest!=sh->uiSoundAck;
  const uint64_t preciseNow=preciseclock::micros();static uint64_t fastSampleAt=0;
  bool refreshDue=(featureavailability::SceneRefresh&&sh->foreground&&sh->scrollRefreshMode&&sh->scrollRefreshHz&&scrollCadence.ready(preciseNow,sh->scrollRefreshHz))||
    (scrollRefreshActive&&(!sh->scrollRefreshMode||!sh->scrollRefreshHz));
- bool fastDue=sh->foreground&&(sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHeld||burstCount)&&preciseNow-fastSampleAt>=2000;
+ bool fastDue=sh->foreground&&(sh->dodgeEnabled||dodgeCount||burstCount)&&preciseNow-fastSampleAt>=2000;
  // Updating the display consumes its frame wake. Continue polling for a
  // pending strict capture on the existing 4 ms Host pulse.
  const bool indexRetryDue=indexedWorkDeferred&&DWORD(now-last)>=4;
@@ -2075,8 +2075,7 @@ static void tick(){
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&
   !sh->superweaponGrant&&
   !sh->placementPreview.active&&!(sh->runtimeTracking&~uint32_t(AdvancedInput|MagnetronInput|AutoOreReturn))&&!sh->plannerTracking&&
-  !sh->burstEnabled&&
-  !sh->burstHoldEnabled&&!sh->burstHeld&&
+  // Retired Burst flags are ABI compatibility fields, not graph demand.
   !stickyCount&&
   !burstCount&&!loadCalculationPending&&
   !ownground::job.pending&&!nativePlacementCompletionPending()&&
@@ -2155,7 +2154,7 @@ static void tick(){
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;pauseViewTick();buildTimeTooltipTick();
  snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();inputLockTick();
  if(worldChange==worldlife::Change::Same&&lastHouse)oreHarvestObserve(lastHouse,frame,now);
- bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missileSendCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||manualVersions.pausedCount||oreHarvestNeedsWork()||runtimeCoopPending||sh->cooperativeFrameWanted||(cooperative::valid(sh->cooperativeRequest)&&sh->cooperativeRequest.serial!=runtimeCoopRequest.serial)||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||manualRepairPending||ownground::job.pending||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
+ bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||burstCount||sh->missileEnabled||missileHoldCount||missileSendCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||manualVersions.pausedCount||oreHarvestNeedsWork()||runtimeCoopPending||sh->cooperativeFrameWanted||(cooperative::valid(sh->cooperativeRequest)&&sh->cooperativeRequest.serial!=runtimeCoopRequest.serial)||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||manualRepairPending||ownground::job.pending||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
   sh->flags|sh->plannerTracking|((sh->cooperativePlan!=sh->cooperativeAck)?AutoOreReturn:0),(sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)));
  const bool deferIndexedWork=needsIndex&&(!refreshWorldIndex(frame)||!commandRosterReady());
  indexedWorkDeferred=deferIndexedWork;
