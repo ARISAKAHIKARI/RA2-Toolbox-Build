@@ -141,6 +141,21 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
  // Preserve legacy sealed-roster completeness semantics.
  const bool actorsNeeded=advanced||ore||minerDefense||defense||drop;
  Vec all{};if((actorsNeeded||!native)&&!sampleRoster(0xA8EC78,all))return false;
+ // The native collector does not invoke the engine until after conversion.
+ // Every refinery waiting ring can share one live map-array header during
+ // this invocation. Keep sealed-page discovery and missing-read semantics
+ // unchanged for the legacy observation route.
+ uint32_t waitingMapItems=0;int waitingMapCount=0;bool waitingMapRead=false;
+ const auto waitingCell=[&](int x,int y)->uint32_t{
+  if(!native)return readMapCell(x,y);
+  if(x<=0||y<=0||x>=512||y>=512)return 0;
+  if(!waitingMapRead){
+   waitingMapCount=get<int>(0x87F7E8+320);waitingMapItems=get<uint32_t>(0x87F7E8+316);waitingMapRead=true;
+  }
+  const int index=y*512+x;
+  return waitingMapItems>=0x10000&&waitingMapCount>index&&waitingMapCount<=512*512?
+   get<uint32_t>(waitingMapItems+uint32_t(index)*4):0;
+ };
  const bool rollbackNeeded=!native||defenseProven;
  static WeaponCacheEntry cacheBefore[1024]{};
  if(rollbackNeeded)memcpy(cacheBefore,weaponCache,sizeof weaponCache);
@@ -244,7 +259,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
    // entry, pathfinder, radio query or game-side docking helper is called.
    int cx=refinery.cellX+(refinery.dockStyleB?2:1),cy=refinery.cellY+2;
    for(int radius=1;radius<=4&&refinery.count<planner::MaxWaitingCells;++radius)for(int dy=-radius;dy<=radius&&refinery.count<planner::MaxWaitingCells;++dy)for(int dx=-radius;dx<=radius&&refinery.count<planner::MaxWaitingCells;++dx){
-    if(dx!=-radius&&dx!=radius&&dy!=-radius&&dy!=radius)continue;int x=cx+dx,y=cy+dy;uint32_t cell=readMapCell(x,y);if(!cell)continue;
+    if(dx!=-radius&&dx!=radius&&dy!=-radius&&dy!=radius)continue;int x=cx+dx,y=cy+dy;uint32_t cell=waitingCell(x,y);if(!cell)continue;
     auto&sample=refinery.waiting[refinery.count++];sample.cell=uint32_t(y*1000+x);sample.occupation=get<uint32_t>(cell+0x124);sample.land=get<int>(cell+0xEC);
    }
   }
