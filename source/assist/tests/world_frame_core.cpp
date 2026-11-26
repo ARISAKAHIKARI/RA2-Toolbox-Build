@@ -571,6 +571,30 @@ void contiguousWarmBatch32(){
  std::printf("PASS contiguous warmup: 64 pages, 16-page=4 RPM calls, 32-page=2 calls, exact bytes and fault isolation retained\\n");
 }
 void capacity(){
+ // Distinct pages sharing a bucket must be inserted once, retain their
+ // own payloads and count repeated capture as hits, including after reset.
+ {
+  worldframe::Snapshot collisions;collisions.resetBoundary(key());
+  constexpr uint32_t first=0x10000,step=worldframe::IndexSize*worldframe::PageSize;
+  size_t reads=0;
+  auto live=[&](uint32_t p,void*out,size_t n){
+   ++reads;std::memset(out,int((p-first)/step)+1,n);return true;
+  };
+  for(uint32_t i=0;i<8;++i){
+   const uint32_t page=first+i*step;
+   CHECK(worldframe::bucket(page)==worldframe::bucket(first));
+   uint8_t byte=0;CHECK(collisions.capture(live,page,&byte,1)&&byte==i+1);
+  }
+  CHECK(reads==8&&collisions.pages.size()==8);
+  for(uint32_t i=8;i>0;--i){
+   uint8_t byte=0;CHECK(collisions.capture(live,first+(i-1)*step,&byte,1)&&byte==i);
+  }
+  CHECK(reads==8&&collisions.counters.pageHits==8&&collisions.seal());
+  collisions.resetBoundary(key());
+  uint8_t byte=0;CHECK(collisions.capture(live,first+7*step,&byte,1)&&byte==8);
+  CHECK(reads==9&&collisions.pages.size()==1&&collisions.counters.pageHits==0);
+  CHECK(collisions.seal()&&!collisions.read(first,&byte,1));
+ }
  worldframe::Snapshot s;s.reset(key());size_t calls=0;
  auto live=[&](uint32_t p,void*out,size_t n){++calls;std::memset(out,int(p>>12)&255,n);return true;};
  constexpr uint32_t begin=0x10000000,half=32u*1024u*1024u;
