@@ -308,6 +308,9 @@ public:
   // prefiltered actor warmup can batch 32 adjacent pages in one live read.
   // Clamp to the caller's retained scratch and never read outside a run.
   const size_t limit=std::min({size_t(32),maxBatchPages,scratchBytes/PageSize});bool ok=true;
+  // Optional warmup never reads individual pages. Without room for a
+  // contiguous pair, it has no work even for a large address list.
+  if(!individualFallback&&(!scratch||limit<2))return true;
   // Bound the TOTAL number of extra speculative RPM calls per invocation.
   // Thousands of inaccessible actors must not multiply the split cost.
   unsigned splitBudget=32;
