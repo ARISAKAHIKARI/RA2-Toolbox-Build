@@ -849,6 +849,22 @@ static void testDirectOre(){
  oreHarvestTick(lastHouse,snap.frame,clockNow);
  check(harvestEvents==1&&harvestLast.destination==62056&&!oreHarvestPending(),"native ore failed to find and submit exact nearest resource");
  check(runtimeWorldDemands.empty()&&worldFrame.pages.size()==0&&!sampleReadDepth,"native ore required copied pages");
+ // Unsorted native dock metadata must retain its original membership, and
+ // an off-map unloading miner must remain in the planner with OffMap set.
+ const auto extraType=makeType(),otherType=makeType();
+ const auto extraDock=object(extraType,3,31,lastHouse,54*256,60*256);
+ const auto otherBuilding=object(otherType,3,32,lastHouse,58*256,60*256);
+ const auto docks=get<uint32_t>(f.type+0x3EC);
+ vectorAt(f.type+0x3E8,docks,{extraType,f.refineryType,extraType});
+ vectorAt(0xA8EC78,0x800000,{f.miner,f.refinery,extraDock,otherBuilding});
+ worldObjects.add(extraDock,31);worldObjects.add(otherBuilding,32);
+ ++oreConfigRevision;++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ set<bool>(f.miner+0x74,false);set<bool>(f.miner+0x6D1,true);
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&planningWorld.count==3,
+       "native planning lost dock membership or unloading miner");
+ check(planningWorld.actors[0].id==20&&(planningWorld.actors[0].flags&planner::OffMap)&&
+       (planningWorld.actors[0].flags&planner::Unloading)&&planningWorld.actors[1].id==30&&planningWorld.actors[2].id==31,
+       "native planning changed own roster order, dock membership or off-map flags");
  runtimeDirectActions=worldFrameBoundaryOnly=worldFrameReady=false;
  std::puts("PASS native ore unload transition and resource search with no copied graph");
 }
