@@ -103,7 +103,16 @@ public:
    }
    if(repaired&&covered){retry=false;++statistics.repairedReports;}
   }
-  if(added||retry){++revision_;return true;}
+  if(added||retry){
+   // Repeated reports from a pinned display observation still invalidate
+   // reuse, but do not create new dependencies for a failed graph attempt.
+   // Never absorb a genuinely new dependency or an explicit refresh.
+   const bool repeatedFailureReport=failedBuild_&&failedBuildRevision_==revision_&&
+     !added&&retry&&sameVisualWorld&&!pages.empty();
+   ++revision_;
+   if(repeatedFailureReport)failedBuildRevision_=revision_;
+   return true;
+  }
   return false;
  }
  template<class Live>Token acquire(const Token&source,uint32_t demand,uint32_t now,Live live){
