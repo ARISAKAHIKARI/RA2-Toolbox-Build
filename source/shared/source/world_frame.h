@@ -233,10 +233,15 @@ public:
  Snapshot(const Snapshot&)=delete;Snapshot&operator=(const Snapshot&)=delete;
  // Transfer a completed worker-owned capture without allocating or copying any
  // page payloads. Both Snapshot owners must be exclusive and quiescent here.
- // The fixed 128 KiB lookup table is swapped, never rebuilt from game memory.
+ // The fixed lookup table travels with its pages. An invalid boundary
+ // index has no contents to preserve, so only transfer live indices.
  void swap(Snapshot&other)noexcept{
+  if(this==&other)return;
   using std::swap;
-  swap(index_,other.index_);swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
+  if(indexFresh_&&other.indexFresh_)swap(index_,other.index_);
+  else if(indexFresh_)other.index_=index_;
+  else if(other.indexFresh_)index_=other.index_;
+  swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
   swap(indexFresh_,other.indexFresh_);
   swap(key,other.key);swap(counters,other.counters);pages.swap(other.pages);
   swap(catalogue,other.catalogue);
