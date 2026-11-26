@@ -2103,11 +2103,18 @@ static void tick(){
  // Display-only demand publishes a zero-page world boundary. The Host
  // VisualCache independently samples the read-only display graph; it never
  // becomes a source of Runtime commands or action-planning authority.
+ // Do not mistake a connected but unsubscribed Host, a fresh match or an
+ // ordinary idle wake for a graph consumer. Keep legacy rendering, pending
+ // work, unknown dependencies and every existing command lane unchanged.
+ const bool idleWithoutGraph=noCommandWork&&sh->externalDisplay&&nativeCatalogue&&
+  worldDemand==uint32_t(worldframe::Base)&&
+  (!sharedWorldWanted||!worldFrameServer.demandMask())&&
+  runtimeWorldDemands.empty()&&!runtimeDemandOverflow;
  if(hostDisplayOnly)
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,true);
  else if(directRuntime)
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldframe::Base|worldframe::HostDisplayOnly,true);
- else if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))
+ else if(!idleWithoutGraph&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
  if(!nativeCatalogue&&(worldFrame.catalogue.attempted||worldFrameCandidate.catalogue.attempted)){
   ObservationReadScope sample;

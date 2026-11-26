@@ -24,6 +24,10 @@ assert "if(wanted)capturePassiveWorld(world,house,now,wanted);" in bridge
 assert "capturePassiveWorld(worldSample,house,now,sharedWorldWanted);" in bridge
 assert "if(hostDisplayOnly)" in bridge
 assert "else if(directRuntime)" in bridge
+idle=bridge.split("const bool idleWithoutGraph=",1)[1].split(";",1)[0]
+for condition in ("noCommandWork", "sh->externalDisplay", "nativeCatalogue", "worldDemand==uint32_t(worldframe::Base)", "(!sharedWorldWanted||!worldFrameServer.demandMask())", "runtimeWorldDemands.empty()", "!runtimeDemandOverflow"):
+    assert condition in idle
+assert "else if(!idleWithoutGraph&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))" in bridge
 assert "runtimeDirectActions=!worldFrameCommandWorker.enabled()&&sh->computeApplied==compute::All&&gameentry::active(gameentry::Client::Assist);" in bridge
 assert "if(!runtimeDirectActions||commandRosterReady())pointerTick();" in bridge
 direct_admission=bridge.split("const bool directRuntime=",1)[1].split(";",1)[0]
