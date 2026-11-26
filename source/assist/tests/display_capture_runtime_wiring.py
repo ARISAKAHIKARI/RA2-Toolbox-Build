@@ -26,7 +26,10 @@ assert "if(hostDisplayOnly)" in bridge
 assert "else if(directRuntime&&!idleWithoutGraph)" in bridge
 assert "const uint32_t hostDemand=sharedWorldWanted?worldFrameServer.demandMask():0u;" in bridge
 idle=bridge.split("const bool idleWithoutGraph=",1)[1].split(";",1)[0]
-for condition in ("noCommandWork", "sh->externalDisplay", "nativeCatalogue", "worldDemand==uint32_t(worldframe::Base)", "!hostDemand", "runtimeWorldDemands.empty()", "!runtimeDemandOverflow"):
+# Between catalogue deadlines the catalogue implementation is irrelevant.
+# A due graph refresh, pending tasks and any actual page demand still exclude idle.
+assert "nativeCatalogue" not in idle
+for condition in ("noCommandWork", "sh->externalDisplay", "!graphCatalogueDue", "worldDemand==uint32_t(worldframe::Base)", "!hostDemand", "runtimeWorldDemands.empty()", "!runtimeDemandOverflow"):
     assert condition in idle
 assert "else if(!idleWithoutGraph&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))" in bridge
 assert "runtimeDirectActions=!worldFrameCommandWorker.enabled()&&sh->computeApplied==compute::All&&gameentry::active(gameentry::Client::Assist);" in bridge
