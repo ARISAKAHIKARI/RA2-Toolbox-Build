@@ -252,6 +252,34 @@ void partial(){
  CHECK(!s.capture(read,0x20020,out.data(),8));const auto attempted=m.calls.size();CHECK(!s.capture(read,0x20022,out.data(),3));CHECK(m.calls.size()==attempted);
  CHECK(s.counters.pageAttempts==1&&s.counters.rangeAttempts==3&&s.counters.failedReads==2);m.uniqueSuccessfulBytes();CHECK(s.seal());
  CHECK(s.read(0x20010,out.data(),16));for(unsigned i=0;i<16;++i)CHECK(out[i]==uint8_t(0x10+i));CHECK(!s.read(0x20020,out.data(),8));CHECK(s.observed(0x20020,8));CHECK(!s.observed(0x20030,4));CHECK(!s.read(0x20030,out.data(),4));
+ // Compare bitmap-word observation with a byte-by-byte oracle on two
+ // partial pages, including full words, a single unknown byte and a
+ // valid/failed transition across the page boundary.
+ worldframe::Page pages[2]{};
+ constexpr uint32_t start=0x30000;
+ pages[0].address=start;pages[1].address=start+worldframe::PageSize;
+ worldframe::mark(pages[0].valid,0,64);
+ worldframe::mark(pages[0].failed,64,64);
+ worldframe::mark(pages[0].valid,128,191);
+ worldframe::mark(pages[0].failed,320,worldframe::PageSize-320);
+ worldframe::mark(pages[1].valid,0,64);
+ worldframe::mark(pages[1].failed,64,64);
+ worldframe::Snapshot words;CHECK(words.import(key(),{},pages,2));
+ for(size_t at:{size_t(0),size_t(1),size_t(63),size_t(64),size_t(65),
+                size_t(127),size_t(128),size_t(318),size_t(319),size_t(320),
+                size_t(4095),size_t(4096),size_t(4159),size_t(4160),size_t(4223),size_t(4224)})
+  for(size_t len:{size_t(1),size_t(2),size_t(63),size_t(64),size_t(65),size_t(127),
+                  size_t(128),size_t(129),size_t(4096),size_t(4097)}){
+   bool expected=true;
+   for(size_t pos=at;pos<at+len;++pos){
+    if(pos>=2*worldframe::PageSize){expected=false;break;}
+    const auto&pg=pages[pos/worldframe::PageSize];const size_t offset=pos%worldframe::PageSize;
+    if(!worldframe::bit(pg.valid,offset)&&!worldframe::bit(pg.failed,offset)){expected=false;break;}
+   }
+   CHECK(words.observed(start+uint32_t(at),len)==expected);
+  }
+ CHECK(words.observed(start+64,64)); // failed is observed, never readable
+ CHECK(!words.read(start+64,out.data(),out.size()));
 }
 struct GraphStats{uint32_t calls,bytes,rosters;};
 GraphStats graph(uint32_t demand){
