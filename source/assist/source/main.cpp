@@ -1634,6 +1634,10 @@ static void sampleExternal(DWORD now){
  if(extra.ownMarkers&&!extra.enemyMarkers&&!extra.enemySpecialOnly&&
     !statusOptions()&&!(flags()&(Iron|Frozen|Psychic))&&
     enabled&&foregroundGame()&&externalData&&externalWorldSource&&viewportKnown&&
+    externalWorldSource->key.pid==externalReader.pid()&&
+    ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)==externalReader.generation()&&
+    (!commandMatch()||externalWorldSource->key.match==commandMatch())&&
+    externalSampler.state().match==externalData->match&&
     externalSampler.sampledViewport()==viewportTransform&&
     externalSampler.refreshOwnedCamera()){
   externalPublished=externalSampler.state();externalPublished.sampledTick=externalWorldSource->key.tick;
@@ -2070,7 +2074,11 @@ static void paint(){
   // Retain existing pixels only. Do not rebuild from a failed information
   // sample, refresh an input authorization, or renew the read-failure lease.
   if(!enabled||!foregroundGame()||snap.chat){unitpanelhost::panel.hide();worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();hideConstruction();clearPassengerDisplay();return;}
-  overlaycompositor::host().touch(overlaycompositor::World,uintptr_t(game),pid);overlaycompositor::host().touch(sidebaroverlay::Layer,uintptr_t(game),pid);return;
+  // HOLD is allowed only while the retained bitmap still matches the
+  // known camera. A changed camera must not keep the old world pixels.
+  if(worldrender::displayed&&(worldrender::displayed->context.cameraX!=snap.cameraX||worldrender::displayed->context.cameraY!=snap.cameraY))hideWorldOverlay();
+  else overlaycompositor::host().touch(overlaycompositor::World,uintptr_t(game),pid);
+  overlaycompositor::host().touch(sidebaroverlay::Layer,uintptr_t(game),pid);return;
  }
  const bool battlefield=displayState.visible();
  const DWORD renderNow=sampleRenderClock(shared);
