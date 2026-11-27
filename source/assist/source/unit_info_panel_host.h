@@ -23,7 +23,7 @@ class Panel {
  // no game data is cached here. Resize transactionally on extent changes.
  struct PaintBuffer {
   HDC dc=nullptr;HBITMAP bitmap=nullptr;HGDIOBJ previous=nullptr;
-  int width=0,height=0;
+  int width=0,height=0;bool valid=false;
   PaintBuffer()=default;
   PaintBuffer(const PaintBuffer&)=delete;
   PaintBuffer& operator=(const PaintBuffer&)=delete;
@@ -32,7 +32,7 @@ class Panel {
    if(dc&&previous)SelectObject(dc,previous);
    if(bitmap)DeleteObject(bitmap);
    if(dc)DeleteDC(dc);
-   dc=nullptr;bitmap=nullptr;previous=nullptr;width=height=0;
+   dc=nullptr;bitmap=nullptr;previous=nullptr;width=height=0;valid=false;
   }
   bool ensure(HDC target,int w,int h){
    if(w<=0||h<=0)return false;
@@ -204,14 +204,19 @@ class Panel {
    text.label(L"▶",float(bx+gw-22),float(footer+1),12,Color(255,230,220,143),true);
   }
  }
+ void invalidate(){
+  paintBuffer_.valid=false;
+  if(window_)InvalidateRect(window_,nullptr,FALSE);
+ }
  void click(int x,int y,bool /*right*/=false){
+  const int oldPage=page_,oldFocus=focused_;
   if(x<ButtonW+3){
    const int foldY=height_-ButtonW-1;
    // The single fold control collapses the whole panel, including cargo.
    if(y>=foldY&&y<foldY+ButtonW-2){
-    folded_=!folded_;page_=0;focused_=-1;
+    folded_=!folded_;page_=0;focused_=-1;invalidate();
    }
-   InvalidateRect(window_,nullptr,FALSE);return;
+   return;
   }
   if(folded_)return;
   int bx=ButtonW+4,by=Pad-2;
@@ -231,12 +236,12 @@ class Panel {
      focused_=cell; // visual focus only: no game selection or cargo command
    }
   }
-  InvalidateRect(window_,nullptr,FALSE);
+  if(page_!=oldPage||focused_!=oldFocus)invalidate();
  }
  void wheel(int delta){
-  if(folded_||pages()<2)return;
+  if(!delta||folded_||pages()<2)return;
   page_=(page_+(delta>0?pages()-1:1))%pages();
-  InvalidateRect(window_,nullptr,FALSE);
+  invalidate();
  }
  static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   auto*self=reinterpret_cast<Panel*>(GetWindowLongPtrW(w,GWLP_USERDATA));
@@ -250,6 +255,8 @@ class Panel {
    if(self->window_==w)self->window_=nullptr;
    SetWindowLongPtrW(w,GWLP_USERDATA,0);
   }
+  if(self&&(msg==WM_THEMECHANGED||msg==WM_SYSCOLORCHANGE||msg==WM_SETTINGCHANGE||
+            msg==WM_FONTCHANGE||msg==WM_DISPLAYCHANGE||msg==WM_DPICHANGED))self->invalidate();
   if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;
   if(msg==WM_ERASEBKGND)return TRUE;
   if(msg==WM_LBUTTONDOWN){if(self)self->click(short(LOWORD(lp)),short(HIWORD(lp)));return 0;}
@@ -262,8 +269,12 @@ class Panel {
     if(cw>0&&ch>0){
      if(self->paintBuffer_.ensure(dc,cw,ch)){
       HDC mem=self->paintBuffer_.dc;
-      {Gdiplus::Graphics g(mem);self->paint(g);}
+      if(!self->paintBuffer_.valid){
+       {Gdiplus::Graphics g(mem);self->paint(g);}
+       self->paintBuffer_.valid=true;
+      }
       if(!BitBlt(dc,0,0,cw,ch,mem,0,0,SRCCOPY)){
+       self->paintBuffer_.valid=false;
        Gdiplus::Graphics g(dc);self->paint(g);
       }
      }else{
@@ -293,11 +304,11 @@ public:
         um::AssetLoad files,uint32_t pid,uint32_t match,DWORD now){
   const auto before=cameos_.revision();
   cameos_.refresh(model,read,resolve,files,pid,match,now);
-  if(cameos_.revision()!=before&&window_)InvalidateRect(window_,nullptr,FALSE);
+  if(cameos_.revision()!=before)invalidate();
  }
  void hide(){lastGoodAt_=0;if(window_&&IsWindowVisible(window_))ShowWindow(window_,SW_HIDE);}
  void miss(){if(lastGoodAt_&&DWORD(GetTickCount()-lastGoodAt_)<550)return;hide();}
- void destroy(){if(window_){DestroyWindow(window_);window_=nullptr;}cameos_.clear();model_={};signature_=0;}
+ void destroy(){if(window_){DestroyWindow(window_);window_=nullptr;}paintBuffer_.reset();cameos_.clear();model_={};signature_=0;}
  void update(const external::unitpanel::Model&model,int x,int bottom,int availableWidth){
   if(model.selected<=0||model.groupCount<=0||availableWidth<150){miss();return;}
   if(!ensure())return;
@@ -305,12 +316,13 @@ public:
   const uint64_t key=model.visualSignature();
   const bool differentUnit=model_.match!=model.match||model_.selected!=model.selected||
     (model.selected==1&&model_.single.id!=model.single.id);
-  if(differentUnit){page_=0;focused_=-1;}
-  if(key!=signature_){model_=model;signature_=key;InvalidateRect(window_,nullptr,FALSE);}
-  page_=external::unitpanel::clampPage(page_,entries(),perPage());
+  if(differentUnit){page_=0;focused_=-1;invalidate();}
+  if(key!=signature_){model_=model;signature_=key;invalidate();}
+  const int clamped=external::unitpanel::clampPage(page_,entries(),perPage());
+  if(page_!=clamped){page_=clamped;invalidate();}
   int newWidth=std::min(wantedWidth(),availableWidth);
   int newHeight=wantedHeight();
-  if(newWidth!=width_||newHeight!=height_){width_=newWidth;height_=newHeight;InvalidateRect(window_,nullptr,FALSE);}
+  if(newWidth!=width_||newHeight!=height_){width_=newWidth;height_=newHeight;invalidate();}
   // Preserve game focus and never turn the panel into a gameplay click.
   RECT last{};const bool visible=IsWindowVisible(window_)!=FALSE;
   const bool same=visible&&GetWindowRect(window_,&last)&&last.left==x&&
