@@ -135,3 +135,16 @@ assert catalogue_refresh.count("types();")==1
 assert "types();" not in catalogue_refresh.split("}else{",1)[1]
 assert "catalogueReady_=false;" in catalogue_refresh.split("}else{",1)[1]
 print("PASS ordinary catalogue missing-data retry does not rewalk the unavailable source")
+
+# Catalogue projection is transactional: a successful stamp alone is not a
+# successful list publication, and missing metadata cannot overwrite old rows.
+projection=sampler.split(" bool types(){",1)[1].split("\npublic:",1)[0]
+publish_at=projection.index("std::copy(rows.begin(),rows.end(),state_.types);")
+assert "if(!view.vecChecked(arrays[c],list,4096))return false;" in projection
+assert "state_.typeCount" not in projection[:publish_at]
+assert "state_.types" not in projection[:publish_at]
+assert "if(!read_(namePointer,t.name,sizeof t.name))return false;" in projection
+assert "!read_(p+0x610,&t.cost,sizeof t.cost))return false;" in projection
+assert projection.index("state_.typeCount=int(rows.size());return true;")>publish_at
+assert "catalogueReady_=types();\n     if(catalogueReady_){sceneFrame_=-1;catalogueHash_=stamp.hash;}" in sampler
+print("PASS UI catalogue commits only after complete projection")
