@@ -153,14 +153,16 @@ static int labelScalePercent=100,constructionScalePercent=100;
 static visual::Motion motion;static visual::LabelView labelViews[MaxLabels];
 #include "enemy_clusters.h"
 static external::enemies::Frame clusteredEnemies;
-static enemyclusters::GroupCache enemyGroups;
+static enemyclusters::GroupCache enemyGroups,ownedGroups;
+static external::enemies::Frame clusteredOwned;
+static visual::LabelView ownedViews[MaxLabels],clusteredOwnedViews[MaxLabels];
 static visual::LabelView clusteredEnemyViews[MaxLabels];
 static visual::Motion enemyMotion;static Snapshot enemySample{};static visual::LabelView enemyViews[MaxLabels];
 static_assert(external::enemies::Maximum<=MaxLabels,"Enemy markers reuse the existing display Motion capacity");
 struct EnemyRaster {std::wstring text;ARGB color{};std::unique_ptr<Bitmap> image;};
 using EnemyRasterKey=std::tuple<uint32_t,uint32_t,int>;
 static std::map<EnemyRasterKey,EnemyRaster> enemyRasters;static uint32_t enemyRasterMatch=0;
-static void clearEnemyDisplay(){enemyMotion.clear();enemyRasters.clear();enemyGroups.clear();clusteredEnemies.count=0;enemyRasterMatch=0;}
+static void clearEnemyDisplay(){enemyMotion.clear();enemyRasters.clear();enemyGroups.clear();ownedGroups.clear();clusteredEnemies.count=0;clusteredOwned.count=0;enemyRasterMatch=0;}
 struct LabelRaster {std::wstring text;ARGB color{};float width{};int used{},capacity{},centis{},shield{},frozenCentis{};std::unique_ptr<Bitmap> image;};static std::unordered_map<uint32_t,LabelRaster> labelRasters;
 static visual::Motion statusMotion;static visual::LabelView statusViews[MaxLabels];static Snapshot statusSample;
 static_assert(external::status::Maximum<=MaxLabels,"Unit status markers share the existing Motion capacity");
@@ -1626,6 +1628,17 @@ static void sampleExternal(DWORD now){
 
  if(!externalReader.valid())return;
  const DWORD displayNow=sampleRenderClock(nullptr);
+ // Do not let a pending world acquisition block ordinary camera motion.
+ // This path is restricted to local display; hidden/enemy modes retain
+ // their original acquisition and visibility checks.
+ if(extra.ownMarkers&&!extra.enemyMarkers&&!extra.enemySpecialOnly&&
+    !statusOptions()&&!(flags()&(Iron|Frozen|Psychic))&&
+    enabled&&foregroundGame()&&externalData&&externalWorldSource&&viewportKnown&&
+    externalSampler.sampledViewport()==viewportTransform&&
+    externalSampler.refreshOwnedCamera()){
+  externalPublished=externalSampler.state();externalPublished.sampledTick=externalWorldSource->key.tick;
+  externalData=&externalPublished;mergeExternal();
+ }
  const DWORD period=((enabled&&foregroundGame())||secondaryDisplayAvailable())?DWORD(1000/informationFPS()):250;
  if(!externalAt||DWORD(displayNow-externalAt)>=period){
   const DWORD gap=externalAt?DWORD(displayNow-externalAt):0;
@@ -1655,9 +1668,9 @@ static void sampleExternal(DWORD now){
   if(externalWorldSource&&(!externalWorldSource->key.sameWorld(source->key)||source->key.frame<externalWorldSource->key.frame))discardExternalWorld();
   // Selection is part of the immutable publication. A live fingerprint
   // cannot change an already bound sample or justify projecting it twice.
-  struct UIKey {uint32_t flags=0,status=0,viewport=0,specialMode=0;bool enemies=false,specialOnly=false;};static UIKey previousUI;
-  UIKey ui{flags(),statusOptions(),viewportTransform.generation,uint32_t(extra.enemySpecialMode),extra.enemyMarkers,extra.enemySpecialOnly};
-  const bool sameUI=ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies&&ui.specialOnly==previousUI.specialOnly&&ui.specialMode==previousUI.specialMode;
+  struct UIKey {uint32_t flags=0,status=0,viewport=0,specialMode=0;bool enemies=false,specialOnly=false,owned=false;};static UIKey previousUI;
+  UIKey ui{flags(),statusOptions(),viewportTransform.generation,uint32_t(extra.enemySpecialMode),extra.enemyMarkers,extra.enemySpecialOnly,extra.ownMarkers};
+  const bool sameUI=ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies&&ui.specialOnly==previousUI.specialOnly&&ui.specialMode==previousUI.specialMode&&ui.owned==previousUI.owned;
   externalSampler.worldEpoch(source->key.match);
   if(worldframe::sameObservation(externalWorldSource,source)&&sameUI){
    // The 100ms aircraft scan can precede the publication where play paused.
@@ -1669,7 +1682,7 @@ static void sampleExternal(DWORD now){
    }
    externalSampler.refreshCamera(displayNow);externalPublished=externalSampler.state();externalPublished.sampledTick=source->key.tick;externalData=&externalPublished;externalSourceConfirmed=true;mergeExternal();return;
   }
-  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions(),source->key.serial,false,extra.enemySpecialOnly);
+  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions(),source->key.serial,false,extra.enemySpecialOnly,extra.ownMarkers);
   if(!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
   externalSampler.commitSample();
   externalPublished=candidate;externalData=&externalPublished;externalWorldSource=source;externalSourceConfirmed=true;previousUI=ui;
@@ -1985,7 +1998,7 @@ static void submit(Job input){
  submission.submitted();input.context=overlaycompositor::host().capture(uintptr_t(game),pid);
  // Capture the camera the pixels actually use; World commits it with the
  // completed bitmap when the full-scene renderer is inactive.
- if(input.context.token){input.context.cameraX=snap.cameraX;input.context.cameraY=snap.cameraY;}
+ input.context.cameraX=snap.cameraX;input.context.cameraY=snap.cameraY;
  POINT origin{};ClientToScreen(game,&origin);input.relative={input.origin.x-origin.x,input.origin.y-origin.y};
  worker.submit(std::move(input));
 }
@@ -2019,6 +2032,9 @@ static void present(){auto frame=worker.get();
  // The compatibility HWND has no per-layer radar cutout. During the
  // radar-only transition, keep it hidden until the compositor can mask it.
  if((shared&&shared->sidebarStatus==3)||(extra.sidebarEnabled&&extra.sidebarMode==1)){hideWorldOverlay();return;}
+ // The fallback HWND cannot relocate a mixed overlay bitmap: reject
+ // obsolete camera pixels rather than dragging stale markers over the map.
+ if(frame->context.cameraX!=snap.cameraX||frame->context.cameraY!=snap.cameraY){hideWorldOverlay();return;}
  if((frame==displayed&&IsWindowVisible(overlay))||DWORD(GetTickCount()-frame->tick)>500)return;
  if(!surface.resize(frame->w,frame->h))return;memcpy(surface.bits,frame->pixels.data(),frame->pixels.size()*4);
  POINT origin{};ClientToScreen(game,&origin);origin.x+=frame->relative.x;origin.y+=frame->relative.y;POINT zero{};
@@ -2072,6 +2088,23 @@ static void paint(){
  int rawEnemyCount=enemyTextEnabled()&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups.update(rawEnemyFrame),clusteredEnemies,clusteredEnemyViews):0;
  std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
+ const auto&ownedFrame=externalSampler.ownedMarkers();
+ if(extra.ownMarkers&&externalData&&displaylease::frameCurrent(ownedFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)){
+  // Owned anchors are stored before camera subtraction. Only the local
+  // player's records can enter this independent grouping cache.
+  int count=0;
+  for(int i=0;i<ownedFrame.count;++i){
+   const auto&m=ownedFrame.items[i];if(m.owner!=ownedFrame.house||!m.owner)continue;
+   visual::LabelView v{};v.id=m.id;v.x=float(m.x)-snap.cameraX;v.y=float(m.y)-snap.cameraY;v.ownerColor=m.color;ownedViews[count++]=v;
+  }
+  int groups=enemyclusters::render(ownedFrame,ownedViews,count,ownedGroups.update(ownedFrame),clusteredOwned,clusteredOwnedViews);
+  if(!enemyCount){clusteredEnemies.width=clusteredOwned.width;clusteredEnemies.height=clusteredOwned.height;}
+  for(int i=0;i<groups&&enemyCount<external::enemies::Maximum;++i){
+   if(clusteredOwned.items[i].owner!=ownedFrame.house)continue;
+   clusteredEnemies.items[enemyCount]=clusteredOwned.items[i];enemyViews[enemyCount++]=clusteredOwnedViews[i];
+  }
+ }else ownedGroups.clear();
+ clusteredEnemies.count=enemyCount;
  for(int i=0;i<enemyCount;++i)nativeviewhost::localPoint(viewportTransform,enemyViews[i].x,enemyViews[i].y);
  const auto&enemyFrame=clusteredEnemies;
  updateAircraftButton(origin,r);formationhost::update();specialoverlayhost::update(viewportTransform);
