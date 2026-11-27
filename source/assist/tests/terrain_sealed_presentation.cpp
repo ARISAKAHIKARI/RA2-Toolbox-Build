@@ -99,10 +99,11 @@ int main(int argc,char**argv){
  frame.sourceFrame=memory.seal(21);auto unchanged=draw();
  assert(unchanged&&unchanged->pixels==changed->pixels&&reader.worldFrameComplete());
  assert(renderer.stageStats().terrainLightCells==10000&&renderer.stageStats().terrainPreparedSlots==0&&renderer.stageStats().terrainProbeCopies==0);
- std::puts("PASS new unchanged publication: exact pixels, zero terrain probe scratch");
+ assert(renderer.stageStats().terrainLightReuses==10000);
+ std::puts("PASS new unchanged publication: exact pixels, zero terrain probe scratch, 10000 reused derived signatures");
  // A changed cell must still trigger a real rebuild, not the stable shortcut.
  memory.put(Cells+0x10A,std::array<int16_t,3>{{1000,600,1000}});
- frame.sourceFrame=memory.seal(22);draw();assert(renderer.stageStats().terrainPreparedSlots>0);
+ frame.sourceFrame=memory.seal(22);draw();assert(renderer.stageStats().terrainPreparedSlots>0&&renderer.stageStats().terrainLightReuses<renderer.stageStats().terrainLightCells);
  settle();memory.put(Cells+0x10A,std::array<int16_t,3>{{1000,1000,1000}});
  frame.sourceFrame=memory.seal(23);settle();
  // A cached table must never supply missing bytes to another publication.
