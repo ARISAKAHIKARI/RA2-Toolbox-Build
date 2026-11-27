@@ -10,7 +10,7 @@ position=host[host.index('static void resizePanel()'):host.index('static bool us
 types=host[host.index('struct PaintRequest {'):host.index('struct PanelPainter {')]
 modern='static std::shared_ptr<const Painted> paintedFrame;' in host
 helpers=host[host.index('static std::shared_ptr<const Painted> paintedFrame;' if modern else 'static LRESULT CALLBACK proc('):host.index('static void service()')]
-prefix=r'''
+prefix=('#define TARGETED_STACK_CANCEL\n' if 'static void removeVisibleRow(' in host else '')+r'''
 
 #include "construction_policy.h"
 #include "panel_placement.h"
@@ -86,7 +86,8 @@ static struct{int typeCount=8;assist::Type types[8];}snap;
 static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}
 static unsigned policyClears=0;static void publishReservationPolicy(std::initializer_list<int>){++policyClears;}
 static int lastReservation=-1;static unsigned reservationCalls=0;
-static bool usable(){return true;}static void removeTop(bool){}static void removeItem(int,int,bool){}static void reserve(int index){lastReservation=index;++reservationCalls;}
+static unsigned removalCalls=0;static int removedTab=-1,removedRow=-1;static bool removedAll=false;
+static bool usable(){return true;}static void removeTop(bool){}static void removeVisibleRow(int tab,int row,bool all){++removalCalls;removedTab=tab;removedRow=row;removedAll=all;}static void removeItem(int,int,bool){}static void reserve(int index){lastReservation=index;++reservationCalls;}
 
 static uint32_t pid=1,house=0x500000,match=7,now=1000;static bool eligible=true;
 static uint32_t choicesHouse=house,choicesMatch=match,refreshed=1;
@@ -172,6 +173,15 @@ int main(){
   proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(x)|(uint32_t(y)<<16)));
   assert(reservationCalls==calls+1&&lastReservation==0);
  }
+ // Target the exposed strip of a non-top reservation through the actual WndProc.
+ #ifdef TARGETED_STACK_CANCEL
+ books[0].items={0,1,2,3,4,5};layout.content(6,8);requestPaint();complete();pumpPaint();assert(panelInputReady());
+ const auto rightClick=[&](int row,WPARAM flags){int x=paintedLayout.x(10),y=paintedLayout.pointY(construction::StackTop+row*construction::StackStep+9);proc(window,WM_RBUTTONUP,flags,LPARAM(uint32_t(x)|(uint32_t(y)<<16)));};
+ rightClick(1,0);assert(removalCalls==1&&removedTab==0&&removedRow==1&&!removedAll);
+ rightClick(3,MK_SHIFT);assert(removalCalls==2&&removedRow==3&&removedAll);
+ books[0].items[2]=7;rightClick(1,0);assert(removalCalls==2); // stale painted identity, even without a replacement request
+ requestPaint();rightClick(1,0);assert(removalCalls==2);complete();pumpPaint();rightClick(1,0);assert(removalCalls==3&&removedRow==1);
+ #endif
  resetPaint();
  std::cout<<"PASS stationary screen click across actual queue frame promotion 0..128..0; pending frames reject input\n";
  std::cout<<"PASS production reservation async lifecycle:1000 idle updates no reraster/reposition; firstshowaftercomplete; tab/scroll/queue/geometry promoted with pixels; no background-only frames; input map guarded\n";

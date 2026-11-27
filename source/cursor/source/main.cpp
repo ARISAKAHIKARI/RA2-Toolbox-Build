@@ -296,11 +296,17 @@ static void foregroundTransition(HWND foreground,DWORD foregroundPid){
  if(initialized&&foreground==previous&&foregroundPid==previousPid&&pid==previousGame)return;
  const HWND old=previous;const DWORD oldPid=previousPid;previous=foreground;previousPid=foregroundPid;previousGame=pid;initialized=true;
  wchar_t klass[128]{},title[256]{},image[1024]{};DWORD length=DWORD(sizeof(image)/sizeof(*image));
- if(foreground){GetClassNameW(foreground,klass,128);GetWindowTextW(foreground,title,256);}
+ if(foreground){
+  const DWORD thread=GetWindowThreadProcessId(foreground,nullptr);GetClassNameW(foreground,klass,128);
+  // GetWindowText sends WM_GETTEXT for in-process windows. Never block the
+  // cursor thread on a different toolbox UI owner just to log a transition.
+  if(foregroundPid!=GetCurrentProcessId()||thread==GetCurrentThreadId())GetWindowTextW(foreground,title,256);
+ }
  if(foregroundPid){HANDLE process=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,foregroundPid);if(process){QueryFullProcessImageNameW(process,0,image,&length);CloseHandle(process);}}
  std::wstring exe=image;const auto slash=exe.find_last_of(L"\\\\/");if(slash!=std::wstring::npos)exe.erase(0,slash+1);
  std::wstring caption=title;for(auto&ch:caption)if(ch<L' ')ch=L' ';
- log(L"Foreground transition tick="+std::to_wstring(GetTickCount())+L" gamePID="+std::to_wstring(pid)+L" hostPID="+std::to_wstring(GetCurrentProcessId())+
+ SYSTEMTIME stamp{};GetLocalTime(&stamp);
+ log(L"Foreground transition millis="+std::to_wstring(stamp.wMilliseconds)+L" tick="+std::to_wstring(GetTickCount())+L" gamePID="+std::to_wstring(pid)+L" hostPID="+std::to_wstring(GetCurrentProcessId())+
   L" previousHWND="+std::to_wstring(uintptr_t(old))+L" previousPID="+std::to_wstring(oldPid)+L" HWND="+std::to_wstring(uintptr_t(foreground))+
   L" PID="+std::to_wstring(foregroundPid)+L" exe="+exe+L" class="+klass+L" title="+caption);
 }
@@ -1505,7 +1511,7 @@ static void togglePrimary(){
   if(running||hookStartupPending)stop();
   status(L"已关闭外部鼠标与自动检测。原游戏鼠标指针是否显示由当前隐藏模式决定。");
  }else{
-  autoStart=true;autoPaused=false;lastAutoCheck=0;
+  autoStart=true;autoPaused=false;lastAutoCheck=0;resetHideRetry();
   status(L"已开启自动检测：等待兼容游戏窗口（支持随机进程名）。");
  }
  WritePrivateProfileStringW(L"Startup",L"AutoStart",autoStart?L"1":L"0",ini().c_str());
