@@ -4,6 +4,7 @@
 #include "protocol.h"
 #include <algorithm>
 #include <cstring>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -11,6 +12,20 @@
 
 namespace typecatalog {
 constexpr size_t MaxSavedTypes=2048;
+// Persistence scheduling only. Failed writes remain pending but do not
+// force the UI thread to retry disk I/O on every information sample.
+class WriteState {
+ uint32_t written_=0,lastAttempt_=0;
+ bool writtenValid_=false,attempted_=false;
+public:
+ bool needsWrite(uint32_t revision)const{return !writtenValid_||written_!=revision;}
+ bool due(uint32_t revision,uint32_t now)const{
+  return needsWrite(revision)&&(!attempted_||uint32_t(now-lastAttempt_)>=1000u);
+ }
+ void attempted(uint32_t now){attempted_=true;lastAttempt_=now;}
+ void completed(uint32_t revision){written_=revision;writtenValid_=true;}
+};
+
 
 inline bool validId(std::string_view id) {
  if(id.empty()||id.size()>=sizeof(assist::Type::id))return false;
