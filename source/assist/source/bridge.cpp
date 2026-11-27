@@ -39,6 +39,7 @@
 #include "world_lifecycle.h"
 #include "../../shared/source/world_frame_command_worker_win.h"
 #include "world_capture_admission.h"
+#include "readonly_idle_retirement.h"
 #include "control_link.h"
 #include "control_mode_policy.h"
 #include "scheduler_policy.h"
@@ -1973,13 +1974,7 @@ static void capturePassiveWorld(const worldlife::Sample&world,uint32_t house,DWO
 static bool serviceReadOnlyRuntime(DWORD now){
  // Only the fully retired, explicit read-only path can suppress duplicate
  // cleanup. Never retain the marker across command authority or a capture.
- struct IdleRetirement {
-  bool valid=false;uint32_t owner=0,epoch=0;uint64_t connection=0,generation=0;
-  bool same(uint32_t o,uint32_t e,uint64_t c,uint64_t g)const{
-   return valid&&owner==o&&epoch==e&&connection==c&&generation==g;
-  }
- };
- static IdleRetirement idleRetired;
+ static readonly::IdleRetirement idleRetired;
  const bool wasReadOnly=readOnlyState.active;
  if(!wasReadOnly)idleRetired.valid=false;
  const auto admission=readOnlyState.service(*sh,cancelReadOnlyMailboxes,retireForReadOnly,[]{MemoryBarrier();});
@@ -2011,9 +2006,9 @@ static bool serviceReadOnlyRuntime(DWORD now){
  if(demand!=0u){
   idleRetired.valid=false;
   captureDisplayOnlyWorld(world,house,now,wanted);
- }else if(!idleRetired.same(sh->owner,match,worldFrameServer.connection(),worldProducerGeneration)||
+ }else if(idleRetired.needsRetirement(sh->owner,match,worldFrameServer.connection(),worldProducerGeneration,
            worldFrameReady||haveCaptureAttempt||worldFrameCandidateAvailable||
-           !runtimeWorldDemands.empty()||runtimeDemandOverflow){
+           !runtimeWorldDemands.empty()||runtimeDemandOverflow)){
   retireWorldFrame();
   idleRetired={true,sh->owner,match,worldFrameServer.connection(),worldProducerGeneration};
  }
