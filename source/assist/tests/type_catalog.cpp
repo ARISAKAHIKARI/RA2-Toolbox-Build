@@ -25,4 +25,22 @@ int main(){
  assert(!c.ensure(""));assert(!c.ensure("bad key"));
  auto bad=item("E1",40,9,"Vehicle");assert(c.remember(bad));
  assert(c.types.size()==3); // never collapse *real* same-ID distinct kinds
+ int row=99;
+ assert(!c.remember(bad,&row)&&row==-1);
+ auto next=item("NEW",40,12,"New");assert(c.remember(next,&row)&&row==3);
+ assert(c.ensure("FUTURE"));auto future=item("FUTURE",16,2,"Future");
+ assert(c.remember(future,&row)&&row==4&&c.types.size()==5);
+ future.index=3;assert(c.remember(future,&row)&&row==4);
+ auto invalid=item("invalid id",40,0,"Invalid");
+ assert(!c.remember(invalid,&row)&&row==-1);
+ auto unterminated=item("bad",40,0,"Bad");
+ std::memset(unterminated.id,'X',sizeof unterminated.id);
+ assert(typecatalog::idView(unterminated).empty());
+ assert(!c.remember(unterminated,&row)&&row==-1);
+ // Exact kind always takes priority over an earlier placeholder.
+ typecatalog::Catalogue ordered;
+ ordered.types.push_back(typecatalog::placeholder("E1"));
+ ordered.types.push_back(e);
+ assert(ordered.remember(newer,&row)&&row==1);
+ assert(ordered.types[0].kind==-1&&ordered.types.size()==2);
 }
