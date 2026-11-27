@@ -72,7 +72,9 @@ static bool pointerLocation(const pointerinput::Intent&i,bool* missingCandidate=
  if(!nativeViewTransformUnchanged(view)||get<uint32_t>(0x887324)!=tactical||
     i.width!=get<int>(0x8A00A4)||i.height!=get<int>(0x8A00A8)||
     i.cameraX!=get<int>(tactical+0xB0)||i.cameraY!=get<int>(tactical+0xB4))return false;
- pointerGroundZ=coord.z;pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=object?get<uint32_t>(object+0x10):0;return true;
+ uint32_t resolvedID=0;
+ if(object){if(requireRoster)resolvedID=get<uint32_t>(object+0x10);else if(!readLiveWorld(object+0x10,&resolvedID,4)||!resolvedID)return false;}
+ pointerGroundZ=coord.z;pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=resolvedID;return true;
 }
 static bool pointerEntryOrder(uint32_t p,int mission,uint32_t cell,bool planning){
  if(!featureavailability::InfantryForcedEntry)return false;

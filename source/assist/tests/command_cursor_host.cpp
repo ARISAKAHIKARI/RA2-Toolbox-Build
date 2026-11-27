@@ -92,7 +92,7 @@ int main(){
  put(0xA8EC78+4,0xB0000);put(0xA8EC78+8,1);put(0xA8EC78+16,1);put(0xB0000,carrier);
  put(carrier,0x7f5c70);put(carrier+0x10,81u);put(carrier+0x6c4,carrierType);put(carrier+0x6c,100);put<uint8_t>(carrier+0x74,1);put<uint8_t>(carrier+0x90,1);put<uint8_t>(carrier+0x431,1);put(carrier+0x21c,house);
  put(carrierType+0x5e0,4);put<double>(carrierType+0x388,3.);put<double>(type+0x380,2.);
- assert(mode()==Enter);freezeWorld=true;put<uint8_t>(carrier+0x431,0);assert(mode()==commandcursor::None);put<uint8_t>(carrier+0x431,1);assert(mode()==Enter&&lastDemand==(worldframe::Base|worldframe::Passengers));freezeWorld=false;
+ assert(mode()==Enter);freezeWorld=true;put<uint8_t>(carrier+0x431,0);assert(mode()==commandcursor::None);put<uint8_t>(carrier+0x431,1);assert(mode()==Enter&&lastDemand==(worldframe::Base|worldframe::Resources|worldframe::HostVisualPassengers));freezeWorld=false;
  put(carrier+0x21c,house+0x20000);put<int>(house+0x20000+0x30,1);assert(mode()==commandcursor::None);put(carrier+0x21c,house);
  put(carrierType+0x5e0,1);assert(mode()==commandcursor::None);put(carrierType+0x5e0,4);
  put(unit+0x11c,carrier);assert(mode()==commandcursor::None);put(unit+0x11c,0);
@@ -100,7 +100,7 @@ int main(){
  put(0xA8ECB8+16,0);assert(mode()==commandcursor::None);
  // Runtime world data stays fixed while paused; selected input remains live.
  fixture();keys['G']=keys[18]=1;assert(mode()==Advanced);freezeWorld=true;auto source=latestWorld;
- put(unit+0x21C,house+4);put(unit+0x6C,0);put(weapon+0xB4,0);assert(mode()==Advanced&&latestWorld==source&&lastDemand==(worldframe::Base|worldframe::Combat));
+ put(unit+0x21C,house+4);put(unit+0x6C,0);put(weapon+0xB4,0);assert(mode()==Advanced&&latestWorld==source&&lastDemand==(worldframe::Base|worldframe::Resources|worldframe::HostVisualCombat));
  put(0xA8ECB8+16,0);assert(mode()==commandcursor::None);put(0xA8ECB8+16,1);assert(mode()==Advanced);
  auto stable=read(pid,clockNow);failLive=0xA8ECB8+16;assert(mode()==Advanced&&read(pid,clockNow).tick==stable.tick);failLive=0;
  latestWorld=sealWorld(true);assert(mode()==Advanced&&read(pid,clockNow).tick==stable.tick);clockNow+=101;assert(mode()==commandcursor::None);
@@ -115,5 +115,5 @@ int main(){
  assert(recolor(0xffffff00,Advanced,0,0,55,43)==0xff00ff00);
  assert(recolor(0xffff0000,AirFirst,27,21,55,43)==0xff00ff00);
  assert(recolor(0xffff0000,AirFirst,27,4,55,43)==0xffff0000);
- std::cout<<"PASS: actual host service with real sealed Snapshot, paused world eligibility and live selected/hover input, zero live world fallback, missing sample/input retain bounded hint without timestamp renewal, Base/Combat/Passengers demand, selection/type filters, exact hold bindings, mouse-only suppression, native tools/menu/chat/focus, stale/wrong PID, original alpha/outlines and mode colors\n";
+ std::cout<<"PASS: actual host service with real sealed Snapshot, paused world eligibility and live selected/hover input, zero live world fallback, missing sample/input retain bounded hint without timestamp renewal, Base/Resources/HostVisualCombat/HostVisualPassengers demand, selection/type filters, exact hold bindings, mouse-only suppression, native tools/menu/chat/focus, stale/wrong PID, original alpha/outlines and mode colors\n";
 }
