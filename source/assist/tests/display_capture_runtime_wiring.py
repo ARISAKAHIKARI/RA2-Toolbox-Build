@@ -128,7 +128,10 @@ print("PASS production display split: Host VisualCache is live for display reade
 sampler=(external/"tactical_sampler.h").read_text(encoding="utf-8")
 assert "catalogueDependencies_.capture(read_,stamp)" in sampler
 assert "if(fresh||!catalogueAt_||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100))" in sampler
-assert "if(epoch!=sharedMatch_){catalogueDependencies_.clear();catalogueReady_=false;catalogueHash_=0;catalogueAt_=0;state_.typeCount=0;" in sampler
+epoch_reset=sampler.split("void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){",1)[1].split("}sharedMatch_=epoch;",1)[0]
+# Unrelated display-state retirement may precede the catalogue retirement.
+# Check all catalogue fields inside the actual identity-change branch.
+assert "catalogueDependencies_.clear();catalogueReady_=false;catalogueHash_=0;catalogueAt_=0;state_.typeCount=0;" in epoch_reset
 assert "house_=house;catalogueReady_=false;catalogueHash_=0;state_.typeCount=0;" in sampler
 catalogue_refresh=sampler.split("if(catalogueDependencies_.capture(read_,stamp))",1)[1].split("state_.status=1;",1)[0]
 assert catalogue_refresh.count("types();")==1
