@@ -58,6 +58,18 @@ int main(){
  // A failed key/value lookup after a healthy bootstrap retains immediate
  // retry. The optimization does not memoize field failures or live values.
  initialize(64);installKeys();failAt=0x600000;LiveINI keyFailure;keyFailure.beginPresentation();check(!lookup(keyFailure));check(keyFailure.indexDiagnostics().builds==1&&keyFailure.indexDiagnostics().failures==0);failAt=0;check(lookup(keyFailure));
+ // Opt-in cooldown bounds repeated full-index scans across render passes.
+ initialize(64);installKeys();failAt=Names+63*0x80;LiveINI cooldown;cooldown.beginPresentation(1000,250);check(!lookup(cooldown));
+ for(uint64_t t=1001;t<1250;t+=8){cooldown.beginPresentation(t,250);check(!lookup(cooldown));}
+ check(cooldown.indexDiagnostics().builds==1&&cooldown.indexDiagnostics().failures==1);cooldown.beginPresentation(1250,250);check(!lookup(cooldown));check(cooldown.indexDiagnostics().builds==2);
+ failAt=0;cooldown.beginPresentation(1499,250);check(!lookup(cooldown));cooldown.beginPresentation(1500,250);check(lookup(cooldown));check(cooldown.indexDiagnostics().builds==3);
+ // Changed identity and explicit retirement bypass even an active cooldown.
+ for(int variant=0;variant<3;++variant){initialize(64);installKeys();failAt=Names+63*0x80;LiveINI ini;ini.beginPresentation(1000,250);check(!lookup(ini));failAt=0;ini.beginPresentation(1001,250);
+  if(variant==0){put(Object+0x28,Header{Entries,63,64});check(lookup(ini));}
+  if(variant==1)check(lookup(ini,Object,2));
+  if(variant==2){ini.clear();check(lookup(ini));}
+  check(ini.indexDiagnostics().builds==2);
+ }
  // Missing key/section and explicit-empty fallback rules stay unchanged.
  const char*disk="[SECTION0000]\nPALETTE=DISK\nMISSING=FILE\n[MISSINGSECTION]\nPALETTE=DISKONLY\n";std::vector<uint8_t>contents(disk,disk+std::strlen(disk));
  for(bool empty:{false,true}){initialize(64);installKeys(empty?" \t ":"  LIVE \r\n");BeforeEffectiveINI<Read> old(Read{},Object);EffectiveINI<Read> current(Read{},Object);old.parse(contents);current.parse(contents);old.generation(1);current.generation(1);current.beginPresentation();
@@ -67,9 +79,10 @@ int main(){
  // Exercise the real consumer boundary, including cumulative diagnostics for
  // both independent INIs, rather than testing only the helper in isolation.
  initialize(64);installKeys();put(LiveINI::RulesPointer,Object);failAt=Names+63*0x80;
- Read reader;external::cameraassets::Context<Read> assets(reader);assets.beginPresentation();
+ Read reader;external::cameraassets::Context<Read> assets(reader);assets.beginPresentation(1000);
  for(unsigned n=0;n<2;++n){check(assets.artINI.get("SECTION0000","PALETTE").empty());check(assets.rulesINI.get("SECTION0000","PALETTE").empty());}
  auto stats=assets.liveINIDiagnostics();check(stats.builds==2&&stats.failures==2&&stats.failureReuses==2);
- failAt=0;assets.beginPresentation();check(assets.artINI.get("SECTION0000","PALETTE")=="LIVE"&&assets.rulesINI.get("SECTION0000","PALETTE")=="LIVE");stats=assets.liveINIDiagnostics();check(stats.builds==4&&stats.failures==2&&stats.failureReuses==2);
- std::printf("PASS %u active assertions: exact fallback/empty semantics, default immediate retry, same-pass fresh root/header/generation invalidation, next-presentation recovery without clock delay, key-field failure immediate retry. No game or GPU execution.\n",checks);
+ failAt=0;assets.beginPresentation(1249);check(assets.artINI.get("SECTION0000","PALETTE").empty()&&assets.rulesINI.get("SECTION0000","PALETTE").empty());stats=assets.liveINIDiagnostics();check(stats.builds==2&&stats.failures==2&&stats.failureReuses==4);
+ assets.beginPresentation(1250);check(assets.artINI.get("SECTION0000","PALETTE")=="LIVE"&&assets.rulesINI.get("SECTION0000","PALETTE")=="LIVE");stats=assets.liveINIDiagnostics();check(stats.builds==4&&stats.failures==2&&stats.failureReuses==4);
+ std::printf("PASS %u active assertions: exact fallback/empty semantics, default immediate retry, same-pass fresh root/header/generation invalidation, default next-presentation recovery, render cooldown and identity invalidation, key-field failure immediate retry. No game or GPU execution.\n",checks);
 }
