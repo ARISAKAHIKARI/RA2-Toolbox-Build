@@ -94,6 +94,17 @@ int main(int argc,char**argv){
  if(baseline)return 0;
  assert(lightCells==0&&geometry==0&&(*palette.table)[1]==0x07e0);
  auto changed=settle();assert(changed->pixels!=initialPixels&&reader.worldFrameComplete());
+ // Identical bytes in a fresh publication still require light verification,
+ // but must not allocate or copy an unused full-map array of Paint objects.
+ frame.sourceFrame=memory.seal(21);auto unchanged=draw();
+ assert(unchanged&&unchanged->pixels==changed->pixels&&reader.worldFrameComplete());
+ assert(renderer.stageStats().terrainLightCells==10000&&renderer.stageStats().terrainPreparedSlots==0&&renderer.stageStats().terrainProbeCopies==0);
+ std::puts("PASS new unchanged publication: exact pixels, zero terrain probe scratch");
+ // A changed cell must still trigger a real rebuild, not the stable shortcut.
+ memory.put(Cells+0x10A,std::array<int16_t,3>{{1000,600,1000}});
+ frame.sourceFrame=memory.seal(22);draw();assert(renderer.stageStats().terrainPreparedSlots>0);
+ settle();memory.put(Cells+0x10A,std::array<int16_t,3>{{1000,1000,1000}});
+ frame.sourceFrame=memory.seal(23);settle();
  // A cached table must never supply missing bytes to another publication.
  frame.sourceFrame=memory.seal(3,1,1,Rows);reader.begin(frame.sourceFrame);palette={};lighting::converterMetadata(read,Convert,palette);assert(!palette.table&&!reader.worldFrameComplete());
  for(int n=0;n<2;++n){draw();assert(renderer.stageStats().terrainLightCells>0&&!reader.worldFrameComplete());}
