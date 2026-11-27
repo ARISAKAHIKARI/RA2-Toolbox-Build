@@ -247,7 +247,10 @@ void buildingPose(uint32_t object,uint32_t type,external::visual::Pose&pose){
 struct OverlayPalette {std::string file;std::array<uint32_t,256> colors{};bool live=false;uint64_t revision=1;};
 std::map<std::pair<uint32_t,bool>,OverlayPalette> overlayPalettes_;
  assets::LiveINI::IndexDiagnostics liveINIDiagnostics()const{auto a=artINI.indexDiagnostics(),r=rulesINI.indexDiagnostics();return {a.builds+r.builds,a.failures+r.failures,a.failureReuses+r.failureReuses};}
- void beginPresentation(){presentation_=true;artINI.beginPresentation();rulesINI.beginPresentation();presentationPalettes_.clear();paletteSamples_=paletteSampleHits_=0;vpl(voxelRelight_);if(overlayPalettes_.size()>4096)overlayPalettes_.clear();}
+ // A failed live INI bootstrap must not rescan the same full index at render FPS.
+ // Keep disk fallback and root/generation checks; retry the exact failed identity
+ // on a short monotonic interval, independently for ART and RULES.
+ void beginPresentation(uint64_t now=GetTickCount64()){presentation_=true;constexpr uint64_t retryMs=250;artINI.beginPresentation(now,retryMs);rulesINI.beginPresentation(now,retryMs);presentationPalettes_.clear();paletteSamples_=paletteSampleHits_=0;vpl(voxelRelight_);if(overlayPalettes_.size()>4096)overlayPalettes_.clear();}
 bool refreshOverlayPalette(uint32_t type,uint32_t pointer,int frame,bool terrain,bool&changed){
  if(!spriteRelight_&&overlayPalettes_.count({type,terrain})){changed=false;return true;}
  (void)pointer;(void)frame;changed=false;auto found=overlayPalettes_.find({type,terrain});if(found==overlayPalettes_.end())return true;
