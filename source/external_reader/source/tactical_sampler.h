@@ -193,34 +193,36 @@ template<class Read> class TacticalSampler {
   }return true;
  }
  bool types(){
-  // Build a candidate only. A missing field is not a valid zero/default
-  // value and must not replace the last complete UI catalogue.
-  std::vector<assist::Type> rows;rows.reserve(assist::MaxTypes);
-  std::vector<uint32_t> pointers;pointers.reserve(assist::MaxTypes);
-  GameView<Read> view(read_);std::vector<uint32_t> list;
-  const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};int kinds[]={3,16,40,7};
-  for(int c=0;c<4;++c){
-   if(!view.vecChecked(arrays[c],list,4096))return false;
-   for(size_t j=0;j<list.size()&&rows.size()<assist::MaxTypes;++j){
-    const auto p=list[j];if(!p)continue;
-    int level=-1;uint8_t insignificant=0,spawned=0;uint32_t owners=0;
-    if(!read_(p+0x634,&level,4)||!read_(p+0x232,&insignificant,1)||
-       !read_(p+0xD54,&spawned,1)||!read_(p+0x6CC,&owners,4))return false;
-    if(!assist::validType(level,insignificant!=0,spawned!=0,owners))continue;
-    assist::Type t{};uint32_t namePointer=0;uint8_t naval=0;
-    if(!read_(p+0x24,t.id,23)||!t.id[0]||!read_(p+0x60,&namePointer,4)||
-       !read_(p+0xCCE,&naval,1)||!read_(p+0x610,&t.cost,sizeof t.cost))return false;
-    if(namePointer>=0x10000){
-     if(!read_(namePointer,t.name,sizeof t.name))return false;
-     t.name[39]=0;
-    }else for(int k=0;k<23;++k)t.name[k]=uint8_t(t.id[k]);
-    t.kind=kinds[c];t.index=int(j);t.naval=naval;
-    rows.push_back(t);pointers.push_back(p);
+  return catalogueDependencies_.captureProjection(read_,[&](auto tracked){
+   // Build a candidate only. A missing field is not a valid zero/default
+   // value and must not replace the last complete UI catalogue.
+   std::vector<assist::Type> rows;rows.reserve(assist::MaxTypes);
+   std::vector<uint32_t> pointers;pointers.reserve(assist::MaxTypes);
+   GameView<decltype(tracked)> view(tracked);std::vector<uint32_t> list;
+   const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};int kinds[]={3,16,40,7};
+   for(int c=0;c<4;++c){
+    if(!view.vecChecked(arrays[c],list,4096))return false;
+    for(size_t j=0;j<list.size()&&rows.size()<assist::MaxTypes;++j){
+     const auto p=list[j];if(!p)continue;
+     int level=-1;uint8_t insignificant=0,spawned=0;uint32_t owners=0;
+     if(!tracked(p+0x634,&level,4)||!tracked(p+0x232,&insignificant,1)||
+        !tracked(p+0xD54,&spawned,1)||!tracked(p+0x6CC,&owners,4))return false;
+     if(!assist::validType(level,insignificant!=0,spawned!=0,owners))continue;
+     assist::Type t{};uint32_t namePointer=0;uint8_t naval=0;
+     if(!tracked(p+0x24,t.id,23)||!t.id[0]||!tracked(p+0x60,&namePointer,4)||
+        !tracked(p+0xCCE,&naval,1)||!tracked(p+0x610,&t.cost,sizeof t.cost))return false;
+     if(namePointer>=0x10000){
+      if(!tracked(namePointer,t.name,sizeof t.name))return false;
+      t.name[39]=0;
+     }else for(int k=0;k<23;++k)t.name[k]=uint8_t(t.id[k]);
+     t.kind=kinds[c];t.index=int(j);t.naval=naval;
+     rows.push_back(t);pointers.push_back(p);
+    }
    }
-  }
-  std::copy(rows.begin(),rows.end(),state_.types);
-  std::copy(pointers.begin(),pointers.end(),typePointers_);
-  state_.typeCount=int(rows.size());return true;
+   std::copy(rows.begin(),rows.end(),state_.types);
+   std::copy(pointers.begin(),pointers.end(),typePointers_);
+   state_.typeCount=int(rows.size());return true;
+  });
  }
 public:
  uint32_t idleProductionMask=0,pausedProductionMask=0,idleAircraftTick=0;int idleAircraftCount=0,aircraftTotal=0;uint32_t idleAircraftIDs[8192]{};int productionTabsY=168;
