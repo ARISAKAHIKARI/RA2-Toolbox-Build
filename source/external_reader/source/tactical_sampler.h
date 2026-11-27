@@ -275,6 +275,17 @@ public:
   if(stable){state_=*stable;enemies::copyFrame(enemies_,publishedEnemies_);enemies::copyFrame(specialEnemies_,publishedSpecialEnemies_);statuses_=publishedStatuses_;}else enemies_.count=specialEnemies_.count=statuses_.count=0;
   if(stable&&stable->match==publishedAircraft_.match){aircraftSample_=publishedAircraft_;idleAircraftTick=publishedAircraft_.tick;idleAircraftCount=publishedAircraft_.count;aircraftTotal=publishedAircraft_.total;std::copy_n(publishedAircraftIDs_.begin(),idleAircraftCount,idleAircraftIDs);}
   else{clearAircraftCandidate();publishedAircraft_={};}aircraftChanged_=false;}
+ // Camera-only refresh for ordinary local UI. Failure never mutates the
+ // last sample or its tick, and no world-page request is made here.
+ bool refreshOwnedCamera(){
+  if(state_.status!=1||!house_)return false;
+  uint32_t tactical=0,house=0;int xy[2]{};
+  if(!current(read_,0xA83D4C,&house,4,0)||house!=house_||
+     !current(read_,0x887324,&tactical,4,0)||tactical<0x10000||
+     !current(read_,tactical+0xB0,xy,sizeof xy,0))return false;
+  if(state_.cameraX==xy[0]&&state_.cameraY==xy[1])return false;
+  rebaseCamera(xy[0],xy[1]);return true;
+ }
  void refreshCamera(uint32_t now){
   if(state_.status!=1)return;catalogueDependencies_.maintain(read_);uint32_t tactical=uiValue<uint32_t>(0x887324);if(tactical<0x10000)return;
   rebaseCamera(uiValue<int>(tactical+0xB0),uiValue<int>(tactical+0xB4));
