@@ -757,10 +757,9 @@ static void rememberLiveTypes(){
  if(learnedMatch==snap.match&&learnedCount==snap.typeCount)return;learnedMatch=snap.match;learnedCount=snap.typeCount;
  std::vector<size_t> dirty;
  for(int i=0;i<snap.typeCount&&i<MaxTypes;++i){
-  if(savedTypes.remember(snap.types[i])){
-   int n=savedTypes.find(typecatalog::idOf(snap.types[i]),snap.types[i].kind);
-   if(n>=0)dirty.push_back(size_t(n));
-  }
+  int changedRow=-1;
+  if(savedTypes.remember(snap.types[i],&changedRow)&&changedRow>=0)
+   dirty.push_back(size_t(changedRow));
  }
  if(!dirty.empty()){
   ++catalogueRevision;
