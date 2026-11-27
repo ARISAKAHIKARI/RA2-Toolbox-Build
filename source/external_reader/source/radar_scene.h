@@ -106,7 +106,7 @@ template<class Assets>class SceneRenderer {
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  lighting::State buildingLight_;uint64_t voxelLightRevision_=0;bool voxelLightKnown_=false;
  struct DecodeStats {unsigned attempts=0,hits=0;double milliseconds=0,budget=0;} decodeStats_;
- struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0,terrainLightCells=0,terrainGeometryChecks=0,terrainProbeCopies=0;bool reused=false;
+ struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0,terrainLightCells=0,terrainGeometryChecks=0,terrainProbeCopies=0,terrainPreparedSlots=0,terrainLightReuses=0,terrainSealedCells=0;bool reused=false;
   bool readCountsKnown=false;uint64_t terrainReads=0,paletteReads=0,decodeReads=0,voxelReads=0,objectReads=0,resolveReads=0,effectReads=0;
   uint64_t setupReads=0,terrainScanReads=0,maskReads=0,extraReads=0;size_t artWanted=0,artScanned=0,invalidationKeys=0,invalidationVisits=0;
   double visibilityMs=0;size_t visibilityCalls=0,visibilityPages=0,visibilityCells=0;bool visibilityAttempted=false,cpuTerrainReused=false;
@@ -257,9 +257,10 @@ public:
   // through the ordinary validation below. Palette/resource/geometry changes
   // above still invalidate the background before this decision.
   const auto terrainSource=lighting::sealedSource(read,0);
+  const bool exactTerrainSource=terrainSource&&terrainSource==frame.sourceFrame;
   const auto&verifiedRegion=verifiedTerrainRegion_;
   const bool sameVerifiedRegion=region.active==verifiedRegion.active&&region.x==verifiedRegion.x&&region.y==verifiedRegion.y&&region.width==verifiedRegion.width&&region.height==verifiedRegion.height;
-  const bool reuseTerrain=terrainSource&&terrainSource==frame.sourceFrame&&verifiedTerrainSource_.lock()==terrainSource&&
+  const bool reuseTerrain=exactTerrainSource&&verifiedTerrainSource_.lock()==terrainSource&&
    !building_&&!backgroundIncomplete_&&complete_==frame.terrain&&backgroundLight_==scene&&sameVerifiedRegion;
   if(!reuseTerrain){
   verifiedTerrainSource_.reset();
@@ -285,12 +286,15 @@ public:
    std::stable_sort(cells_.begin(),cells_.end(),[](size_t a,size_t b){return a%512+a/512<b%512+b/512;});}
    // New sampling banks commonly contain identical terrain. Compare evaluated
    // per-cell lighting before deciding to rebuild millions of native pixels.
-   probing_=!(backgroundIncomplete_&&int32_t(frame.tick-backgroundRetry_)>=0)&&bankSameSource_&&painted_.size()==cells_.size();prepared_.resize(cells_.size());
-   if(!probing_&&!resetPending())return {};
+   probing_=!(backgroundIncomplete_&&int32_t(frame.tick-backgroundRetry_)>=0)&&bankSameSource_&&painted_.size()==cells_.size();
+   // A stable whole-map verification needs signatures, not a second array
+   // of Paint objects. Materialize scratch only when probing or painting
+   // actually needs it; preserve partial scratch across presentations.
+   if(!probing_){prepared_.resize(cells_.size());stageStats_.terrainPreparedSlots+=prepared_.size();if(!resetPending())return {};}
   }
   size_t staticPixels=0;for(const auto&i:tiles_)staticPixels+=camera::pixels(*i.second.image);
   const Terrain*evaluatedTerrain=building_.get();
-  if(!region.active){
+  if(!region.active&&!exactTerrainSource){
    // Stable whole-map verification visits every Cell. A partial first build
    // only paints its current chunk; do not prefetch the entire map per chunk.
    const size_t first=probing_?0:cursor_,end=probing_?cells_.size():std::min(cells_.size(),cursor_+size_t(4096));
@@ -302,12 +306,41 @@ public:
   evaluatedPaint_.resize(evaluatedTerrain->art.size());evaluatedStamp_.resize(evaluatedTerrain->art.size());
   if(!++evaluationEpoch_){std::fill(evaluatedStamp_.begin(),evaluatedStamp_.end(),0);++evaluationEpoch_;}
   lighting::TintCache terrainTints;
-  auto prepare=[&](size_t index,bool fresh=false){
-   if(!fresh&&evaluatedStamp_[index]==evaluationEpoch_)return evaluatedPaint_[index];
-   ++stageStats_.terrainLightCells;
-   const auto&cell=evaluatedTerrain->art[index];Paint value;value.light=lighting::cell(read,cell.cell,scene,lighting::Layer::Terrain,true,fresh?nullptr:&terrainTints);
-   value.signature=lightKey(1469598103934665603ull,value.light);
-   evaluatedStamp_[index]=evaluationEpoch_;evaluatedPaint_[index]=value;return value;
+  std::unordered_map<uint32_t,lighting::State> converterShading;
+  uint32_t lastConverter=0;const lighting::State*lastShading=nullptr;
+  auto shading=[&](uint32_t converter)->const lighting::State&{
+   if(!lastShading||lastConverter!=converter){
+    auto [at,inserted]=converterShading.try_emplace(converter,scene);
+    if(inserted)terrainTints.shade(read,converter,at->second);
+    lastConverter=converter;lastShading=&at->second;
+   }
+   return *lastShading;
+  };
+  auto prepare=[&](size_t index,bool fresh=false)->const Paint&{
+   auto&cached=evaluatedPaint_[index];auto&stamp=evaluatedStamp_[index];
+   if(!fresh&&stamp==evaluationEpoch_)return cached;
+   const auto&cell=evaluatedTerrain->art[index];
+   lighting::CellLightFields fields;
+   if(!fresh&&exactTerrainSource&&lighting::sealedCell(read,cell.cell,fields,0)){
+    ++stageStats_.terrainSealedCells;
+    const bool valid=fields.valid();
+    const auto&material=valid?shading(fields.converter):scene;
+    const int intensity=valid?fields.intensity[int(lighting::Layer::Terrain)]:scene.intensity;
+    // Verify exact current input and converter color data before reusing
+    // the cell's derived paint. Only a changed light needs a new signature.
+    if(stamp&&cached.light.intensity==intensity&&cached.light.sameShading(material)){
+     ++stageStats_.terrainLightReuses;stamp=evaluationEpoch_;return cached;
+    }
+    cached.light=material;cached.light.intensity=intensity;
+   }else{
+    auto light=lighting::cell(read,cell.cell,scene,lighting::Layer::Terrain,true,fresh?nullptr:&terrainTints,!fresh&&exactTerrainSource);
+    if(!fresh&&stamp&&exactTerrainSource&&cached.light==light){
+     ++stageStats_.terrainLightReuses;stamp=evaluationEpoch_;return cached;
+    }
+    cached.light=std::move(light);
+   }
+   ++stageStats_.terrainLightCells;cached.signature=lightKey(1469598103934665603ull,cached.light);
+   stamp=evaluationEpoch_;return cached;
   };
   // Validate the CURRENT crop synchronously. Offscreen incremental checks
   // must not make a stable main viewport flash back to the game every pass.
@@ -320,7 +353,7 @@ public:
     for(const auto&part:i.attachments)self(self,part,nesting+1);
    };
    auto extent=[&](const auto&cache){for(const auto&item:cache){if(item.second.ready)imageExtent(imageExtent,*item.second.image,0);else{haloX=std::max(haloX,512.);haloY=std::max(haloY,512.);}}};
-   extent(tiles_);
+   if(region.active)extent(tiles_);
    for(size_t n=0;n<cells_.size();++n){size_t index=cells_[n];
     // cells_ already belongs to this exact geometry/source. Whole-map views
     // need every cell's current light, but have no crop to project it against.
@@ -340,8 +373,8 @@ public:
   if(building_&&probing_){
    // Successful whole-map verification already compared every signature.
    // Do not copy every Paint into a temporary vector only to discard it.
-   if(!region.active&&visibleVerified)cursor_=cells_.size();
-   else{size_t end=std::min(cells_.size(),cursor_+size_t(4096));for(;cursor_<end;++cursor_){++stageStats_.terrainProbeCopies;prepared_[cursor_]=prepare(cells_[cursor_]);probeChanged_|=prepared_[cursor_].signature!=painted_[cursor_];}}
+   if(!region.active&&visibleVerified&&!probeChanged_)cursor_=cells_.size();
+   else{if(prepared_.size()!=cells_.size()){prepared_.resize(cells_.size());stageStats_.terrainPreparedSlots+=prepared_.size();}size_t end=std::min(cells_.size(),cursor_+size_t(4096));for(;cursor_<end;++cursor_){++stageStats_.terrainProbeCopies;prepared_[cursor_]=prepare(cells_[cursor_]);probeChanged_|=prepared_[cursor_].signature!=painted_[cursor_];}}
    if(cursor_==cells_.size()){
     if(!probeChanged_){complete_=building_;building_.reset();backgroundLight_=scene;cursor_=0;prepared_.clear();}
     else{probing_=false;cursor_=baseCursor_=0;if(!resetPending())return {};}
@@ -391,8 +424,12 @@ public:
    }
    if(cursor_==total){++motionTerrainRevision_;committed=true;background_=std::move(pending_);background_.clean();painted_.resize(prepared_.size());for(size_t n=0;n<prepared_.size();++n)painted_[n]=prepared_[n].signature;prepared_.clear();complete_=building_;building_.reset();backgroundLight_=scene;backgroundIncomplete_=pendingIncomplete_;backgroundRetry_=frame.tick+2000;baseScene_.reset();maskedBaseScene_.reset();}
   }
-  // Reject local-light races during incremental builds before publication.
-  if(committed&&region.active&&!verifyVisible(true))return {};
+  // Paint can span more than one publication. Verify the committed bank
+  // against the current sealed view, including for whole-map minimaps.
+  if(committed&&(region.active||exactTerrainSource)){
+   visibleVerified=verifyVisible(!exactTerrainSource);
+   if(!visibleVerified)return {};
+  }
   // An incomplete bank may only reuse a synchronously validated crop.
   if(!complete_||(building_&&!visibleVerified))return {};
   if(visibleVerified&&!building_&&!backgroundIncomplete_&&complete_==frame.terrain&&terrainSource&&terrainSource==frame.sourceFrame&&lighting::sealedSource(read,0)==terrainSource){
@@ -749,7 +786,8 @@ public:
   const bool reusableResolve=gpuMode_||cpuReusable;
   const auto*reusePlan=reusableResolve&&fallbacks.empty()&&effectPlanReady&&!guideEnabled_?
    detailed_.completeGpuPlan(masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr):nullptr;
-  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(previous->gpu);stageStats_.reused=true;stage(stageStats_.resolveMs,stageStats_.resolveReads);return previous;}}}
+  const auto prefix=reusePlan?detailed_.drawPrefix():vulkancompute::DrawPrefix{};
+  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan,prefix)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(previous->gpu);stageStats_.reused=true;stage(stageStats_.resolveMs,stageStats_.resolveReads);return previous;}}}
   else gpuFrameReuse_.reset();
   const bool directReady=directPresentation_&&gpuMode_&&effectPlanReady&&!guideEnabled_;
   auto*maskReadback=!directReady&&masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_?&mask_.alpha:nullptr;
@@ -797,7 +835,7 @@ public:
   if(!beacons.empty()&&!gpuEffectsDone){sceneextras::RadarCPU sink(*out);for(const auto&b:beacons)sink.uiImage(b.draw.image,b.rgba,(b.draw.x-effectView.x)*width/effectView.width,(b.draw.y-effectView.y)*height/effectView.height,width/effectView.width,height/effectView.height);}
   if(radarExtras&&!gpuEffectsDone){sceneextras::RadarCPU sink(*out);sceneextras::radarDecorations(frame,width,height,read,assets,extraLayers_,sink);}
   if(areaGpuMode&&staticView){areaCachedGpu_=areaUsed;if(masked)maskedBaseScene_=out;else baseScene_=out;}
-  if(reusePlan&&(detailed_.gpuCompleted()||cpuReusable))gpuFrameReuse_.completed(*reusePlan,out);else gpuFrameReuse_.reset();
+  if(reusePlan&&(detailed_.gpuCompleted()||cpuReusable))gpuFrameReuse_.completed(*reusePlan,out,prefix);else gpuFrameReuse_.reset();
   stage(stageStats_.effectsMs,stageStats_.effectReads);return out;
  }
 };

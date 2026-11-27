@@ -25,7 +25,8 @@ struct State {
  int ambient=100;std::array<int,3> tint{{1000,1000,1000}};
  int intensity=-1; // Native cell intensity already includes Ambient/Ground/Level.
  unsigned paletteRows=53;bool scalar=false,rgb555=false;std::shared_ptr<const std::vector<uint32_t>>table;
- bool operator==(const State&o)const{return ambient==o.ambient&&tint==o.tint&&intensity==o.intensity&&paletteRows==o.paletteRows&&scalar==o.scalar&&rgb555==o.rgb555&&table==o.table;}
+ bool sameShading(const State&o)const{return ambient==o.ambient&&tint==o.tint&&paletteRows==o.paletteRows&&scalar==o.scalar&&rgb555==o.rgb555&&table==o.table;}
+ bool operator==(const State&o)const{return intensity==o.intensity&&sameShading(o);}
  bool operator!=(const State&o)const{return !(*this==o);}
  std::array<float,3> gains()const{int value=intensity<0?ambient*10:intensity;return {{value*tint[0]/1000000.f,value*tint[1]/1000000.f,value*tint[2]/1000000.f}};}
 };
@@ -69,13 +70,19 @@ struct TintCache {
   std::shared_ptr<const std::vector<uint32_t>>table;
  };
  std::unordered_map<uint32_t,Entry> entries;
+ // A single map operation serves both tint and metadata. The old shade()
+ // sampled tint and then looked up the same converter a second time.
+ template<class Read>Entry& entry(Read read,uint32_t convert){
+  auto result=entries.try_emplace(convert);auto&e=result.first->second;
+  if(result.second)e.valid=converterTint(read,convert,e.tint);
+  return e;
+ }
  template<class Read>bool sample(Read read,uint32_t convert,std::array<int,3>&out){
-  auto found=entries.find(convert);
-  if(found==entries.end()){Entry e;e.valid=converterTint(read,convert,e.tint);found=entries.emplace(convert,e).first;}
-  if(!found->second.valid)return false;out=found->second.tint;return true;
+  auto&e=entry(read,convert);
+  if(!e.valid)return false;out=e.tint;return true;
  }
  template<class Read>void shade(Read read,uint32_t convert,State&out){
-  sample(read,convert,out.tint);auto&e=entries.find(convert)->second;
+  auto&e=entry(read,convert);if(e.valid)out.tint=e.tint;
   // Metadata is shared by the same converter during this presentation too.
   // Its failure paths preserve some incoming fields, so include those inputs
   // rather than caching a complete State (cell intensity remains individual).
@@ -124,16 +131,61 @@ template<class Read>State sample(Read read){
  return out;
 }
 enum class Layer {Object,Terrain,Bridge};
+struct CellLightFields {
+ static constexpr uint32_t ConverterOffset=0x34,ScaleOffset=0x104,IntensityOffset=0x10A,End=0x110;
+ uint32_t scale=0,converter=0;
+ std::array<int16_t,3> intensity{};
+ bool valid()const{
+  return scale<=262144&&(scale||converter>=0x10000)&&
+   std::all_of(intensity.begin(),intensity.end(),[](int value){return value>=0&&value<=2000;});
+ }
+};
+// Read the input fields directly from a fully covered page in the renderer's
+// pinned scope. Cross-page and partial observations use cell() for recovery.
+template<class Read>auto sealedCell(Read read,uint32_t cell,CellLightFields&out,int)
+ ->decltype(read.reader->sealedPage(uint32_t{}),bool{}){
+ if(cell<0x10000||uint64_t(cell)+CellLightFields::End>0x80000000ull)return false;
+ const uint32_t mask=worldframe::PageSize-1;
+ const uint32_t base=(cell+CellLightFields::ConverterOffset)&~mask;
+ if(base!=((cell+CellLightFields::End-1)&~mask))return false;
+ const auto*page=read.reader->sealedPage(base);if(!page)return false;
+ const auto*bytes=page->bytes.data();
+ std::memcpy(&out.converter,bytes+((cell+CellLightFields::ConverterOffset)&mask),sizeof out.converter);
+ std::memcpy(&out.scale,bytes+((cell+CellLightFields::ScaleOffset)&mask),sizeof out.scale);
+ std::memcpy(out.intensity.data(),bytes+((cell+CellLightFields::IntensityOffset)&mask),sizeof out.intensity);
+ return true;
+}
+template<class Read>bool sealedCell(Read,uint32_t,CellLightFields&,long){return false;}
 // Read the engine's evaluated cell, not a second approximation of [Lighting].
 // 484680 combines height, Ground and current ambient (including special modes),
 // then applies the slope/light-source intensity for terrain and bridge layers.
-template<class Read>State cell(Read read,uint32_t p,const State&fallback,Layer layer=Layer::Object,bool localTint=true,TintCache*tints=nullptr){
+template<class Read>State cell(Read read,uint32_t p,const State&fallback,Layer layer=Layer::Object,bool localTint=true,TintCache*tints=nullptr,bool allowSealedFastPath=false){
  if(p<0x10000||p>0xfffffe00)return fallback;
- uint32_t scale=0,convert=0;int16_t values[3]{},after[3]{};
- if(!read(p+0x104,&scale,4)||scale>262144||!read(p+0x34,&convert,4)||(!scale&&convert<0x10000)||
-    !read(p+0x10A,values,6)||std::any_of(values,values+3,[](int x){return x<0||x>2000;}))return fallback;
- State out=fallback;out.intensity=values[int(layer)];if(localTint){if(tints)tints->shade(read,convert,out);else{converterTint(read,convert,out.tint);converterMetadata(read,convert,out);}}
- if(!read(p+0x10A,after,6)||memcmp(values,after,6))return fallback;
+ // Only an explicitly sealed reader can prove a repeated read cannot change.
+ // Live callbacks, incomplete sources and changed tokens keep the race check.
+ const auto immutable=allowSealedFastPath?sealedSource(read,0):worldframe::Token{};
+ CellLightFields fields;std::array<int16_t,3> after{};
+ // In a sealed full page, scale and intensity are adjacent fields. Merge
+ // them without requesting unknown padding from a partial page. Keep the
+ // regular reader in the path so page dependencies and diagnostics survive.
+ bool packed=false;
+ if(immutable&&uint64_t(p)+CellLightFields::End<=0x80000000ull){
+  const uint32_t start=p+CellLightFields::ScaleOffset,base=start&~(worldframe::PageSize-1);
+  if((start&(worldframe::PageSize-1))+12<=worldframe::PageSize){
+   const auto*page=immutable->find(base);
+   if(page&&page->full){
+    uint8_t bytes[12];if(!read(start,bytes,sizeof bytes))return fallback;
+    std::memcpy(&fields.scale,bytes,sizeof fields.scale);std::memcpy(fields.intensity.data(),bytes+6,sizeof fields.intensity);packed=true;
+   }
+  }
+ }
+ if((!packed&&!read(p+CellLightFields::ScaleOffset,&fields.scale,4))||fields.scale>262144||
+    !read(p+CellLightFields::ConverterOffset,&fields.converter,4)||(!fields.scale&&fields.converter<0x10000)||
+    (!packed&&!read(p+CellLightFields::IntensityOffset,fields.intensity.data(),sizeof fields.intensity))||!fields.valid())return fallback;
+ State out=fallback;out.intensity=fields.intensity[int(layer)];
+ if(localTint){if(tints)tints->shade(read,fields.converter,out);else{converterTint(read,fields.converter,out.tint);converterMetadata(read,fields.converter,out);}}
+ if((!immutable||sealedSource(read,0)!=immutable)&&
+    (!read(p+CellLightFields::IntensityOffset,after.data(),sizeof after)||fields.intensity!=after))return fallback;
  return out;
 }
 template<class Read>uint32_t cellAt(Read read,int x,int y){

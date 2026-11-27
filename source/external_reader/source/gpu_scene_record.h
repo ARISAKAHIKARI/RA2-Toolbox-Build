@@ -30,6 +30,7 @@ class GpuSceneRecord {
  size_t litBytes_=0;uint64_t litBuilds_=0,litHits_=0;
  uint64_t serial_=0;bool valid_=false;
  size_t prefixDraws_=0,prefixReplay_=0;bool prefixReady_=false;
+ std::shared_ptr<const uint8_t> prefixOwner_;
  struct CpuPrefix {
   std::shared_ptr<const std::vector<uint32_t>>base;std::shared_ptr<const std::vector<float>>depth;
   std::shared_ptr<const std::vector<uint8_t>>fog,alpha;std::shared_ptr<const gpushroud::Plan>mask;std::vector<gpueffects::Command>alphas;
@@ -117,15 +118,19 @@ public:
   const bool keep=retainPrefix&&prefixReady_;
   auto draws=std::move(frame_.draws);draws.resize(keep?prefixDraws_:0);frame_={};frame_.draws=std::move(draws);
   fallbackBase_.reset();cpuBaseFallback_={};replay_.resize(keep?prefixReplay_:0);valid_=false;
-  if(!keep){prefixReady_=false;prefixDraws_=prefixReplay_=0;cpuPrefix_={};}cpuPrefixReused_=false;
+  if(!keep){prefixReady_=false;prefixDraws_=prefixReplay_=0;prefixOwner_.reset();cpuPrefix_={};}cpuPrefixReused_=false;
  }
  void clear(){reset();frame_={};replay_=std::vector<Replay>{};litSources_.clear();litIndex_.clear();litBytes_=serial_=litBuilds_=litHits_=0;}
  void beginObjects(int width,int height,colorprecision::Mode precision,bool retainTerrainPrefix=false){reset(retainTerrainPrefix);frame_.width=width;frame_.height=height;precision_=precision;valid_=width>0&&height>0&&width<=32768&&height<=32768;}
  void nativeView(float sx,float sy,bool enabled){frame_.nativeScene=enabled;frame_.nativeScaleX=sx;frame_.nativeScaleY=sy;}
  uint64_t litBuilds()const{return litBuilds_;}uint64_t litHits()const{return litHits_;}size_t litBytes()const{return litBytes_;}
  bool prefixAvailable()const{return prefixReady_;}
+ vulkancompute::DrawPrefix prefix()const{return prefixOwner_?vulkancompute::DrawPrefix{prefixOwner_,prefixDraws_}:vulkancompute::DrawPrefix{};}
  bool cpuPrefixReused()const{return cpuPrefixReused_;}
- void retainPrefix(){cpuPrefix_={};cpuPrefixReused_=false;prefixReady_=valid_;prefixDraws_=frame_.draws.size();prefixReplay_=replay_.size();}
+ void retainPrefix(){
+  cpuPrefix_={};cpuPrefixReused_=false;prefixReady_=valid_;prefixDraws_=frame_.draws.size();prefixReplay_=replay_.size();
+  prefixOwner_=prefixReady_&&prefixDraws_?std::make_shared<const uint8_t>(0):nullptr;
+ }
  void begin(int width,int height,std::shared_ptr<const std::vector<uint32_t>>base,std::shared_ptr<const std::vector<float>>depth,colorprecision::Mode precision,
             std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},GpuDepthPlan depthPlan={},bool retainTerrainPrefix=false){
   reset(retainTerrainPrefix);frame_.width=width;frame_.height=height;frame_.basePixels=std::move(base);fallbackBase_=frame_.basePixels;frame_.baseDepth=std::move(depth);precision_=precision;cpuBaseFallback_=std::move(cpuBaseFallback);

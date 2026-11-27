@@ -91,7 +91,24 @@ int main(){
  for(size_t i=0;i<large.size();++i)large[i]={uint32_t(0x710000+i*256),256,1100};
  assert(mailbox.submit(key(4,71,1200),large.data(),large.size()));
  assert(mailbox.take(pending)&&pending.count==RecoveryBytes/256);
- // Delayed fields get a chance in subsequent batches rather than being
- // permanently starved by a hard 16-slot first-page queue.
- std::puts("PASS async recovery: 128-probe/16-KiB background ceiling, 16-field producer cap, source-only read, stale-world rejection, nonblocking producer and epoch rewind");
+ // A producer can confirm delayed worker results even after the active
+ // queue rotated to later fields. Retries subsequently skip proven spans.
+ MissingReads missing;
+ for(size_t i=0;i<200;++i)missing.remember(hints[i].address,4,1200);
+ missing.remember(hints[0].address,4,1201);
+ missing.remember(hints[0].address,257,1201);
+ assert(missing.size()==199);
+ std::array<RequestedSpan,128>first{},second{};
+ assert(missing.next(1205,first.data(),first.size())==128);
+ assert(missing.next(1215,second.data(),second.size())==128);
+ assert(first[70].address!=second[70].address&&missing.pending(first[0],1215));
+ const auto held=second[0];
+ for(const auto&span:first)missing.confirmed(span);
+ for(const auto&span:second)if(span.address!=held.address)missing.confirmed(span);
+ assert(missing.size()==1&&!missing.pending(first[0],1216));
+ for(uint32_t tick=1220;tick<1320;tick+=16){
+  assert(missing.next(tick,ready,RecoverySpans)==1&&ready[0].address==held.address);
+ }
+ assert(missing.next(2202,ready,RecoverySpans)==0&&missing.size()==0);
+ std::puts("PASS async recovery: bounded probes and confirmation, source-only read, stale-world rejection, nonblocking producer, epoch rewind, rotating pending-only retries");
 }

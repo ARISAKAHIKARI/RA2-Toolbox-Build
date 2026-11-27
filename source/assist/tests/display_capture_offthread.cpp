@@ -12,9 +12,9 @@ struct Leases{
 };
 int main(){
  using namespace assist;
- // All seven UI overlay switches are genuinely passive when the separate
+ // These UI overlay switches are passive when the separate
  // Host visual sampler owns drawing; disabling that backend stays conservative.
- constexpr uint32_t visuals[]={Capacity,Iron,Production,AllTransports,Psychic,Crates,TextPanel};
+ constexpr uint32_t visuals[]={Capacity,Iron,Production,AllTransports,Psychic,Crates,TextPanel,Frozen};
  uint32_t all=0;
  for(auto bit:visuals){
   all|=bit;
@@ -34,6 +34,10 @@ int main(){
   assert(capturepolicy::passengerGraphNeeded(passenger,true));
  }
  assert(!capturepolicy::passengerGraphNeeded(AutoRepair,true));
+ assert(capturepolicy::LocalDispatchFlags==(BuildAnywhere|ReserveConstruction|DiskPrimary|SellDrained|SellVehicles));
+ assert(!capturepolicy::pointerNeedsGraph(capturepolicy::LocalDispatchFlags,4,4));
+ assert(!capturepolicy::pointerNeedsGraph(BuildAnywhere|ReserveConstruction,5,4));
+ for(uint32_t option:{DiskPrimary,SellDrained,SellVehicles})assert(capturepolicy::pointerNeedsGraph(option,5,4));
  // A Host-only boundary consumes NO command dependency, even when hundreds
  // of thousands of subscribed display pages still live in the Host.
  std::vector<uint32_t> host,live,out;

@@ -31,6 +31,18 @@ int main(){
  auto object=cell(read,c,fallback),terrain=cell(read,c,fallback,Layer::Terrain),bridge=cell(read,c,fallback,Layer::Bridge);
  assert(object.gains()[0]==1.1f&&terrain.gains()[0]==.825f&&bridge.gains()[0]==1.35f);
  assert(object.tint[1]==800&&cell(read,c,fallback,Layer::Object,false).tint[1]==1000);
+ // Shared tint/metadata lookup must preserve per-cell brightness, caller
+ // fallback and presentation-local lifetime, even for alternating converters.
+ TintCache shared;unsigned converterReads=0;
+ auto counted=[&](uint32_t p,void*out,size_t n){++converterReads;return read(p,out,n);};
+ State first=fallback;first.intensity=825;shared.shade(counted,0x23000,first);
+ const auto initialReads=converterReads;assert(initialReads>0&&first.tint==terrain.tint);
+ for(int i=0;i<10000;++i){State next=fallback;next.intensity=i%2001;shared.shade(counted,0x23000,next);assert(next.tint==first.tint&&next.intensity==i%2001);}
+ assert(converterReads==initialReads&&shared.entries.size()==1);
+ State invalid=fallback;invalid.tint={700,800,900};shared.shade(counted,0,invalid);assert((invalid.tint==std::array<int,3>{700,800,900}));
+ const auto bothReads=converterReads;State again=fallback;shared.shade(counted,0x23000,again);assert(again.tint==first.tint&&converterReads==bothReads&&shared.entries.size()==2);
+ put(0x2319C,600);TintCache newPresentation;State updated=fallback;newPresentation.shade(counted,0x23000,updated);assert(updated.tint[1]==600);put(0x2319C,800);
+
  put(c+0x10A,int16_t(0));assert(pixel(0xFF808080,cell(read,c,fallback))==0xFF000000);
  put(c+0x10A,int16_t(3000));assert(cell(read,c,fallback)==fallback);put(c+0x10A,int16_t(1100));
  int reads=0;auto cellRace=[&](uint32_t p,void*out,size_t n){bool ok=read(p,out,n);if(p==c+0x10A&&++reads==1)put(c+0x10C,int16_t(900));return ok;};assert(cell(cellRace,c,fallback)==fallback);

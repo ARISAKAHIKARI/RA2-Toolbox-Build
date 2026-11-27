@@ -67,9 +67,13 @@ assert "!graphCatalogueDue" in direct_admission
 assert "hostDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)" in direct_admission
 assert "(!hostDemand&&runtimeWorldDemands.empty()&&!runtimeDemandOverflow)" in direct_admission
 assert "if(graphCatalogueDue)worldDemand|=worldframe::TypeCatalogue;" in bridge
-assert "external::catalogue::captureVisit(readLiveWorld,stamp,collectProbe)" in bridge
-assert "||scanTypes(true,&probes)" in bridge
-assert "for(auto&batch:probes)batch.clear();" in bridge
+isolated=bridge.split("if(nativeCatalogue&&catalogueDue){",1)[1].split("uint32_t worldDemand=",1)[0]
+assert "worldFramePublication.takeCatalogue(catalogueKey,catalogue)" in isolated
+assert "worldFramePublication.requestCatalogue(catalogueKey)" in isolated
+assert "SampleReadScope sample(false,&catalogue)" in isolated
+assert "scanTypes()&&sample.complete()" in isolated and "readLiveWorld" not in isolated
+assert "if(!isolated)requestWorldRange(at,n)" in runtime
+assert "if(!isolated)rememberMissingWorldSpan(at,n)" in runtime
 assert "if(internal&&runtimeDirectActions)" in bridge
 assert "if(runtimeDirectActions){if(!collect())return -12;}" in bridge
 assert "allowDirect" not in runtime
@@ -128,7 +132,10 @@ print("PASS production display split: Host VisualCache is live for display reade
 sampler=(external/"tactical_sampler.h").read_text(encoding="utf-8")
 assert "catalogueDependencies_.capture(read_,stamp)" in sampler
 assert "if(fresh||!catalogueAt_||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100))" in sampler
-assert "if(epoch!=sharedMatch_){catalogueDependencies_.clear();catalogueReady_=false;catalogueHash_=0;catalogueAt_=0;state_.typeCount=0;" in sampler
+epoch_reset=sampler.split("void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){",1)[1].split("}sharedMatch_=epoch;",1)[0]
+# Unrelated display-state retirement may precede the catalogue retirement.
+# Check all catalogue fields inside the actual identity-change branch.
+assert "catalogueDependencies_.clear();catalogueReady_=false;catalogueHash_=0;catalogueAt_=0;state_.typeCount=0;" in epoch_reset
 assert "house_=house;catalogueReady_=false;catalogueHash_=0;state_.typeCount=0;" in sampler
 catalogue_refresh=sampler.split("if(catalogueDependencies_.capture(read_,stamp))",1)[1].split("state_.status=1;",1)[0]
 assert catalogue_refresh.count("types();")==1

@@ -1128,6 +1128,7 @@ static int findIdle(uint32_t house,int mode){
  if(tactical)call<void>(0x6D2420,tactical,(void*)(next+0x9C),0);return 1;
 }
 static void requestTypeCatalogue(){
+ worldFramePublication.invalidateCatalogue();
  nativeCatalogueProbe.reset();catalogueReady=false;catalogueRequestedAt=GetTickCount();worldFrameCatalogueProbeAt=0;
 }
 static bool scanTypes(bool direct=false,const std::array<std::vector<external::catalogue::TypeProbe>,4>* probes=nullptr){
@@ -1143,7 +1144,7 @@ static bool scanTypes(bool direct=false,const std::array<std::vector<external::c
  for(int prior=0;prior<priorCount;++prior)priorByPointer[prior]={typePointers[prior],prior};
  std::sort(priorByPointer.begin(),priorByPointer.begin()+priorCount);
  int count=0;
- const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};
+ const auto&arrays=external::catalogue::TypeTables;
  const int kinds[]={3,16,40,7};
  static uint32_t nativeTypes[4096];
  for(int k=0;k<4;++k){
@@ -1190,16 +1191,20 @@ static bool scanTypes(bool direct=false,const std::array<std::vector<external::c
    }else{
     localizedName=get<uint32_t>(type+0x60);naval=get<bool>(type+0xCCE);cost=get<int>(type+0x610);
    }
-   if(localizedName>=0x10000&&direct){
+   const bool isolated=!direct&&sampleWorldSource->catalogue.isolated;
+   if(localizedName>=0x10000&&(direct||isolated)){
     // Reuse the already read name pointer. Most names fit in a single
     // contiguous read. Fall back to the original bounded character walk
     // when the speculative suffix crosses an unreadable region.
     uint16_t text[39]{};
+    const auto readName=[&](uint32_t at,void*out,size_t size){
+     return isolated?sampleWorldSource->read(at,out,size):read(at,out,size);
+    };
     int n=0;
-    if(read(localizedName,text,sizeof text)){
+    if(readName(localizedName,text,sizeof text)){
      while(n<39&&text[n]){out.name[n]=text[n];++n;}
     }else{
-     for(;n<39;++n){uint16_t ch=0;if(!read(localizedName+uint32_t(n)*2,&ch,2)||!ch)break;out.name[n]=ch;}
+     for(;n<39;++n){uint16_t ch=0;if(!readName(localizedName+uint32_t(n)*2,&ch,2)||!ch)break;out.name[n]=ch;}
     }
     if(!n)for(int i=0;i<23&&out.id[i];++i)out.name[i]=uint8_t(out.id[i]);
    }else if(localizedName>=0x10000)name(type,out.name,40);
@@ -2125,27 +2130,24 @@ static void tick(){
  commandDormant=false;
  techEnhancementTick(now);techEnhanceParametersTick(house,now);mapVisibilityParametersTick(house);
  const bool catalogueDue=newMatch||!worldFrameCatalogueProbeAt||DWORD(now-worldFrameCatalogueProbeAt)>=DWORD(catalogueReady?500:100);
- // Ordinary catalogue publication is a bounded type-metadata walk, not a
- // tactical graph consumer. Enhancement policies still consult the legacy
- // sealed catalogue until their independent discovery is migrated.
- const bool nativeCatalogue=!worldFrameCommandWorker.enabled()&&!sh->techEnhance&&
+ // Type metadata is acquired independently of the tactical graph. The game
+ // thread applies its current production rules to the sealed observation.
+ const bool nativeCatalogue=!worldFrameCommandWorker.enabled()&&
   sh->computeApplied==compute::All&&gameentry::active(gameentry::Client::Assist);
  const bool graphCatalogueDue=catalogueDue&&!nativeCatalogue;
- if(catalogueDue&&nativeCatalogue&&nativeCatalogueProbe.begin(now)){
-  external::catalogue::Stamp stamp{};
-  // The stamp and projection share this invocation's ordered type metadata.
-  // Retain allocation capacity only, never reuse old observations.
-  static std::array<std::vector<external::catalogue::TypeProbe>,4> probes;
-  for(auto&batch:probes)batch.clear();
-  const auto collectProbe=[&](uint32_t array,int,const external::catalogue::TypeProbe&probe){
-   const int k=array==0xA8B218?0:array==0xA8E348?1:array==0xA83CE0?2:3;
-   probes[k].push_back(probe);
-  };
-  if(external::catalogue::captureVisit(readLiveWorld,stamp,collectProbe)&&
-     ((catalogueReady&&catalogueHash==stamp.hash)||scanTypes(true,&probes))){
-   catalogueHash=stamp.hash;catalogueReady=true;catalogueAt=now;
-   catalogueRequestedAt=0;worldFrameCatalogueProbeAt=now;
+ if(nativeCatalogue&&catalogueDue){
+  static worldframe::Snapshot catalogue;
+  const auto catalogueKey=samplingKey(worldSample,house);
+  bool updated=false;
+  if(worldFramePublication.takeCatalogue(catalogueKey,catalogue)){
+   const auto observed=catalogue.catalogue;
+   SampleReadScope sample(false,&catalogue);
+   if(sample&&((catalogueReady&&catalogueHash==observed.hash)||(scanTypes()&&sample.complete()))){
+    catalogueHash=observed.hash;catalogueReady=true;catalogueAt=catalogue.key.tick;
+    catalogueRequestedAt=0;worldFrameCatalogueProbeAt=now;updated=true;
+   }
   }
+  if(!updated&&nativeCatalogueProbe.begin(catalogueKey.tick))worldFramePublication.requestCatalogue(catalogueKey);
  }
  uint32_t worldDemand=worldframe::Base;
  if(graphCatalogueDue)worldDemand|=worldframe::TypeCatalogue;
@@ -2203,7 +2205,8 @@ static void tick(){
  // requests when no Host display boundary is available.
  const bool directRuntime=noGraphJobs&&!newMatch&&!resultsDue&&!graphCatalogueDue&&
   !worldFrameCommandWorker.enabled()&&sh->externalDisplay&&
-  !(sh->flags&~(capturepolicy::PassiveVisualFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread|AutoOreReturn|AntiTheft|NativeAirWaypoints))&&
+  !(sh->flags&~(capturepolicy::PassiveVisualFlags|capturepolicy::LocalDispatchFlags|AutoRepair|RepairUnrepairable|AdvancedInput|MagnetronInput|NativeOrders|CustomCS|SmartUnloadOrders|EjectAssist|AdvancedEnter|AircraftSpread|AutoOreReturn|AntiTheft|NativeAirWaypoints))&&
+  !capturepolicy::pointerNeedsGraph(sh->flags,sh->pointer.request,sh->pointer.ack)&&
   !selectionPending&&!planPending&&!cooperativePending&&
   directCommand&&!repairCalculationPending&&
   sh->computeApplied==compute::All&&

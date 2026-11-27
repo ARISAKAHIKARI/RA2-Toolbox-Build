@@ -8,6 +8,7 @@
 // a permanently authenticated catalogue. Never persist these addresses to disk.
 namespace external { namespace catalogue {
 struct Stamp {uint64_t hash=1469598103934665603ull;int count=0;};
+inline constexpr uint32_t TypeTables[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};
 // Bound incomplete metadata probes independently of successful refresh time.
 class ProbeRetryGate {
  bool attempted_=false;uint32_t at_=0;
@@ -26,11 +27,10 @@ struct TypeProbe {
 };
 template<class Read,class Visit> bool captureVisit(Read read,Stamp&out,Visit visit){
  Stamp next;auto mix=[&](const void*p,size_t n){auto*b=(const uint8_t*)p;while(n--)next.hash=(next.hash^*b++)*1099511628211ull;};
- const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};
  struct Header {uint32_t items;int capacity;uint32_t flags;int count;};
  static_assert(sizeof(Header)==16,"native vector header layout");
  constexpr int Chunk=64;
- for(uint32_t a:arrays){
+ for(uint32_t a:TypeTables){
   Header head{};if(!read(a+4,&head,sizeof head))return false;
   const uint32_t p=head.items;const int n=head.count,cap=head.capacity;
   if(n<0||n>4096||cap<n||cap>65536||(n&&(p<0x10000||uint64_t(p)+uint64_t(n)*4>=0x80000000ull)))return false;

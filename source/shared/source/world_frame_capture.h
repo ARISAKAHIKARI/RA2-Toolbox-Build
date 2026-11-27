@@ -6,11 +6,24 @@
 #include <limits>
 
 namespace worldframe {
-inline void stampTypeCatalogue(Snapshot& snapshot){
+inline void stampTypeCatalogue(Snapshot& snapshot,bool isolated=false){
  external::catalogue::Stamp stamp;
- const bool complete=snapshot.sealed()&&!snapshot.overflow()&&external::catalogue::capture(
-   [&](uint32_t address,void*out,size_t bytes){return snapshot.read(address,out,bytes);},stamp);
- snapshot.catalogue={complete?stamp.hash:0,true,complete};
+ const auto read=[&](uint32_t address,void*out,size_t bytes){return snapshot.read(address,out,bytes);};
+ uint64_t projection=1469598103934665603ull;bool projectionComplete=true;
+ const bool stamped=snapshot.sealed()&&!snapshot.overflow()&&external::catalogue::captureVisit(read,stamp,
+  [&](uint32_t,int,const external::catalogue::TypeProbe&probe){
+   if(!isolated||!projectionComplete)return;
+   const auto type=probe.pointer;uint32_t name=0,cost=0,vtable=0;uint8_t naval=0;
+   projectionComplete=read(type,&vtable,4)&&read(type+0x60,&name,4)&&read(type+0x610,&cost,4)&&read(type+0xCCE,&naval,1);
+   auto mix=[&](uint32_t value){projection=(projection^value)*1099511628211ull;};
+   mix(vtable);mix(name);mix(cost);mix(naval);
+   if(projectionComplete&&name>=0x10000)for(unsigned n=0;n<39;++n){
+    uint16_t unit=0;if(!read(name+n*2,&unit,2)){mix(0x10000);break;}
+    mix(unit);if(!unit)break;
+   }
+  });
+ const bool complete=stamped&&projectionComplete;
+ snapshot.catalogue={complete?(isolated?stamp.hash^projection:stamp.hash):0,true,complete,isolated};
 }
 struct SceneGeometry {
  std::array<int,6> bounds{};int width=0,height=0;bool readable=false;
@@ -204,6 +217,13 @@ public:
   if(v.count&&!frame_.capture(live_,v.items,out.data(),out.size()*4))return false;
   if(itemsOut)*itemsOut=v.items; // Publish only after complete, immutable roster.
   return true;
+ }
+ bool captureCatalogue(){
+  if(!working())return false;
+  demand_=TypeCatalogue;
+  block(0xA8B230,12);block(0xA8ED84,4);
+  for(uint32_t table:external::catalogue::TypeTables)if(!catalogueTypes(table,scratch_->docks))return false;
+  return working();
  }
  bool capture(uint32_t demand,const std::vector<uint32_t>&requests,
               const RequestedSpan*exact=nullptr,size_t exactCount=0){

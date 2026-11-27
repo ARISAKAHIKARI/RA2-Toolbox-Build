@@ -7,6 +7,7 @@
 #undef NDEBUG
 #endif
 #include "../../shared/source/world_frame_capture.h"
+#include "../../shared/source/world_frame_catalogue.h"
 #include "../../shared/source/world_frame_command_index.h"
 #include "../../shared/source/world_frame_command_policy.h"
 #include "../../shared/source/world_frame_visual.h"
@@ -83,6 +84,46 @@ void setup(Memory&m){
  m.put(ActorA+0xE4,Radio);m.put(ActorA+0xE8,2);m.put(Radio,ActorB);m.put(Radio+4,Passenger);
  m.put(Type+0x60,0x700100u);m.put(Type+0x898,Weapon);m.put(Type+0xA94,Weapon);m.put(Weapon+0xA0,Warhead);m.put(Weapon+0xAC,Projectile);
  m.put(Bullet+0xAC,BulletType);m.put(Bullet+0xB0,ActorA);m.put(Bullet+0x10C,ActorB);
+}
+
+void isolatedCatalogue(){
+ Memory m;setup(m);Read live{&m};
+ static constexpr uint32_t list=0x680000,names=0x710FFCu;
+ const auto&tables=external::catalogue::TypeTables;
+ for(uint32_t table:tables)m.vector(table,list,{});
+ m.vector(tables[2],list,{Type});
+ m.put(Type,0x7F6218u);m.put(Type+0x24,"FIRST");m.put(Type+0x60,names);
+ m.put(Type+0x610,500);m.put(Type+0x634,2);m.put(Type+0x6CC,3u);
+ m.put(names,uint16_t('A'));m.put(names+2,uint16_t('B'));m.put(names+4,uint16_t(0));
+ worldframe::CatalogueMailbox mailbox;worldframe::Snapshot result;
+ uint32_t now=100;auto current=key();
+ const auto work=[&]{mailbox.work(live,[&]{return now;});};
+ CHECK(mailbox.request(current));m.put(0xA8ED84,51);now=105;work();
+ current.frame=51;current.tick=now;
+ CHECK(mailbox.take(current,result)&&result.catalogue.complete&&result.catalogue.isolated);
+ CHECK(!mailbox.take(current,result)&&result.key.frame==51&&result.key.tick==105);
+ uint32_t cost=0;CHECK(result.read(Type+0x610,&cost,4)&&cost==500);
+ CHECK(m.requests(TechnoList,4096)==0&&m.requests(BuildingList,4096)==0&&m.requests(ActorA&~4095u,4096)==0);
+ const auto original=result.catalogue.hash;
+ m.put(Type+0x610,725);CHECK(mailbox.request(current));work();
+ CHECK(mailbox.take(current,result)&&result.catalogue.hash!=original&&result.read(Type+0x610,&cost,4)&&cost==725);
+ const auto costChanged=result.catalogue.hash;
+ m.denied.push_back({names+4,2});CHECK(mailbox.request(current));work();
+ CHECK(mailbox.take(current,result)&&result.catalogue.hash!=costChanged);
+ uint16_t unit=0;CHECK(result.read(names,&unit,2)&&unit=='A');
+ CHECK(!result.read(names+4,&unit,2));m.denied.pop_back();
+ m.denied.push_back({Type+0xCCE,1});CHECK(mailbox.request(current));work();
+ CHECK(!mailbox.take(current,result));m.denied.pop_back();
+ CHECK(mailbox.request(current));work();CHECK(mailbox.take(current,result)&&result.catalogue.hash==costChanged);
+ // A changed pointer list with the same vector header cannot publish.
+ m.beforeRead=[&](uint32_t at,size_t n){if(at==list&&n==4)m.put(list,Weapon);};
+ CHECK(mailbox.request(current));work();CHECK(!mailbox.take(current,result));
+ m.beforeRead={};m.put(list,Type);
+ CHECK(mailbox.request(current));mailbox.invalidate();work();CHECK(!mailbox.take(current,result));
+ CHECK(mailbox.request(current));work();mailbox.invalidate();CHECK(!mailbox.take(current,result));
+ CHECK(mailbox.request(current));work();auto oldWorld=current;++oldWorld.house;CHECK(!mailbox.take(oldWorld,result));
+ CHECK(mailbox.request(current));work();auto expired=current;expired.tick+=501;CHECK(!mailbox.take(expired,result));
+ m.put(0xA83D4C,House+4096);CHECK(mailbox.request(current));work();CHECK(!mailbox.take(current,result));
 }
 
 void hostVisual(){
@@ -169,6 +210,67 @@ void hostVisual(){
   auto source=std::make_shared<worldframe::Snapshot>();auto k=key(frame);k.tick=tick;k.serial=uint32_t(frame);k.demand=worldframe::BoundaryOnlyKeyBit;
   source->reset(k);CHECK(source->seal());return source;
  };
+ // A failed graph must not be retried on every new display boundary.
+ {
+  worldframe::VisualCache retry;
+  m.put(0xA8ED84,52);
+  m.denied.push_back({0xA8EC78,24});
+  CHECK(!retry.acquire(boundary(52,200),worldframe::Resources,200,live));
+  CHECK(retry.statistics.buildInitial==1&&retry.statistics.failed==1);
+  for(int frame=53;frame<=55;++frame){
+   m.put(0xA8ED84,frame);
+   CHECK(!retry.acquire(boundary(frame,200+uint32_t(frame-52)),worldframe::Resources,200+uint32_t(frame-52),live));
+  }
+  CHECK(retry.statistics.buildInitial==1&&retry.statistics.deferredFailedBuilds==3);
+  // New explicit dependency revision is not throttled by the old attempt.
+  CHECK(retry.request({0xE80000},204,true));
+  m.put(0xA8ED84,56);
+  CHECK(!retry.acquire(boundary(56,204),worldframe::Resources,204,live));
+  CHECK(retry.statistics.buildInitial==2&&retry.statistics.failed==2);
+  m.denied.pop_back();
+  m.put(0xA8ED84,57);
+  CHECK(!retry.acquire(boundary(57,219),worldframe::Resources,219,live));
+  CHECK(retry.statistics.buildInitial==2);
+  m.put(0xA8ED84,58);
+  auto recovered=retry.acquire(boundary(58,220),worldframe::Resources,220,live);
+  CHECK(recovered&&retry.statistics.buildInitial==3&&retry.statistics.captures==1);
+  // Multiple readers of the same pinned display token report an existing
+  // missing page after a failed graph. They must not bypass backoff.
+  const uint32_t missing=0xE90000;
+  CHECK(retry.request({missing},221,true,recovered));
+  m.denied.push_back({0xA8EC78,24});
+  m.put(0xA8ED84,59);
+  CHECK(!retry.acquire(boundary(59,236),worldframe::Resources,236,live));
+  const auto failed=retry.statistics.failed;
+  const auto deferred=retry.statistics.deferredFailedBuilds;
+  for(int frame=60;frame<63;++frame){
+   const uint32_t tick=237+uint32_t(frame-60);
+   CHECK(retry.request({missing},tick,true,recovered));
+   m.put(0xA8ED84,frame);
+   CHECK(!retry.acquire(boundary(frame,tick),worldframe::Resources,tick,live));
+  }
+  CHECK(retry.statistics.failed==failed&&retry.statistics.deferredFailedBuilds==deferred+3);
+  // A new page followed by another duplicate report must still invalidate
+  // the old attempt, even before the retry window expires.
+  CHECK(retry.request({missing+4096},240,true,recovered));
+  CHECK(retry.request({missing},240,true,recovered));
+  m.put(0xA8ED84,63);
+  CHECK(!retry.acquire(boundary(63,240),worldframe::Resources,240,live));
+  CHECK(retry.statistics.failed==failed+1);
+  m.denied.pop_back();
+  m.put(0xA8ED84,64);
+  CHECK(retry.acquire(boundary(64,256),worldframe::Resources,256,live));
+ }
+ // A newly required page must bypass the failed-build delay even if the
+ // control token never changes, for example while the game is paused.
+ {
+  worldframe::VisualCache retry;auto paused=boundary(64,270);
+  m.denied.push_back({0xA8EC78,24});
+  CHECK(!retry.acquire(paused,worldframe::Base,270,live));m.denied.pop_back();
+  CHECK(!retry.acquire(paused,worldframe::Base,271,live));
+  CHECK(retry.request({0xE90000},272,false));
+  CHECK(retry.acquire(paused,worldframe::Base,272,live)&&retry.statistics.captures==1);
+ }
  worldframe::VisualCache fast;
  m.put(0xA8ED84,52);auto first=boundary(52,200);
  auto original=fast.acquire(first,worldframe::Resources,200,live);CHECK(original);
@@ -863,11 +965,16 @@ void mappingInterleavings(){
 void hostReads(){
  currentPid=HostPid;clock=1000;Memory memory;gameMemory=&memory;auto first=publication(10,60,0x55556666),second=publication(11,61,0x77778888);external::ProcessReader reader;CHECK(reader.open(GamePid));
  auto client=worldframe::acquireClient(GamePid,reader.generation());CHECK(!client->acquire(7));currentPid=GamePid;worldframe::Server server;CHECK(server.wanted(HostPid,clock));first->key.connectionLow=second->key.connectionLow=uint32_t(reader.generation());server.observe(second->key);server.publish(*second);currentPid=HostPid;CHECK(reader.beginWorldFrame(7,first));
- const auto before=rpmCalls;uint32_t value=0;CHECK(reader.read(0x10000,&value,4)&&value==0x55556666);CHECK(reader.readFresh(0x10000,&value,4)&&value==0x55556666);CHECK(reader.worldFrameComplete());
+ const auto before=rpmCalls;uint32_t value=0;const auto cacheBefore=reader.totalSealedPageCacheHits;
+ CHECK(reader.read(0x10000,&value,4)&&value==0x55556666);CHECK(reader.totalSealedPageCacheHits==cacheBefore);
+ CHECK(reader.readFresh(0x10000,&value,4)&&value==0x55556666);CHECK(reader.totalSealedPageCacheHits==cacheBefore+1);
+ for(unsigned n=0;n<64;++n)CHECK(reader.readOptional(0x10000,&value,4)&&value==0x55556666);
+ CHECK(reader.totalSealedPageCacheHits==cacheBefore+65&&reader.worldFrameComplete());
  CHECK(!reader.read(0x13000,&value,4));CHECK(!reader.worldFrameComplete());CHECK(rpmCalls==before);
  // Restoring a suspended read domain must retain its earlier failure.
- {external::WorldFrameScope nested(reader,7,second);CHECK(nested&&nested.complete());CHECK(reader.read(0x10000,&value,4)&&value==0x77778888);}
+ {external::WorldFrameScope nested(reader,7,second);CHECK(nested&&nested.complete());const auto hits=reader.totalSealedPageCacheHits;CHECK(reader.read(0x10000,&value,4)&&value==0x77778888);CHECK(reader.totalSealedPageCacheHits==hits);CHECK(reader.read(0x10000,&value,4)&&value==0x77778888&&reader.totalSealedPageCacheHits==hits+1);}
  CHECK(reader.worldFrameToken()==first);CHECK(!reader.worldFrameComplete());
+ {const auto hits=reader.totalSealedPageCacheHits;CHECK(reader.read(0x10000,&value,4)&&value==0x55556666&&reader.totalSealedPageCacheHits==hits);}
  // Nested consumers of the same immutable token contribute to one aggregate
  // completeness result. Another token has its own independent read domain.
  CHECK(reader.beginWorldFrame(7,first));
@@ -885,7 +992,18 @@ void hostReads(){
  CHECK(reader.beginWorldFrame(7,first));CHECK(!reader.read(0xFFFF,&value,4));CHECK(!reader.worldFrameComplete());CHECK(rpmCalls==before);
  CHECK(reader.worldMissingReads>0&&reader.worldUnreadableReads>0&&reader.worldInvalidReads>0);
  CHECK(reader.worldFirstMissingAddress==0x13000&&reader.worldLastMissingAddress==0x13000);
+ // A cached full page cannot satisfy an absent second page or certify it.
+ CHECK(reader.beginWorldFrame(7,first));CHECK(reader.read(0x10000,&value,4));value=0xABCDEF01;
+ const auto hits=reader.totalSealedPageCacheHits;CHECK(!reader.read(0x10FFE,&value,4)&&value==0xABCDEF01&&!reader.worldFrameComplete());
+ CHECK(reader.totalSealedPageCacheHits==hits&&rpmCalls==before);
+ CHECK(reader.beginWorldFrame(7,first));
+ CHECK(reader.sealedPage(0x10000)==first->find(0x10000));
+ CHECK(!reader.sealedPage(0x10001)&&!reader.sealedPage(0x12000)&&!reader.sealedPage(0x13000));
+ CHECK(reader.worldFrameComplete()&&rpmCalls==before);
+ {external::WorldFrameScope nested(reader,7,second);CHECK(nested&&reader.sealedPage(0x10000)==second->find(0x10000));}
+ CHECK(reader.sealedPage(0x10000)==first->find(0x10000));
  reader.endWorldFrame();CHECK(reader.worldMissingReads>0);reader.begin();CHECK(!reader.worldMissingReads&&!reader.worldUnreadableReads&&!reader.worldInvalidReads&&!reader.worldFirstMissingAddress);
+ CHECK(!reader.sealedPage(0x10000));
  CHECK(reader.readLive(0x10000,&value,4));CHECK(rpmCalls==before+1);
  const auto oldConnection=reader.connectionIdentity();process->alive=false;process=std::make_shared<ProcessRecord>(ProcessRecord{GamePid,12346,true});external::ProcessReader reused;CHECK(reused.open(GamePid));CHECK(reused.generation()!=oldConnection->generation);CHECK(!reused.beginWorldFrame(7,first));reused.close();reader.close();gameMemory=nullptr;
 }
@@ -1181,7 +1299,7 @@ void canonicalDisplayTransport(){
 
 #ifndef WORLD_FRAME_FIXTURE_ONLY
 int main(){
- fixture::hostVisual();fixture::overlap();fixture::partial();fixture::graphs();fixture::speculativeBatchFaultIsolation();fixture::contiguousWarmBatch32();fixture::capacity();fixture::nothrowPages();
+ fixture::isolatedCatalogue();fixture::hostVisual();fixture::overlap();fixture::partial();fixture::graphs();fixture::speculativeBatchFaultIsolation();fixture::contiguousWarmBatch32();fixture::capacity();fixture::nothrowPages();
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 #ifdef WORLD_FRAME_PRODUCT_DISPLAY_FIXTURE
  fixture::canonicalDisplayTransport();

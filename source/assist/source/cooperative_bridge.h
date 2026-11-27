@@ -430,9 +430,11 @@ static void captureCooperativeFrame(DWORD now,bool indexedWorkReady){
  discovery.finish();
  if(!indexedWorkReady&&key.frame==snap.frame)return;
  static long lastQuotaRevision=-1;
+ static worldframe::Key lastSource{};
  const long seq=sh->quotaConfigSeq;if(seq&1)return;
  if(out.request.serial==r.serial&&(key.frame<out.frame||
-    (key.frame==out.frame&&key.tick==out.tick&&seq==lastQuotaRevision)))return;
+    (key.sameFrame(lastSource)&&key.serial==lastSource.serial&&key.tick==lastSource.tick&&
+     key.demand==lastSource.demand&&seq==lastQuotaRevision)))return;
  static compute::QuotaConfig quotas;
  MemoryBarrier();memcpy(&quotas,&sh->quotaConfig,sizeof quotas);MemoryBarrier();if(seq!=sh->quotaConfigSeq||quotas.count<0||quotas.count>512)return;
  cooperative::Input input;worldframe::Key source{};cooperative::CapturedIdentities identities;
@@ -442,7 +444,7 @@ static void captureCooperativeFrame(DWORD now,bool indexedWorkReady){
  // A candidate stamped with this frame must not look like exact authority.
  if(!indexedWorkReady&&source.frame==snap.frame)return;
  if(!cooperative::pack(out,input,r,source.tick,source.frame))return;
- lastQuotaRevision=seq;
+ lastSource=source;lastQuotaRevision=seq;
  identities.stamp={r.serial,r.match,source.tick,source.frame};
  cooperativeCaptures.keep(std::move(identities));
 }

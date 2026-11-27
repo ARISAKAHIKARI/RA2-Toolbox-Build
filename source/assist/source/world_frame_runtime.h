@@ -19,10 +19,13 @@ struct WorldFramePublication {
  bool publish(const worldframe::Snapshot&frame,const worldframe::Server&){return worldFrameServer.publish(frame);}
  bool requestRecovery(const worldframe::Key&,const worldframe::RequestedSpan*,size_t){return false;}
  size_t recovered(const worldframe::Key&,worldframe::RequestedSpan*,size_t){return 0;}
+ void invalidateCatalogue(){}
+ bool requestCatalogue(const worldframe::Key&){return false;}
+ bool takeCatalogue(const worldframe::Key&,worldframe::Snapshot&){return false;}
 };
 #else
-// Runtime seals the command graph on the game thread. This worker only
-// transports immutable bytes and probes bounded missing ranges for retry.
+// Runtime seals the command graph on the game thread. The worker transports
+// immutable frames, probes missing ranges and reads the display catalogue.
 #include "../../shared/source/world_frame_async_win.h"
 using WorldFramePublication=worldframe::AsyncPublisher<>;
 #endif
@@ -80,21 +83,21 @@ static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;st
 static std::array<uint64_t,8192>runtimeDemandBits{},worldFrameRequestBits{};
 static std::vector<uint32_t>runtimeWorldDemands;
 static bool runtimeDemandOverflow=false,runtimeDemandBufferPrepared=false,worldFrameRequestBufferPrepared=false;
-// The legacy targeted-recovery ring exists only in the synchronous test
-// fixture. Production retries missing pages through the next complete graph.
-static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
+static worldframe::MissingReads runtimeMissingSpans;
 static uint32_t lastRecoverySubmitAt=0;
 static bool worldFrameReady=false;
 static DWORD worldFrameCatalogueProbeAt=0;
-// Boundary-only sources are retained for isolated regression fixtures only.
-// Product builds suspend HostDisplayOnly until its fields join the canonical
-// complete Runtime snapshot.
+// A display boundary carries world identity. Native readers require the
+// actual command graph, and Host readers acquire their own observation.
 static bool worldFrameBoundaryOnly=false;
 static worldframe::DemandLeases runtimeDemandLeases;
 static worldframe::CaptureScratch worldFrameCaptureScratch{};static std::vector<uint32_t>worldFrameCaptureRequests;
 static worldframe::Key lastCaptureAttempt{};static bool haveCaptureAttempt=false;
 static uint32_t failedCaptureAt=0,captureRetryDelay=0;
 static uint64_t worldProducerGeneration=0;
+static void rememberMissingWorldSpan(uint32_t at,size_t n){
+ if(sampleWorldSource)runtimeMissingSpans.remember(at,n,sampleScopeTick);
+}
 static void requestWorldRange(uint32_t at,size_t n){
  if(!worldframe::range(at,n)||runtimeDemandOverflow)return;
  if(!runtimeDemandBufferPrepared){
@@ -161,10 +164,11 @@ static bool observationalFrameReady(){
 }
 #endif
 static bool readWorldSample(uint32_t at,void*out,size_t n){
- requestWorldRange(at,n); // Keep successful consumer dependencies subscribed.
  const auto*source=sampleWorldSource?sampleWorldSource:&worldFrame;
- const bool ok=source&&source->sealed()&&source->read(at,out,n);
- if(!ok)sampleReadComplete=false;
+ const bool isolated=source->catalogue.isolated;
+ if(!isolated)requestWorldRange(at,n);
+ const bool ok=source->sealed()&&source->read(at,out,n);
+ if(!ok){sampleReadComplete=false;if(!isolated)rememberMissingWorldSpan(at,n);}
  return ok;
 }
 class SampleReadScope {
@@ -172,14 +176,16 @@ class SampleReadScope {
  const worldframe::Snapshot* previousSource_;
  uint32_t previousTick_;
 public:
- explicit SampleReadScope(bool allowObservation=false):
+ explicit SampleReadScope(bool allowObservation=false,const worldframe::Snapshot* catalogue=nullptr):
     previousDepth_(sampleReadDepth),previousComplete_(sampleReadComplete),
     ready_(false),previousSource_(sampleWorldSource),previousTick_(sampleScopeTick){
-  const bool strict=worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.sealed()&&
+  const bool strict=!catalogue&&worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.sealed()&&
        worldFrame.key.match==match&&worldFrame.key.frame==snap.frame;
-  const bool observation=allowObservation&&!strict&&observationalFrameReady();
-  ready_=strict||observation;
-  sampleWorldSource=strict?&worldFrame:(observation?&worldFrameCandidate:nullptr);
+  const bool observation=!catalogue&&allowObservation&&!strict&&observationalFrameReady();
+  const bool isolated=catalogue&&catalogue->sealed()&&catalogue->catalogue.isolated&&
+       catalogue->catalogue.complete&&catalogue->key.match==match;
+  ready_=strict||observation||isolated;
+  sampleWorldSource=strict?&worldFrame:(observation?&worldFrameCandidate:(isolated?catalogue:nullptr));
   sampleScopeTick=GetTickCount();
   ++sampleReadDepth;sampleReadComplete=ready_;
  }
@@ -198,8 +204,9 @@ class ObservationReadScope:public SampleReadScope {
 public: ObservationReadScope():SampleReadScope(true){}
 };
 static const ::assist::ObjectIndex* sampledObjectIndex(){
+ if(sampleWorldSource!=&worldFrame&&sampleWorldSource!=&worldFrameCandidate)return nullptr;
  const auto& roster=sampleWorldSource==&worldFrameCandidate?worldFrameCandidateRoster:worldFrameCommandRoster;
- return sampleWorldSource&&roster.current(sampleWorldSource->key)?roster.objects.get():nullptr;
+ return roster.current(sampleWorldSource->key)?roster.objects.get():nullptr;
 }
 // Copy worker atomics to fixed-size IPC at 4 Hz. No native memory reads,
  // allocations, locks, file I/O or world traversal occur here.
@@ -240,7 +247,14 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
 }
 #endif
 static void retireWorldFrame(){runtimeDirectActions=false;worldFrameCatalogueProbeAt=0;worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
-runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;
+runtimeMissingSpans.clear();lastRecoverySubmitAt=0;
+}
+static worldframe::Key samplingKey(const worldlife::Sample&world,uint32_t house){
+ worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,world.scenario,world.cells,house,uint32_t(world.count),world.frame,world.session};
+ if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
+ key.generationLow=uint32_t(worldProducerGeneration);key.generationHigh=uint32_t(worldProducerGeneration>>32);
+ key.connectionLow=uint32_t(worldFrameServer.connection());key.connectionHigh=uint32_t(worldFrameServer.connection()>>32);
+ return key;
 }
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
  const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
@@ -257,10 +271,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
 #endif
  const uint32_t graphDemand=demand&~uint32_t(worldframe::HostDisplayOnly);
  const uint32_t captureDemand=boundaryOnly?demand:(demand&~uint32_t(worldframe::HostDisplayOnly));
- worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
- if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
- key.generationLow=uint32_t(worldProducerGeneration);key.generationHigh=uint32_t(worldProducerGeneration>>32);
- key.connectionLow=uint32_t(worldFrameServer.connection());key.connectionHigh=uint32_t(worldFrameServer.connection()>>32);
+ worldframe::Key key=samplingKey(before,house);
  if(asyncCommand){
   // The worker exists to serve the live Host session. Retained page leases are
   // preserved across a disconnect, but cannot justify starting a new worker
@@ -511,30 +522,18 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // Rotate the direct-mapped hint table so busy units are not permanently first.
  std::array<worldframe::RequestedSpan,worldframe::RecoverySpans>candidates{};
  std::array<worldframe::RequestedSpan,worldframe::RecoveryConfirmSpans>verified{};
- size_t candidateCount=0,verifiedCount=0;
- const size_t start=key.serial%runtimeMissingSpans.size();
- for(size_t step=0;!boundaryOnly&&step<runtimeMissingSpans.size()&&candidateCount<candidates.size();++step){
-  const auto&f=runtimeMissingSpans[(start+step)%runtimeMissingSpans.size()];
-  if(f.bytes&&f.bytes<=256&&worldframe::range(f.address,f.bytes)&&
-     uint32_t(key.tick-f.tick)<=1000)candidates[candidateCount++]=f;
- }
+ const size_t candidateCount=runtimeMissingSpans.next(key.tick,candidates.data(),candidates.size());
+ size_t verifiedCount=0;
  // Background bytes are NEVER reused as same-frame command observations.
  // Successful probes only choose which exact ranges the original producer
  // reads under its existing before/after identity and frame validation.
  std::array<worldframe::RequestedSpan,worldframe::RecoverySpans>background{};
  const size_t readyCount=worldFramePublication.recovered(key,background.data(),background.size());
  for(size_t i=0;i<readyCount&&verifiedCount<verified.size();++i)
-  for(size_t j=0;j<candidateCount;++j)
-   if(background[i].address==candidates[j].address&&background[i].bytes==candidates[j].bytes){
-    verified[verifiedCount++]=candidates[j];break;
-   }
+  if(runtimeMissingSpans.pending(background[i],key.tick))verified[verifiedCount++]=background[i];
  // Do not turn a cold worker start or a dropped latest-work slot into total
  // starvation. Two synchronous field retries are the strict fallback limit.
  if(!verifiedCount)for(size_t i=0;i<std::min<size_t>(2,candidateCount);++i)verified[verifiedCount++]=candidates[i];
- if(candidateCount&&worldFrameServer.wanted(key.owner,key.tick)&&
-    (!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
-  if(worldFramePublication.requestRecovery(key,candidates.data(),candidateCount))lastRecoverySubmitAt=key.tick;
- }
  #if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
  if(sh){
   auto&d=sh->sampling;++d.syncGraphAttempts;
@@ -552,12 +551,20 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // not evidence that the frame/world/House survived the acquisition boundary.
  const auto after=worldlife::capture(live);uint32_t afterHouse=0;
  const bool stable=live(0xA83D4C,&afterHouse,4)&&after.readable&&after.valid()&&before.same(after)&&before.frame==after.frame&&house==afterHouse;
+ const auto queueRecovery=[&]{
+  if(!stable||!candidateCount||(lastRecoverySubmitAt&&uint32_t(key.tick-lastRecoverySubmitAt)<32))return;
+  auto end=std::remove_if(candidates.begin(),candidates.begin()+candidateCount,
+   [&](const auto&span){return !runtimeMissingSpans.pending(span,key.tick);});
+  if(end!=candidates.begin()&&worldFramePublication.requestRecovery(key,candidates.data(),size_t(end-candidates.begin())))
+   lastRecoverySubmitAt=key.tick;
+ };
  if(!complete||!stable||!worldFrame.seal()){
   worldFrameBoundaryOnly=false;
   // A failed roster/page acquisition does not revoke the last complete Host
   // publication. Its original age/identity still decide whether it is usable.
   // World/House changes invalidate it immediately, independent of graph failure.
-  if(!stable)worldFrameServer.retire();failedCaptureAt=key.tick;captureRetryDelay=captureRetryDelay?std::min<uint32_t>(250,captureRetryDelay*2):16;
+  if(!stable)worldFrameServer.retire();else queueRecovery();
+  failedCaptureAt=key.tick;captureRetryDelay=captureRetryDelay?std::min<uint32_t>(250,captureRetryDelay*2):16;
   if(sh)++sh->worldSampleFailures;return false;
  }
  captureRetryDelay=0;
@@ -574,9 +581,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   uint8_t bytes[256]{};
   const auto&f=verified[i];
   if(!worldFrame.read(f.address,bytes,f.bytes))continue;
-  for(auto&hint:runtimeMissingSpans)
-   if(hint.address==f.address&&hint.bytes==f.bytes){hint={};break;}
+  runtimeMissingSpans.confirmed(f);
  }
+ queueRecovery();
  // A display boundary is not a command sample. Do not lose command ranges
  // that would be required by a later same-frame escalation.
  if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}

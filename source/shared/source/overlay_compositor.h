@@ -175,20 +175,22 @@ class Host {
     else{
      {std::lock_guard<std::mutex>lock(mutex);if(!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY){cpu.lost();continue;}}
      const bool needsUpload=cpu.needsUpload(repair||submission.pending()||!visible||token!=current.token);
-     bool copied=true;if(cpu.needsCopy()){pipelineperf::Scope timing(timings,1);stage=L"dib-copy";copied=cpu.copy(dib);}if(!copied){submission.failed();continue;}
      if(!needsUpload){
       // A camera/group revision can leave the same clipped pixels. Consume
       // it without copying the full HWND to DWM; placement still runs below.
       presented=version;token=current.token;
       std::lock_guard<std::mutex>lock(mutex);uploadContinuous_=false;uploadStatistics_.intervalMs=0;
      }else if(maySubmit()){
+     if(cpu.needsCopy()){pipelineperf::Scope timing(timings,1);stage=L"dib-copy";if(!cpu.copy(dib)){submission.failed();continue;}}
      SIZE size{current.width,current.height};POINT zero{};BLENDFUNCTION blend{AC_SRC_OVER,0,255,AC_SRC_ALPHA};
      // Composition may start immediately. Only submitting to the HWND is
      // rate-limited, so variable render costs cannot append a whole idle period
      // or produce a short catch-up upload burst after a slow frame.
      {
       std::unique_lock<std::mutex>lock(mutex);
-      if(stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz||revision!=version){cpu.lost();continue;}
+      // A newer revision can supersede this submission, while the DIB still
+      // contains a complete copy of the staged bitmap. Keep it for the diff.
+      if(stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz||revision!=version)continue;
      }
      uploadCadence.submitted(std::chrono::steady_clock::now());
      {pipelineperf::Scope timing(timings,2);stage=L"layered-upload";updated=UpdateLayeredWindow(window,nullptr,&origin,&size,dib.dc,&zero,0,&blend,ULW_ALPHA)!=FALSE;}

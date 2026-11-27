@@ -213,6 +213,7 @@ public:
   (tacticalOverview?tacticalOverviewProjection(frame.terrain->geo,projected):projection_.resolve(read_,frame.terrain->geo,projected))&&projected.same(frame.terrain->geo);}
  unsigned revision()const{return revision_;}
  bool hasTerrain()const{return bool(terrain_);}
+ bool preparingTerrain()const{return bool(pending_);}
  Frame terrainFrame(uint32_t now)const{Frame out;out.terrain=terrain_;out.tick=now;out.frame=lastFrame_;return out;}
  void useTerrain(const Frame&frame){
   if(!frame.terrain)return;

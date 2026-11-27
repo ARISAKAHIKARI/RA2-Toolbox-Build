@@ -1,5 +1,6 @@
 #pragma once
 #include "world_frame_publication.h"
+#include "world_frame_catalogue.h"
 #include "world_frame_recovery.h"
 #include "world_frame_transport.h"
 #include <windows.h>
@@ -11,10 +12,16 @@ struct RequestedSpan;
 template<class Writer=Server>class AsyncPublisher {
  PublicationPool pool_;
  RecoveryMailbox recovery_;
+ CatalogueMailbox catalogue_;
  HANDLE thread_=nullptr,event_=nullptr;HMODULE module_=nullptr;
  std::atomic<bool>stopping_{false};
  std::atomic<uint32_t>attemptSerial_{0},attemptEpoch_{0},attemptAt_{0};
  uint32_t launchAt_=0;bool launchTried_=false;
+ static bool readLocal(uint32_t at,void*out,size_t n){
+  if(!range(at,n))return false;
+  SIZE_T received=0;
+  return ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<LPCVOID>(uintptr_t(at)),out,n,&received)&&received==n;
+ }
  static DWORD WINAPI run(void*opaque){
   auto*self=static_cast<AsyncPublisher*>(opaque);
   {
@@ -32,12 +39,11 @@ template<class Writer=Server>class AsyncPublisher {
      // are hints; Runtime re-reads them on the game thread before use.
     RecoveryJob recoveryJob{};
     if(self->recovery_.take(recoveryJob)){
-     auto result=RecoveryMailbox::probe(recoveryJob,[](uint32_t at,void*out,size_t n){
-      SIZE_T received=0;
-      return ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<LPCVOID>(uintptr_t(at)),out,n,&received)&&received==n;
-     });
+     auto result=RecoveryMailbox::probe(recoveryJob,readLocal);
      self->recovery_.finish(result);
     }
+    if(!self->stopping_.load(std::memory_order_acquire))
+     self->catalogue_.work(readLocal,[]{return GetTickCount();});
    }
    writer.disconnect();
   }
@@ -50,6 +56,7 @@ template<class Writer=Server>class AsyncPublisher {
    CloseHandle(thread_);CloseHandle(event_);thread_=event_=nullptr;module_=nullptr;pool_.invalidate();
    attemptSerial_.store(0,std::memory_order_relaxed);
    recovery_.invalidate();
+   catalogue_.invalidate();
    launchTried_=false;
   }
  }
@@ -74,7 +81,15 @@ public:
  bool begin(Snapshot&frame){return pool_.begin(frame);}
  void invalidate(){pool_.invalidate();
   recovery_.invalidate();
+  catalogue_.invalidate();
   if(event_)SetEvent(event_);}
+ void invalidateCatalogue(){catalogue_.invalidate();}
+ bool requestCatalogue(const Key&key){
+  reap();
+  if(!launch()||!catalogue_.request(key))return false;
+  SetEvent(event_);return true;
+ }
+ bool takeCatalogue(const Key&key,Snapshot&catalogue){return catalogue_.take(key,catalogue);}
  // Targeted recovery is limited to missing-page hints. It never supplies
   // command observations; the game-thread CaptureGraph must re-read the data.
  bool requestRecovery(const Key&key,const RequestedSpan*fields,size_t count){
@@ -114,6 +129,7 @@ public:
  bool stop(){
   stopping_.store(true,std::memory_order_release);pool_.invalidate();
   recovery_.invalidate();
+  catalogue_.invalidate();
   if(event_)SetEvent(event_);
   if(!thread_)return true;if(WaitForSingleObject(thread_,0)!=WAIT_OBJECT_0)return false;
   CloseHandle(thread_);CloseHandle(event_);thread_=event_=nullptr;module_=nullptr;launchTried_=false;return true;

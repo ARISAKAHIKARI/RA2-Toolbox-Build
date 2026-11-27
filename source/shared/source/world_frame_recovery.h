@@ -16,6 +16,46 @@ constexpr size_t RecoveryBytes=16*1024;
 // Keep the synchronous authoritative recheck on the game thread much smaller.
 constexpr size_t RecoveryConfirmSpans=16;
 constexpr size_t RecoveryConfirmBytes=2*1024;
+// Dispatcher-local queue. Successful reads never enter it. Confirmation and
+// expiry remove entries, so every later batch only visits unresolved ranges.
+class MissingReads {
+ std::array<RequestedSpan,256> entries_{};
+ size_t count_=0,cursor_=0;
+ void erase(size_t index){
+  std::move(entries_.begin()+index+1,entries_.begin()+count_,entries_.begin()+index);
+  --count_;
+  if(index<cursor_)--cursor_;
+  if(cursor_>=count_)cursor_=0;
+ }
+public:
+ void clear(){count_=cursor_=0;}
+ size_t size()const{return count_;}
+ bool pending(const RequestedSpan&span,uint32_t tick)const{
+  for(size_t i=0;i<count_;++i){const auto&entry=entries_[i];
+   if(entry.address==span.address&&entry.bytes==span.bytes)return uint32_t(tick-entry.tick)<=1000;
+  }
+  return false;
+ }
+ void remember(uint32_t address,size_t bytes,uint32_t tick){
+  if(bytes>256||!range(address,bytes))return;
+  for(size_t i=0;i<count_;++i)if(entries_[i].address==address&&entries_[i].bytes==bytes){entries_[i].tick=tick;return;}
+  if(count_==entries_.size())erase(cursor_);
+  entries_[count_++]={address,uint32_t(bytes),tick};
+ }
+ void confirmed(const RequestedSpan&span){
+  for(size_t i=0;i<count_;++i)if(entries_[i].address==span.address&&entries_[i].bytes==span.bytes){erase(i);return;}
+ }
+ size_t next(uint32_t tick,RequestedSpan*out,size_t limit){
+  size_t count=0;
+  for(size_t remaining=count_;remaining&&count<limit;--remaining){
+   const auto entry=entries_[cursor_];
+   if(uint32_t(tick-entry.tick)>1000){erase(cursor_);continue;}
+   out[count++]=entry;
+   if(++cursor_==count_)cursor_=0;
+  }
+  return count;
+ }
+};
 struct RecoveryJob {
  Key key{};
  uint32_t epoch=0;

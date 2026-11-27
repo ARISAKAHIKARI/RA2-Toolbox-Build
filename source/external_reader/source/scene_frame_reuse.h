@@ -1,6 +1,7 @@
 #pragma once
 #include "vulkan_scene_types.h"
 #include "gpu_effect_plan.h"
+#include <algorithm>
 #include <optional>
 namespace external {namespace camera {
 // Compare the completed draw inputs AFTER current state/light/palette/mask
@@ -16,21 +17,42 @@ inline bool samePixels(const vulkancompute::DrawJob&a,const vulkancompute::DrawJ
  std::tie(b.gpuRaster,b.source.pixels,b.source.depth,b.source.indices,b.source.width,b.source.height,b.reconstructionSource,b.reconstructed,b.reconstructedWidth,b.reconstructedHeight,b.reconstructionFactor,
  b.left,b.top,b.scaleX,b.scaleY,b.depthBase,b.originY,b.depthBottom,b.rasterScale,b.lift,b.gains,b.sampling,b.shadow,b.writeDepth,b.flat,b.objectPalette,b.smoothRGB,b.skipZ,b.sourcePalette,b.nativeBlend,b.translucency,b.clipBottom,b.mixStrength);
 }
-inline bool samePixels(const vulkancompute::FrameJob&a,const vulkancompute::FrameJob&b){
+inline bool sameFrameInputs(const vulkancompute::FrameInputs&a,const vulkancompute::FrameInputs&b){
  if(std::tie(a.nativeScene,a.nativeScaleX,a.nativeScaleY)!=std::tie(b.nativeScene,b.nativeScaleX,b.nativeScaleY))return false;
  if(a.collectGuides||b.collectGuides||!gpueffects::same(a.effects,b.effects))return false; // temporal guides carry history, not just pixels
  if(std::tie(a.width,a.height,a.basePixels,a.baseDepth,a.baseDepthWidth,a.baseDepthHeight,a.baseDepthXs,a.baseDepthYs,a.maskPlan,a.fogAlpha,a.clipLeft,a.clipTop,a.clipRight,a.clipBottom)!=
-    std::tie(b.width,b.height,b.basePixels,b.baseDepth,b.baseDepthWidth,b.baseDepthHeight,b.baseDepthXs,b.baseDepthYs,b.maskPlan,b.fogAlpha,b.clipLeft,b.clipTop,b.clipRight,b.clipBottom)||a.baseTiles.size()!=b.baseTiles.size()||a.draws.size()!=b.draws.size())return false;
+    std::tie(b.width,b.height,b.basePixels,b.baseDepth,b.baseDepthWidth,b.baseDepthHeight,b.baseDepthXs,b.baseDepthYs,b.maskPlan,b.fogAlpha,b.clipLeft,b.clipTop,b.clipRight,b.clipBottom)||a.baseTiles.size()!=b.baseTiles.size())return false;
  for(size_t n=0;n<a.baseTiles.size();++n)if(!samePixels(a.baseTiles[n],b.baseTiles[n]))return false;
- for(size_t n=0;n<a.draws.size();++n)if(!samePixels(a.draws[n],b.draws[n]))return false;
  return true;
 }
+inline bool samePixels(const vulkancompute::FrameJob&a,const vulkancompute::FrameJob&b){
+ return sameFrameInputs(a,b)&&std::equal(a.draws.begin(),a.draws.end(),b.draws.begin(),b.draws.end(),
+  [](const auto&left,const auto&right){return samePixels(left,right);});
+}
 template<class Result>class FrameReuse {
- std::optional<vulkancompute::FrameJob> previous_;
+ struct Inputs {
+  vulkancompute::FrameInputs frame;
+  vulkancompute::DrawPrefix prefix;
+  std::vector<vulkancompute::DrawJob> tail;
+ };
+ std::optional<Inputs> previous_;
  std::shared_ptr<const Result> result_;
 public:
  void reset(){previous_.reset();result_.reset();}
- std::shared_ptr<const Result> get(const vulkancompute::FrameJob&frame)const{return previous_&&result_&&samePixels(*previous_,frame)?result_:nullptr;}
- void completed(const vulkancompute::FrameJob&frame,std::shared_ptr<const Result>result){if(!result||frame.collectGuides){reset();return;}previous_=frame;result_=std::move(result);}
+ std::shared_ptr<const Result> get(const vulkancompute::FrameJob&frame,const vulkancompute::DrawPrefix&prefix={})const{
+  if(!previous_||!result_||!(previous_->prefix==prefix)||!prefix.validFor(frame.draws.size())||!sameFrameInputs(previous_->frame,frame))return {};
+  const auto&tail=previous_->tail;
+  return std::equal(tail.begin(),tail.end(),frame.draws.begin()+prefix.count,frame.draws.end(),
+   [](const auto&left,const auto&right){return samePixels(left,right);})?result_:nullptr;
+ }
+ void completed(const vulkancompute::FrameJob&frame,std::shared_ptr<const Result>result,const vulkancompute::DrawPrefix&prefix={}){
+  if(!result||frame.collectGuides||!prefix.validFor(frame.draws.size())){reset();return;}
+  if(!previous_)previous_.emplace();
+  // The recorder owns an unchanged terrain prefix. Retain only the drawing
+  // commands that can change as actors and effects move across it.
+  previous_->frame=frame;previous_->prefix=prefix;
+  previous_->tail.assign(frame.draws.begin()+prefix.count,frame.draws.end());
+  result_=std::move(result);
+ }
 };
 }}

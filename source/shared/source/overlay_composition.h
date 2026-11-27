@@ -119,24 +119,21 @@ inline bool compose(const Context&context,std::vector<Surface>layers,std::vector
 // current layers, including overlaps, so alpha/removal/order leave no trails.
 // The region list is bounded; its conservative union remains available to
 // existing callers and is also the fallback for unusually fragmented work.
-class Incremental {
- Context context_{};std::vector<Surface>layers_;std::vector<uint32_t>pixels_;Rect dirty_{};
+class DirtyRegions {
+ Rect dirty_{};
  std::vector<Rect>dirtyRegions_;bool collapsed_=false;
- static bool sameBase(const Surface&a,const Surface&b){return a.id==b.id&&a.order==b.order&&a.rect==b.rect&&a.clip==b.clip&&a.opacity==b.opacity&&a.pixels==b.pixels&&a.gpu==b.gpu;}
- static bool same(const Surface&a,const Surface&b){return sameBase(a,b)&&sameCutouts(a.cutouts,b.cutouts);}
- void holes(const Surface&s,const Context&context){
-  const auto clip=bounds(s,context);if(!s.cutouts||clip.w<=0||clip.h<=0)return;
-  for(const auto&r:*s.cutouts){const int64_t x=int64_t(s.rect.x)+r.x,y=int64_t(s.rect.y)+r.y;
-   const int64_t left=std::max<int64_t>(clip.x,x),right=std::min<int64_t>(clip.x+clip.w,x+r.w);
-   if(y>=clip.y&&y<clip.y+clip.h&&right>left)include({int(left),int(y),int(right-left),1});
-  }
- }
  static Rect unite(const Rect&a,const Rect&b){
   if(a.w<=0||a.h<=0)return b;if(b.w<=0||b.h<=0)return a;
   const int left=std::min(a.x,b.x),top=std::min(a.y,b.y),right=std::max(a.x+a.w,b.x+b.w),bottom=std::max(a.y+a.h,b.y+b.h);
   return {left,top,right-left,bottom-top};
  }
  static uint64_t area(const Rect&r){return uint64_t(r.w)*r.h;}
+public:
+ static constexpr size_t MaximumDirtyRegions=64;
+ void clear(){dirty_={};dirtyRegions_.clear();collapsed_=false;}
+ bool empty()const{return dirtyRegions_.empty();}
+ Rect bounds()const{return dirty_;}
+ const std::vector<Rect>&regions()const{return dirtyRegions_;}
  void include(Rect r){
   if(r.w<=0||r.h<=0)return;dirty_=unite(dirty_,r);
   if(collapsed_){dirtyRegions_[0]=dirty_;return;}
@@ -149,30 +146,44 @@ class Incremental {
   if(dirtyRegions_.size()==MaximumDirtyRegions){dirtyRegions_.assign(1,dirty_);collapsed_=true;}
   else dirtyRegions_.push_back(r);
  }
+ void limitWork(){
+  uint64_t work=0;for(const auto&r:dirtyRegions_)work+=area(r);
+  if(dirtyRegions_.size()>1&&work>=area(dirty_)){dirtyRegions_.assign(1,dirty_);collapsed_=true;}
+ }
+};
+class Incremental {
+ Context context_{};std::vector<Surface>layers_;std::vector<uint32_t>pixels_;DirtyRegions dirty_;
+ static bool sameBase(const Surface&a,const Surface&b){return a.id==b.id&&a.order==b.order&&a.rect==b.rect&&a.clip==b.clip&&a.opacity==b.opacity&&a.pixels==b.pixels&&a.gpu==b.gpu;}
+ static bool same(const Surface&a,const Surface&b){return sameBase(a,b)&&sameCutouts(a.cutouts,b.cutouts);}
+ void holes(const Surface&s,const Context&context){
+  const auto clip=bounds(s,context);if(!s.cutouts||clip.w<=0||clip.h<=0)return;
+  for(const auto&r:*s.cutouts){const int64_t x=int64_t(s.rect.x)+r.x,y=int64_t(s.rect.y)+r.y;
+   const int64_t left=std::max<int64_t>(clip.x,x),right=std::min<int64_t>(clip.x+clip.w,x+r.w);
+   if(y>=clip.y&&y<clip.y+clip.h&&right>left)dirty_.include({int(left),int(y),int(right-left),1});
+  }
+ }
 public:
- static constexpr size_t MaximumDirtyRegions=64;
+ static constexpr size_t MaximumDirtyRegions=DirtyRegions::MaximumDirtyRegions;
  const std::vector<uint32_t>&pixels()const{return pixels_;}
- Rect dirty()const{return dirty_;}
- const std::vector<Rect>&dirtyRegions()const{return dirtyRegions_;}
+ Rect dirty()const{return dirty_.bounds();}
+ const std::vector<Rect>&dirtyRegions()const{return dirty_.regions();}
  bool update(const Context&context,std::vector<Surface>layers){
   if(context.width<1||context.height<1||context.width>8192||context.height>8192||uint64_t(context.width)*context.height>16*1024*1024)return false;
-  order(layers,context);if(std::any_of(layers.begin(),layers.end(),[](const auto&s){return bool(s.gpu);}))return false;dirty_={};dirtyRegions_.clear();collapsed_=false;
+  order(layers,context);if(std::any_of(layers.begin(),layers.end(),[](const auto&s){return bool(s.gpu);}))return false;dirty_.clear();
   bool full=context_.token!=context.token||context_.window!=context.window||context_.pid!=context.pid||context_.match!=context.match||context_.width!=context.width||context_.height!=context.height||context_.projection!=context.projection||pixels_.size()!=size_t(context.width)*context.height;
   auto duplicate=[](const std::vector<Surface>&surfaces){for(size_t n=0;n<surfaces.size();++n)for(size_t m=0;m<n;++m)if(surfaces[n].id==surfaces[m].id)return true;return false;};
   full=full||duplicate(layers)||duplicate(layers_);
-  if(full){pixels_.resize(size_t(context.width)*context.height);include({0,0,context.width,context.height});}
+  if(full){pixels_.resize(size_t(context.width)*context.height);dirty_.include({0,0,context.width,context.height});}
   else{
    for(const auto&old:layers_){auto next=std::find_if(layers.begin(),layers.end(),[&](const Surface&s){return s.id==old.id;});if(next==layers.end()||!same(old,*next)){
     if(next!=layers.end()&&sameBase(old,*next)){holes(old,context_);holes(*next,context);}
-    else{include(bounds(old,context_));if(next!=layers.end())include(bounds(*next,context));}
+    else{dirty_.include(bounds(old,context_));if(next!=layers.end())dirty_.include(bounds(*next,context));}
    }}
-   for(const auto&next:layers)if(std::none_of(layers_.begin(),layers_.end(),[&](const Surface&s){return s.id==next.id;}))include(bounds(next,context));
+   for(const auto&next:layers)if(std::none_of(layers_.begin(),layers_.end(),[&](const Surface&s){return s.id==next.id;}))dirty_.include(bounds(next,context));
   }
   // Replaying overlapping strips is safe, but never do more pixel work than
   // the previous single-union path when several such strips become dense.
-  uint64_t work=0;for(const auto&r:dirtyRegions_)work+=area(r);
-  if(dirtyRegions_.size()>1&&work>=area(dirty_))dirtyRegions_.assign(1,dirty_);
-  for(const auto&r:dirtyRegions_)paint(context,layers,pixels_,r);
+  dirty_.limitWork();for(const auto&r:dirty_.regions())paint(context,layers,pixels_,r);
   context_=context;layers_=std::move(layers);return true;
  }
 };

@@ -30,25 +30,39 @@ public:
 // counted backing. A failed upload requests a complete retry, never a commit.
 class CpuStage {
  overlaycomposition::Incremental composition_;overlaycomposition::Context context_{};
- bool fullCopy_=true,dirty_=false;size_t copied_=0;
+ overlaycomposition::DirtyRegions pendingCopy_;
+ bool fullCopy_=true;size_t copied_=0;
 public:
- void reset(){composition_={};context_={};fullCopy_=true;dirty_=false;copied_=0;}
- void lost(){fullCopy_=true;}
+ void reset(){composition_={};context_={};lost();copied_=0;}
+ void lost(){fullCopy_=true;pendingCopy_.clear();}
  bool lostContent()const{return fullCopy_;}
- bool needsCopy()const{return fullCopy_||dirty_;}
+ bool needsCopy()const{return fullCopy_||!pendingCopy_.empty();}
  size_t copiedPixels()const{return copied_;}
  template<class Backing>bool compose(const overlaycomposition::Context&context,std::vector<overlaycomposition::Surface>layers,Backing&dib){
   const bool resized=dib.w!=context.width||dib.h!=context.height||!dib.dc;
   if(!composition_.update(context,std::move(layers))||!dib.resize(context.width,context.height)){lost();return false;}
-  context_=context;fullCopy_|=resized;dirty_=!composition_.dirtyRegions().empty();return true;
+  context_=context;
+  if(resized)lost();
+  // Diff against the last copy into the DIB. Several composed revisions may
+  // arrive before the upload deadline, so each contributes its dirty regions.
+  if(!fullCopy_)for(const auto&region:composition_.dirtyRegions())pendingCopy_.include(region);
+  return true;
  }
- bool needsUpload(bool forced)const{return forced||fullCopy_||dirty_;}
+ bool needsUpload(bool forced)const{return forced||needsCopy();}
  template<class Backing>bool copy(Backing&dib){
   copied_=0;if(!dib.bits||dib.w!=context_.width||dib.h!=context_.height){lost();return false;}
   const auto&output=composition_.pixels();
-  auto region=[&](const overlaycomposition::Rect&r){for(int y=r.y;y<r.y+r.h;++y)std::memcpy(static_cast<uint32_t*>(dib.bits)+size_t(y)*context_.width+r.x,output.data()+size_t(y)*context_.width+r.x,size_t(r.w)*4);copied_+=size_t(r.w)*r.h;};
-  if(fullCopy_)region({0,0,context_.width,context_.height});else if(dirty_)for(const auto&r:composition_.dirtyRegions())region(r);
-  fullCopy_=dirty_=false;return true;
+  auto region=[&](const overlaycomposition::Rect&r){
+   const size_t pixels=size_t(r.w)*r.h;
+   auto*destination=static_cast<uint32_t*>(dib.bits)+size_t(r.y)*context_.width+r.x;
+   const auto*source=output.data()+size_t(r.y)*context_.width+r.x;
+   if(r.w==context_.width)std::memcpy(destination,source,pixels*sizeof(uint32_t));
+   else for(int row=0;row<r.h;++row)std::memcpy(destination+size_t(row)*context_.width,source+size_t(row)*context_.width,size_t(r.w)*sizeof(uint32_t));
+   copied_+=pixels;
+  };
+  if(fullCopy_)region({0,0,context_.width,context_.height});
+  else{pendingCopy_.limitWork();for(const auto&r:pendingCopy_.regions())region(r);}
+  fullCopy_=false;pendingCopy_.clear();return true;
  }
 };
 }

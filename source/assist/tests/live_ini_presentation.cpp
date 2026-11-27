@@ -13,10 +13,11 @@
 #include "fixtures/live_ini_baseline/live_ini.h"
 using namespace external::assets;
 static std::vector<uint8_t> memory(0x1000000);
-static uint64_t calls,bytes;static uint32_t failAt;
+static uint64_t calls,bytes,typeNameReads;static uint32_t failAt;
+constexpr uint32_t Type=0x720000;
 template<class T>static void put(uint32_t p,const T&v){assert(size_t(p)+sizeof v<=memory.size());std::memcpy(memory.data()+p,&v,sizeof v);}
 static void stringAt(uint32_t p,const char*value){std::memset(memory.data()+p,0,128);std::memcpy(memory.data()+p,value,std::strlen(value)+1);}
-struct Read {bool operator()(uint32_t at,void*out,size_t n)const{++calls;bytes+=n;if(at<0x10000||uint64_t(at)+n>memory.size()||(failAt>=at&&failAt<uint64_t(at)+n))return false;SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),memory.data()+at,out,n,&got)&&got==n;}
+struct Read {bool operator()(uint32_t at,void*out,size_t n)const{++calls;bytes+=n;if(at==Type+0x1F8)++typeNameReads;if(at<0x10000||uint64_t(at)+n>memory.size()||(failAt>=at&&failAt<uint64_t(at)+n))return false;SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),memory.data()+at,out,n,&got)&&got==n;}
  bool readFresh(uint32_t at,void*out,size_t n){return (*this)(at,out,n);}
  bool imagePath(wchar_t*,DWORD*){return false;}
 };
@@ -58,6 +59,29 @@ int main(){
  // A failed key/value lookup after a healthy bootstrap retains immediate
  // retry. The optimization does not memoize field failures or live values.
  initialize(64);installKeys();failAt=0x600000;LiveINI keyFailure;keyFailure.beginPresentation();check(!lookup(keyFailure));check(keyFailure.indexDiagnostics().builds==1&&keyFailure.indexDiagnostics().failures==0);failAt=0;check(lookup(keyFailure));
+ // Opt-in cooldown bounds repeated full-index scans across render passes.
+ initialize(64);installKeys();failAt=Names+63*0x80;LiveINI cooldown;cooldown.beginPresentation(1000,250);check(!lookup(cooldown));
+ for(uint64_t t=1001;t<1250;t+=8){cooldown.beginPresentation(t,250);check(!lookup(cooldown));}
+ check(cooldown.indexDiagnostics().builds==1&&cooldown.indexDiagnostics().failures==1);cooldown.beginPresentation(1250,250);check(!lookup(cooldown));check(cooldown.indexDiagnostics().builds==2);
+ failAt=0;cooldown.beginPresentation(1499,250);check(!lookup(cooldown));cooldown.beginPresentation(1500,250);check(lookup(cooldown));check(cooldown.indexDiagnostics().builds==3);
+ // Changed identity and explicit retirement bypass even an active cooldown.
+ for(int variant=0;variant<3;++variant){initialize(64);installKeys();failAt=Names+63*0x80;LiveINI ini;ini.beginPresentation(1000,250);check(!lookup(ini));failAt=0;ini.beginPresentation(1001,250);
+  if(variant==0){put(Object+0x28,Header{Entries,63,64});check(lookup(ini));}
+  if(variant==1)check(lookup(ini,Object,2));
+  if(variant==2){ini.clear();check(lookup(ini));}
+  check(ini.indexDiagnostics().builds==2);
+ }
+ // Coalesced render root probes preserve exact fallback and invalidation.
+ initialize(64);installKeys();failAt=Names+63*0x80;LiveINI batched;batched.beginPresentation(1000,250);check(!lookup(batched));
+ calls=0;check(!lookup(batched));check(calls==1);
+ failAt=Object+0x10;calls=0;check(!lookup(batched));check(calls==3); // unreadable gap, narrow fields remain readable
+ failAt=0;put(Object+0x28,Header{Entries,63,64});check(lookup(batched));
+ calls=0;check(lookup(batched));check(calls==2); // initial and final identity checks
+ put(Object,uint32_t(0));check(!lookup(batched));put(Object,uint32_t(0x7E1AF4));check(lookup(batched));
+ put(Object+0x28,Header{Entries,65,64});check(!lookup(batched));
+ put(Object+0x28,Header{Entries,63,64});check(lookup(batched));
+ failAt=Object+0x28;check(!lookup(batched));failAt=0;check(lookup(batched));
+ initialize(64);installKeys();LiveINI narrow;narrow.beginPresentation();check(lookup(narrow));calls=0;check(lookup(narrow));check(calls==4);
  // Missing key/section and explicit-empty fallback rules stay unchanged.
  const char*disk="[SECTION0000]\nPALETTE=DISK\nMISSING=FILE\n[MISSINGSECTION]\nPALETTE=DISKONLY\n";std::vector<uint8_t>contents(disk,disk+std::strlen(disk));
  for(bool empty:{false,true}){initialize(64);installKeys(empty?" \t ":"  LIVE \r\n");BeforeEffectiveINI<Read> old(Read{},Object);EffectiveINI<Read> current(Read{},Object);old.parse(contents);current.parse(contents);old.generation(1);current.generation(1);current.beginPresentation();
@@ -67,9 +91,23 @@ int main(){
  // Exercise the real consumer boundary, including cumulative diagnostics for
  // both independent INIs, rather than testing only the helper in isolation.
  initialize(64);installKeys();put(LiveINI::RulesPointer,Object);failAt=Names+63*0x80;
- Read reader;external::cameraassets::Context<Read> assets(reader);assets.beginPresentation();
+ Read reader;external::cameraassets::Context<Read> assets(reader);assets.beginPresentation(1000);
  for(unsigned n=0;n<2;++n){check(assets.artINI.get("SECTION0000","PALETTE").empty());check(assets.rulesINI.get("SECTION0000","PALETTE").empty());}
  auto stats=assets.liveINIDiagnostics();check(stats.builds==2&&stats.failures==2&&stats.failureReuses==2);
- failAt=0;assets.beginPresentation();check(assets.artINI.get("SECTION0000","PALETTE")=="LIVE"&&assets.rulesINI.get("SECTION0000","PALETTE")=="LIVE");stats=assets.liveINIDiagnostics();check(stats.builds==4&&stats.failures==2&&stats.failureReuses==2);
- std::printf("PASS %u active assertions: exact fallback/empty semantics, default immediate retry, same-pass fresh root/header/generation invalidation, next-presentation recovery without clock delay, key-field failure immediate retry. No game or GPU execution.\n",checks);
+ failAt=0;assets.beginPresentation(1249);check(assets.artINI.get("SECTION0000","PALETTE").empty()&&assets.rulesINI.get("SECTION0000","PALETTE").empty());stats=assets.liveINIDiagnostics();check(stats.builds==2&&stats.failures==2&&stats.failureReuses==4);
+ assets.beginPresentation(1250);check(assets.artINI.get("SECTION0000","PALETTE")=="LIVE"&&assets.rulesINI.get("SECTION0000","PALETTE")=="LIVE");stats=assets.liveINIDiagnostics();check(stats.builds==4&&stats.failures==2&&stats.failureReuses==4);
+ // An absent binding must not resolve the same type and section again. A
+ // genuine Image alias still inherits missing fields from the base section.
+ initialize(64);installKeys();external::cameraassets::Context<Read> bindings(reader);bindings.metadata();bindings.beginPresentation(1000);
+ const char*art="[DIRECT]\nPalette=DIRECTPAL\n[ORIGINAL]\nImage=ALIAS\nPalette=BASEPAL\nTerrainPalette=yes\n[ALIAS]\nPalette=ALIASPAL\n";
+ bindings.artINI.parse(std::vector<uint8_t>(art,art+std::strlen(art)));
+ stringAt(Type+0x1F8,"DIRECT");typeNameReads=0;
+ check(bindings.artValue(Type,"missing").empty()&&typeNameReads==1);
+ check(bindings.artValue(Type,"palette")=="DIRECTPAL"&&typeNameReads==1);
+ stringAt(Type+0x1F8,"ORIGINAL");typeNameReads=0;
+ bindings.beginPresentation(1001);
+ auto sections=bindings.artSections(Type);
+ check(sections.image=="ALIAS"&&bindings.artValue(sections,"palette")=="ALIASPAL"&&bindings.artYes(sections,"terrainpalette")&&typeNameReads==1);
+ check(bindings.imageName(Type)=="ALIAS"&&bindings.artValue(Type,"palette")=="ALIASPAL"&&typeNameReads==1);
+ std::printf("PASS %u active assertions: exact fallback/empty semantics, render cooldown, root/header/generation invalidation, key retry and shared asset binding resolution. No game or GPU execution.\n",checks);
 }
