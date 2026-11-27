@@ -16,6 +16,39 @@
 namespace unitpanelhost {
 class Panel {
  HWND window_=nullptr;
+ // One back buffer per panel HWND. This is purely local UI rendering;
+ // no game data is cached here. Resize transactionally on extent changes.
+ struct PaintBuffer {
+  HDC dc=nullptr;HBITMAP bitmap=nullptr;HGDIOBJ previous=nullptr;
+  int width=0,height=0;
+  PaintBuffer()=default;
+  PaintBuffer(const PaintBuffer&)=delete;
+  PaintBuffer& operator=(const PaintBuffer&)=delete;
+  ~PaintBuffer(){reset();}
+  void reset(){
+   if(dc&&previous)SelectObject(dc,previous);
+   if(bitmap)DeleteObject(bitmap);
+   if(dc)DeleteDC(dc);
+   dc=nullptr;bitmap=nullptr;previous=nullptr;width=height=0;
+  }
+  bool ensure(HDC target,int w,int h){
+   if(w<=0||h<=0)return false;
+   if(dc&&width==w&&height==h)return true;
+   HDC next=CreateCompatibleDC(target);
+   if(!next)return false;
+   BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
+   info.bmiHeader.biWidth=w;info.bmiHeader.biHeight=-h;info.bmiHeader.biPlanes=1;
+   info.bmiHeader.biBitCount=32;info.bmiHeader.biCompression=BI_RGB;
+   void*bits=nullptr;
+   HBITMAP image=CreateDIBSection(target,&info,DIB_RGB_COLORS,&bits,nullptr,0);
+   if(!image){DeleteDC(next);return false;}
+   HGDIOBJ old=SelectObject(next,image);
+   if(!old||old==HGDI_ERROR){DeleteObject(image);DeleteDC(next);return false;}
+   reset();
+   dc=next;bitmap=image;previous=old;width=w;height=h;
+   return true;
+  }
+ } paintBuffer_;
  external::unitpanel::Model model_{};
  uint64_t signature_=0;DWORD lastGoodAt_=0;unitpanelcameo::Cache cameos_{};uint32_t cameoRevision_=0;
  bool folded_=false;
@@ -184,6 +217,11 @@ class Panel {
    SetWindowLongPtrW(w,GWLP_USERDATA,reinterpret_cast<LONG_PTR>(cs->lpCreateParams));
    return TRUE;
   }
+  if(msg==WM_NCDESTROY&&self){
+   self->paintBuffer_.reset();
+   if(self->window_==w)self->window_=nullptr;
+   SetWindowLongPtrW(w,GWLP_USERDATA,0);
+  }
   if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;
   if(msg==WM_ERASEBKGND)return TRUE;
   if(msg==WM_LBUTTONDOWN){if(self)self->click(short(LOWORD(lp)),short(HIWORD(lp)));return 0;}
@@ -194,15 +232,16 @@ class Panel {
    if(self&&dc){
     RECT r{};GetClientRect(w,&r);int cw=r.right,ch=r.bottom;
     if(cw>0&&ch>0){
-     HDC mem=CreateCompatibleDC(dc);BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
-     info.bmiHeader.biWidth=cw;info.bmiHeader.biHeight=-ch;info.bmiHeader.biPlanes=1;
-     info.bmiHeader.biBitCount=32;info.bmiHeader.biCompression=BI_RGB;
-     void*bits=nullptr;HBITMAP image=CreateDIBSection(dc,&info,DIB_RGB_COLORS,&bits,nullptr,0);
-     if(mem&&image){HGDIOBJ old=SelectObject(mem,image);
+     if(self->paintBuffer_.ensure(dc,cw,ch)){
+      HDC mem=self->paintBuffer_.dc;
       {Gdiplus::Graphics g(mem);self->paint(g);}
-      BitBlt(dc,0,0,cw,ch,mem,0,0,SRCCOPY);SelectObject(mem,old);
+      if(!BitBlt(dc,0,0,cw,ch,mem,0,0,SRCCOPY)){
+       Gdiplus::Graphics g(dc);self->paint(g);
+      }
+     }else{
+      // A failed resize must not blit a stale, incorrectly sized surface.
+      Gdiplus::Graphics g(dc);self->paint(g);
      }
-     if(image)DeleteObject(image);if(mem)DeleteDC(mem);
     }
    }
    EndPaint(w,&ps);return 0;
