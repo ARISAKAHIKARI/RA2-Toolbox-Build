@@ -314,7 +314,7 @@ public:
    // Each new publication still checks current Cell and converter fields.
    // Reuse the derived signature only after exact State equality, including
    // the immutable palette table owner. No timer or frame-number shortcut.
-   if(!fresh&&stamp&&terrainSource&&terrainSource==frame.sourceFrame&&lighting::sealedSource(read,0)==terrainSource&&cached.light==light){
+   if(!fresh&&stamp&&terrainSource&&terrainSource==frame.sourceFrame&&cached.light==light){
     ++stageStats_.terrainLightReuses;stamp=evaluationEpoch_;return cached;
    }
    cached.signature=lightKey(1469598103934665603ull,light);cached.light=std::move(light);stamp=evaluationEpoch_;return cached;
