@@ -143,8 +143,12 @@ publish_at=projection.index("std::copy(rows.begin(),rows.end(),state_.types);")
 assert "if(!view.vecChecked(arrays[c],list,4096))return false;" in projection
 assert "state_.typeCount" not in projection[:publish_at]
 assert "state_.types" not in projection[:publish_at]
-assert "if(!read_(namePointer,t.name,sizeof t.name))return false;" in projection
-assert "!read_(p+0x610,&t.cost,sizeof t.cost))return false;" in projection
+assert "if(!tracked(namePointer,t.name,sizeof t.name))return false;" in projection
+assert "!tracked(p+0x610,&t.cost,sizeof t.cost))return false;" in projection
 assert projection.index("state_.typeCount=int(rows.size());return true;")>publish_at
 assert "catalogueReady_=types();\n     if(catalogueReady_){sceneFrame_=-1;catalogueHash_=stamp.hash;}" in sampler
 print("PASS UI catalogue commits only after complete projection")
+
+assert "return catalogueDependencies_.captureProjection(read_,[&](auto tracked){" in projection
+assert "GameView<decltype(tracked)> view(tracked);" in projection
+assert "read_(" not in projection
