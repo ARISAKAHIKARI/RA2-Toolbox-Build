@@ -1,4 +1,4 @@
-name: Build and publish 1.0.53.2 offline toolbar preview
+name: Build and publish 1.0.53.3 offline toolbar preview
 on:
   push:
     branches: [feature/offline-wrench-repair-rules]
@@ -63,7 +63,7 @@ jobs:
           path: checks/
       - uses: actions/upload-artifact@v4
         with:
-          name: v1532-matched-build
+          name: v1533-matched-build
           path: offline-toolbar-build/
           if-no-files-found: error
   publish:
@@ -77,13 +77,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: v1532-matched-build
+          name: v1533-matched-build
           path: dist/compiled
       - name: Assemble verified matched Update
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'RA2_RELEASE_VERSION_W L"1.0.53.2"' source/shared/source/release_version.h
+          grep -Fq 'RA2_RELEASE_VERSION_W L"1.0.53.3"' source/shared/source/release_version.h
           python3 source/tools/verify_windows_outputs.py --root dist/compiled --host-arch x64 --webview2
           mkdir -p dist/update
           for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json WINDOWS_BUILD_ARTIFACTS.json; do
@@ -92,25 +92,25 @@ jobs:
           done
           if test -f dist/compiled/CONSOLE_COMPILE.json; then cp dist/compiled/CONSOLE_COMPILE.json dist/update/; fi
           if test -d dist/compiled/licenses; then cp -a dist/compiled/licenses dist/update/; fi
-          cp packages/v1.0.53.2/RELEASE_NOTES.md dist/update/
+          cp packages/v1.0.53.3/RELEASE_NOTES.md dist/update/
           printf '%s\n' "$GITHUB_SHA" > dist/update/BUILD_COMMIT.txt
-          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.53.2-x64-Update.zip .)
-          unzip -tq dist/RA2Toolbox-1.0.53.2-x64-Update.zip
-          (cd dist && sha256sum RA2Toolbox-1.0.53.2-x64-Update.zip > SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt)
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.53.3-x64-Update.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.53.3-x64-Update.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.53.3-x64-Update.zip > SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: RA2Toolbox-1.0.53.2-update
+          name: RA2Toolbox-1.0.53.3-update
           path: |
-            dist/RA2Toolbox-1.0.53.2-x64-Update.zip
+            dist/RA2Toolbox-1.0.53.3-x64-Update.zip
             dist/SHA256SUMS.txt
           if-no-files-found: error
       - name: Publish preview without replacing Latest
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view v1.0.53.2 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if gh release view v1.0.53.3 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo 'Refusing to overwrite existing release'
             exit 1
           fi
-          gh release create v1.0.53.2 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false --title 'RA2 Toolbox 1.0.53.2 · 测试版' --notes-file packages/v1.0.53.2/RELEASE_NOTES.md dist/RA2Toolbox-1.0.53.2-x64-Update.zip dist/SHA256SUMS.txt
-          gh release view v1.0.53.2 --repo "$GITHUB_REPOSITORY" --json url,isPrerelease,assets
+          gh release create v1.0.53.3 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false --title 'RA2 Toolbox 1.0.53.3 · 测试版' --notes-file packages/v1.0.53.3/RELEASE_NOTES.md dist/RA2Toolbox-1.0.53.3-x64-Update.zip dist/SHA256SUMS.txt
+          gh release view v1.0.53.3 --repo "$GITHUB_REPOSITORY" --json url,isPrerelease,assets

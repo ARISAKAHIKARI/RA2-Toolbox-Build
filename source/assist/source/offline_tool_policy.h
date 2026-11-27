@@ -1,9 +1,10 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
+#include "event_delivery.h"
 namespace assist { namespace offlinetools {
 enum Mode : uint32_t {None=0,Repair=1,Sell=2};
-constexpr bool offline(int session){return session==0||session==5;}
+inline bool supportedSession(int session){return eventdelivery::mayQueue(session);}
 inline Mode mode(const uint8_t (&tools)[5]){
  for(auto v:tools)if(v>1)return None;
  if(tools[2]||tools[3]||tools[4]||tools[0]==tools[1])return None;
@@ -13,7 +14,7 @@ inline int rejectedCursor(Mode m){return m==Repair?35:m==Sell?32:-1;}
 inline int acceptedCursor(Mode m){return m==Repair?33:m==Sell?31:-1;}
 template<class Read> Mode current(Read read){
  uint8_t tools[5]{};int session=-1;
- if(!read(0xA8B238,&session,4)||!offline(session)||!read(0x880998,tools,sizeof tools))return None;
+ if(!read(0xA8B238,&session,4)||!supportedSession(session)||!read(0x880998,tools,sizeof tools))return None;
  return mode(tools);
 }
 // Only the documented YR MouseClass layout is admitted. Unknown/legacy

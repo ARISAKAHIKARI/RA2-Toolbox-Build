@@ -1,7 +1,7 @@
 // Host publishes a small coordinate request, not a world graph. A reply is
 // visual feedback only; the physical click and game thread revalidate it.
 static bool offlineToolPoint(offlinetools::Point&out,POINT clientPoint,int clientW,int clientH,uint32_t generation,offlinetools::Mode mode){
- if(!shared||!offlinetools::offline(snap.session)||!mode||!(shared->offlineToolMask&uint32_t(mode))||clientW<=0||clientH<=0)return false;
+ if(!shared||!offlinetools::supportedSession(snap.session)||!mode||!(shared->offlineToolMask&uint32_t(mode))||clientW<=0||clientH<=0)return false;
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
  uint32_t tactical=0;
  if(offlinetools::current(read)!=mode||!offlinetools::denied(mode,read)||
@@ -18,7 +18,7 @@ static bool offlineToolHint(const offlinetools::Point&p,offlinetools::Hint&h){
  return seq==shared->offlineToolHintSeq&&offlinetools::usable(h,p,GetTickCount());
 }
 static bool serviceOfflineToolCursor(){
- if(!shared||!shared->offlineToolMask||!offlinetools::offline(snap.session))return false;
+ if(!shared||!shared->offlineToolMask||!offlinetools::supportedSession(snap.session))return false;
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
  const auto mode=offlinetools::current(read);if(!mode)return false;
  auto clear=[](){commandcursor::clear();return true;};
@@ -43,7 +43,7 @@ static bool serviceOfflineToolCursor(){
 // target and camera. Native input is never swallowed by this feature.
 static bool captureOfflineToolClick(const gameinput::PointerPress&e,const nativeviewhost::Transform&viewport){
  static offlinetools::Point down{};static offlinetools::Hint target{};static uint32_t serial=0,revision=0;static bool armed=false;
- if(!shared||!shared->offlineToolMask||!offlinetools::offline(snap.session)){armed=false;return false;}
+ if(!shared||!shared->offlineToolMask||!offlinetools::supportedSession(snap.session)){armed=false;return false;}
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
  const auto mode=offlinetools::current(read);
  if(!mode){armed=false;return false;}

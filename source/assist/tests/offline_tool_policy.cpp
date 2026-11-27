@@ -4,7 +4,17 @@
 #include <iostream>
 using namespace assist::offlinetools;
 int main(){
- assert(offline(0)&&offline(5)&&!offline(3)&&!offline(4)&&!offline(-1));
+ for(int session=-1;session<=8;++session){assert(supportedSession(session)==(session==0||session==3||session==4||session==5));}
+ assert(eventdelivery::isSingleplayer(0)&&eventdelivery::isSingleplayer(5));
+ assert(eventdelivery::isMultiplayer(3)&&eventdelivery::isMultiplayer(4));
+ for(int session:{0,3,4,5}){
+  auto reader=[&](uint32_t a,void*out,size_t n){
+   if(a==0xA8B238&&n==4){*static_cast<int*>(out)=session;return true;}
+   if(a==0x880998&&n==5){auto*b=static_cast<uint8_t*>(out);b[0]=1;for(unsigned j=1;j<5;++j)b[j]=0;return true;}
+   return false;
+  };
+  assert(current(reader)==Repair);
+ }
  uint8_t r[5]={1,0,0,0,0},s[5]={0,1,0,0,0},bad[5]={1,1,0,0,0},plan[5]={1,0,0,1,0};
  assert(mode(r)==Repair&&mode(s)==Sell&&mode(bad)==None&&mode(plan)==None);
  assert(repairTarget(50,100,false,false,true)&&repairTarget(50,100,false,true,false));
@@ -20,5 +30,5 @@ int main(){
  commandcursor::Hint c{1,1,100,0,commandcursor::OfflineRepair,10,20};
  assert(commandcursor::definition(c.mode)==33&&commandcursor::matchesTool(c,35,10,20)&&!commandcursor::matchesTool(c,33,10,20)&&!commandcursor::matchesTool(c,35,15,20));
  c.mode=commandcursor::OfflineSell;assert(commandcursor::definition(c.mode)==31&&commandcursor::matchesTool(c,32,10,20));
- std::cout<<"PASS offline tool session, native mode, target, preview freshness, duplicate and cursor gates\n";
+ std::cout<<"PASS supported native session, native mode, target, preview freshness, duplicate and cursor gates\n";
 }

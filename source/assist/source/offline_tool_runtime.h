@@ -1,4 +1,4 @@
-// This is a single-player, local-owner event extension. No rule writes,
+// This is a local-owner event extension. No rule writes,
 // input suppression, code patches, or alternate event receiver.
 static offlinetools::Tickets offlineToolTickets;
 static bool offlineToolVehicleCell(uint32_t p){
@@ -28,7 +28,7 @@ static bool offlineToolTarget(offlinetools::Mode mode,uint32_t p,uint32_t house,
  }return false;
 }
 static void offlineToolPreview(uint32_t house,int frame,DWORD now){
- if(!sh->offlineToolMask||!nativeReady()||!offlinetools::offline(snap.session))return;
+ if(!sh->offlineToolMask||!nativeReady()||!offlinetools::supportedSession(snap.session))return;
  const auto seq=sh->offlineToolPointSeq;static uint32_t seenMatch=0,seenOwner=0;static long seen=-1;
  if((seq&1)||(!seq)||(seen==seq&&seenMatch==match&&seenOwner==sh->owner))return;
  MemoryBarrier();const auto p=sh->offlineToolPoint;MemoryBarrier();if(seq!=sh->offlineToolPointSeq)return;
@@ -49,7 +49,7 @@ static void offlineToolPreview(uint32_t house,int frame,DWORD now){
 }
 static void offlineToolClick(const pointerinput::Intent&i,DWORD now,int frame){
  const auto mode=i.operation==pointerinput::OfflineRepair?offlinetools::Repair:offlinetools::Sell;
- if(!nativeReady()||!offlinetools::offline(snap.session)||!(sh->offlineToolMask&mode)||i.match!=match||i.house!=lastHouse||
+ if(!nativeReady()||!offlinetools::supportedSession(snap.session)||!(sh->offlineToolMask&mode)||i.match!=match||i.house!=lastHouse||
     i.inputSerial!=sh->pointer.cancelSerial||i.count!=1||i.bindings!=pointerinput::LeftClick||
     i.frame<0||frame<i.frame||DWORD(now-i.tick)>150||
     offlinetools::current(readLiveWorld)!=mode||!offlinetools::denied(mode,readLiveWorld)||!pointerLocation(i)){
@@ -62,7 +62,7 @@ static void offlineToolClick(const pointerinput::Intent&i,DWORD now,int frame){
  if(mode==offlinetools::Repair&&pendingRepairs.contains(id,pointerTarget)){pointerFinish(-4);return;}
  auto*ticket=offlineToolTickets.admit(match,id,pointerTarget,mode,repairing,frame,now);
  if(!ticket||(mode==offlinetools::Repair&&!repairing&&!pendingRepairs.room(id))){pointerFinish(-4);return;}
- const bool sent=mode==offlinetools::Repair?repairEvent(lastHouse,id):nativeObjectEvent(get<int>(lastHouse+0x30),0x16,id);
+ const bool sent=nativeObjectEvent(get<int>(lastHouse+0x30),mode==offlinetools::Repair?0x15:0x16,id,OrderAuthority::Local,nullptr,false,true);
  if(!sent){pointerFinish(-6);return;}
  *ticket={id,pointerTarget,now,frame,repairing,mode};
  if(mode==offlinetools::Repair&&!repairing)pendingRepairs.queued(id,pointerTarget);

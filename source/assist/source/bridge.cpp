@@ -949,7 +949,7 @@ static bool submitProvenMission(uint32_t house,uint32_t id,int mission,uint32_t 
 }
 static bool sellAllowed(uint32_t);
 #include "sell_direct_bridge.h"
-static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,OrderAuthority authority=OrderAuthority::Local,gateway::Receipt* receipt=nullptr,bool hazardDrop=false){
+static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,OrderAuthority authority=OrderAuthority::Local,gateway::Receipt* receipt=nullptr,bool hazardDrop=false,bool nativeToolbar=false){
  if(houseIndex<0||houseIndex>=32||!objectId||!lastHouse){++snap.commandRejected;return false;}
  uint32_t object=worldByID(objectId);
  uint32_t owner=object?get<uint32_t>(object+0x21C):0;
@@ -983,12 +983,14 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,Ord
   recordReceipt(queued);if(receipt)*receipt=queued;
   return true;
  };
- if(eventType==0x16&&mp&&!privateOutActive()){
+ // Toolbar operations use the common native EventClass queue rather than the separate direct-sale transport.
+ if(nativeToolbar&&(authority!=OrderAuthority::Local||uint32_t(houseIndex)!=localIndex||uint32_t(houseIndex)!=ownerIndex||(eventType!=0x15&&eventType!=0x16))){++snap.commandRejected;return false;}
+ if(eventType==0x16&&mp&&!privateOutActive()&&!nativeToolbar){
   if(!queueDirectSell(intent::object(houseIndex,eventType,objectId),authority,object))return false;
   return acceptedObject();
  }
  if(authority!=OrderAuthority::Local){if(!submitConstructed(intent::object(houseIndex,eventType,objectId),authority))return false;return acceptedObject();}
- if(privateOutActive()||eventType==0x06||eventType==0x07||eventType==0x16||!sh||sh->objectQueueMode!=1||eventdelivery::isSingleplayer(mode)){
+ if(nativeToolbar||privateOutActive()||eventType==0x06||eventType==0x07||eventType==0x16||!sh||sh->objectQueueMode!=1||eventdelivery::isSingleplayer(mode)){
   snap.objectQueueStatus=int(objectqueue::Result::DefaultEventClass);
   if(!submitConstructed(intent::object(houseIndex,eventType,objectId)))return false;
   return acceptedObject();
