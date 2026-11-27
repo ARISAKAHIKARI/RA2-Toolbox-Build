@@ -133,8 +133,22 @@ template<class Read>State cell(Read read,uint32_t p,const State&fallback,Layer l
  // Live callbacks, incomplete sources and changed tokens keep the race check.
  const auto immutable=allowSealedFastPath?sealedSource(read,0):worldframe::Token{};
  uint32_t scale=0,convert=0;int16_t values[3]{},after[3]{};
- if(!read(p+0x104,&scale,4)||scale>262144||!read(p+0x34,&convert,4)||(!scale&&convert<0x10000)||
-    !read(p+0x10A,values,6)||std::any_of(values,values+3,[](int x){return x<0||x>2000;}))return fallback;
+ // In a sealed full page, scale and intensity are adjacent fields. Merge
+ // them without requesting unknown padding from a partial page. Keep the
+ // regular reader in the path so page dependencies and diagnostics survive.
+ bool packed=false;
+ if(immutable&&uint64_t(p)+0x110<=0x80000000ull){
+  const uint32_t start=p+0x104,base=start&~(worldframe::PageSize-1);
+  if((start&(worldframe::PageSize-1))+12<=worldframe::PageSize){
+   const auto*page=immutable->find(base);
+   if(page&&page->full){
+    uint8_t bytes[12];if(!read(start,bytes,sizeof bytes))return fallback;
+    std::memcpy(&scale,bytes,sizeof scale);std::memcpy(values,bytes+6,sizeof values);packed=true;
+   }
+  }
+ }
+ if((!packed&&!read(p+0x104,&scale,4))||scale>262144||!read(p+0x34,&convert,4)||(!scale&&convert<0x10000)||
+    (!packed&&!read(p+0x10A,values,6))||std::any_of(values,values+3,[](int x){return x<0||x>2000;}))return fallback;
  State out=fallback;out.intensity=values[int(layer)];if(localTint){if(tints)tints->shade(read,convert,out);else{converterTint(read,convert,out.tint);converterMetadata(read,convert,out);}}
  if((!immutable||sealedSource(read,0)!=immutable)&&(!read(p+0x10A,after,6)||memcmp(values,after,6)))return fallback;
  return out;
