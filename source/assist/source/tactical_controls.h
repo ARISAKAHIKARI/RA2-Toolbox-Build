@@ -229,6 +229,7 @@ auto hiddenToggle=[&](int id,const wchar_t* text,bool on){auto h=placedControl({
 for(int i=0;i<7;++i){bool on=value(L"Display",displayIni[i],0)!=0;if(i==0||i==1||i==3)check[i]=hiddenToggle(300+i,displayNames[i],on);else{check[i]=toggle(300+i,displayNames[i],on);next();}}
 extraControls[FrozenEnabled]=hiddenToggle(723,L"冷冻剩余时间",extra.frozen);
 extraControls[EnemyMarkersEnabled]=hiddenToggle(785,L"敌方单位提示",extra.enemyMarkers);
+ hiddenToggle(9771,L"显示己方单位",extra.ownMarkers);
  hiddenToggle(9763,L"显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);
  {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",9764,CBS_DROPDOWNLIST);choices(h,{L"文字标记",L"真实模型叠加"},extra.enemySpecialMode);ShowWindow(h,SW_HIDE);}
 hiddenToggle(9770,L"单位面板",unitPanelEnabled);
@@ -238,6 +239,7 @@ hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],0)!=0);next();}
 extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next();
 extraControls[EnemyMarkersEnabled]=toggle(785,L"显示敌方单位提示",extra.enemyMarkers);next();
+ toggle(9771,L"显示己方单位（含聚类）",extra.ownMarkers);next();
  toggle(9763,L"显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);next();
  label(L"特殊单位显示方式",20,200);choices(combo(9764,240,385,130),{L"文字标记",L"真实模型叠加"},extra.enemySpecialMode);next();
 toggle(9770,L"单位面板",unitPanelEnabled);next();
