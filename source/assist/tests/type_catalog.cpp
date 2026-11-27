@@ -9,6 +9,24 @@ static assist::Type item(const char* id,int kind,int index,const char* name){
  return t;
 }
 int main(){
+ typecatalog::ObservedCatalogue observed;
+ assist::Type rows[]={item("E1",16,3,"Engineer"),item("MTNK",40,2,"Tank")};
+ assert(observed.changed(1,rows,2,0));
+ assert(!observed.changed(1,rows,2,250));
+ rows[0].cost=500;
+ assert(!observed.changed(1,rows,2,251));
+ assert(observed.changed(1,rows,2,500));
+ assert(!observed.changed(1,rows,2,750));
+ std::swap(rows[0],rows[1]);
+ assert(observed.changed(1,rows,2,1000));
+ assert(observed.changed(2,rows,2,1001));
+ assert(observed.changed(2,rows,1,1002));
+ assert(!observed.changed(2,nullptr,1,2000));
+ typecatalog::ObservedCatalogue wrapObserved;
+ assert(wrapObserved.changed(1,rows,2,0xfffffff0u));
+ rows[0].index++;
+ assert(!wrapObserved.changed(1,rows,2,0u));
+ assert(wrapObserved.changed(1,rows,2,234u));
  typecatalog::WriteState write;
  assert(write.due(1,0));
  write.attempted(0);
