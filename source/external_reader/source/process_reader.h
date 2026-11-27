@@ -19,7 +19,7 @@ struct ReaderDiagnostics {
  // Lifetime totals are not reset by begin(). Distinguish Host external RPM
  // from GameRuntime's in-process worker graph and sealed-memory page hits.
  // Per-session only: never claim these represent other Host task sessions.
- uint64_t totalRemoteCalls=0,totalRemoteRequestedBytes=0,totalRemoteFailures=0,totalSealedHits=0;
+ uint64_t totalRemoteCalls=0,totalRemoteRequestedBytes=0,totalRemoteFailures=0,totalSealedHits=0,totalSealedPageCacheHits=0;
  uint32_t reads=0,errors=0,pageHits=0,pageMisses=0,pageFallbacks=0,prefetchedPages=0,prefetchMisses=0,pageEvictions=0,pageCurrentEvictions=0,pageBudgetDenials=0,pageAllocationFailures=0,emergencyPageReads=0,pagePressureRetired=0;
  // Read-only diagnostics: do not change access rights or game memory.
  uint32_t worldMissingReads=0,worldUnreadableReads=0,worldInvalidReads=0,worldFirstMissingAddress=0,worldLastMissingAddress=0;
@@ -35,6 +35,9 @@ struct ReaderDiagnostics {
 class ProcessReader : public ReaderDiagnostics {
  std::shared_ptr<const ProcessConnection> connection_;
  std::shared_ptr<worldframe::Client> worldClient_;worldframe::Token worldFrame_;
+ // Borrow only from the currently pinned immutable publication. A full page
+ // already registered in this scope can serve subsequent narrow reads.
+ const worldframe::Page* lastSealedPage_=nullptr;
  uint32_t worldDemand_=worldframe::Base;
  uint32_t worldSubscribedAt_=0;
  std::array<uint64_t,8192> worldDemandBits_{};std::vector<uint32_t> worldDemands_;bool worldComplete_=true;
@@ -44,7 +47,17 @@ class ProcessReader : public ReaderDiagnostics {
  }
  bool frameRead(uint32_t address,void*out,size_t size,bool optional=false){
   if(!out||!worldframe::range(address,size)){++errors;if(!optional){worldComplete_=false;++worldInvalidReads;}return false;}
-  for(uint32_t page=address&~4095u;uint64_t(page)<uint64_t(address)+size;page+=4096)requestWorldPage(page);
+  const uint32_t base=address&~4095u;const size_t offset=address&4095u;
+  if(size<=worldframe::PageSize-offset){
+   if(lastSealedPage_&&lastSealedPage_->address==base){
+    std::memcpy(out,lastSealedPage_->bytes.data()+offset,size);++pageHits;++totalSealedHits;++totalSealedPageCacheHits;return true;
+   }
+   requestWorldPage(base);
+   const auto*page=worldFrame_->find(base);
+   if(page&&page->full){lastSealedPage_=page;std::memcpy(out,page->bytes.data()+offset,size);++pageHits;++totalSealedHits;return true;}
+  }else{
+   for(uint32_t page=base;uint64_t(page)<uint64_t(address)+size;page+=4096)requestWorldPage(page);
+  }
   if(worldFrame_->read(address,out,size)){++pageHits;++totalSealedHits;return true;}
   ++errors;const bool observed=worldFrame_->observed(address,size);if(!optional||!observed){worldComplete_=false;if(observed)++worldUnreadableReads;else ++worldMissingReads;
    if(!worldFirstMissingAddress)worldFirstMissingAddress=address;worldLastMissingAddress=address;}return false;
@@ -169,7 +182,7 @@ public:
   else worldClient_->request(worldDemands_,!worldComplete_);
   }
   for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}
-  worldDemands_.clear();worldFrame_.reset();worldComplete_=true;
+  worldDemands_.clear();lastSealedPage_=nullptr;worldFrame_.reset();worldComplete_=true;
  }
  // Renew dependencies of a still-active derived cache without rereading or
  // certifying their values. Actual reads remain bound to the sealed token.
