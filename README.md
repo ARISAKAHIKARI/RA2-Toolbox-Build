@@ -19,13 +19,13 @@
 
 ## 下载与更新
 
-正式版下载见 [GitHub Latest](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/latest)。本分支目标版本为 1.0.53。首次安装下载 Full 完整包，已有安装下载 Update 更新包；退出游戏和工具箱后成套更新，保留已有配置。
+正式版下载见 [GitHub Latest](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/latest)。本分支目标版本为 1.0.53.1。首次安装下载 Full 完整包，已有安装下载 Update 更新包；退出游戏和工具箱后成套更新，保留已有配置。
 
 Full 保留主程序、游戏 Runtime、Broker、鼠标原始素材和三套主题，不包含生成后的插帧或预览页面。默认图案从当前游戏读取原图和色盘，实际遇到缺失的动画帧对时在低优先级后台生成，并按素材内容保存本地缓存；已有效的缓存直接复用。Python、NumPy、SciPy、OpenCV 仅在生成时缺失才从固定公网来源下载，并验证 SHA256。正常启动和原帧显示不需要下载。
 
 发布页提供独立的 Dependencies 包，包含 Python 科学依赖和原始鼠标素材，供离线安装；已有依赖可只下载 Update。
 
-1.0.53 以 PR #96 的 `28fc384f` 为基线，重点改进世界采样、渲染资源重试和显示更新。详见 [1.0.53 发布说明](packages/v1.0.53/RELEASE_NOTES.md)。真实游戏和联机平台表现仍待实机验证。
+1.0.53 以 PR #96 的 `28fc384f` 为基线，重点改进世界采样、渲染资源重试和显示更新。详见 [1.0.53 发布说明](packages/v1.0.53/RELEASE_NOTES.md)。1.0.53.1 增加预定堆叠指定项取消、鼠标初始化重试退避与前台切换诊断，详见 [1.0.53.1 发布说明](packages/v1.0.53.1/RELEASE_NOTES.md)。真实游戏和联机平台表现仍待实机验证。
 
 ## 设置
 

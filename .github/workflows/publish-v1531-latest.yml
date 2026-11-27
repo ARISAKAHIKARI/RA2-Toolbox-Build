@@ -1,0 +1,208 @@
+name: Publish 1.0.53.1 Latest after focus and reservation checks
+on:
+  push:
+    branches: [fix/v1.0.53.1-focus-reservation-20261127]
+    paths:
+      - '.github/workflows/publish-v1531-latest.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-v1531-latest
+  cancel-in-progress: true
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check targeted reservation input and cursor background behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          python source/assist/tests/construction_host_test.py | tee checks/reservation-host.log
+          python source/assist/tests/construction_paint_test.py | tee checks/reservation-paint.log
+          python source/assist/tests/cursor_focus_retry_test.py | tee checks/cursor-focus-retry.log
+      - name: Validate real capture/runtime/host headers and demand boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/display_capture_offthread.cpp -o checks/display-admission
+          checks/display-admission | tee checks/admission.log
+          python source/assist/tests/world_frame_core_test.py | tee checks/core.log
+          python source/assist/tests/world_frame_retention.py --out checks/retention | tee checks/retention.log
+          python source/assist/tests/tactical_frame_sampling.py --out checks/tactical | tee checks/tactical.log
+          python source/assist/tests/anti_theft_sample_cache.py --after-only --out checks/defender | tee checks/defender.log
+      - name: Exercise sealed terrain lighting, draw reuse and paused Watch recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG -c source/third_party/xbrz/xbrz.cpp -o checks/xbrz.o
+          for fixture in scene_lighting terrain_sealed_presentation scene_frame_reuse renderer_plan_performance shared_scene_sampling overlay_incremental; do
+            g++ -std=c++17 -O2 -UNDEBUG -pthread "source/assist/tests/$fixture.cpp" checks/xbrz.o -ldl -o "checks/$fixture"
+            "checks/$fixture" | tee "checks/$fixture.log"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: display-capture-portable
+          path: checks/
+  native:
+    needs: portable
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install paired native compiler
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Verify live INI retry and root identity against local Win32 reads
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/tools/test_live_ini_presentation.py --zig "$ZIG" --build-dir checks/live-ini
+      - name: Exercise real HWND overlay stacking without activation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 source/assist/tests/overlay_stack_windows.cpp -luser32 -o checks/overlay-stack.exe
+          checks/overlay-stack.exe | tee checks/overlay-stack.log
+      - name: Build x64 Host and x86 Runtime, check exports and ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/display-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/build.log 2>&1 || { tail -120 checks/build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root display-build --host-arch x64 --webview2 | tee checks/pe.log
+          grep -Fq 'RA2_RELEASE_VERSION_W L"1.0.53.1"' source/shared/source/release_version.h
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out checks/async-recovery
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: display-capture-native
+          path: |
+            checks/
+            display-build/*.exe
+            display-build/*.dll
+            display-build/*.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v1531-matched-build
+          path: display-build/
+          if-no-files-found: error
+          retention-days: 30
+  publish:
+    needs: native
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: v1531-matched-build
+          path: dist/compiled
+      - name: Verify source and assemble paired packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor dae6ec32b6ef048750321a02c4298ca12348b3e0 "$GITHUB_SHA"
+          git merge-base --is-ancestor 28fc384f3952932fa696c8c50ed174951ccb9b92 "$GITHUB_SHA"
+          grep -Fq 'RA2_RELEASE_VERSION_W L"1.0.53.1"' source/shared/source/release_version.h
+          if gh release view v1.0.53.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Refusing to overwrite existing v1.0.53.1 release'
+            exit 1
+          fi
+          python3 source/tools/verify_windows_outputs.py --root dist/compiled --host-arch x64 --webview2
+          mkdir -p dist/base dist/full dist/update
+          gh release download v1.0.52-pre.8 --repo "$GITHUB_REPOSITORY" --pattern 'RA2Toolbox-1.0.52-pre.8-x64-Full.zip' --dir dist/base
+          echo '43edb740805d2022f4b18dfb8ec9ea79f10e159576dbdfb321cc64fde340ac23  dist/base/RA2Toolbox-1.0.52-pre.8-x64-Full.zip' | sha256sum -c -
+          unzip -q dist/base/RA2Toolbox-1.0.52-pre.8-x64-Full.zip -d dist/full
+          exe=$(find dist/full -type f -name RA2Toolbox.exe -print -quit)
+          test -n "$exe"
+          root=$(dirname "$exe")
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "dist/compiled/$f"
+            cp "dist/compiled/$f" "dist/update/$f"
+            cp "dist/compiled/$f" "$root/$f"
+            cmp "dist/update/$f" "$root/$f"
+          done
+          if test -f dist/compiled/CONSOLE_COMPILE.json; then
+            cp dist/compiled/CONSOLE_COMPILE.json dist/update/
+            cp dist/compiled/CONSOLE_COMPILE.json "$root/"
+          fi
+          if test -d dist/compiled/licenses; then
+            mkdir -p "$root/licenses"
+            cp -a dist/compiled/licenses/. "$root/licenses/"
+            cp -a dist/compiled/licenses dist/update/
+          fi
+          for f in UPDATE_VALIDATION.txt UPDATE_SHA256_MANIFEST.json; do
+            rm -f "$root/$f"
+          done
+          cp packages/v1.0.53.1/RELEASE_NOTES.md "$root/RELEASE_NOTES.md"
+          cp packages/v1.0.53.1/RELEASE_NOTES.md dist/update/RELEASE_NOTES.md
+          printf '%s\n' "$GITHUB_SHA" > dist/update/BUILD_COMMIT.txt
+          cp dist/update/BUILD_COMMIT.txt "$root/"
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.53.1-x64-Update.zip .)
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.53.1-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.53.1-x64-Update.zip
+          unzip -tq dist/RA2Toolbox-1.0.53.1-x64-Full.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.53.1-x64-{Full,Update}.zip > SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.53.1-packages
+          path: |
+            dist/RA2Toolbox-1.0.53.1-x64-*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+      - name: Publish stable Latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Do not allow an older publishing workflow to overwrite Latest after this run.
+          for run in 46009059983 46009095594; do
+            test "$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run" --jq .status)" = completed
+          done
+          previous=$(gh api "/repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          case "$previous" in v1.0.51|v1.0.53) ;; *) echo "Unexpected Latest: $previous"; exit 1;; esac
+          gh release create v1.0.53.1 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest --title 'RA2 Toolbox 1.0.53.1 · Latest' --notes-file packages/v1.0.53.1/RELEASE_NOTES.md dist/RA2Toolbox-1.0.53.1-x64-Full.zip dist/RA2Toolbox-1.0.53.1-x64-Update.zip dist/SHA256SUMS.txt
+          gh api "/repos/$GITHUB_REPOSITORY/releases/latest" > dist/LATEST_RECEIPT.json
+          python3 - <<'PY'
+          import json
+          j=json.load(open('dist/LATEST_RECEIPT.json',encoding='utf-8'))
+          assert j['tag_name']=='v1.0.53.1' and not j['draft'] and not j['prerelease']
+          assert len(j['assets'])==3 and all(a['size']>0 for a in j['assets'])
+          print(j['html_url'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v1531-release-receipt
+          path: dist/LATEST_RECEIPT.json
