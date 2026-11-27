@@ -106,7 +106,7 @@ template<class Assets>class SceneRenderer {
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  lighting::State buildingLight_;uint64_t voxelLightRevision_=0;bool voxelLightKnown_=false;
  struct DecodeStats {unsigned attempts=0,hits=0;double milliseconds=0,budget=0;} decodeStats_;
- struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0,terrainLightCells=0,terrainGeometryChecks=0,terrainProbeCopies=0;bool reused=false;
+ struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0,terrainLightCells=0,terrainGeometryChecks=0,terrainProbeCopies=0,terrainPreparedSlots=0;bool reused=false;
   bool readCountsKnown=false;uint64_t terrainReads=0,paletteReads=0,decodeReads=0,voxelReads=0,objectReads=0,resolveReads=0,effectReads=0;
   uint64_t setupReads=0,terrainScanReads=0,maskReads=0,extraReads=0;size_t artWanted=0,artScanned=0,invalidationKeys=0,invalidationVisits=0;
   double visibilityMs=0;size_t visibilityCalls=0,visibilityPages=0,visibilityCells=0;bool visibilityAttempted=false,cpuTerrainReused=false;
@@ -285,8 +285,11 @@ public:
    std::stable_sort(cells_.begin(),cells_.end(),[](size_t a,size_t b){return a%512+a/512<b%512+b/512;});}
    // New sampling banks commonly contain identical terrain. Compare evaluated
    // per-cell lighting before deciding to rebuild millions of native pixels.
-   probing_=!(backgroundIncomplete_&&int32_t(frame.tick-backgroundRetry_)>=0)&&bankSameSource_&&painted_.size()==cells_.size();prepared_.resize(cells_.size());
-   if(!probing_&&!resetPending())return {};
+   probing_=!(backgroundIncomplete_&&int32_t(frame.tick-backgroundRetry_)>=0)&&bankSameSource_&&painted_.size()==cells_.size();
+   // A stable whole-map verification needs signatures, not a second array
+   // of Paint objects. Materialize scratch only when probing or painting
+   // actually needs it; preserve partial scratch across presentations.
+   if(!probing_){prepared_.resize(cells_.size());stageStats_.terrainPreparedSlots+=prepared_.size();if(!resetPending())return {};}
   }
   size_t staticPixels=0;for(const auto&i:tiles_)staticPixels+=camera::pixels(*i.second.image);
   const Terrain*evaluatedTerrain=building_.get();
@@ -340,8 +343,8 @@ public:
   if(building_&&probing_){
    // Successful whole-map verification already compared every signature.
    // Do not copy every Paint into a temporary vector only to discard it.
-   if(!region.active&&visibleVerified)cursor_=cells_.size();
-   else{size_t end=std::min(cells_.size(),cursor_+size_t(4096));for(;cursor_<end;++cursor_){++stageStats_.terrainProbeCopies;prepared_[cursor_]=prepare(cells_[cursor_]);probeChanged_|=prepared_[cursor_].signature!=painted_[cursor_];}}
+   if(!region.active&&visibleVerified&&!probeChanged_)cursor_=cells_.size();
+   else{if(prepared_.size()!=cells_.size()){prepared_.resize(cells_.size());stageStats_.terrainPreparedSlots+=prepared_.size();}size_t end=std::min(cells_.size(),cursor_+size_t(4096));for(;cursor_<end;++cursor_){++stageStats_.terrainProbeCopies;prepared_[cursor_]=prepare(cells_[cursor_]);probeChanged_|=prepared_[cursor_].signature!=painted_[cursor_];}}
    if(cursor_==cells_.size()){
     if(!probeChanged_){complete_=building_;building_.reset();backgroundLight_=scene;cursor_=0;prepared_.clear();}
     else{probing_=false;cursor_=baseCursor_=0;if(!resetPending())return {};}
