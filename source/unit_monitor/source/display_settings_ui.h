@@ -26,20 +26,20 @@ template<class Create> static void createUnitSettings(Create ctl){
   auto h=ctl(L"BUTTON",text,BS_AUTOCHECKBOX|WS_TABSTOP,x,y,680-x,26,600+option);unitSettingControls[option]=h;EnableWindow(h,FALSE);
  };
  toggle(suite::EnemyMarkers,L"敌方单位提示",58);
- toggle(suite::OwnMarkers,L"显示己方单位（含聚类）",76,374);
- toggle(suite::EnemySpecialOnly,L"显示隐形、幻影和敌方间谍",108);
+ toggle(suite::OwnMarkers,L"显示己方单位（含聚类）",88,374);
+ toggle(suite::EnemySpecialOnly,L"显示隐形、幻影和敌方间谍",122);
  modernui::tip(unitSettingControls[suite::EnemySpecialOnly],L"显示隐形、潜水状态单位、幻影和敌方间谍。可选择文字标记或真实模型叠加，与敌方单位提示分别开关。");
- ctl(L"STATIC",L"显示方式",0,374,139,100,24,0);
- auto mode=ctl(L"COMBOBOX",L"",CBS_DROPDOWNLIST|WS_TABSTOP,478,136,202,100,600+suite::EnemySpecialMode);
+ ctl(L"STATIC",L"显示方式",0,374,155,100,24,0);
+ auto mode=ctl(L"COMBOBOX",L"",CBS_DROPDOWNLIST|WS_TABSTOP,478,152,202,100,600+suite::EnemySpecialMode);
  SendMessageW(mode,CB_ADDSTRING,0,LPARAM(L"文字标记"));SendMessageW(mode,CB_ADDSTRING,0,LPARAM(L"真实模型叠加"));unitSettingControls[suite::EnemySpecialMode]=mode;EnableWindow(mode,FALSE);
  modernui::tip(mode,L"文字标记：在目标位置显示单位名称。真实模型叠加：在目标位置显示单位的真实外观。");
- toggle(suite::Capacity,L"载具载员与容量",174);
- toggle(suite::AllTransports,L"同时显示未选中的载具",202,374);
+ toggle(suite::Capacity,L"载具载员与容量",188);
+ toggle(suite::AllTransports,L"同时显示未选中的载具",220,374);
  modernui::tip(unitSettingControls[suite::AllTransports],L"需先开启“载具载员与容量”。关闭父功能时保留此选项，重新开启后恢复使用。");
- toggle(suite::Iron,L"铁幕 / 力场剩余时间",246);
- toggle(suite::Frozen,L"冷冻剩余时间",284);
- toggle(suite::Parasite,L"蜘蛛寄生标志",322);
- toggle(suite::CrateBuffs,L"火力 / 防御 / 速度强化",360);
+ toggle(suite::Iron,L"铁幕 / 力场剩余时间",256);
+ toggle(suite::Frozen,L"冷冻剩余时间",292);
+ toggle(suite::Parasite,L"蜘蛛寄生标志",328);
+ toggle(suite::CrateBuffs,L"火力 / 防御 / 速度强化",364);
  // 载员气泡和危险载员提醒统一由 monitorVideoSettings.create 提供单一设置入口。
  auto number=[&](suite::DisplayOption option,const wchar_t* text,int y,const wchar_t* unit){
   ctl(L"STATIC",text,0,354,y+3,178,23,0);
