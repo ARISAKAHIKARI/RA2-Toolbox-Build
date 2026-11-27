@@ -172,6 +172,7 @@ static uint64_t techAcknowledgedHash=0;static bool techMode;static bool autoReve
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
 static HWND schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
 static typecatalog::Catalogue savedTypes;static uint32_t catalogueRevision=0;
+static typecatalog::WriteState catalogueWrites;
 static uint32_t settingsRevision=1;
 static bool shiftClickEnabled=true;static int shiftClickMode=0,shiftClickGap=0,shiftSidebarWidth=160,shiftSidebarTop=200;
 static bool magnetronMode=false;static WORD magnetronKey;static HWND magnetronCheck,magnetronKeyEdit;
@@ -719,15 +720,16 @@ static std::wstring catalogueValue(const assist::Type& t){
         std::to_wstring(t.naval)+L"|"+std::to_wstring(t.cost)+L"|"+
         wide(t.id)+L"|"+name;
 }
-static bool saveCatalogue(const std::vector<size_t>* dirty=nullptr){
- static uint32_t writtenRevision=~0u;if(!dirty&&writtenRevision==catalogueRevision)return true;
+static bool saveCatalogue(){
+ if(!catalogueWrites.needsWrite(catalogueRevision))return true;
+ catalogueWrites.attempted(GetTickCount());
  // One profile operation replaces the whole generated catalogue; hundreds of
  // synchronous per-type INI writes used to block the UI after first discovery.
  std::wstring block=L"Count="+std::to_wstring(savedTypes.types.size());block.push_back(L'\0');
  for(size_t i=0;i<savedTypes.types.size();++i){block+=catalogueKey(i)+L"="+catalogueValue(savedTypes.types[i]);block.push_back(L'\0');}
  block.push_back(L'\0');
  bool okay=WritePrivateProfileSectionW(L"TypeCatalogue",block.c_str(),path(L"Assist.ini").c_str())!=FALSE;
- if(okay)writtenRevision=catalogueRevision;return okay;
+ if(okay)catalogueWrites.completed(catalogueRevision);return okay;
 }
 static void loadCatalogue(){
  const auto file=path(L"Assist.ini");
@@ -754,17 +756,15 @@ static void loadCatalogue(){
 static void rememberLiveTypes(){
  if(snap.status!=1||snap.typeCount<=0)return;
  static uint32_t learnedMatch;static int learnedCount=-1;
- if(learnedMatch==snap.match&&learnedCount==snap.typeCount)return;learnedMatch=snap.match;learnedCount=snap.typeCount;
- std::vector<size_t> dirty;
- for(int i=0;i<snap.typeCount&&i<MaxTypes;++i){
-  int changedRow=-1;
-  if(savedTypes.remember(snap.types[i],&changedRow)&&changedRow>=0)
-   dirty.push_back(size_t(changedRow));
+ if(learnedMatch!=snap.match||learnedCount!=snap.typeCount){
+  learnedMatch=snap.match;learnedCount=snap.typeCount;
+  bool changed=false;
+  for(int i=0;i<snap.typeCount&&i<MaxTypes;++i)
+   changed=savedTypes.remember(snap.types[i])||changed;
+  if(changed)++catalogueRevision;
  }
- if(!dirty.empty()){
-  ++catalogueRevision;
-  if(!saveCatalogue(&dirty))diag(L"TypeCatalogue write failed: check Assist.ini permissions");
- }
+ if(catalogueRevision&&catalogueWrites.due(catalogueRevision,GetTickCount())&&!saveCatalogue())
+  diag(L"TypeCatalogue write failed: check Assist.ini permissions");
 }
 static UINT modifiers(WORD key){BYTE f=HIBYTE(key);return MOD_NOREPEAT|((f&HOTKEYF_CONTROL)?MOD_CONTROL:0)|((f&HOTKEYF_ALT)?MOD_ALT:0)|((f&HOTKEYF_SHIFT)?MOD_SHIFT:0);}
 static std::wstring keyText(WORD key){return keygesture::describe(key,modernui::hotkeyName(key));}
