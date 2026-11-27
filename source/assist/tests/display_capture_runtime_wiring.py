@@ -35,7 +35,8 @@ assert "if(!wasReadOnly)idleRetired.valid=false;" in readonly
 assert "if(admission==readonly::Admission::Commands){\n  idleRetired.valid=false;" in readonly
 assert "if(admission==readonly::Admission::Retiring){idleRetired.valid=false;retireWorldFrame();" in readonly
 assert "if(demand!=0u){\n  idleRetired.valid=false;\n  captureDisplayOnlyWorld(world,house,now,wanted);" in readonly
-assert "idleRetired.same(sh->owner,match,worldFrameServer.connection(),worldProducerGeneration)" in readonly
+assert "idleRetired.needsRetirement(sh->owner,match,worldFrameServer.connection(),worldProducerGeneration," in readonly
+assert '#include "readonly_idle_retirement.h"' in bridge
 assert "worldFrameReady||haveCaptureAttempt||worldFrameCandidateAvailable||" in readonly
 assert "!runtimeWorldDemands.empty()||runtimeDemandOverflow" in readonly
 assert "retireWorldFrame();\n  idleRetired={true,sh->owner,match,worldFrameServer.connection(),worldProducerGeneration};" in readonly
