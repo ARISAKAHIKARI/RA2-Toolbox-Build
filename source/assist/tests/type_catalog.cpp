@@ -1,4 +1,5 @@
 #include "../source/type_catalog.h"
+#include "../../external_reader/source/catalogue_stamp.h"
 #include <cassert>
 #include <cstring>
 #include <string>
@@ -8,7 +9,64 @@ static assist::Type item(const char* id,int kind,int index,const char* name){
  for(size_t i=0;i<std::strlen(name)&&i<39;++i)t.name[i]=name[i];
  return t;
 }
+struct DependencyFixture {
+ std::vector<uint32_t> retained;
+ uint32_t missing=0;
+ int calls=0;
+};
+struct CatalogueRead {
+ DependencyFixture* fixture;
+ bool operator()(uint32_t at,void*out,size_t n)const{
+  ++fixture->calls;
+  if(at==fixture->missing)return false;
+  std::memset(out,0,n);
+  if(at==0xA8B218+4&&n==16){
+   const uint32_t header[]={0x30000,1,0,1};
+   std::memcpy(out,header,n);
+  }else if(at==0x30000&&n==4){
+   const uint32_t pointer=0x40000;std::memcpy(out,&pointer,n);
+  }else if(at==0x40024&&n==24){
+   const char id[]="TEST";std::memcpy(out,id,sizeof id);
+  }
+  return true;
+ }
+ void retainWorldPages(const std::vector<uint32_t>&pages)const{
+  fixture->retained.insert(fixture->retained.end(),pages.begin(),pages.end());
+ }
+};
+static void projectionDependencies(){
+ external::catalogue::Dependencies deps;
+ DependencyFixture fixture;CatalogueRead read{&fixture};
+ auto retained=[&](uint32_t page){return std::find(fixture.retained.begin(),fixture.retained.end(),page)!=fixture.retained.end();};
+ auto project=[&](uint32_t at,size_t n){
+  return deps.captureProjection(read,[&](auto tracked){
+   unsigned char bytes[32]{};return tracked(at,bytes,n);
+  });
+ };
+ assert(project(0x50ff8,16)); // Cross-page field.
+ fixture.retained.clear();int calls=fixture.calls;deps.maintain(read);
+ assert(retained(0x50000)&&retained(0x51000)&&fixture.calls==calls);
+ external::catalogue::Stamp stamp;
+ assert(deps.capture(read,stamp)&&stamp.count==1);
+ fixture.retained.clear();deps.maintain(read);
+ assert(retained(0x50000)&&retained(0x51000)&&retained(0x40000));
+ fixture.missing=0x60000;
+ assert(!project(0x60000,8));
+ fixture.retained.clear();deps.maintain(read);
+ assert(retained(0x60000)&&retained(0x50000)&&retained(0x51000));
+ fixture.missing=0x61000;
+ assert(!project(0x61000,8));
+ fixture.retained.clear();deps.maintain(read);
+ assert(retained(0x60000)&&retained(0x61000)&&retained(0x50000));
+ fixture.missing=0;
+ assert(project(0x62000,8));
+ fixture.retained.clear();deps.maintain(read);
+ assert(retained(0x62000)&&retained(0x40000)&&!retained(0x60000)&&!retained(0x50000));
+ deps.clear();fixture.retained.clear();deps.maintain(read);
+ assert(fixture.retained.empty());
+}
 int main(){
+ projectionDependencies();
  typecatalog::ObservedCatalogue observed;
  assist::Type rows[]={item("E1",16,3,"Engineer"),item("MTNK",40,2,"Tank")};
  assert(observed.changed(1,rows,2,0));
