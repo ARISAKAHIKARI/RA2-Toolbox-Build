@@ -106,7 +106,7 @@ template<class Assets>class SceneRenderer {
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  lighting::State buildingLight_;uint64_t voxelLightRevision_=0;bool voxelLightKnown_=false;
  struct DecodeStats {unsigned attempts=0,hits=0;double milliseconds=0,budget=0;} decodeStats_;
- struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0,terrainLightCells=0,terrainGeometryChecks=0,terrainProbeCopies=0,terrainPreparedSlots=0;bool reused=false;
+ struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0,terrainLightCells=0,terrainGeometryChecks=0,terrainProbeCopies=0,terrainPreparedSlots=0,terrainLightReuses=0;bool reused=false;
   bool readCountsKnown=false;uint64_t terrainReads=0,paletteReads=0,decodeReads=0,voxelReads=0,objectReads=0,resolveReads=0,effectReads=0;
   uint64_t setupReads=0,terrainScanReads=0,maskReads=0,extraReads=0;size_t artWanted=0,artScanned=0,invalidationKeys=0,invalidationVisits=0;
   double visibilityMs=0;size_t visibilityCalls=0,visibilityPages=0,visibilityCells=0;bool visibilityAttempted=false,cpuTerrainReused=false;
@@ -305,12 +305,19 @@ public:
   evaluatedPaint_.resize(evaluatedTerrain->art.size());evaluatedStamp_.resize(evaluatedTerrain->art.size());
   if(!++evaluationEpoch_){std::fill(evaluatedStamp_.begin(),evaluatedStamp_.end(),0);++evaluationEpoch_;}
   lighting::TintCache terrainTints;
-  auto prepare=[&](size_t index,bool fresh=false){
-   if(!fresh&&evaluatedStamp_[index]==evaluationEpoch_)return evaluatedPaint_[index];
+  auto prepare=[&](size_t index,bool fresh=false)->const Paint&{
+   auto&cached=evaluatedPaint_[index];auto&stamp=evaluatedStamp_[index];
+   if(!fresh&&stamp==evaluationEpoch_)return cached;
    ++stageStats_.terrainLightCells;
-   const auto&cell=evaluatedTerrain->art[index];Paint value;value.light=lighting::cell(read,cell.cell,scene,lighting::Layer::Terrain,true,fresh?nullptr:&terrainTints,!fresh&&terrainSource&&terrainSource==frame.sourceFrame);
-   value.signature=lightKey(1469598103934665603ull,value.light);
-   evaluatedStamp_[index]=evaluationEpoch_;evaluatedPaint_[index]=value;return value;
+   const auto&cell=evaluatedTerrain->art[index];
+   auto light=lighting::cell(read,cell.cell,scene,lighting::Layer::Terrain,true,fresh?nullptr:&terrainTints,!fresh&&terrainSource&&terrainSource==frame.sourceFrame);
+   // Each new publication still checks current Cell and converter fields.
+   // Reuse the derived signature only after exact State equality, including
+   // the immutable palette table owner. No timer or frame-number shortcut.
+   if(!fresh&&stamp&&terrainSource&&terrainSource==frame.sourceFrame&&lighting::sealedSource(read,0)==terrainSource&&cached.light==light){
+    ++stageStats_.terrainLightReuses;stamp=evaluationEpoch_;return cached;
+   }
+   cached.signature=lightKey(1469598103934665603ull,light);cached.light=std::move(light);stamp=evaluationEpoch_;return cached;
   };
   // Validate the CURRENT crop synchronously. Offscreen incremental checks
   // must not make a stable main viewport flash back to the game every pass.
