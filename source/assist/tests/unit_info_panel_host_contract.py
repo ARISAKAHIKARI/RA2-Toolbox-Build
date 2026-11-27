@@ -19,3 +19,10 @@ assert 'return m.selected==1?(cargoVisible(m,expanded)?m.passengerCount:0):m.gro
 assert 'return 2+(cargoVisible(m,expanded)?' in metrics
 assert 'PassengerCameoW=44,PassengerCameoH=36' in metrics
 print("PASS expanded panel automatically shows cargo; folding hides cargo; passenger Cameos are smaller; redundant info footer removed")
+
+# Cached rendered pixels must be discarded even if the replacement icon fails.
+cameos=(root/"source/unit_info_panel_cameos.h").read_text(encoding="utf-8")
+assert 'if(icons_.size()>=128){icons_.clear();++revision_;}' in cameos
+assert 'if(cameos_.revision()!=before)invalidate();' in host
+assert 'paintBuffer_.valid=false;' in host
+print("PASS icon eviction invalidates rendered panel regardless of replacement decode result")
