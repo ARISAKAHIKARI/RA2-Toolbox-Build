@@ -148,6 +148,15 @@ static int informationFPS(){return infoAdaptive?informationMonitor.rate():std::c
 static void publishSuiteDisplay();
 struct DisplayCounters {DWORD since=0,samples=0,paints=0,uploads=0,maxGap=0;uint64_t readUs=0,maxReadUs=0;DWORD worldFrames=0,maxWorldJobAgeMs=0,maxWorldSourceAgeMs=0;uint64_t worldJobAgeMs=0,worldSourceAgeMs=0;};
 static DisplayCounters displayCounters;
+// Presentation diagnostics only: do not use these counters to renew data leases.
+struct CameraDiagnostics {uint32_t start=0,observed=0,localRefresh=0,holdDrop=0,hwndDrop=0,compositorDrop=0;uint32_t previousPid=0,previousMatch=0;int x=0,y=0;bool valid=false;};
+static CameraDiagnostics cameraDiagnostics;
+static void critical(const std::wstring& s);
+static void logCameraDiagnostics(DWORD now){
+ auto&d=cameraDiagnostics;if(!d.start)d.start=now;const DWORD elapsed=now-d.start;if(elapsed<5000)return;
+ critical(L"overlay-camera windowMs="+std::to_wstring(elapsed)+L" observedChanges="+std::to_wstring(d.observed)+L" localRefresh="+std::to_wstring(d.localRefresh)+L" holdDrops="+std::to_wstring(d.holdDrop)+L" hwndDrops="+std::to_wstring(d.hwndDrop)+L" compositorDrops="+std::to_wstring(d.compositorDrop)+L" scope=presentation-checks-not-distinct-frames");
+ d.start=now;d.observed=d.localRefresh=d.holdDrop=d.hwndDrop=d.compositorDrop=0;
+}
 static overlayui::Recovery overlayRecovery;
 static int labelScalePercent=100,constructionScalePercent=100;
 static visual::Motion motion;static visual::LabelView labelViews[MaxLabels];
@@ -1641,6 +1650,7 @@ static void sampleExternal(DWORD now){
     externalSampler.state().match==externalData->match&&
     externalSampler.sampledViewport()==viewportTransform&&
     externalSampler.refreshOwnedCamera()){
+  ++cameraDiagnostics.localRefresh;
   externalPublished=externalSampler.state();externalPublished.sampledTick=externalWorldSource->key.tick;
   externalData=&externalPublished;mergeExternal();
  }
@@ -2022,12 +2032,12 @@ static void present(){auto frame=worker.get();
   overlaycomposition::Surface layer{overlaycompositor::World,10,frame->context,{frame->relative.x,frame->relative.y,frame->w,frame->h},true,255,std::move(pixels)};
   if(!renderUpgradeEnabled){
    const auto&wanted=renderupgrade::informationContext;
-   if(wanted.token!=context.token||!worldpresentation::cameraFrameCurrent(GetTickCount(),frame->tick,frame->context.cameraX,frame->context.cameraY,wanted.cameraX,wanted.cameraY)){overlaycompositor::host().hide(overlaycompositor::World);return;}
+   if(wanted.token!=context.token||!worldpresentation::cameraFrameCurrent(GetTickCount(),frame->tick,frame->context.cameraX,frame->context.cameraY,wanted.cameraX,wanted.cameraY)){if(wanted.token==context.token)++cameraDiagnostics.compositorDrop;overlaycompositor::host().hide(overlaycompositor::World);return;}
    // Camera and pixels become visible atomically: never clear a complete
    // layer merely because its replacement is still on the worker thread.
    overlaycompositor::host().replaceGroupAt(frame->context,{overlaycompositor::World},{std::move(layer)});
   }else{
-   if(frame->context.cameraX!=context.cameraX||frame->context.cameraY!=context.cameraY){overlaycompositor::host().hide(overlaycompositor::World);return;}
+   if(frame->context.cameraX!=context.cameraX||frame->context.cameraY!=context.cameraY){++cameraDiagnostics.compositorDrop;overlaycompositor::host().hide(overlaycompositor::World);return;}
    overlaycompositor::host().publish(std::move(layer));
   }
   if(IsWindowVisible(overlay))ShowWindow(overlay,SW_HIDE);
@@ -2039,7 +2049,7 @@ static void present(){auto frame=worker.get();
  if((shared&&shared->sidebarStatus==3)||(extra.sidebarEnabled&&extra.sidebarMode==1)){hideWorldOverlay();return;}
  // The fallback HWND cannot relocate a mixed overlay bitmap: reject
  // obsolete camera pixels rather than dragging stale markers over the map.
- if(frame->context.cameraX!=snap.cameraX||frame->context.cameraY!=snap.cameraY){hideWorldOverlay();return;}
+ if(frame->context.cameraX!=snap.cameraX||frame->context.cameraY!=snap.cameraY){++cameraDiagnostics.hwndDrop;hideWorldOverlay();return;}
  if((frame==displayed&&IsWindowVisible(overlay))||DWORD(GetTickCount()-frame->tick)>500)return;
  if(!surface.resize(frame->w,frame->h))return;memcpy(surface.bits,frame->pixels.data(),frame->pixels.size()*4);
  POINT origin{};ClientToScreen(game,&origin);origin.x+=frame->relative.x;origin.y+=frame->relative.y;POINT zero{};
@@ -2056,6 +2066,7 @@ static void paint(){
  ++displayCounters.paints;
  if(!overlayvisibility::visible()){unitpanelhost::panel.hide();renderupgrade::stop();worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchhost::suspend();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  {pipelineperf::Scope sample(timings,1);if(enabled||secondaryDisplayRequested())sampleExternal(GetTickCount());} // Display cadence is independent of command servicing.
+ {auto&d=cameraDiagnostics;if(snap.renderStatus==1){if(d.valid&&d.previousPid==pid&&d.previousMatch==snap.match&&(d.x!=snap.cameraX||d.y!=snap.cameraY))++d.observed;d.x=snap.cameraX;d.y=snap.cameraY;d.previousPid=pid;d.previousMatch=snap.match;d.valid=true;}else d.valid=false;logCameraDiagnostics(GetTickCount());}
  const auto displayState=external::display::inspect([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);});
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
  // The scene renderer validates its own live view. An unrelated information
@@ -2077,7 +2088,7 @@ static void paint(){
   if(!enabled||!foregroundGame()||snap.chat){unitpanelhost::panel.hide();worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();hideConstruction();clearPassengerDisplay();return;}
   // HOLD is allowed only while the retained bitmap still matches the
   // known camera. A changed camera must not keep the old world pixels.
-  if(worldrender::displayed&&(worldrender::displayed->context.cameraX!=snap.cameraX||worldrender::displayed->context.cameraY!=snap.cameraY))hideWorldOverlay();
+  if(worldrender::displayed&&(worldrender::displayed->context.cameraX!=snap.cameraX||worldrender::displayed->context.cameraY!=snap.cameraY)){++cameraDiagnostics.holdDrop;hideWorldOverlay();}
   else overlaycompositor::host().touch(overlaycompositor::World,uintptr_t(game),pid);
   overlaycompositor::host().touch(sidebaroverlay::Layer,uintptr_t(game),pid);return;
  }
