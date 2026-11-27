@@ -122,3 +122,16 @@ assert "sampling-admission pid=" in main
 for counter in ("syncGraphAttempts", "syncGraphCompleted", "boundaryAttempts", "boundaryCompleted", "reuseHits", "graphHostDemand", "graphDisplayOnly", "graphNoHost", "graphCatalogue", "graphRequestedPages"):
     assert counter in runtime and counter in main
 print("PASS production display split: Host VisualCache is live for display readers; passive overlays use boundary-only Runtime demand")
+
+# A failed metadata stamp must not immediately rewalk the same type arrays.
+# Preserve only the same-epoch catalogue, and discard it on identity change.
+sampler=(external/"tactical_sampler.h").read_text(encoding="utf-8")
+assert "catalogueDependencies_.capture(read_,stamp)" in sampler
+assert "if(fresh||!catalogueAt_||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100))" in sampler
+assert "if(epoch!=sharedMatch_){catalogueDependencies_.clear();catalogueReady_=false;catalogueHash_=0;catalogueAt_=0;state_.typeCount=0;" in sampler
+assert "house_=house;catalogueReady_=false;catalogueHash_=0;state_.typeCount=0;" in sampler
+catalogue_refresh=sampler.split("if(catalogueDependencies_.capture(read_,stamp))",1)[1].split("state_.status=1;",1)[0]
+assert catalogue_refresh.count("types();")==1
+assert "types();" not in catalogue_refresh.split("}else{",1)[1]
+assert "catalogueReady_=false;" in catalogue_refresh.split("}else{",1)[1]
+print("PASS ordinary catalogue missing-data retry does not rewalk the unavailable source")
