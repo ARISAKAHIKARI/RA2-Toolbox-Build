@@ -894,7 +894,14 @@ void hostReads(){
  CHECK(reader.beginWorldFrame(7,first));CHECK(reader.read(0x10000,&value,4));value=0xABCDEF01;
  const auto hits=reader.totalSealedPageCacheHits;CHECK(!reader.read(0x10FFE,&value,4)&&value==0xABCDEF01&&!reader.worldFrameComplete());
  CHECK(reader.totalSealedPageCacheHits==hits&&rpmCalls==before);
+ CHECK(reader.beginWorldFrame(7,first));
+ CHECK(reader.sealedPage(0x10000)==first->find(0x10000));
+ CHECK(!reader.sealedPage(0x10001)&&!reader.sealedPage(0x12000)&&!reader.sealedPage(0x13000));
+ CHECK(reader.worldFrameComplete()&&rpmCalls==before);
+ {external::WorldFrameScope nested(reader,7,second);CHECK(nested&&reader.sealedPage(0x10000)==second->find(0x10000));}
+ CHECK(reader.sealedPage(0x10000)==first->find(0x10000));
  reader.endWorldFrame();CHECK(reader.worldMissingReads>0);reader.begin();CHECK(!reader.worldMissingReads&&!reader.worldUnreadableReads&&!reader.worldInvalidReads&&!reader.worldFirstMissingAddress);
+ CHECK(!reader.sealedPage(0x10000));
  CHECK(reader.readLive(0x10000,&value,4));CHECK(rpmCalls==before+1);
  const auto oldConnection=reader.connectionIdentity();process->alive=false;process=std::make_shared<ProcessRecord>(ProcessRecord{GamePid,12346,true});external::ProcessReader reused;CHECK(reused.open(GamePid));CHECK(reused.generation()!=oldConnection->generation);CHECK(!reused.beginWorldFrame(7,first));reused.close();reader.close();gameMemory=nullptr;
 }

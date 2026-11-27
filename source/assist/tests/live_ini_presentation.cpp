@@ -13,10 +13,11 @@
 #include "fixtures/live_ini_baseline/live_ini.h"
 using namespace external::assets;
 static std::vector<uint8_t> memory(0x1000000);
-static uint64_t calls,bytes;static uint32_t failAt;
+static uint64_t calls,bytes,typeNameReads;static uint32_t failAt;
+constexpr uint32_t Type=0x720000;
 template<class T>static void put(uint32_t p,const T&v){assert(size_t(p)+sizeof v<=memory.size());std::memcpy(memory.data()+p,&v,sizeof v);}
 static void stringAt(uint32_t p,const char*value){std::memset(memory.data()+p,0,128);std::memcpy(memory.data()+p,value,std::strlen(value)+1);}
-struct Read {bool operator()(uint32_t at,void*out,size_t n)const{++calls;bytes+=n;if(at<0x10000||uint64_t(at)+n>memory.size()||(failAt>=at&&failAt<uint64_t(at)+n))return false;SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),memory.data()+at,out,n,&got)&&got==n;}
+struct Read {bool operator()(uint32_t at,void*out,size_t n)const{++calls;bytes+=n;if(at==Type+0x1F8)++typeNameReads;if(at<0x10000||uint64_t(at)+n>memory.size()||(failAt>=at&&failAt<uint64_t(at)+n))return false;SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),memory.data()+at,out,n,&got)&&got==n;}
  bool readFresh(uint32_t at,void*out,size_t n){return (*this)(at,out,n);}
  bool imagePath(wchar_t*,DWORD*){return false;}
 };
@@ -95,5 +96,16 @@ int main(){
  auto stats=assets.liveINIDiagnostics();check(stats.builds==2&&stats.failures==2&&stats.failureReuses==2);
  failAt=0;assets.beginPresentation(1249);check(assets.artINI.get("SECTION0000","PALETTE").empty()&&assets.rulesINI.get("SECTION0000","PALETTE").empty());stats=assets.liveINIDiagnostics();check(stats.builds==2&&stats.failures==2&&stats.failureReuses==4);
  assets.beginPresentation(1250);check(assets.artINI.get("SECTION0000","PALETTE")=="LIVE"&&assets.rulesINI.get("SECTION0000","PALETTE")=="LIVE");stats=assets.liveINIDiagnostics();check(stats.builds==4&&stats.failures==2&&stats.failureReuses==4);
- std::printf("PASS %u active assertions: exact fallback/empty semantics, default immediate retry, same-pass fresh root/header/generation invalidation, default next-presentation recovery, render cooldown and identity invalidation, key-field failure immediate retry. No game or GPU execution.\n",checks);
+ // An absent binding must not resolve the same type and section again. A
+ // genuine Image alias still inherits missing fields from the base section.
+ initialize(64);installKeys();external::cameraassets::Context<Read> bindings(reader);bindings.metadata();bindings.beginPresentation(1000);
+ const char*art="[DIRECT]\nPalette=DIRECTPAL\n[ORIGINAL]\nImage=ALIAS\nPalette=BASEPAL\nTerrainPalette=yes\n[ALIAS]\nPalette=ALIASPAL\n";
+ bindings.artINI.parse(std::vector<uint8_t>(art,art+std::strlen(art)));
+ stringAt(Type+0x1F8,"DIRECT");typeNameReads=0;
+ check(bindings.artValue(Type,"missing").empty()&&typeNameReads==1);
+ check(bindings.artValue(Type,"palette")=="DIRECTPAL");
+ stringAt(Type+0x1F8,"ORIGINAL");typeNameReads=0;
+ auto sections=bindings.artSections(Type);
+ check(sections.image=="ALIAS"&&bindings.artValue(sections,"palette")=="ALIASPAL"&&bindings.artYes(sections,"terrainpalette")&&typeNameReads==1);
+ std::printf("PASS %u active assertions: exact fallback/empty semantics, render cooldown, root/header/generation invalidation, key retry and shared asset binding resolution. No game or GPU execution.\n",checks);
 }

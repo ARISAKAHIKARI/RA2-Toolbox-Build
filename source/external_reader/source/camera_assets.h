@@ -147,9 +147,21 @@ void metadata(){uint64_t revision=files.revision();uint64_t generation=revision^
  if(files.load("RULESMD.INI",b)||files.load("RULES.INI",b))rulesINI.parse(b);
 }
 std::string artName(uint32_t type){metadata();std::string stem=text(type+0x1F8,25);if(stem.empty()){auto id=text(type+0x24,24);stem=rulesINI.get(id,"IMAGE");if(stem.empty())stem=id;}return external::assets::name(stem);}
-std::string imageName(uint32_t type){auto stem=artName(type),image=artINI.get(stem,"IMAGE");return !image.empty()&&external::assets::safe(image)?external::assets::name(image):stem;}
-std::string artValue(uint32_t type,const std::string&key){auto image=imageName(type),value=artINI.get(image,key);return value.empty()?artINI.get(artName(type),key):value;}
-bool artYes(uint32_t type,const std::string&key){auto v=external::assets::name(artValue(type,key));return v=="YES"||v=="TRUE"||v=="1";}
+struct ArtSections {std::string base,image;};
+ArtSections artSections(uint32_t type){
+ auto base=artName(type);auto image=artINI.get(base,"IMAGE");
+ image=!image.empty()&&external::assets::safe(image)?external::assets::name(image):base;
+ return {std::move(base),std::move(image)};
+}
+std::string imageName(uint32_t type){return artSections(type).image;}
+std::string artValue(const ArtSections&sections,const std::string&key){
+ auto value=artINI.get(sections.image,key);
+ if(value.empty()&&sections.image!=sections.base)return artINI.get(sections.base,key);
+ return value;
+}
+std::string artValue(uint32_t type,const std::string&key){return artValue(artSections(type),key);}
+bool artYes(const ArtSections&sections,const std::string&key){auto v=external::assets::name(artValue(sections,key));return v=="YES"||v=="TRUE"||v=="1";}
+bool artYes(uint32_t type,const std::string&key){return artYes(artSections(type),key);}
 bool paletteFile(const std::string&name,std::array<uint32_t,256>&out){lastPaletteLive_=false;std::vector<uint8_t>b;if(!files.load(name,b)){failure="palette-not-found:"+name;return false;}if(!external::assets::pal(b,out,paletteRange_)){failure="palette-format:"+name;return false;}return true;}
 void recoverPalettePrecision(const char*source,std::array<uint32_t,256>&live){
  if(!colorPrecision_||paletteRange_!=pixelupgrade::PaletteRange::FullRGB)return;
@@ -182,11 +194,11 @@ bool convertedPalette(uint32_t convert,std::array<uint32_t,256>&out){
 }
 bool palette(bool iso,std::array<uint32_t,256>&out){lastPaletteLive_=false;if(iso&&external::terrain::palette(read,0xABBED0,out)){lastPaletteLive_=true;terrainPaletteLive_=true;return true;}if(iso&&terrainPaletteLive_)return false;std::vector<uint8_t> bytes;std::string n=iso?theater(68,10):"UNIT"+theater(78,3);if(n.empty()){failure="palette-theater-name";return false;}n+=".PAL";if(!files.load(n,bytes)){failure="palette-not-found:"+n;return false;}if(!external::assets::pal(bytes,out,paletteRange_)){failure="palette-format:"+n;return false;}return true;}
 std::vector<std::string> spriteNames(uint32_t type,uint32_t pointer,bool overlay=false,bool buildingPart=false,uint32_t parentType=0){
- auto live=external::assets::shapeName(resourceRead,pointer);auto stem=imageName(type);
- bool seasonal=(word(type+0x22C)&255)||artYes(type,"THEATER");
- bool newTheater=(word(type+0x237)&255)||artYes(type,"NEWTHEATER");
- if(parentType>=0x10000)newTheater|=(word(parentType+0x237)&255)||artYes(parentType,"NEWTHEATER");
- return external::assets::spriteNames(stem,live,theater(78,3),theater(86,1),seasonal,newTheater,overlay,buildingPart);
+ auto live=external::assets::shapeName(resourceRead,pointer);const auto sections=artSections(type);
+ bool seasonal=(word(type+0x22C)&255)||artYes(sections,"THEATER");
+ bool newTheater=(word(type+0x237)&255)||artYes(sections,"NEWTHEATER");
+ if(parentType>=0x10000&&parentType!=type)newTheater|=(word(parentType+0x237)&255)||artYes(parentType,"NEWTHEATER");
+ return external::assets::spriteNames(sections.image,live,theater(78,3),theater(86,1),seasonal,newTheater,overlay,buildingPart);
 }
 bool shapeBytes(uint32_t type,uint32_t pointer,std::vector<uint8_t>&bytes,std::string&file,bool overlay=false,bool buildingPart=false,uint32_t parentType=0){
  auto names=spriteNames(type,pointer,overlay,buildingPart,parentType);for(const auto&n:names)if(files.load(n,bytes)){file=n;return true;}
@@ -211,10 +223,10 @@ bool sampleSpritePalette(uint32_t type,const std::string&file,bool overlay,uint3
   // converter for SpawnsTiberium. This is separate from ore/gem overlays.
   return paletteFile("UNITSNO.PAL",out);
  }
- metadata();auto custom=artValue(type,"PALETTE");if(!overlay&&!terrain&&custom.empty())custom=text(type+0xDD0,32);
+ const auto sections=artSections(type);auto custom=artValue(sections,"PALETTE");if(!overlay&&!terrain&&custom.empty())custom=text(type+0xDD0,32);
  auto id=text(type+0x24,24);bool resource=overlay&&(rulesINI.yes(id,"TIBERIUM")||rulesINI.yes(id,"ISVEINS")||rulesINI.yes(id,"ISVEINHOLEMONSTER"));
  bool seasonal=file.size()>4&&external::assets::name(file.substr(file.size()-4))!=".SHP";
- bool iso=artYes(type,"TERRAINPALETTE")||seasonal||terrain;
+ bool iso=artYes(sections,"TERRAINPALETTE")||seasonal||terrain;
  // A type-specific live scheme already contains its custom palette and remap.
  // The global unit scheme cannot substitute for a missing custom scheme.
  if(!overlay&&!iso&&(custom.empty()||word(type+0xDF0))&&external::voxel::palette(read,type,owner,out)){lastPaletteLive_=true;return true;}
@@ -487,10 +499,10 @@ bool captureProjectile(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
 bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const external::visual::Pose*expected=nullptr,int displayKind=-1,uint32_t displayOwner=0){
  failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;external::GameView game(read);const int actualKind=game.kind(p);const uint32_t actualType=game.type(p,actualKind),actualOwner=word(p+0x21C);if(actualKind<0||(displayKind<0&&actualType!=type))return false;next.kind=displayKind<0?actualKind:displayKind;next.type=type;uint32_t owner=displayKind<0?actualOwner:displayOwner;next.object=p;next.id=id;next.owner=owner;
  bool commitBuildingMask=false;uint64_t nextMaskRevision=0;
- metadata();next.shadow=!rulesINI.yes(text(type+0x24,24),"NOSHADOW");next.flat=artYes(type,"FLAT");
+ const auto sections=artSections(type);next.shadow=!rulesINI.yes(text(type+0x24,24),"NOSHADOW");next.flat=artYes(sections,"FLAT");
  if(next.kind==3){
-  auto foundation=external::assets::name(artValue(type,"FOUNDATION"));int fw=1,fh=1;
-  if(foundation=="CUSTOM"){fw=integer(artValue(type,"FOUNDATION.X"),1);fh=integer(artValue(type,"FOUNDATION.Y"),1);}else if(sscanf(foundation.c_str(),"%dX%d",&fw,&fh)!=2)fw=fh=1;
+  auto foundation=external::assets::name(artValue(sections,"FOUNDATION"));int fw=1,fh=1;
+  if(foundation=="CUSTOM"){fw=integer(artValue(sections,"FOUNDATION.X"),1);fh=integer(artValue(sections,"FOUNDATION.Y"),1);}else if(sscanf(foundation.c_str(),"%dX%d",&fw,&fh)!=2)fw=fh=1;
   // A missing sealed page is not a 1x1 foundation or an INI override. These
   // values survive in the actor/raster caches, so require their complete
   // native binding before publishing art. Custom/extended enums still use
@@ -502,7 +514,7 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const extern
   }
   next.fw=std::clamp(fw,1,32);next.fh=std::clamp(fh,1,32);
   if(!read(type+0x1530,&next.moveX,4)||!read(type+0x1534,&next.moveY,4)){failure="building-z-shape-move";return false;}
-  next.moveX=std::clamp(next.moveX,-4096,4096);next.moveY=std::clamp(next.moveY,-4096,4096);next.zAdjust=integer(artValue(type,"NORMALZADJUST"));
+  next.moveX=std::clamp(next.moveX,-4096,4096);next.moveY=std::clamp(next.moveY,-4096,4096);next.zAdjust=integer(artValue(sections,"NORMALZADJUST"));
   int liveAdjust=0;if(!read(type+0x1520,&liveAdjust,4)){failure="building-z-adjust";return false;}if(std::abs(int64_t(liveAdjust))<=8192)next.zAdjust=liveAdjust;
   if(next.fw<8&&!next.flat){ // native 43D787 skips the cone for width >= 8
    nextMaskRevision=files.revision();

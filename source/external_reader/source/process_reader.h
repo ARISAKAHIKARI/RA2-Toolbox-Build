@@ -45,16 +45,18 @@ class ProcessReader : public ReaderDiagnostics {
   const uint32_t index=page>>12;const uint64_t mask=uint64_t(1)<<(index&63);
   if(!(worldDemandBits_[index>>6]&mask)){worldDemandBits_[index>>6]|=mask;worldDemands_.push_back(page);}
  }
+ const worldframe::Page* fullWorldPage(uint32_t base){
+  if(lastSealedPage_&&lastSealedPage_->address==base){++totalSealedPageCacheHits;return lastSealedPage_;}
+  requestWorldPage(base);
+  const auto*page=worldFrame_->find(base);
+  if(!page||!page->full)return nullptr;
+  lastSealedPage_=page;return page;
+ }
  bool frameRead(uint32_t address,void*out,size_t size,bool optional=false){
   if(!out||!worldframe::range(address,size)){++errors;if(!optional){worldComplete_=false;++worldInvalidReads;}return false;}
   const uint32_t base=address&~4095u;const size_t offset=address&4095u;
   if(size<=worldframe::PageSize-offset){
-   if(lastSealedPage_&&lastSealedPage_->address==base){
-    std::memcpy(out,lastSealedPage_->bytes.data()+offset,size);++pageHits;++totalSealedHits;++totalSealedPageCacheHits;return true;
-   }
-   requestWorldPage(base);
-   const auto*page=worldFrame_->find(base);
-   if(page&&page->full){lastSealedPage_=page;std::memcpy(out,page->bytes.data()+offset,size);++pageHits;++totalSealedHits;return true;}
+   if(const auto*page=fullWorldPage(base)){std::memcpy(out,page->bytes.data()+offset,size);++pageHits;++totalSealedHits;return true;}
   }else{
    for(uint32_t page=base;uint64_t(page)<uint64_t(address)+size;page+=4096)requestWorldPage(page);
   }
@@ -189,6 +191,12 @@ public:
  void retainWorldPages(const std::vector<uint32_t>&pages){
   if(!worldFrame_)return;
   for(uint32_t page:pages)if(!(page&4095u)&&worldframe::range(page,worldframe::PageSize))requestWorldPage(page);
+ }
+ // Borrow a fully observed page from this exact scope and renew its demand.
+ // Missing or partial pages still need the caller's ordinary checked reads.
+ const worldframe::Page* sealedPage(uint32_t base){
+  if(!worldFrame_||(base&(worldframe::PageSize-1))||!worldframe::range(base,worldframe::PageSize))return nullptr;
+  return fullWorldPage(base);
  }
  bool worldFrameActive()const{return bool(worldFrame_);}
  void setWorldDemand(uint32_t demand){worldDemand_=demand|worldframe::Base;}

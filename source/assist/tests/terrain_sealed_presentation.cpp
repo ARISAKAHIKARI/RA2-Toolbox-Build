@@ -21,10 +21,13 @@ struct Memory {
  }
 };
 struct Reader {
- worldframe::Token source;uint64_t reads=0;bool complete=true;
+ worldframe::Token source;uint64_t reads=0;bool complete=true,useSealedPages=true;
  void begin(worldframe::Token next){source=std::move(next);reads=0;complete=true;}
  worldframe::Token worldFrameToken()const{return source;}
  bool worldFrameComplete()const{return source&&complete;}
+ const worldframe::Page* sealedPage(uint32_t base)const{
+  const auto*page=source&&useSealedPages?source->find(base):nullptr;return page&&page->full?page:nullptr;
+ }
  bool read(uint32_t at,void*out,size_t n){++reads;const bool ok=source&&source->read(at,out,n);complete&=ok;return ok;}
  bool optional(uint32_t at,void*out,size_t n){++reads;const bool ok=source&&source->read(at,out,n);if(!ok&&(!source||!source->observed(at,n)))complete=false;return ok;}
 };
@@ -62,7 +65,9 @@ int main(int argc,char**argv){
  std::setvbuf(stdout,nullptr,_IONBF,0);
  const bool baseline=argc>1&&std::strcmp(argv[1],"--baseline")==0;
  Memory memory;memory.put(0xA8B230,Scenario);memory.put(Scenario+0x352C,100);memory.put(Scenario+0x3534,std::array<int,3>{{100,100,100}});
- memory.put(Convert,uint32_t(0x7E5358));memory.put(Convert+4,2);memory.put(Convert+0x16C,1);memory.put(Convert+0x170,Rows);memory.put(Convert+0x198,std::array<int,3>{{1000,1000,1000}});memory.put(Rows+2,uint16_t(0xffff));memory.put(0xA8ED84,1);
+ memory.put(Convert,uint32_t(0x7E5358));memory.put(Convert+4,2);memory.put(Convert+0x16C,5);memory.put(Convert+0x170,Rows);memory.put(Convert+0x198,std::array<int,3>{{1000,1000,1000}});
+ for(unsigned row=0;row<5;++row)memory.put(Rows+row*512+2,uint16_t(0xffff));
+ memory.put(Rows+512+2,uint16_t(0x001f));memory.put(0xA8ED84,1);
  auto terrain=std::make_shared<radar::Terrain>();auto&g=terrain->geo;g.width=g.height=100;g.offsetX=g.offsetY=100;g.rw=g.rh=g.rawWidth=g.rawHeight=200;g.factor=1;g.cells=0x100000;g.house=0x400000;g.count=512*512;g.bounds={100,100,0,0,100,100};assert(g.valid());
  terrain->reveal=true;terrain->colors.resize(512*512);terrain->baseColors.resize(512*512);terrain->art.resize(512*512);
  unsigned count=0;std::vector<size_t>indices;
@@ -77,6 +82,8 @@ int main(int argc,char**argv){
  lighting::State fallback;
  reader.begin(frame.sourceFrame);auto normal=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false);assert(reader.reads==4&&reader.worldFrameComplete());
  reader.begin(frame.sourceFrame);auto fast=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false,nullptr,true);assert(reader.reads==2&&fast==normal&&reader.worldFrameComplete());
+ lighting::CellLightFields observed;
+ assert(lighting::sealedCell(read,Cells,observed,0)&&observed.valid()&&observed.converter==Convert&&observed.intensity[1]==normal.intensity&&reader.reads==2);
  // The gap between the scale and intensity fields may not be observed.
  // A partial page must use the original narrow reads without poisoning
  // completeness or requesting padding that is unrelated to terrain light.
@@ -102,7 +109,7 @@ int main(int argc,char**argv){
  for(int n=0;n<8;++n){auto image=draw();assert(image&&image->pixels==initialPixels&&reader.worldFrameComplete());lightCells+=renderer.stageStats().terrainLightCells;geometry+=renderer.stageStats().terrainGeometryChecks;readCalls+=reader.reads;terrainMs+=renderer.stageStats().terrainMs;}
  std::printf("sealed_whole_map: cells=10000 repeats=8 light_cells_per_draw=%llu geometry_per_draw=%llu read_calls_per_draw=%llu terrain_mean_ms=%.6f hash=%016llx\n",(unsigned long long)(lightCells/8),(unsigned long long)(geometry/8),(unsigned long long)(readCalls/8),terrainMs/8,(unsigned long long)hash(*initial));
  // Same engine frame and converter/data addresses, but a new sealed source.
- memory.put(Rows+2,uint16_t(0x07e0));frame.sourceFrame=memory.seal(2);reader.begin(frame.sourceFrame);
+ memory.put(Rows+2,uint16_t(0x07e0));memory.put(Rows+2*512+2,uint16_t(0x07e0));frame.sourceFrame=memory.seal(2);reader.begin(frame.sourceFrame);
  lighting::State palette;lighting::converterMetadata(read,Convert,palette);assert(palette.table);
  std::printf("same_frame_new_serial_palette: expected=07e0 actual=%04x complete=%d\n",unsigned((*palette.table)[1]),reader.worldFrameComplete());
  if(baseline)return 0;
@@ -110,23 +117,37 @@ int main(int argc,char**argv){
  auto changed=settle();assert(changed->pixels!=initialPixels&&reader.worldFrameComplete());
  // Identical bytes in a fresh publication still require light verification,
  // but must not allocate or copy an unused full-map array of Paint objects.
+ frame.sourceFrame=memory.seal(20);reader.useSealedPages=false;auto narrowScene=draw();const auto narrowCalls=reader.reads;
+ assert(narrowScene&&narrowScene->pixels==changed->pixels&&narrowCalls>=20000&&reader.worldFrameComplete());
+ reader.useSealedPages=true;
  frame.sourceFrame=memory.seal(21);auto unchanged=draw();
  assert(unchanged&&unchanged->pixels==changed->pixels&&reader.worldFrameComplete());
- assert(renderer.stageStats().terrainLightCells==10000&&renderer.stageStats().terrainPreparedSlots==0&&renderer.stageStats().terrainProbeCopies==0);
- assert(renderer.stageStats().terrainLightReuses==10000);
- std::puts("PASS new unchanged publication: exact pixels, zero terrain probe scratch, 10000 reused derived signatures");
+ assert(renderer.stageStats().terrainLightCells==0&&renderer.stageStats().terrainPreparedSlots==0&&renderer.stageStats().terrainProbeCopies==0);
+ assert(renderer.stageStats().terrainSealedCells==10000&&renderer.stageStats().terrainLightReuses==10000&&reader.reads<64);
+ std::printf("PASS new unchanged publication: exact pixels, 10000 reused cell lights, checked reader calls %llu -> %llu, zero probe scratch\n",(unsigned long long)narrowCalls,(unsigned long long)reader.reads);
  // A changed cell must still trigger a real rebuild, not the stable shortcut.
  memory.put(Cells+0x10A,std::array<int16_t,3>{{1000,600,1000}});
- frame.sourceFrame=memory.seal(22);draw();assert(renderer.stageStats().terrainPreparedSlots>0&&renderer.stageStats().terrainLightReuses<renderer.stageStats().terrainLightCells);
- settle();memory.put(Cells+0x10A,std::array<int16_t,3>{{1000,1000,1000}});
+ frame.sourceFrame=memory.seal(22);draw();assert(renderer.stageStats().terrainPreparedSlots>0&&renderer.stageStats().terrainLightCells==1);
+ auto relit=settle();assert(relit->pixels!=changed->pixels);memory.put(Cells+0x10A,std::array<int16_t,3>{{1000,1000,1000}});
  frame.sourceFrame=memory.seal(23);settle();
+ // If a new publication changes a cell already painted in a previous chunk,
+ // the last chunk must not publish a whole-map scene with stale lighting.
+ Renderer interrupted;interrupted.outputSized(true);
+ auto interruptedDraw=[&]{reader.begin(frame.sourceFrame);++frame.tick;return interrupted.render(frame,600,300,read,assets,{},1,false,true,false,true);};
+ assert(!interruptedDraw());
+ memory.put(Cells+0x10A,std::array<int16_t,3>{{1000,600,1000}});frame.sourceFrame=memory.seal(24);
+ assert(!interruptedDraw()&&!interruptedDraw()&&reader.worldFrameComplete());
+ std::shared_ptr<const radar::Scene> recovered;
+ for(int n=0;n<12&&!recovered;++n)recovered=interruptedDraw();
+ assert(recovered&&recovered->pixels==relit->pixels);
+ memory.put(Cells+0x10A,std::array<int16_t,3>{{1000,1000,1000}});
  // A cached table must never supply missing bytes to another publication.
  frame.sourceFrame=memory.seal(3,1,1,Rows);reader.begin(frame.sourceFrame);palette={};lighting::converterMetadata(read,Convert,palette);assert(!palette.table&&!reader.worldFrameComplete());
- for(int n=0;n<2;++n){draw();assert(renderer.stageStats().terrainLightCells>0&&!reader.worldFrameComplete());}
+ for(int n=0;n<2;++n){draw();assert(renderer.stageStats().terrainSealedCells>0&&!reader.worldFrameComplete());}
  frame.sourceFrame=memory.seal(4);changed=settle();assert(reader.worldFrameComplete());draw();assert(renderer.stageStats().terrainLightCells==0);
  // Token/world identity, terrain source, resource/palette, precision and crop
  // changes cannot inherit the prior verification, even at the same frame.
- auto requireWork=[&]{auto out=draw();assert(renderer.stageStats().terrainLightCells>0);settle();assert(reader.worldFrameComplete());return out;};
+ auto requireWork=[&]{auto out=draw();assert(renderer.stageStats().terrainSealedCells>0);settle();assert(reader.worldFrameComplete());return out;};
  frame.sourceFrame=memory.seal(1,1,2);requireWork();
  auto altered=std::make_shared<radar::Terrain>(*terrain);altered->art[indices[100]].level=2;frame.terrain=altered;requireWork();
  ++assets.epoch;requireWork();++assets.paletteEpoch;requireWork();

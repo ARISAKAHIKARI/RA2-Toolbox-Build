@@ -79,7 +79,7 @@ template<class Reader>class SharedSceneProvider {
  };
  struct Demand {uint32_t tick=0;uint8_t mask=0;bool present=false,real=false;};
  std::mutex producerMutex_;Reader*reader_=nullptr;Read read_{this};Sampler<Read>sampler_{read_};
- Key attempted_{};bool haveAttempt_=false;std::array<Demand,unsigned(SceneConsumer::Count)>demands_{};
+ Key attempted_{};bool haveAttempt_=false,attemptedReal_=false;std::array<Demand,unsigned(SceneConsumer::Count)>demands_{};
  SceneBank&bank_;
 public:
  struct Statistics {uint64_t attempts=0,captures=0,reused=0,deferred=0,failed=0;};
@@ -121,19 +121,18 @@ public:
      uint32_t(now-(bank->observationTick?bank->observationTick:bank->tick))<=350){
    ++statistics_.reused;return bank;
   }
-  // Presentation policy changes may decode the SAME sealed bytes again.
-  // Ordinary config/view changes may not silently
-  // add a second capture when a late consumer requests more effect coverage.
-  if(haveAttempt_&&attempted_.same(key)){++statistics_.deferred;return {};}
-  attempted_=key;haveAttempt_=true;++statistics_.attempts;
   uint8_t mask=0;bool full=false;
   for(const auto&item:demands_)if(item.present&&uint32_t(now-item.tick)<=500){mask|=item.mask;full|=item.real;}
+  // A 2D diagram can arrive first while the raw source is paused. Admit one
+  // upgrade to real terrain on those same sealed bytes so Watch can open.
+  // On a large map an admitted cold build can also finish its remaining
+  // chunks from that source. Failed reads discard pending terrain.
+  const bool continuing=token&&sampler_.preparingTerrain()&&!sampler_.hasTerrain()&&full==attemptedReal_;
+  if(haveAttempt_&&attempted_.same(key)&&(!full||attemptedReal_)&&!continuing){++statistics_.deferred;return {};}
+  if(haveAttempt_&&full!=attemptedReal_)sampler_.reset();
+  attempted_=key;haveAttempt_=true;attemptedReal_=full;++statistics_.attempts;
   // One canonical overview domain works for all cameras. The original Radar
   // backing remains in Geometry::source* for live world-identity guards.
-  if(sampler_.hasTerrain()){
-   auto old=sampler_.terrainFrame(now);
-   if(old.terrain&&bool(!old.terrain->art.empty())!=full)sampler_.reset();
-  }
   sampler_.wholeWorld(true);sampler_.effects(mask&1,mask&2);
   if(!sampler_.step(reveal,16384,full,true,false,true)||!completeFrame(reader)){
    sampler_.discardIncomplete();++statistics_.failed;return {};

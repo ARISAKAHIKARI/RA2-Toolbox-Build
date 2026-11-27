@@ -10,8 +10,17 @@ on:
       - 'source/assist/source/command_cursor_host.h'
       - 'source/external_reader/source/process_reader.h'
       - 'source/external_reader/source/shared_scene.h'
+      - 'source/external_reader/source/radar_scene.h'
+      - 'source/external_reader/source/scene_lighting.h'
+      - 'source/external_reader/source/live_ini.h'
+      - 'source/external_reader/source/camera_assets.h'
       - 'source/assist/tests/world_frame_core.cpp'
       - 'source/assist/tests/display_capture_offthread.cpp'
+      - 'source/assist/tests/shared_scene_sampling.cpp'
+      - 'source/assist/tests/scene_lighting.cpp'
+      - 'source/assist/tests/terrain_sealed_presentation.cpp'
+      - 'source/assist/tests/live_ini_presentation.cpp'
+      - 'source/tools/test_live_ini_presentation.py'
       - '.github/workflows/display-only-capture.yml'
   workflow_dispatch:
 permissions:
@@ -38,6 +47,15 @@ jobs:
           python source/assist/tests/world_frame_core_test.py | tee checks/core.log
           python source/assist/tests/world_frame_retention.py --out checks/retention | tee checks/retention.log
           python source/assist/tests/tactical_frame_sampling.py --out checks/tactical | tee checks/tactical.log
+      - name: Exercise sealed terrain lighting and paused Watch recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG -c source/third_party/xbrz/xbrz.cpp -o checks/xbrz.o
+          for fixture in scene_lighting terrain_sealed_presentation shared_scene_sampling; do
+            g++ -std=c++17 -O2 -UNDEBUG -pthread "source/assist/tests/$fixture.cpp" checks/xbrz.o -ldl -o "checks/$fixture"
+            "checks/$fixture" | tee "checks/$fixture.log"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -61,6 +79,12 @@ jobs:
           Expand-Archive zig.zip zig
           Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
           python -m pip install Pillow==11.3.0
+      - name: Verify live INI retry and root identity against local Win32 reads
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/tools/test_live_ini_presentation.py --zig "$ZIG" --build-dir checks/live-ini
       - name: Build x64 Host and x86 Runtime, check exports and ABI
         shell: bash
         run: |

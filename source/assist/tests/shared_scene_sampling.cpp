@@ -130,6 +130,15 @@ int main(){
  radar::SceneBank onlyBank;radar::SharedSceneProvider<Reader>only(onlyBank);Reader mini(first),watchReader(first);
  auto miniFrame=acquire(only,mini,radar::SceneConsumer::Minimap,100);assert(miniFrame&&acquire(only,watchReader,radar::SceneConsumer::Watch,100)==miniFrame);
  assert(only.statistics().captures==1&&only.statistics().attempts==1&&mini.liveReads+watchReader.liveReads==0);
+ // Opening Watch on a paused source should upgrade a 2D minimap once.
+ radar::SceneBank pausedBank;radar::SharedSceneProvider<Reader>paused(pausedBank);
+ Reader diagram(first),watchLater(first);
+ auto mapOnly=paused.acquire(diagram,1,3,1,100,radar::SceneConsumer::Minimap,false,false,false);
+ assert(mapOnly&&mapOnly->terrain->art.empty());
+ auto upgraded=acquire(paused,watchLater,radar::SceneConsumer::Watch,600);
+ assert(upgraded&&!upgraded->terrain->art.empty()&&upgraded->sourceFrame==first&&upgraded->observationTick==100);
+ assert(acquire(paused,watchLater,radar::SceneConsumer::Watch,601)==upgraded);
+ assert(paused.statistics().attempts==2&&paused.statistics().captures==2&&diagram.liveReads+watchLater.liveReads==0);
  // Missing dynamic input is deferred without RPM fallback or a same-frame
  // retry storm. A later complete raw publication is the recovery boundary.
  radar::SceneBank failedBank;radar::SharedSceneProvider<Reader>failed(failedBank);auto missing=token(4,12,5200,Body&~4095u);Reader incomplete(missing),again(missing);
@@ -170,5 +179,28 @@ int main(){
  assert(!acquire(visualProvider,old,radar::SceneConsumer::Watch,6002));
  Reader parent(control);{radar::FrameScope child(parent,3,va,worldframe::Resources);assert(child);parent.markWorldIncomplete();}
  assert(parent.current==control&&parent.complete);
- std::puts("PASS sealed shared scene: three concurrent consumers, one capture, no live fallback, whole-world north edge, common body/camera anchor, main-disabled producer, paused timestamp, late coverage, old serial/rewind, missing-input recovery and strict/optional failures");
+
+ // A paused cold start with more than one terrain chunk must finish even
+ // when the first minimap attempt was still building its diagram.
+ setup();memory.resize(0x1800000);
+ const mapbounds::Bounds large{160,160,0,0,160,160};
+ put(radar::Map+0xF4,std::array<int,6>{{160,160,0,0,160,160}});
+ unsigned placed=0;
+ for(int y=1;y<512&&placed<17000;++y)for(int x=1;x<512&&placed<17000;++x){
+  if(!large.legal(x,y))continue;
+  const uint32_t address=0xC00000+placed*0x180;
+  put(Cells+uint32_t(y*512+x)*4,address);
+  put(address+0x24,std::array<int16_t,2>{{int16_t(x),int16_t(y)}});
+  put(address+0x44,-1);put(address+0x48,-1);
+  ++placed;
+ }
+ assert(placed==17000);
+ auto big=token(30,22,6200);Reader bigDiagram(big),bigWatch(big);
+ radar::SceneBank bigBank;radar::SharedSceneProvider<Reader>bigProvider(bigBank);
+ assert(!bigProvider.acquire(bigDiagram,1,3,1,6200,radar::SceneConsumer::Minimap,false,false,false)&&bigDiagram.complete);
+ assert(!acquire(bigProvider,bigWatch,radar::SceneConsumer::Watch,6201)&&bigWatch.complete);
+ auto largeScene=acquire(bigProvider,bigWatch,radar::SceneConsumer::Watch,6202);
+ assert(largeScene&&largeScene->sourceFrame==big&&largeScene->observationTick==6200&&largeScene->terrain->art.size()==512*512);
+ assert(bigProvider.statistics().attempts==3&&bigProvider.statistics().captures==1&&bigDiagram.liveReads+bigWatch.liveReads==0);
+ std::puts("PASS sealed shared scene: concurrent consumers, no live fallback, common body/camera anchor, paused diagram upgrade and large-map completion, late effects, old serial/rewind, missing-input recovery and strict/optional failures");
 }
