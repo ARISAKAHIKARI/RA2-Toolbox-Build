@@ -70,6 +70,17 @@ int main(){
   if(variant==2){ini.clear();check(lookup(ini));}
   check(ini.indexDiagnostics().builds==2);
  }
+ // Coalesced render root probes preserve exact fallback and invalidation.
+ initialize(64);installKeys();failAt=Names+63*0x80;LiveINI batched;batched.beginPresentation(1000,250);check(!lookup(batched));
+ calls=0;check(!lookup(batched));check(calls==1);
+ failAt=Object+0x10;calls=0;check(!lookup(batched));check(calls==3); // unreadable gap, narrow fields remain readable
+ failAt=0;put(Object+0x28,Header{Entries,63,64});check(lookup(batched));
+ calls=0;check(lookup(batched));check(calls==2); // initial and final identity checks
+ put(Object,uint32_t(0));check(!lookup(batched));put(Object,uint32_t(0x7E1AF4));check(lookup(batched));
+ put(Object+0x28,Header{Entries,65,64});check(!lookup(batched));
+ put(Object+0x28,Header{Entries,63,64});check(lookup(batched));
+ failAt=Object+0x28;check(!lookup(batched));failAt=0;check(lookup(batched));
+ initialize(64);installKeys();LiveINI narrow;narrow.beginPresentation();check(lookup(narrow));calls=0;check(lookup(narrow));check(calls==4);
  // Missing key/section and explicit-empty fallback rules stay unchanged.
  const char*disk="[SECTION0000]\nPALETTE=DISK\nMISSING=FILE\n[MISSINGSECTION]\nPALETTE=DISKONLY\n";std::vector<uint8_t>contents(disk,disk+std::strlen(disk));
  for(bool empty:{false,true}){initialize(64);installKeys(empty?" \t ":"  LIVE \r\n");BeforeEffectiveINI<Read> old(Read{},Object);EffectiveINI<Read> current(Read{},Object);old.parse(contents);current.parse(contents);old.generation(1);current.generation(1);current.beginPresentation();
