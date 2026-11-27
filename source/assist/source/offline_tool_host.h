@@ -21,13 +21,13 @@ static bool serviceOfflineToolCursor(){
  if(!shared||!shared->offlineToolMask||!offlinetools::offline(snap.session))return false;
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
  const auto mode=offlinetools::current(read);if(!mode)return false;
- commandcursor::clear();
- if(!(shared->offlineToolMask&uint32_t(mode)))return true;
+ auto clear=[](){commandcursor::clear();return true;};
+ if(!readonly::commands(shared)||shared->viewZoomBusy||!(shared->offlineToolMask&uint32_t(mode)))return clear();
  POINT screen{},client{};RECT r{};nativeviewhost::Transform transform{};DWORD targetPid=0;
- if(!GetCursorPos(&screen)||!GetClientRect(game,&r)||!nativeviewhost::sampleTransform(shared,transform))return true;
- GetWindowThreadProcessId(WindowFromPoint(screen),&targetPid);if(targetPid!=pid)return true;
- client=screen;if(!ScreenToClient(game,&client))return true;
- offlinetools::Point p{};if(!offlineToolPoint(p,client,r.right,r.bottom,transform.generation,mode))return true;
+ if(!GetCursorPos(&screen)||!GetClientRect(game,&r)||!nativeviewhost::sampleTransform(shared,transform))return clear();
+ GetWindowThreadProcessId(WindowFromPoint(screen),&targetPid);if(targetPid!=pid)return clear();
+ client=screen;if(!ScreenToClient(game,&client))return clear();
+ offlinetools::Point p{};if(!offlineToolPoint(p,client,r.right,r.bottom,transform.generation,mode))return clear();
  static offlinetools::Point last{};static DWORD submitted=0;
  const auto now=GetTickCount();
  if(!offlinetools::samePoint(last,p)||DWORD(now-submitted)>=32){
@@ -35,18 +35,20 @@ static bool serviceOfflineToolCursor(){
    InterlockedIncrement(&shared->offlineToolPointSeq);shared->offlineToolPoint=p;MemoryBarrier();InterlockedIncrement(&shared->offlineToolPointSeq);}
  }
  offlinetools::Hint h{};
- if(offlineToolHint(p,h))commandcursor::publish({pid,p.match,now,0,mode==offlinetools::Repair?commandcursor::OfflineRepair:commandcursor::OfflineSell,screen.x,screen.y});
+ if(!offlineToolHint(p,h))return clear();
+ commandcursor::publish({pid,p.match,now,0,mode==offlinetools::Repair?commandcursor::OfflineRepair:commandcursor::OfflineSell,screen.x,screen.y});
  return true;
 }
 // Consume only a real left down/up pair matching the same validated hover
 // target and camera. Native input is never swallowed by this feature.
 static bool captureOfflineToolClick(const gameinput::PointerPress&e,const nativeviewhost::Transform&viewport){
  static offlinetools::Point down{};static offlinetools::Hint target{};static uint32_t serial=0,revision=0;static bool armed=false;
- if(e.operation!=6&&e.operation!=7){armed=false;return false;}
+ if(!shared||!shared->offlineToolMask||!offlinetools::offline(snap.session)){armed=false;return false;}
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
  const auto mode=offlinetools::current(read);
  if(!mode){armed=false;return false;}
- if(!shared||!(shared->offlineToolMask&uint32_t(mode))){armed=false;return true;}
+ if(e.operation!=6&&e.operation!=7){armed=false;return true;}
+ if(!(shared->offlineToolMask&uint32_t(mode))){armed=false;return true;}
  offlinetools::Point p{};offlinetools::Hint h{};
  const bool valid=!e.keys[16]&&!e.keys[17]&&!e.keys[18]&&offlineToolPoint(p,e.point,e.width,e.height,viewport.generation,mode)&&offlineToolHint(p,h);
  if(e.operation==7){armed=valid;down=p;target=h;serial=e.serial;revision=settingsRevision;return true;}

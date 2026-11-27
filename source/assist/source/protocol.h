@@ -320,7 +320,7 @@ struct Shared {
   volatile uint32_t graphHostDemand=0,graphDisplayOnly=0,graphNoHost=0,graphCatalogue=0,graphRequestedPages=0;
  } sampling{};
  // Offline tool mode is a Host preference; hover replies never authorize orders.
- volatile uint32_t offlineToolMask=0;
+ alignas(8) volatile uint32_t offlineToolMask=0;
  volatile long offlineToolPointSeq=0;offlinetools::Point offlineToolPoint{};
  volatile long offlineToolHintSeq=0;offlinetools::Hint offlineToolHint{};
 };

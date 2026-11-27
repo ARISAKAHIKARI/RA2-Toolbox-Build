@@ -108,7 +108,12 @@ static void pointerTick(bool candidateEntry=false){
  if(!nativeviewportprojection::sample(sh,viewport)||viewport.generation!=sh->pointerViewportGeneration){pointerFinish(-7);return;}
  const auto&i=b.intent;DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
  const bool local=eventdelivery::isSingleplayer(snap.session);
- if(i.operation==pointerinput::OfflineRepair||i.operation==pointerinput::OfflineSell){b.accepted=b.rejected=0;pointerFeedback=0;offlineToolClick(i,now,frame);return;}
+ if(i.operation==pointerinput::OfflineRepair||i.operation==pointerinput::OfflineSell){
+  b.accepted=b.rejected=0;pointerFeedback=0;
+  // Let the original click complete a simulation turn before a supplemental event.
+  if(frame==i.frame&&DWORD(now-i.tick)<=150)return;
+  offlineToolClick(i,now,frame);return;
+ }
  // Reject this feature before cancelling prior work or clearing selection.
  if((i.operation==pointerinput::PlayerSelect&&(!nativeDependencyReady(0x6FBFA0)||(!(i.bindings&pointerinput::Shift)&&!nativeDependencyReady(0x48DC90))))||
     (i.operation==pointerinput::AirWaypoint&&!nativeDependencyReady(0x578080))){b.accepted=0;pointerFinish(-12);return;}

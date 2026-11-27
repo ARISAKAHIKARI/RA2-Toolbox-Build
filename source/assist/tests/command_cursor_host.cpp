@@ -42,6 +42,7 @@ static bool commandFresh(uint32_t){return fresh;}static bool foregroundGame(){re
 static bool formationInputOwns(){return false;}static bool runtimeMiddleOwnsNow(){return false;}
 static uint32_t commandMatch(){return 8;}static uint32_t flags(){return featureFlags;}
 namespace airway {bool held(const uint8_t*){return false;}}
+static bool serviceOfflineToolCursor(){return false;}
 #include "../source/command_cursor_host.h"
 static constexpr uint32_t unit=0x20000,type=0x30000,house=0x40000,weapon=0x50000,projectile=0x60000,warhead=0x70000;
 void fixture(){

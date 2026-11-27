@@ -2723,6 +2723,7 @@ static void updatePlayerTestUI(bool force=false){
  EnableWindow(GetDlgItem(ui,862),idle&&epoch==commandMatch()&&count>0);
 }
 #include "shift_click_host.h"
+#include "offline_tool_host.h"
 #include "command_cursor_host.h"
 // Read-only pinning has no dependency on the game command queue. Retain the
 // same key validation and single/double-press routing as normal shortcuts.
