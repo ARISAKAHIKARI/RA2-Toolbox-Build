@@ -11,6 +11,7 @@ class LiveINI {
  struct Value {bool found=false;std::string text;};
  uint32_t root_=0;uint64_t generation_=0;Index rootIndex_{};bool indexed_=false;
  bool boundedPresentation_=false,indexFailed_=false;
+ uint64_t presentationNow_=0,retryInterval_=0,failedAt_=0;
  uint64_t indexBuilds_=0,indexFailures_=0,indexFailureReuses_=0;
  std::map<std::string,uint32_t> sections_;
  std::map<std::pair<std::string,std::string>,Value> values_;
@@ -45,11 +46,15 @@ public:
  struct IndexDiagnostics {uint64_t builds=0,failures=0,failureReuses=0;};
  IndexDiagnostics indexDiagnostics()const{return {indexBuilds_,indexFailures_,indexFailureReuses_};}
  // Opt-in only for a bounded render presentation. Every query still probes
- // the live root/index; a rejected full-section bootstrap is attempted once
- // for that exact identity during this pass, then retried on the next pass.
- // Other users retain the existing immediate retry after any failed lookup.
- void beginPresentation(){boundedPresentation_=true;indexFailed_=false;}
- void clear(){root_=0;generation_=0;rootIndex_={};indexed_=false;indexFailed_=false;sections_.clear();values_.clear();}
+ // the live root/index. By default retry at the next pass; render callers
+ // may opt into a bounded cooldown for the same failed index identity.
+ // A new root/header/generation or clear() invalidates the failed attempt.
+ // Other users retain immediate retry after any failed lookup.
+ void beginPresentation(uint64_t now=0,uint64_t retryInterval=0){
+  boundedPresentation_=true;presentationNow_=now;retryInterval_=retryInterval;
+  if(!retryInterval_||now<failedAt_||now-failedAt_>=retryInterval_)indexFailed_=false;
+ }
+ void clear(){root_=0;generation_=0;rootIndex_={};indexed_=false;indexFailed_=false;failedAt_=0;sections_.clear();values_.clear();}
  template<class Read>bool get(Read read,uint32_t object,uint64_t generation,const std::string&section,const std::string&key,std::string&out){
   out.clear();if(section.empty()||key.empty()||section.size()>127||key.size()>127)return false;
   Index header;if(!root(read,object,header)){clear();return false;}
@@ -57,9 +62,9 @@ public:
   if(!indexed_){
    if(boundedPresentation_&&indexFailed_){++indexFailureReuses_;return false;}
    ++indexBuilds_;
-   struct Attempt {bool&failed;uint64_t&failures;bool completed=false;
-    ~Attempt(){if(!completed){failed=true;++failures;}}
-   } attempt{indexFailed_,indexFailures_};
+   struct Attempt {bool&failed;uint64_t&failures;uint64_t&failedAt;uint64_t now;bool completed=false;
+    ~Attempt(){if(!completed){failed=true;failedAt=now;++failures;}}
+   } attempt{indexFailed_,indexFailures_,failedAt_,presentationNow_};
    std::vector<uint32_t> entries;Index captured;if(!table(read,object+0x28,captured,entries)||!same(header,captured))return false;
    std::map<std::string,uint32_t> next;
    for(size_t i=1;i<entries.size();i+=2){uint32_t p=entries[i],np=0;std::string s;
@@ -96,7 +101,7 @@ public:
  void clear(){disk_.clear();live_.clear();}
  void parse(const std::vector<uint8_t>&bytes){disk_.parse(bytes);}
  void generation(uint64_t n){generation_=n;}
- void beginPresentation(){live_.beginPresentation();}
+ void beginPresentation(uint64_t now=0,uint64_t retryInterval=0){live_.beginPresentation(now,retryInterval);}
  LiveINI::IndexDiagnostics indexDiagnostics()const{return live_.indexDiagnostics();}
  bool live(const std::string&s,const std::string&k,std::string&out){
   uint32_t object=address_;if(indirect_&&!read_(address_,&object,4))return false;
