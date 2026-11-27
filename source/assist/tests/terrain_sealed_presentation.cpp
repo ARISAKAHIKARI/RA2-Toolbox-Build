@@ -76,11 +76,25 @@ int main(int argc,char**argv){
  // and incomplete observations must still perform the ordinary validation.
  lighting::State fallback;
  reader.begin(frame.sourceFrame);auto normal=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false);assert(reader.reads==4&&reader.worldFrameComplete());
- reader.begin(frame.sourceFrame);auto fast=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false,nullptr,true);assert(reader.reads==3&&fast==normal&&reader.worldFrameComplete());
+ reader.begin(frame.sourceFrame);auto fast=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false,nullptr,true);assert(reader.reads==2&&fast==normal&&reader.worldFrameComplete());
+ // The gap between the scale and intensity fields may not be observed.
+ // A partial page must use the original narrow reads without poisoning
+ // completeness or requesting padding that is unrelated to terrain light.
+ auto partial=std::make_shared<worldframe::Snapshot>();partial->reset(frame.sourceFrame->key);
+ auto fields=[&](uint32_t at,void*out,size_t n){return n<worldframe::PageSize&&memory.read(at,out,n);};
+ assert(partial->prefetch(fields,Cells+0x104,4));assert(partial->prefetch(fields,Cells+0x34,4));assert(partial->prefetch(fields,Cells+0x10A,6));assert(partial->seal());
+ assert(!partial->observed(Cells+0x108,2));reader.begin(partial);
+ auto narrow=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false,nullptr,true);
+ assert(reader.reads==3&&narrow==normal&&reader.worldFrameComplete());
+ // A full-page field span that straddles a page boundary remains narrow.
+ const uint32_t crossing=Cells+0xEF4;memory.put(crossing+0x104,uint32_t(65536));memory.put(crossing+0x34,Convert);
+ memory.put(crossing+0x10A,std::array<int16_t,3>{{1000,1000,1000}});
+ reader.begin(memory.seal(25));auto across=lighting::cell(read,crossing,fallback,lighting::Layer::Terrain,false,nullptr,true);
+ assert(reader.reads==3&&across==normal&&reader.worldFrameComplete());
  reader.begin(frame.sourceFrame);reader.complete=false;auto incomplete=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false,nullptr,true);assert(reader.reads==4&&incomplete==normal&&!reader.worldFrameComplete());
  unsigned intensityReads=0;auto racing=[&](uint32_t at,void*out,size_t n){if(!memory.read(at,out,n))return false;if(at==Cells+0x10A&&n==6&&++intensityReads==2){int16_t changed[3]={1000,600,1000};std::memcpy(out,changed,sizeof changed);}return true;};
  assert(lighting::cell(racing,Cells,fallback,lighting::Layer::Terrain,false,nullptr,true)==fallback&&intensityReads==2);
- std::puts("PASS sealed cell reads 4 -> 3; incomplete and live changing reads retain recheck");
+ std::puts("PASS sealed full-page cell reads 4 -> 2; partial/cross-page fields stay narrow; incomplete and live changing reads retain recheck");
  auto draw=[&](radar::SceneRegion region=radar::SceneRegion{},bool highPrecision=false){reader.begin(frame.sourceFrame);++frame.tick;return renderer.render(frame,600,300,read,assets,region,1,false,true,highPrecision,true);};
  auto settle=[&](radar::SceneRegion region=radar::SceneRegion{},bool highPrecision=false){std::shared_ptr<const radar::Scene>out;for(int n=0;n<24;++n){out=draw(region,highPrecision);if(out&&renderer.materialsReady()){out=draw(region,highPrecision);assert(out);return out;}}assert(false);return out;};
  auto initial=settle();assert(reader.worldFrameComplete());const auto initialPixels=initial->pixels;
