@@ -5,8 +5,8 @@
 using namespace assist::offlinetools;
 int main(){
  for(int session=-1;session<=8;++session){assert(supportedSession(session)==(session==0||session==3||session==4||session==5));}
- assert(eventdelivery::isSingleplayer(0)&&eventdelivery::isSingleplayer(5));
- assert(eventdelivery::isMultiplayer(3)&&eventdelivery::isMultiplayer(4));
+ assert(assist::eventdelivery::isSingleplayer(0)&&assist::eventdelivery::isSingleplayer(5));
+ assert(assist::eventdelivery::isMultiplayer(3)&&assist::eventdelivery::isMultiplayer(4));
  for(int session:{0,3,4,5}){
   auto reader=[&](uint32_t a,void*out,size_t n){
    if(a==0xA8B238&&n==4){*static_cast<int*>(out)=session;return true;}
