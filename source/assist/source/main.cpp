@@ -162,7 +162,8 @@ static_assert(external::enemies::Maximum<=MaxLabels,"Enemy markers reuse the exi
 struct EnemyRaster {std::wstring text;ARGB color{};std::unique_ptr<Bitmap> image;};
 using EnemyRasterKey=std::tuple<uint32_t,uint32_t,int>;
 static std::map<EnemyRasterKey,EnemyRaster> enemyRasters;static uint32_t enemyRasterMatch=0;
-static void clearEnemyDisplay(){enemyMotion.clear();enemyRasters.clear();enemyGroups.clear();ownedGroups.clear();clusteredEnemies.count=0;clusteredOwned.count=0;enemyRasterMatch=0;}
+static void clearOwnedDisplay(){ownedGroups.clear();clusteredOwned.count=0;}
+static void clearEnemyDisplay(){enemyMotion.clear();enemyRasters.clear();enemyGroups.clear();clusteredEnemies.count=0;enemyRasterMatch=0;}
 struct LabelRaster {std::wstring text;ARGB color{};float width{};int used{},capacity{},centis{},shield{},frozenCentis{};std::unique_ptr<Bitmap> image;};static std::unordered_map<uint32_t,LabelRaster> labelRasters;
 static visual::Motion statusMotion;static visual::LabelView statusViews[MaxLabels];static Snapshot statusSample;
 static_assert(external::status::Maximum<=MaxLabels,"Unit status markers share the existing Motion capacity");
@@ -1341,7 +1342,7 @@ static void detach(const wchar_t*reason=L"unspecified"){renderupgrade::stop();cl
   L" stillActive="+std::to_wstring(exitKnown&&exitCode==STILL_ACTIVE));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
  releaseBridge();externalData=nullptr;externalWorldSource.reset();externalSourceConfirmed=false;externalPublished={};externalSampler.reset();externalReader.close();externalAt=0;
  bridgeAttempts=0;bridgeBlocked=false;bridgeRetryAt=0;bridgeFailure.clear();
- if(gameProcess)CloseHandle(gameProcess);gameProcess=nullptr;lastProcessCheck=0;game=nullptr;pid=0;gameThread=0;snap={};overlayRecovery.suspend();motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();hideWorldOverlay();hideSidebarOverlay();
+ if(gameProcess)CloseHandle(gameProcess);gameProcess=nullptr;lastProcessCheck=0;game=nullptr;pid=0;gameThread=0;snap={};overlayRecovery.suspend();motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();clearOwnedDisplay();hideWorldOverlay();hideSidebarOverlay();
 }
 static bool boundGameAlive(){
  if(!game||!IsWindow(game))return false;
@@ -1581,7 +1582,7 @@ static void updateEnemyDisplay(const Snapshot&source){
 static void discardExternalWorld(){
  externalData=nullptr;externalPublished={};externalWorldSource.reset();externalSourceConfirmed=false;externalSampler.reset();
  snap.readStatus=snap.renderStatus=0;snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.threatCount=snap.crateCount=0;
- motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();clearPassengerDisplay();
+ motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();clearOwnedDisplay();clearPassengerDisplay();
 }
 static void mergeExternal(){
  if(!externalData)return;
@@ -1597,7 +1598,7 @@ static void mergeExternal(){
                            (DWORD(displayNow-d.sampledTick)<2000||externalSourceConfirmed);
  snap.renderStatus=externalValid&&d.renderStatus==1?1:0;
  snap.status=gateway::chooseVisibleStatus({snap.readStatus,snap.bridgeStatus,snap.commandStatus,snap.renderStatus});
- if(!externalValid){motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();return;}
+ if(!externalValid){motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();clearOwnedDisplay();return;}
  if(!control){snap.frame=d.frame;snap.session=d.session;snap.chat=d.chat;}
  snap.match=controllink::mergedIdentity(commandLink(),d.match);
  snap.width=d.width;snap.height=d.height;snap.sampledTick=d.sampledTick;snap.cameraX=d.cameraX;snap.cameraY=d.cameraY;
@@ -2111,7 +2112,7 @@ static void paint(){
    if(clusteredOwned.items[i].owner!=ownedFrame.house)continue;
    clusteredEnemies.items[enemyCount]=clusteredOwned.items[i];enemyViews[enemyCount++]=clusteredOwnedViews[i];
   }
- }else ownedGroups.clear();
+ }else clearOwnedDisplay();
  clusteredEnemies.count=enemyCount;
  for(int i=0;i<enemyCount;++i)nativeviewhost::localPoint(viewportTransform,enemyViews[i].x,enemyViews[i].y);
  const auto&enemyFrame=clusteredEnemies;
