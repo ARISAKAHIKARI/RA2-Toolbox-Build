@@ -276,6 +276,16 @@ static void setConsoleRuntimeError(HWND control,bool failed){
 }
 static uint64_t attachAttempts=0;
 static bool secondaryDisplayRequested();
+// Read the actual label rather than retaining an HWND-keyed cache across
+// console recreation. Only short, non-editable display captions use this.
+static void setDisplayCaption(HWND control,const wchar_t*text){
+ if(!control||!text)return;
+ wchar_t current[256]{};
+ const int length=GetWindowTextW(control,current,256);
+ // A full buffer may be truncated. Never suppress an update in that case.
+ if(length>0&&length<255&&lstrcmpW(current,text)==0)return;
+ SetWindowTextW(control,text);
+}
 static void setStatus(const std::wstring&s){if(statusText!=s){statusText=s;if(hoverHelp.empty())SetWindowTextW(statusLabel,s.c_str());}}
 static bool activeToast(DWORD now){if(toastActive&&int32_t(now-toastUntil)>=0)toastActive=false;return toastActive;}
 static void notify(const std::wstring&s){toast=s;toastUntil=GetTickCount()+DWORD(toastMs);toastActive=true;setStatus(s);}
@@ -2198,7 +2208,7 @@ static void syncInformationRate(bool force=false){
  if(force||rate!=lastRate||infoAdaptive!=lastAdaptive){
   lastRate=rate;lastAdaptive=infoAdaptive;++paintRevision;
   if(rateEdit)EnableWindow(rateEdit,!infoAdaptive);
-  if(auto status=GetDlgItem(ui,9161))SetWindowTextW(status,(L"当前："+std::to_wstring(rate)+L" Hz").c_str());
+  if(auto status=GetDlgItem(ui,9161))setDisplayCaption(status,(L"当前："+std::to_wstring(rate)+L" Hz").c_str());
   publishSuiteDisplay();
  }
 }
@@ -2539,10 +2549,10 @@ static void updateModeStatus(DWORD now){
    case viewzoom::Fault:text+=L"原生切换异常，请重新启动游戏";break;
    case viewzoom::Presentation:text+=L"存在黑边或渲染器改变视窗大小；请用等比例普通窗口模式";break;
    default:text+=L"等待游戏前台就绪 / 松开鼠标";break;}
-  SetWindowTextW(GetDlgItem(ui,9093),text.c_str());
+  setDisplayCaption(GetDlgItem(ui,9093),text.c_str());
  }
- SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅鼠标（沿用鼠标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：鼠标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
- if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"鼠标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
+ if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"鼠标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);setDisplayCaption(GetDlgItem(ui,888),label);}
+ else setDisplayCaption(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅鼠标（沿用鼠标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：鼠标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  const int lowDamage=shared?shared->lowDamageStatus:0;
  setConsoleTooltip(GetDlgItem(ui,9182),lowDamage<0?L"应用或还原未完成，请检查日志":!extra.lowDamageFilter?L"关闭":lowDamage==1?L"高危：原生索敌及工具自动命令":lowDamage==2?L"仅工具自动命令":L"等待就绪");
  setConsoleFeedback(GetDlgItem(ui,9184),lowDamage<0?L"低伤害过滤应用或还原未完成，请检查日志中的冲突。":L"");
