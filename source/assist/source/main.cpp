@@ -2103,7 +2103,7 @@ static void paint(){
   int count=0;
   for(int i=0;i<ownedFrame.count;++i){
    const auto&m=ownedFrame.items[i];if(m.owner!=ownedFrame.house||!m.owner)continue;
-   visual::LabelView v{};v.id=m.id;v.x=float(m.x)-snap.cameraX;v.y=float(m.y)-snap.cameraY;v.ownerColor=m.color;ownedViews[count++]=v;
+   visual::LabelView v{};v.id=m.id;v.x=external::ownedmarkers::screen(m.x,snap.cameraX);v.y=external::ownedmarkers::screen(m.y,snap.cameraY);v.ownerColor=m.color;ownedViews[count++]=v;
   }
   int groups=enemyclusters::render(ownedFrame,ownedViews,count,ownedGroups.update(ownedFrame),clusteredOwned,clusteredOwnedViews);
   if(!enemyCount){clusteredEnemies.width=clusteredOwned.width;clusteredEnemies.height=clusteredOwned.height;}
