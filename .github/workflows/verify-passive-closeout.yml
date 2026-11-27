@@ -1,0 +1,46 @@
+name: Verify passive UI persistence and diagnostics
+
+on:
+  pull_request:
+    paths:
+      - 'source/assist/source/type_catalog.h'
+      - 'source/assist/source/readonly_idle_retirement.h'
+      - 'source/assist/source/protocol.h'
+      - 'source/assist/tests/type_catalog.cpp'
+      - 'tools/sampling_admission_summary.mjs'
+      - '.github/workflows/verify-passive-closeout.yml'
+  push:
+    branches:
+      - 'fix/passive-performance-consolidated-20261127'
+    paths:
+      - 'source/assist/source/type_catalog.h'
+      - 'source/assist/source/readonly_idle_retirement.h'
+      - 'source/assist/source/protocol.h'
+      - 'source/assist/tests/type_catalog.cpp'
+      - 'tools/sampling_admission_summary.mjs'
+      - '.github/workflows/verify-passive-closeout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  passive-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run persistent UI catalogue regression
+        run: |
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/type_catalog.cpp -o /tmp/ra2-passive-catalogue-test
+          /tmp/ra2-passive-catalogue-test
+          echo "PASS: persistent catalogue assertions"
+      - name: Verify isolated read-only retirement state
+        run: |
+          printf '#include "readonly_idle_retirement.h"\nint main() {}\n' | g++ -std=c++17 -Wall -Wextra -Werror -Isource/assist/source -x c++ -fsyntax-only -
+          echo "PASS: read-only retirement compile-time assertions"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run offline log diagnostics self-test
+        run: node tools/sampling_admission_summary.mjs --self-test

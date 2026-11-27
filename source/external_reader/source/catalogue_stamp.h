@@ -58,22 +58,34 @@ template<class Read> bool capture(Read read,Stamp&out){
 // Incomplete discovery keeps the old dependencies until a full replacement
 // succeeds; otherwise successive misses can evict each other's warmup pages.
 class Dependencies {
- std::vector<uint32_t> pages_,candidate_;
+ std::vector<uint32_t> pages_,candidate_,projectionPages_,projectionCandidate_;
  template<class R>static auto retain(R read,const std::vector<uint32_t>&pages,int)->decltype(read.retainWorldPages(pages),void()){read.retainWorldPages(pages);}
  template<class R>static void retain(R,const std::vector<uint32_t>&,long){}
-public:
- void clear(){pages_.clear();candidate_.clear();}
- template<class R>void maintain(R read)const{retain(read,pages_,0);}
- template<class R>bool capture(R read,Stamp&out){
-  candidate_.clear();auto tracked=[&](uint32_t at,void*to,size_t n){
-   if(at>=0x10000&&n&&uint64_t(at)+n<=0x80000000ull)
-    for(uint32_t page=at&~4095u;uint64_t(page)<uint64_t(at)+n;page+=4096)candidate_.push_back(page);
+ template<class R,class Collect>static bool collect(R read,Collect run,std::vector<uint32_t>&pages,std::vector<uint32_t>&candidate){
+  candidate.clear();auto tracked=[&](uint32_t at,void*to,size_t n){
+   if(at>=0x10000&&at<0x80000000u&&n&&n<=uint64_t(0x80000000u)-at)
+    for(uint32_t page=at&~4095u;uint64_t(page)<uint64_t(at)+n;page+=4096)candidate.push_back(page);
    return read(at,to,n);
   };
-  const bool complete=catalogue::capture(tracked,out);
-  if(!complete)candidate_.insert(candidate_.end(),pages_.begin(),pages_.end());
-  std::sort(candidate_.begin(),candidate_.end());candidate_.erase(std::unique(candidate_.begin(),candidate_.end()),candidate_.end());
-  pages_.swap(candidate_);return complete;
+  const bool complete=run(tracked);
+  if(!complete)candidate.insert(candidate.end(),pages.begin(),pages.end());
+  std::sort(candidate.begin(),candidate.end());candidate.erase(std::unique(candidate.begin(),candidate.end()),candidate.end());
+  pages.swap(candidate);return complete;
+ }
+public:
+ void clear(){pages_.clear();candidate_.clear();projectionPages_.clear();projectionCandidate_.clear();}
+ template<class R>void maintain(R read)const{
+  retain(read,pages_,0);
+  if(!projectionPages_.empty())retain(read,projectionPages_,0);
+ }
+ template<class R>bool capture(R read,Stamp&out){
+  return collect(read,[&](auto tracked){return catalogue::capture(tracked,out);},pages_,candidate_);
+ }
+ // Projection fields (e.g. localized names) need their own dependency set.
+ // A stamp-only success must never discard those pages, and an incomplete
+ // projection retains its previously discovered dependencies until success.
+ template<class R,class Project>bool captureProjection(R read,Project project){
+  return collect(read,project,projectionPages_,projectionCandidate_);
  }
 };
 } }

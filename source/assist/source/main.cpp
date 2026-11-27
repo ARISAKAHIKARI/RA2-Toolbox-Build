@@ -172,6 +172,7 @@ static uint64_t techAcknowledgedHash=0;static bool techMode;static bool autoReve
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
 static HWND schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
 static typecatalog::Catalogue savedTypes;static uint32_t catalogueRevision=0;
+static typecatalog::WriteState catalogueWrites;
 static uint32_t settingsRevision=1;
 static bool shiftClickEnabled=true;static int shiftClickMode=0,shiftClickGap=0,shiftSidebarWidth=160,shiftSidebarTop=200;
 static bool magnetronMode=false;static WORD magnetronKey;static HWND magnetronCheck,magnetronKeyEdit;
@@ -276,6 +277,16 @@ static void setConsoleRuntimeError(HWND control,bool failed){
 }
 static uint64_t attachAttempts=0;
 static bool secondaryDisplayRequested();
+// Read the actual label rather than retaining an HWND-keyed cache across
+// console recreation. Only short, non-editable display captions use this.
+static void setDisplayCaption(HWND control,const wchar_t*text){
+ if(!control||!text)return;
+ wchar_t current[256]{};
+ const int length=GetWindowTextW(control,current,256);
+ // A full buffer may be truncated. Never suppress an update in that case.
+ if(length>0&&length<255&&lstrcmpW(current,text)==0)return;
+ SetWindowTextW(control,text);
+}
 static void setStatus(const std::wstring&s){if(statusText!=s){statusText=s;if(hoverHelp.empty())SetWindowTextW(statusLabel,s.c_str());}}
 static bool activeToast(DWORD now){if(toastActive&&int32_t(now-toastUntil)>=0)toastActive=false;return toastActive;}
 static void notify(const std::wstring&s){toast=s;toastUntil=GetTickCount()+DWORD(toastMs);toastActive=true;setStatus(s);}
@@ -709,15 +720,16 @@ static std::wstring catalogueValue(const assist::Type& t){
         std::to_wstring(t.naval)+L"|"+std::to_wstring(t.cost)+L"|"+
         wide(t.id)+L"|"+name;
 }
-static bool saveCatalogue(const std::vector<size_t>* dirty=nullptr){
- static uint32_t writtenRevision=~0u;if(!dirty&&writtenRevision==catalogueRevision)return true;
+static bool saveCatalogue(){
+ if(!catalogueWrites.needsWrite(catalogueRevision))return true;
+ catalogueWrites.attempted(GetTickCount());
  // One profile operation replaces the whole generated catalogue; hundreds of
  // synchronous per-type INI writes used to block the UI after first discovery.
  std::wstring block=L"Count="+std::to_wstring(savedTypes.types.size());block.push_back(L'\0');
  for(size_t i=0;i<savedTypes.types.size();++i){block+=catalogueKey(i)+L"="+catalogueValue(savedTypes.types[i]);block.push_back(L'\0');}
  block.push_back(L'\0');
  bool okay=WritePrivateProfileSectionW(L"TypeCatalogue",block.c_str(),path(L"Assist.ini").c_str())!=FALSE;
- if(okay)writtenRevision=catalogueRevision;return okay;
+ if(okay)catalogueWrites.completed(catalogueRevision);return okay;
 }
 static void loadCatalogue(){
  const auto file=path(L"Assist.ini");
@@ -743,19 +755,16 @@ static void loadCatalogue(){
 }
 static void rememberLiveTypes(){
  if(snap.status!=1||snap.typeCount<=0)return;
- static uint32_t learnedMatch;static int learnedCount=-1;
- if(learnedMatch==snap.match&&learnedCount==snap.typeCount)return;learnedMatch=snap.match;learnedCount=snap.typeCount;
- std::vector<size_t> dirty;
- for(int i=0;i<snap.typeCount&&i<MaxTypes;++i){
-  if(savedTypes.remember(snap.types[i])){
-   int n=savedTypes.find(typecatalog::idOf(snap.types[i]),snap.types[i].kind);
-   if(n>=0)dirty.push_back(size_t(n));
-  }
+ static typecatalog::ObservedCatalogue observed;
+ const auto now=GetTickCount();
+ if(observed.changed(snap.match,snap.types,size_t(std::min(snap.typeCount,MaxTypes)),now)){
+  bool changed=false;
+  for(int i=0;i<snap.typeCount&&i<MaxTypes;++i)
+   changed=savedTypes.remember(snap.types[i])||changed;
+  if(changed)++catalogueRevision;
  }
- if(!dirty.empty()){
-  ++catalogueRevision;
-  if(!saveCatalogue(&dirty))diag(L"TypeCatalogue write failed: check Assist.ini permissions");
- }
+ if(catalogueRevision&&catalogueWrites.due(catalogueRevision,now)&&!saveCatalogue())
+  diag(L"TypeCatalogue write failed: check Assist.ini permissions");
 }
 static UINT modifiers(WORD key){BYTE f=HIBYTE(key);return MOD_NOREPEAT|((f&HOTKEYF_CONTROL)?MOD_CONTROL:0)|((f&HOTKEYF_ALT)?MOD_ALT:0)|((f&HOTKEYF_SHIFT)?MOD_SHIFT:0);}
 static std::wstring keyText(WORD key){return keygesture::describe(key,modernui::hotkeyName(key));}
@@ -2198,7 +2207,7 @@ static void syncInformationRate(bool force=false){
  if(force||rate!=lastRate||infoAdaptive!=lastAdaptive){
   lastRate=rate;lastAdaptive=infoAdaptive;++paintRevision;
   if(rateEdit)EnableWindow(rateEdit,!infoAdaptive);
-  if(auto status=GetDlgItem(ui,9161))SetWindowTextW(status,(L"当前："+std::to_wstring(rate)+L" Hz").c_str());
+  if(auto status=GetDlgItem(ui,9161))setDisplayCaption(status,(L"当前："+std::to_wstring(rate)+L" Hz").c_str());
   publishSuiteDisplay();
  }
 }
@@ -2539,10 +2548,10 @@ static void updateModeStatus(DWORD now){
    case viewzoom::Fault:text+=L"原生切换异常，请重新启动游戏";break;
    case viewzoom::Presentation:text+=L"存在黑边或渲染器改变视窗大小；请用等比例普通窗口模式";break;
    default:text+=L"等待游戏前台就绪 / 松开鼠标";break;}
-  SetWindowTextW(GetDlgItem(ui,9093),text.c_str());
+  setDisplayCaption(GetDlgItem(ui,9093),text.c_str());
  }
- SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅鼠标（沿用鼠标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：鼠标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
- if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"鼠标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
+ if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"鼠标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);setDisplayCaption(GetDlgItem(ui,888),label);}
+ else setDisplayCaption(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅鼠标（沿用鼠标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：鼠标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  const int lowDamage=shared?shared->lowDamageStatus:0;
  setConsoleTooltip(GetDlgItem(ui,9182),lowDamage<0?L"应用或还原未完成，请检查日志":!extra.lowDamageFilter?L"关闭":lowDamage==1?L"高危：原生索敌及工具自动命令":lowDamage==2?L"仅工具自动命令":L"等待就绪");
  setConsoleFeedback(GetDlgItem(ui,9184),lowDamage<0?L"低伤害过滤应用或还原未完成，请检查日志中的冲突。":L"");
@@ -2916,7 +2925,13 @@ static void layoutPanel(){
 #ifdef RA2_CONSOLE_WEBVIEW2
  // The visible MVVM view owns scrolling, folds and responsive layout. These
  // compatibility controls only retain values and original command semantics.
- for(const auto&c:pageControls)if(c.page>=0)ShowWindow(c.hwnd,c.page==activePage?SW_SHOWNA:SW_HIDE);
+ for(const auto&c:pageControls)if(c.page>=0){
+  // Compare the control's own visibility bit, not IsWindowVisible:
+  // its compatibility parent may be hidden while this page is selected.
+  const bool wanted=c.page==activePage;
+  const bool shown=(GetWindowLongPtrW(c.hwnd,GWL_STYLE)&WS_VISIBLE)!=0;
+  if(shown!=wanted)ShowWindow(c.hwnd,wanted?SW_SHOWNA:SW_HIDE);
+ }
  arrangingPanel=false;return;
 #endif
  RECT client{};GetClientRect(ui,&client);int height=logical(client.bottom),width=logical(client.right),maximum=uilayout::maxScroll(pageBottom(),height);scrollY=std::clamp(scrollY,0,maximum);scrollX=std::clamp(scrollX,0,std::max(0,uilayout::Width-width));

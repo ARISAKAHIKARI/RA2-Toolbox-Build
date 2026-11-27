@@ -20,13 +20,40 @@ passive=bridge.split("static void capturePassiveWorld(",1)[1].split("static bool
 assert "if(!connected)return;" in passive
 assert "const uint32_t demand=worldFrameServer.demandMask();" in passive
 assert "if(demand)captureWorldFrame(readLiveWorld,world,house,now,demand,true);" in passive
-assert "if(wanted)capturePassiveWorld(world,house,now,wanted);" in bridge
-assert "capturePassiveWorld(worldSample,house,now,sharedWorldWanted);" in bridge
+# Explicit read-only and view-only authority share the same strict boundary.
+displayonly=bridge.split("static void captureDisplayOnlyWorld(",1)[1].split("static void capturePassiveWorld(",1)[0]
+assert "const uint32_t demand=connected?worldFrameServer.demandMask():0u;" in displayonly
+assert "if(demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly))" in displayonly
+assert "captureWorldFrame(readLiveWorld,world,house,now,demand,true);" in displayonly
+assert "else retireWorldFrame();" in displayonly
+readonly=bridge.split("static bool serviceReadOnlyRuntime(",1)[1].split("static void tick()",1)[0]
+assert "captureDisplayOnlyWorld(world,house,now,wanted);" in readonly
+# Duplicate retirement may be skipped only for an unchanged, zero-demand
+# explicit read-only context. All authority transitions and new demand
+# must invalidate the idle marker; the existing display helper is retained.
+assert "if(!wasReadOnly)idleRetired.valid=false;" in readonly
+assert "if(admission==readonly::Admission::Commands){\n  idleRetired.valid=false;" in readonly
+assert "if(admission==readonly::Admission::Retiring){idleRetired.valid=false;retireWorldFrame();" in readonly
+assert "if(demand!=0u){\n  idleRetired.valid=false;\n  captureDisplayOnlyWorld(world,house,now,wanted);" in readonly
+assert "idleRetired.needsRetirement(sh->owner,match,worldFrameServer.connection(),worldProducerGeneration," in readonly
+assert '#include "readonly_idle_retirement.h"' in bridge
+assert "worldFrameReady||haveCaptureAttempt||worldFrameCandidateAvailable||" in readonly
+assert "!runtimeWorldDemands.empty()||runtimeDemandOverflow" in readonly
+assert "retireWorldFrame();\n  idleRetired={true,sh->owner,match,worldFrameServer.connection(),worldProducerGeneration};" in readonly
+assert "if(transition!=sessionepoch::Transition::None){idleRetired.valid=false;retireWorldFrame();}" in readonly
+
+assert "capturePassiveWorld(" not in readonly
+assert "captureWorldFrame(" not in readonly
+assert "if(authority==worldlife::Authority::ViewOnly)\n   captureDisplayOnlyWorld(worldSample,house,now,sharedWorldWanted);" in bridge
+assert "else capturePassiveWorld(worldSample,house,now,sharedWorldWanted);" in bridge
 assert "if(hostDisplayOnly)" in bridge
 assert "else if(directRuntime&&!idleWithoutGraph)" in bridge
 assert "const uint32_t hostDemand=sharedWorldWanted?worldFrameServer.demandMask():0u;" in bridge
 idle=bridge.split("const bool idleWithoutGraph=",1)[1].split(";",1)[0]
-for condition in ("noCommandWork", "sh->externalDisplay", "nativeCatalogue", "worldDemand==uint32_t(worldframe::Base)", "!hostDemand", "runtimeWorldDemands.empty()", "!runtimeDemandOverflow"):
+# Between catalogue deadlines the catalogue implementation is irrelevant.
+# A due graph refresh, pending tasks and any actual page demand still exclude idle.
+assert "nativeCatalogue" not in idle
+for condition in ("noCommandWork", "sh->externalDisplay", "!graphCatalogueDue", "worldDemand==uint32_t(worldframe::Base)", "!hostDemand", "runtimeWorldDemands.empty()", "!runtimeDemandOverflow"):
     assert condition in idle
 assert "else if(!idleWithoutGraph&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))" in bridge
 assert "runtimeDirectActions=!worldFrameCommandWorker.enabled()&&sh->computeApplied==compute::All&&gameentry::active(gameentry::Client::Assist);" in bridge
@@ -95,3 +122,33 @@ assert "sampling-admission pid=" in main
 for counter in ("syncGraphAttempts", "syncGraphCompleted", "boundaryAttempts", "boundaryCompleted", "reuseHits", "graphHostDemand", "graphDisplayOnly", "graphNoHost", "graphCatalogue", "graphRequestedPages"):
     assert counter in runtime and counter in main
 print("PASS production display split: Host VisualCache is live for display readers; passive overlays use boundary-only Runtime demand")
+
+# A failed metadata stamp must not immediately rewalk the same type arrays.
+# Preserve only the same-epoch catalogue, and discard it on identity change.
+sampler=(external/"tactical_sampler.h").read_text(encoding="utf-8")
+assert "catalogueDependencies_.capture(read_,stamp)" in sampler
+assert "if(fresh||!catalogueAt_||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100))" in sampler
+assert "if(epoch!=sharedMatch_){catalogueDependencies_.clear();catalogueReady_=false;catalogueHash_=0;catalogueAt_=0;state_.typeCount=0;" in sampler
+assert "house_=house;catalogueReady_=false;catalogueHash_=0;state_.typeCount=0;" in sampler
+catalogue_refresh=sampler.split("if(catalogueDependencies_.capture(read_,stamp))",1)[1].split("state_.status=1;",1)[0]
+assert catalogue_refresh.count("types();")==1
+assert "types();" not in catalogue_refresh.split("}else{",1)[1]
+assert "catalogueReady_=false;" in catalogue_refresh.split("}else{",1)[1]
+print("PASS ordinary catalogue missing-data retry does not rewalk the unavailable source")
+
+# Catalogue projection is transactional: a successful stamp alone is not a
+# successful list publication, and missing metadata cannot overwrite old rows.
+projection=sampler.split(" bool types(){",1)[1].split("\npublic:",1)[0]
+publish_at=projection.index("std::copy(rows.begin(),rows.end(),state_.types);")
+assert "if(!view.vecChecked(arrays[c],list,4096))return false;" in projection
+assert "state_.typeCount" not in projection[:publish_at]
+assert "state_.types" not in projection[:publish_at]
+assert "if(!tracked(namePointer,t.name,sizeof t.name))return false;" in projection
+assert "!tracked(p+0x610,&t.cost,sizeof t.cost))return false;" in projection
+assert projection.index("state_.typeCount=int(rows.size());return true;")>publish_at
+assert "catalogueReady_=types();\n     if(catalogueReady_){sceneFrame_=-1;catalogueHash_=stamp.hash;}" in sampler
+print("PASS UI catalogue commits only after complete projection")
+
+assert "return catalogueDependencies_.captureProjection(read_,[&](auto tracked){" in projection
+assert "GameView<decltype(tracked)> view(tracked);" in projection
+assert "read_(" not in projection

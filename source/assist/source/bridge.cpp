@@ -39,6 +39,7 @@
 #include "world_lifecycle.h"
 #include "../../shared/source/world_frame_command_worker_win.h"
 #include "world_capture_admission.h"
+#include "readonly_idle_retirement.h"
 #include "control_link.h"
 #include "control_mode_policy.h"
 #include "scheduler_policy.h"
@@ -1955,6 +1956,14 @@ static void applyCommandComputeEpoch(){
  if(commandComputeEpoch==match)return;
  sh->computeApplied=sh->computeRequested&compute::All;commandComputeEpoch=match;
 }
+// Both explicit read-only and view-only authority admit only the Host's
+// zero-page display boundary. Reject stale mixed/native subscriptions.
+static void captureDisplayOnlyWorld(const worldlife::Sample&world,uint32_t house,DWORD now,bool connected){
+ const uint32_t demand=connected?worldFrameServer.demandMask():0u;
+ if(demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly))
+  captureWorldFrame(readLiveWorld,world,house,now,demand,true);
+ else retireWorldFrame();
+}
 // Passive callbacks have no local snapshot consumer. A live mapping or
 // heartbeat alone does not establish an active world-data subscription.
 static void capturePassiveWorld(const worldlife::Sample&world,uint32_t house,DWORD now,bool connected){
@@ -1963,33 +1972,46 @@ static void capturePassiveWorld(const worldlife::Sample&world,uint32_t house,DWO
  if(demand)captureWorldFrame(readLiveWorld,world,house,now,demand,true);
 }
 static bool serviceReadOnlyRuntime(DWORD now){
+ // Only the fully retired, explicit read-only path can suppress duplicate
+ // cleanup. Never retain the marker across command authority or a capture.
+ static readonly_idle_cleanup::IdleRetirement idleRetired;
  const bool wasReadOnly=readOnlyState.active;
+ if(!wasReadOnly)idleRetired.valid=false;
  const auto admission=readOnlyState.service(*sh,cancelReadOnlyMailboxes,retireForReadOnly,[]{MemoryBarrier();});
  if(admission==readonly::Admission::Commands){
+  idleRetired.valid=false;
   if(wasReadOnly){commandDormant=worldCleanupPending=false;lastFrame=-1;slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
   return false;
  }
  runtimeKeys.clear();snap.commandStatus=admission==readonly::Admission::Retiring?activation::CleanupPending:activation::HostReadOnly;
  snap.bridgeStatus=1;snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;
  snap.readStatus=snap.renderStatus=0;snap.placementOfferCount=0;
- if(admission==readonly::Admission::Retiring){retireWorldFrame();publishSnapshot(now);return true;}
+ if(admission==readonly::Admission::Retiring){idleRetired.valid=false;retireWorldFrame();publishSnapshot(now);return true;}
  const bool wanted=worldFrameServer.wanted(sh->owner,GetTickCount());
  const auto world=worldlife::capture(readLiveWorld);const auto change=hookWorld.observe(world);
- if(change==worldlife::Change::Unknown){retireWorldFrame();snap.status=hookWorld.bound?1:0;publishSnapshot(now);return true;}
- if(change==worldlife::Change::Absent){retireWorldFrame();sessionTracker.update(false,0,-1,-1);lastHouse=0;lastFrame=-1;snap.status=0;snap.match=0;publishSnapshot(now);return true;}
+ if(change==worldlife::Change::Unknown){idleRetired.valid=false;retireWorldFrame();snap.status=hookWorld.bound?1:0;publishSnapshot(now);return true;}
+ if(change==worldlife::Change::Absent){idleRetired.valid=false;retireWorldFrame();sessionTracker.update(false,0,-1,-1);lastHouse=0;lastFrame=-1;snap.status=0;snap.match=0;publishSnapshot(now);return true;}
  if(change==worldlife::Change::Start||change==worldlife::Change::Replaced||change==worldlife::Change::Rewind){
-  retireWorldFrame();sessionTracker.update(false,0,-1,-1);
+  idleRetired.valid=false;retireWorldFrame();sessionTracker.update(false,0,-1,-1);
  }
- uint32_t house=0;if(worldlife::authority(readLiveWorld,house)==worldlife::Authority::Unknown){retireWorldFrame();snap.status=1;publishSnapshot(now);return true;}
+ uint32_t house=0;if(worldlife::authority(readLiveWorld,house)==worldlife::Authority::Unknown){idleRetired.valid=false;retireWorldFrame();snap.status=1;publishSnapshot(now);return true;}
  const auto transition=sessionTracker.update(true,house,world.session,world.frame);
- if(transition!=sessionepoch::Transition::None)retireWorldFrame();
+ if(transition!=sessionepoch::Transition::None){idleRetired.valid=false;retireWorldFrame();}
  match=sessionTracker.epoch;lastHouse=house;lastFrame=world.frame;
  snap.status=1;snap.match=match;snap.frame=world.frame;snap.session=world.session;
  uint8_t chat=1;snap.chat=!readLiveWorld(0xA8BC79,&chat,1)||chat!=0;
- // The normal immutable producer remains the only world sampler. No command
- // maintenance, native view update or suspendedSnapshot(render) runs here.
- if(wanted)capturePassiveWorld(world,house,now,wanted);
- else retireWorldFrame();
+ const uint32_t demand=wanted?worldFrameServer.demandMask():0u;
+ // Admit only the same display boundary as before. Re-read inside the
+ // existing helper on all nonzero demands; never skip mixed-demand cleanup.
+ if(demand!=0u){
+  idleRetired.valid=false;
+  captureDisplayOnlyWorld(world,house,now,wanted);
+ }else if(idleRetired.needsRetirement(sh->owner,match,worldFrameServer.connection(),worldProducerGeneration,
+           worldFrameReady||haveCaptureAttempt||worldFrameCandidateAvailable||
+           !runtimeWorldDemands.empty()||runtimeDemandOverflow)){
+  retireWorldFrame();
+  idleRetired={true,sh->owner,match,worldFrameServer.connection(),worldProducerGeneration};
+ }
  publishSnapshot(now);return true;
 }
 static void tick(){
@@ -2095,7 +2117,9 @@ static void tick(){
  if(!active){
   resetOwnGround();
   if(authority==worldlife::Authority::ViewOnly&&!commandDormant){cancelCooperativePlan(-3);reset(false);commandDormant=true;}
-  capturePassiveWorld(worldSample,house,now,sharedWorldWanted);
+  if(authority==worldlife::Authority::ViewOnly)
+   captureDisplayOnlyWorld(worldSample,house,now,sharedWorldWanted);
+  else capturePassiveWorld(worldSample,house,now,sharedWorldWanted);
   suspendedSnapshot(now,worldSample.running&&display.visible(),authority==worldlife::Authority::ViewOnly?activation::ViewOnly:!worldSample.running?activation::Paused:activation::DisplayHidden);return;
  }
  commandDormant=false;
@@ -2191,7 +2215,9 @@ static void tick(){
  // Do not mistake a connected but unsubscribed Host, a fresh match or an
  // ordinary idle wake for a graph consumer. Keep legacy rendering, pending
  // work, unknown dependencies and every existing command lane unchanged.
- const bool idleWithoutGraph=noCommandWork&&sh->externalDisplay&&nativeCatalogue&&
+ // Catalogue mode itself is not a consumer between catalogue deadlines.
+ // An actual due graph catalogue still excludes this idle lane.
+ const bool idleWithoutGraph=noCommandWork&&sh->externalDisplay&&!graphCatalogueDue&&
   worldDemand==uint32_t(worldframe::Base)&&
   !hostDemand&&
   runtimeWorldDemands.empty()&&!runtimeDemandOverflow;

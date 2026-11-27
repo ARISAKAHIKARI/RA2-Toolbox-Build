@@ -192,12 +192,37 @@ template<class Read> class TacticalSampler {
    }
   }return true;
  }
- void types(){
-  state_.typeCount=0;uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};int kinds[]={3,16,40,7};
-  for(int c=0;c<4;++c){auto list=vec(arrays[c],4096);for(size_t j=0;j<list.size()&&state_.typeCount<assist::MaxTypes;++j){auto p=list[j];
-   if(!p||!assist::validType(get<int>(p+0x634,-1),get<uint8_t>(p+0x232)!=0,get<uint8_t>(p+0xD54)!=0,get<uint32_t>(p+0x6CC)))continue;
-   typePointers_[state_.typeCount]=p;auto&t=state_.types[state_.typeCount++];t={};read_(p+0x24,t.id,23);name(p,t.name);t.kind=kinds[c];t.index=int(j);t.naval=get<uint8_t>(p+0xCCE);t.cost=get<int>(p+0x610);
-  }}
+ bool types(){
+  return catalogueDependencies_.captureProjection(read_,[&](auto tracked){
+   // Build a candidate only. A missing field is not a valid zero/default
+   // value and must not replace the last complete UI catalogue.
+   std::vector<assist::Type> rows;rows.reserve(assist::MaxTypes);
+   std::vector<uint32_t> pointers;pointers.reserve(assist::MaxTypes);
+   GameView<decltype(tracked)> view(tracked);std::vector<uint32_t> list;
+   const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};int kinds[]={3,16,40,7};
+   for(int c=0;c<4;++c){
+    if(!view.vecChecked(arrays[c],list,4096))return false;
+    for(size_t j=0;j<list.size()&&rows.size()<assist::MaxTypes;++j){
+     const auto p=list[j];if(!p)continue;
+     int level=-1;uint8_t insignificant=0,spawned=0;uint32_t owners=0;
+     if(!tracked(p+0x634,&level,4)||!tracked(p+0x232,&insignificant,1)||
+        !tracked(p+0xD54,&spawned,1)||!tracked(p+0x6CC,&owners,4))return false;
+     if(!assist::validType(level,insignificant!=0,spawned!=0,owners))continue;
+     assist::Type t{};uint32_t namePointer=0;uint8_t naval=0;
+     if(!tracked(p+0x24,t.id,23)||!t.id[0]||!tracked(p+0x60,&namePointer,4)||
+        !tracked(p+0xCCE,&naval,1)||!tracked(p+0x610,&t.cost,sizeof t.cost))return false;
+     if(namePointer>=0x10000){
+      if(!tracked(namePointer,t.name,sizeof t.name))return false;
+      t.name[39]=0;
+     }else for(int k=0;k<23;++k)t.name[k]=uint8_t(t.id[k]);
+     t.kind=kinds[c];t.index=int(j);t.naval=naval;
+     rows.push_back(t);pointers.push_back(p);
+    }
+   }
+   std::copy(rows.begin(),rows.end(),state_.types);
+   std::copy(pointers.begin(),pointers.end(),typePointers_);
+   state_.typeCount=int(rows.size());return true;
+  });
  }
 public:
  uint32_t idleProductionMask=0,pausedProductionMask=0,idleAircraftTick=0;int idleAircraftCount=0,aircraftTotal=0;uint32_t idleAircraftIDs[8192]{};int productionTabsY=168;
@@ -225,7 +250,7 @@ public:
  const assist::Snapshot&state()const{return state_;}
  const unitpanel::Model&selectionPanel()const{return panel_;}
  void unitPanelEnabled(bool on){if(on!=unitPanelEnabled_){unitPanelEnabled_=on;sceneFrame_=-1;panel_=publishedPanel_={};}}
- void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){catalogueDependencies_.clear();sceneFrame_=-1;productionAt_=0;clearAircraftCandidate();publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;}sharedMatch_=epoch;}
+ void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){catalogueDependencies_.clear();catalogueReady_=false;catalogueHash_=0;catalogueAt_=0;state_.typeCount=0;sceneFrame_=-1;productionAt_=0;clearAircraftCandidate();publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;}sharedMatch_=epoch;}
  void commitSample(){publishedPanel_=panel_;enemies::copyFrame(publishedEnemies_,enemies_);enemies::copyFrame(publishedSpecialEnemies_,specialEnemies_);publishedStatuses_=statuses_;
   if(aircraftChanged_){publishedAircraft_=aircraftSample_;std::copy_n(idleAircraftIDs,idleAircraftCount,publishedAircraftIDs_.begin());aircraftChanged_=false;}}
  void invalidateSample(const assist::Snapshot*stable=nullptr){panel_=publishedPanel_;sceneFrame_=-1;catalogueReady_=false;catalogueHash_=0;sceneAt_=0;productionAt_=0;for(auto&f:factories_)f={};enemyNames_.clear();enemyOwnerCount_=0;
@@ -266,14 +291,21 @@ public:
    idleProductionMask=pausedProductionMask=0;clearAircraftCandidate();state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
    state_.threatCount=state_.crateCount=0;house_=0;catalogueReady_=false;catalogueDependencies_.clear();return state_;
   }
-  bool fresh=house!=house_||frame<lastFrame_;if(fresh){catalogueDependencies_.clear();++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=specialEnemies_.count=statuses_.count=0;enemyNames_.clear();}lastFrame_=frame;
+  bool fresh=house!=house_||frame<lastFrame_;if(fresh){catalogueDependencies_.clear();++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;state_.typeCount=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=specialEnemies_.count=statuses_.count=0;enemyNames_.clear();}lastFrame_=frame;
   catalogueDependencies_.maintain(read_);
-  if(fresh||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100)){
+  if(fresh||!catalogueAt_||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100)){
    catalogue::Stamp stamp;catalogueAt_=now;
    if(catalogueDependencies_.capture(read_,stamp)){
-    if(!catalogueReady_||catalogueHash_!=stamp.hash){types();sceneFrame_=-1;catalogueHash_=stamp.hash;}
-    catalogueReady_=true;
-   }else{catalogueReady_=false;int count=state_.typeCount;types();if(count!=state_.typeCount)sceneFrame_=-1;}
+    if(!catalogueReady_||catalogueHash_!=stamp.hash){
+     catalogueReady_=types();
+     if(catalogueReady_){sceneFrame_=-1;catalogueHash_=stamp.hash;}
+    }
+   }else{
+    // A failed metadata probe cannot be repaired by rewalking the same
+    // unavailable source immediately. Keep the last same-epoch UI catalogue;
+    // Dependencies retains discovered pages for the next bounded probe.
+    catalogueReady_=false;
+   }
   }
   state_.status=1;state_.renderStatus=display_.visible()?1:0;state_.frame=frame;state_.match=sharedMatch_?sharedMatch_:serial_;state_.session=get<int>(0xA8B238);state_.chat=uiValue<uint8_t>(0xA8BC60+25);state_.credits=get<int>(house+0x30C);
   uint32_t tactical=uiValue<uint32_t>(0x887324);Projection proj;proj.width=state_.width=uiValue<int>(0x8A00A4);proj.height=state_.height=uiValue<int>(0x8A00A8);
