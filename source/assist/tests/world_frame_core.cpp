@@ -863,11 +863,16 @@ void mappingInterleavings(){
 void hostReads(){
  currentPid=HostPid;clock=1000;Memory memory;gameMemory=&memory;auto first=publication(10,60,0x55556666),second=publication(11,61,0x77778888);external::ProcessReader reader;CHECK(reader.open(GamePid));
  auto client=worldframe::acquireClient(GamePid,reader.generation());CHECK(!client->acquire(7));currentPid=GamePid;worldframe::Server server;CHECK(server.wanted(HostPid,clock));first->key.connectionLow=second->key.connectionLow=uint32_t(reader.generation());server.observe(second->key);server.publish(*second);currentPid=HostPid;CHECK(reader.beginWorldFrame(7,first));
- const auto before=rpmCalls;uint32_t value=0;CHECK(reader.read(0x10000,&value,4)&&value==0x55556666);CHECK(reader.readFresh(0x10000,&value,4)&&value==0x55556666);CHECK(reader.worldFrameComplete());
+ const auto before=rpmCalls;uint32_t value=0;const auto cacheBefore=reader.totalSealedPageCacheHits;
+ CHECK(reader.read(0x10000,&value,4)&&value==0x55556666);CHECK(reader.totalSealedPageCacheHits==cacheBefore);
+ CHECK(reader.readFresh(0x10000,&value,4)&&value==0x55556666);CHECK(reader.totalSealedPageCacheHits==cacheBefore+1);
+ for(unsigned n=0;n<64;++n)CHECK(reader.readOptional(0x10000,&value,4)&&value==0x55556666);
+ CHECK(reader.totalSealedPageCacheHits==cacheBefore+65&&reader.worldFrameComplete());
  CHECK(!reader.read(0x13000,&value,4));CHECK(!reader.worldFrameComplete());CHECK(rpmCalls==before);
  // Restoring a suspended read domain must retain its earlier failure.
- {external::WorldFrameScope nested(reader,7,second);CHECK(nested&&nested.complete());CHECK(reader.read(0x10000,&value,4)&&value==0x77778888);}
+ {external::WorldFrameScope nested(reader,7,second);CHECK(nested&&nested.complete());const auto hits=reader.totalSealedPageCacheHits;CHECK(reader.read(0x10000,&value,4)&&value==0x77778888);CHECK(reader.totalSealedPageCacheHits==hits);CHECK(reader.read(0x10000,&value,4)&&value==0x77778888&&reader.totalSealedPageCacheHits==hits+1);}
  CHECK(reader.worldFrameToken()==first);CHECK(!reader.worldFrameComplete());
+ {const auto hits=reader.totalSealedPageCacheHits;CHECK(reader.read(0x10000,&value,4)&&value==0x55556666&&reader.totalSealedPageCacheHits==hits);}
  // Nested consumers of the same immutable token contribute to one aggregate
  // completeness result. Another token has its own independent read domain.
  CHECK(reader.beginWorldFrame(7,first));
@@ -885,6 +890,10 @@ void hostReads(){
  CHECK(reader.beginWorldFrame(7,first));CHECK(!reader.read(0xFFFF,&value,4));CHECK(!reader.worldFrameComplete());CHECK(rpmCalls==before);
  CHECK(reader.worldMissingReads>0&&reader.worldUnreadableReads>0&&reader.worldInvalidReads>0);
  CHECK(reader.worldFirstMissingAddress==0x13000&&reader.worldLastMissingAddress==0x13000);
+ // A cached full page cannot satisfy an absent second page or certify it.
+ CHECK(reader.beginWorldFrame(7,first));CHECK(reader.read(0x10000,&value,4));value=0xABCDEF01;
+ const auto hits=reader.totalSealedPageCacheHits;CHECK(!reader.read(0x10FFE,&value,4)&&value==0xABCDEF01&&!reader.worldFrameComplete());
+ CHECK(reader.totalSealedPageCacheHits==hits&&rpmCalls==before);
  reader.endWorldFrame();CHECK(reader.worldMissingReads>0);reader.begin();CHECK(!reader.worldMissingReads&&!reader.worldUnreadableReads&&!reader.worldInvalidReads&&!reader.worldFirstMissingAddress);
  CHECK(reader.readLive(0x10000,&value,4));CHECK(rpmCalls==before+1);
  const auto oldConnection=reader.connectionIdentity();process->alive=false;process=std::make_shared<ProcessRecord>(ProcessRecord{GamePid,12346,true});external::ProcessReader reused;CHECK(reused.open(GamePid));CHECK(reused.generation()!=oldConnection->generation);CHECK(!reused.beginWorldFrame(7,first));reused.close();reader.close();gameMemory=nullptr;
