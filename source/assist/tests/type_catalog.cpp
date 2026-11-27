@@ -9,6 +9,18 @@ static assist::Type item(const char* id,int kind,int index,const char* name){
  return t;
 }
 int main(){
+ typecatalog::WriteState write;
+ assert(write.due(1,0));
+ write.attempted(0);
+ assert(!write.due(1,999)&&write.due(1,1000));
+ assert(write.needsWrite(1)); // failure is still pending
+ write.attempted(1000);write.completed(1);
+ assert(!write.due(1,9000));
+ assert(!write.due(2,1999)&&write.due(2,2000));
+ write.completed(2);assert(!write.needsWrite(2));
+ typecatalog::WriteState wrap;
+ wrap.attempted(0xfffffff0u);
+ assert(!wrap.due(1,0u)&&wrap.due(1,984u));
  typecatalog::Catalogue c;
  assert(c.ensure("E1"));assert(c.types.size()==1);
  assert(!c.ensure("E1"));assert(c.types[0].kind==-1);
