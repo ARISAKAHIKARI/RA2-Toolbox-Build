@@ -305,7 +305,7 @@ public:
   auto prepare=[&](size_t index,bool fresh=false){
    if(!fresh&&evaluatedStamp_[index]==evaluationEpoch_)return evaluatedPaint_[index];
    ++stageStats_.terrainLightCells;
-   const auto&cell=evaluatedTerrain->art[index];Paint value;value.light=lighting::cell(read,cell.cell,scene,lighting::Layer::Terrain,true,fresh?nullptr:&terrainTints);
+   const auto&cell=evaluatedTerrain->art[index];Paint value;value.light=lighting::cell(read,cell.cell,scene,lighting::Layer::Terrain,true,fresh?nullptr:&terrainTints,!fresh&&terrainSource&&terrainSource==frame.sourceFrame);
    value.signature=lightKey(1469598103934665603ull,value.light);
    evaluatedStamp_[index]=evaluationEpoch_;evaluatedPaint_[index]=value;return value;
   };
@@ -320,7 +320,7 @@ public:
     for(const auto&part:i.attachments)self(self,part,nesting+1);
    };
    auto extent=[&](const auto&cache){for(const auto&item:cache){if(item.second.ready)imageExtent(imageExtent,*item.second.image,0);else{haloX=std::max(haloX,512.);haloY=std::max(haloY,512.);}}};
-   extent(tiles_);
+   if(region.active)extent(tiles_);
    for(size_t n=0;n<cells_.size();++n){size_t index=cells_[n];
     // cells_ already belongs to this exact geometry/source. Whole-map views
     // need every cell's current light, but have no crop to project it against.
