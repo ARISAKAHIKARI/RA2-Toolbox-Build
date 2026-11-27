@@ -17,9 +17,12 @@ class LiveINI {
  std::map<std::pair<std::string,std::string>,Value> values_;
  static bool range(uint32_t p,size_t n){return p>=0x10000&&uint64_t(p)+n<=0x80000000ull;}
  static bool same(const Index&a,const Index&b){return a.table==b.table&&a.count==b.count&&a.capacity==b.capacity;}
- template<class Read>static bool index(Read&read,uint32_t p,Index&out){
-  if(!range(p,12)||!read(p,&out,12)||out.count<0||out.count>16384||out.capacity<out.count||out.capacity>65536)return false;
+ static bool validIndex(const Index&out){
+  if(out.count<0||out.count>16384||out.capacity<out.count||out.capacity>65536)return false;
   return !out.count||range(out.table,size_t(out.count)*8);
+ }
+ template<class Read>static bool index(Read&read,uint32_t p,Index&out){
+  return range(p,12)&&read(p,&out,12)&&validIndex(out);
  }
  template<class Read>static bool string(Read&read,uint32_t p,size_t limit,std::string&out){
   out.clear();if(!range(p,1))return false;
@@ -35,8 +38,21 @@ class LiveINI {
   if(!data.empty()&&!read(header.table,data.data(),data.size()*4))return false;
   Index after;return index(read,at,after)&&same(header,after);
  }
- template<class Read>static bool root(Read&read,uint32_t object,Index&header){
-  uint32_t vt=0;return range(object,0x58)&&read(object,&vt,4)&&vt==0x7E1AF4&&index(read,object+0x28,header);
+ template<class Read>bool root(Read&read,uint32_t object,Index&header){
+  if(!range(object,0x58))return false;
+  uint32_t vt=0;
+  // Render-only opt-in: coalesce the adjacent root fields into one read.
+  // Keep both identity checks; an inaccessible intervening range must not
+  // change the legacy result, so a failed bulk read uses the narrow reads.
+  if(boundedPresentation_&&retryInterval_){
+   unsigned char raw[0x34];
+   if(read(object,raw,sizeof raw)){
+    static_assert(sizeof(Index)==12,"unexpected INI index layout");
+    std::memcpy(&vt,raw,sizeof vt);std::memcpy(&header,raw+0x28,sizeof header);
+    return vt==0x7E1AF4&&validIndex(header);
+   }
+  }
+  return read(object,&vt,4)&&vt==0x7E1AF4&&index(read,object+0x28,header);
  }
  template<class Read>bool unchanged(Read&read,uint32_t object,const Index&header){
   Index after;return root(read,object,after)&&same(header,after);
