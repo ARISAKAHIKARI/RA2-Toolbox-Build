@@ -13,6 +13,7 @@
 #include "enemy_markers.h"
 #include "unit_status.h"
 #include "projection.h"
+#include "owned_marker_projection.h"
 #include "../../shared/source/native_viewport_projection.h"
 #include "idle_aircraft.h"
 #include "unit_info_panel_model.h"
@@ -117,14 +118,13 @@ template<class Read> class TacticalSampler {
   if(addSpecial)specialEnemies_.items[specialEnemies_.count++]=mark;
  }
  void addOwned(uint32_t p,uint32_t t,int k,uint32_t owner,uint32_t house,const Projection&proj){
-  if(owner!=house||!house||t<0x10000||k<0||k>3||(k!=3&&get<uint32_t>(p+0x11C,0xffffffffu)))return;
+  if(!ownedmarkers::local(owner,house)||t<0x10000||k<0||k>3||(k!=3&&get<uint32_t>(p+0x11C,0xffffffffu)))return;
   const uint32_t id=get<uint32_t>(p+0x10);if(!id)return;
   int x=0,y=0,wx=get<int>(p+0x9C,INT32_MIN),wy=get<int>(p+0xA0,INT32_MIN);
-  if(!project(proj,wx,wy,get<int>(p+0xA4,INT32_MIN),x,y))return;
+  if(!ownedmarkers::anchor(proj,wx,wy,get<int>(p+0xA4,INT32_MIN),x,y))return;
   if(owned_.count>=enemies::Maximum){++owned_.omitted;return;}
   auto&m=owned_.items[owned_.count++];m={};m.object=p;m.id=id;m.type=t;m.owner=house;
-  m.kind=k;m.worldX=wx;m.worldY=wy;m.x=int(std::clamp(int64_t(x)+proj.cameraX,int64_t(INT32_MIN),int64_t(INT32_MAX)));
-  m.y=int(std::clamp(int64_t(y)+proj.cameraY,int64_t(INT32_MIN),int64_t(INT32_MAX)));
+  m.kind=k;m.worldX=wx;m.worldY=wy;m.x=x;m.y=y;
   m.color=0xffa5e6ffu;
   auto found=ownedNames_.find(t);
   if(found==ownedNames_.end()){std::array<uint16_t,40> text{};name(t,text.data());found=ownedNames_.emplace(t,text).first;}
