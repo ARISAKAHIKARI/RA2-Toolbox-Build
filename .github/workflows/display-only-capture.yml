@@ -3,22 +3,39 @@ on:
   pull_request:
     paths:
       - 'source/shared/source/world_frame*.h'
+      - 'source/shared/source/overlay_composition.h'
+      - 'source/shared/source/overlay_compositor.h'
+      - 'source/shared/source/overlay_submit_policy.h'
       - 'source/assist/source/world_frame_runtime.h'
       - 'source/assist/source/world_capture*.h'
       - 'source/assist/source/bridge.cpp'
+      - 'source/assist/source/external_orders_bridge.h'
+      - 'source/assist/source/cooperative_bridge.h'
+      - 'source/assist/source/watch_scene.h'
       - 'source/assist/source/main.cpp'
       - 'source/assist/source/command_cursor_host.h'
       - 'source/external_reader/source/process_reader.h'
       - 'source/external_reader/source/shared_scene.h'
       - 'source/external_reader/source/radar_scene.h'
+      - 'source/external_reader/source/radar_publication.h'
       - 'source/external_reader/source/scene_lighting.h'
+      - 'source/external_reader/source/scene_frame_reuse.h'
+      - 'source/external_reader/source/gpu_scene_record.h'
+      - 'source/external_reader/source/viewport_canvas.h'
+      - 'source/external_reader/source/vulkan_scene_types.h'
+      - 'source/external_reader/source/world_scene_pipeline.h'
       - 'source/external_reader/source/live_ini.h'
       - 'source/external_reader/source/camera_assets.h'
       - 'source/assist/tests/world_frame_core.cpp'
+      - 'source/assist/tests/world_frame_async_recovery.cpp'
       - 'source/assist/tests/display_capture_offthread.cpp'
+      - 'source/assist/tests/anti_theft_sample_cache.*'
       - 'source/assist/tests/shared_scene_sampling.cpp'
       - 'source/assist/tests/scene_lighting.cpp'
       - 'source/assist/tests/terrain_sealed_presentation.cpp'
+      - 'source/assist/tests/scene_frame_reuse.cpp'
+      - 'source/assist/tests/renderer_plan_performance.cpp'
+      - 'source/assist/tests/overlay_incremental.cpp'
       - 'source/assist/tests/live_ini_presentation.cpp'
       - 'source/tools/test_live_ini_presentation.py'
       - '.github/workflows/display-only-capture.yml'
@@ -47,12 +64,13 @@ jobs:
           python source/assist/tests/world_frame_core_test.py | tee checks/core.log
           python source/assist/tests/world_frame_retention.py --out checks/retention | tee checks/retention.log
           python source/assist/tests/tactical_frame_sampling.py --out checks/tactical | tee checks/tactical.log
-      - name: Exercise sealed terrain lighting and paused Watch recovery
+          python source/assist/tests/anti_theft_sample_cache.py --after-only --out checks/defender | tee checks/defender.log
+      - name: Exercise sealed terrain lighting, draw reuse and paused Watch recovery
         shell: bash
         run: |
           set -euo pipefail
           g++ -std=c++17 -O2 -UNDEBUG -c source/third_party/xbrz/xbrz.cpp -o checks/xbrz.o
-          for fixture in scene_lighting terrain_sealed_presentation shared_scene_sampling; do
+          for fixture in scene_lighting terrain_sealed_presentation scene_frame_reuse renderer_plan_performance shared_scene_sampling overlay_incremental; do
             g++ -std=c++17 -O2 -UNDEBUG -pthread "source/assist/tests/$fixture.cpp" checks/xbrz.o -ldl -o "checks/$fixture"
             "checks/$fixture" | tee "checks/$fixture.log"
           done

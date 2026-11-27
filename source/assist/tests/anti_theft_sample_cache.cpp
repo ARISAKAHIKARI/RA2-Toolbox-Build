@@ -124,9 +124,27 @@ static void configFailures(){
  list=buildings(2);const auto atType=get<uint32_t>(list[0]+0x520);seal();readMutation=[&](uint32_t at,size_t){if(at==atType+0x24){readMutation={};++worldFrame.key.serial;}};
  check(!presence(lastHouse,present,changed),"source changing during pre-scan is not memoized");check(presence(lastHouse,present,changed)&&!present&&changed,"coherent successor after source change is rescanned");check(!liveReads&&!missingLiveReads,"failure tests stay sealed");
 }
+static void nativeWitness(){
+ auto list=buildings(256,true);runtimeDirectActions=true;
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow)&&planningWorld.count==1,"first native roster proof");
+ const auto turret=list.back();const auto oldType=get<uint32_t>(turret+0x520);
+ buildingChecks=0;countWork=true;
+ for(int n=0;n<20;++n)check(!publishPlanningWorld(lastHouse,snap.frame,clockNow),"same-frame native plan must not republish");
+ check(buildingChecks==20,"one rechecked witness per native callback");countWork=false;
+ filter("NACNST");
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow)&&planningWorld.count==255,"positive filter change refreshes participants in the same frame");
+ filter("NALASR");
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow)&&planningWorld.count==1,"native witness is rebound to the current filter");
+ set<bool>(turret+0x81,true);
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow)&&planningWorld.count==0,"limbo invalidates the witness");
+ set<bool>(turret+0x74,false);
+ set<uint32_t>(list.front()+0x520,oldType);
+ check(publishPlanningWorld(lastHouse,snap.frame,clockNow)&&planningWorld.count==1&&planningWorld.actors[0].id==100,"same-frame defender discovery after absence");
+ runtimeDirectActions=false;
+}
 #endif
 int main(){sh=new Shared{};benchmark(0,false);benchmark(256,false);benchmark(1024,false);benchmark(1024,true);
 #if !ANTI_THEFT_BASELINE
- identityCases();sourceFailures();positiveAndProjection();sameFrameChanges();configFailures();
+ identityCases();sourceFailures();positiveAndProjection();sameFrameChanges();configFailures();nativeWitness();
 #endif
  std::printf("RESULT {\"checks\":%u,\"scenarios\":%u,\"failures\":0}\n",checks,scenarios);delete sh;}

@@ -53,7 +53,7 @@ struct DrawJob {
  int cloakWords=0,nativePitch=0;float nativeScaleX=1,nativeScaleY=1;bool displace=false;
  MotionIdentity motion;
 };
-struct FrameJob {
+struct FrameInputs {
  int width=0,height=0;
  bool nativeScene=false;float nativeScaleX=1,nativeScaleY=1;
  std::shared_ptr<const std::vector<uint32_t>> basePixels;
@@ -61,12 +61,21 @@ struct FrameJob {
  std::shared_ptr<const std::vector<float>> baseDepth; // output Z, or native plane with axis maps below
  int baseDepthWidth=0,baseDepthHeight=0;
  std::shared_ptr<const std::vector<uint32_t>> baseDepthXs,baseDepthYs; // O(w+h) nearest lookup
- std::vector<DrawJob> draws; // attachments already flattened in exact painter order
  std::shared_ptr<const gpushroud::Plan> maskPlan; // optional GPU native-mask construction
  std::shared_ptr<const std::vector<uint8_t>> fogAlpha; // native0..127; optional
  int clipLeft=0,clipTop=0,clipRight=-1,clipBottom=-1; // negative right/bottom = full
  bool collectGuides=false; // no guide buffers, copies or history work when false
  MotionView motion;
  std::shared_ptr<const gpueffects::Plan> effects;
+};
+struct FrameJob : FrameInputs {
+ std::vector<DrawJob> draws; // attachments already flattened in exact painter order
+};
+// Ownership identifies the immutable terrain prefix retained by GpuSceneRecord.
+struct DrawPrefix {
+ std::shared_ptr<const uint8_t> owner;
+ size_t count=0;
+ bool operator==(const DrawPrefix&other)const{return owner==other.owner&&count==other.count;}
+ bool validFor(size_t draws)const{return count<=draws&&bool(owner)==(count!=0);}
 };
 }}

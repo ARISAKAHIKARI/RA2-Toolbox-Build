@@ -48,6 +48,8 @@ template<class Reader>class Context {
  struct PaletteSample {std::array<uint32_t,256>colors{};bool live=false;};
  using PaletteSampleKey=std::tuple<uint32_t,uint32_t,std::string,bool,bool>;
  std::map<PaletteSampleKey,PaletteSample>presentationPalettes_;
+ struct ArtSections {std::string base,image;};
+ std::map<uint32_t,ArtSections>presentationArt_;
  uint64_t paletteSamples_=0,paletteSampleHits_=0;
  using SharedTileKey=std::tuple<uint32_t,uint32_t,uint32_t,uint32_t,unsigned,uint64_t,std::array<uint32_t,256>>;
  inline static nativeimages::BasicBank<SharedTileKey> sharedTiles_{rendermemory::SharedTiles};
@@ -93,7 +95,7 @@ public:
  void presentationPalette(pixelupgrade::PaletteRange mode){paletteRange_=mode;}
  explicit Context(Reader&r):reader_(r),read{&r},resourceRead{&r},artINI(resourceRead,external::assets::LiveINI::ArtObject),rulesINI(resourceRead,external::assets::LiveINI::RulesPointer,true),cameoCatalog(resourceRead){}
  void identity(uint32_t process,uint32_t match){
-  if(process_!=process||match_!=match){presentationRevision_=0;presentationRevisionKnown_=false;presentationPalettes_.clear();overlayPalettes_.clear();gpuPackets_.clear();voxelGeometry_.clear();gpuPalettes_.clear();gpuVplSnapshot_.reset();gpuVplSignature_=0;terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
+  if(process_!=process||match_!=match){presentationRevision_=0;presentationRevisionKnown_=false;presentationPalettes_.clear();presentationArt_.clear();overlayPalettes_.clear();gpuPackets_.clear();voxelGeometry_.clear();gpuPalettes_.clear();gpuVplSnapshot_.reset();gpuVplSignature_=0;terrainPaletteLive_=presentation_=presentationVplFresh_=false;voxelLight={};voxelChecked=voxelNative=false;voxelRevision=~uint64_t(0);}
   process_=process;match_=match;update();
  }
 
@@ -147,11 +149,15 @@ void metadata(){uint64_t revision=files.revision();uint64_t generation=revision^
  if(files.load("RULESMD.INI",b)||files.load("RULES.INI",b))rulesINI.parse(b);
 }
 std::string artName(uint32_t type){metadata();std::string stem=text(type+0x1F8,25);if(stem.empty()){auto id=text(type+0x24,24);stem=rulesINI.get(id,"IMAGE");if(stem.empty())stem=id;}return external::assets::name(stem);}
-struct ArtSections {std::string base,image;};
 ArtSections artSections(uint32_t type){
+ // Geometry, sprite names and palette lookup all use the same art binding
+ // during this pinned render. A new presentation resolves it again.
+ if(presentation_){auto found=presentationArt_.find(type);if(found!=presentationArt_.end())return found->second;}
  auto base=artName(type);auto image=artINI.get(base,"IMAGE");
  image=!image.empty()&&external::assets::safe(image)?external::assets::name(image):base;
- return {std::move(base),std::move(image)};
+ ArtSections binding{std::move(base),std::move(image)};
+ if(presentation_&&!binding.base.empty()&&presentationArt_.size()<4096)presentationArt_.emplace(type,binding);
+ return binding;
 }
 std::string imageName(uint32_t type){return artSections(type).image;}
 std::string artValue(const ArtSections&sections,const std::string&key){
@@ -262,7 +268,7 @@ std::map<std::pair<uint32_t,bool>,OverlayPalette> overlayPalettes_;
  // A failed live INI bootstrap must not rescan the same full index at render FPS.
  // Keep disk fallback and root/generation checks; retry the exact failed identity
  // on a short monotonic interval, independently for ART and RULES.
- void beginPresentation(uint64_t now=GetTickCount64()){presentation_=true;constexpr uint64_t retryMs=250;artINI.beginPresentation(now,retryMs);rulesINI.beginPresentation(now,retryMs);presentationPalettes_.clear();paletteSamples_=paletteSampleHits_=0;vpl(voxelRelight_);if(overlayPalettes_.size()>4096)overlayPalettes_.clear();}
+ void beginPresentation(uint64_t now=GetTickCount64()){presentation_=true;constexpr uint64_t retryMs=250;artINI.beginPresentation(now,retryMs);rulesINI.beginPresentation(now,retryMs);presentationPalettes_.clear();presentationArt_.clear();paletteSamples_=paletteSampleHits_=0;vpl(voxelRelight_);if(overlayPalettes_.size()>4096)overlayPalettes_.clear();}
 bool refreshOverlayPalette(uint32_t type,uint32_t pointer,int frame,bool terrain,bool&changed){
  if(!spriteRelight_&&overlayPalettes_.count({type,terrain})){changed=false;return true;}
  (void)pointer;(void)frame;changed=false;auto found=overlayPalettes_.find({type,terrain});if(found==overlayPalettes_.end())return true;

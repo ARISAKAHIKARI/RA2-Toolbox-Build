@@ -10,6 +10,7 @@
 #include "watch_observation.h"
 #include "watch_current_anchor.h"
 #include <chrono>
+#include <optional>
 #include "watch_presentation.h"
 namespace watchscene {
 // A tracking camera is a viewport of the common immutable world, rendered by
@@ -41,8 +42,25 @@ public:
   timings={};sharedSource=gpuAttempted=gpuUsed=false;auto failed=[&](typename Timings::Failure reason){timings.failure=reason;return false;};const double started=clock();struct Total {double start;Timings&out;~Total(){out.total=watchpresentation::now()-start;if(!out.sampled)out.sample=out.total;}} total{started,timings};
   bool wanted=false;for(const auto&t:tracks)wanted|=bool(t);
   if(!wanted&&(!danger||autoSuppressed)){for(auto&v:views)v={};sourceTick=now;sharedSource=gpuAttempted=gpuUsed=false;return true;}
-  external::radar::FrameScope worldScope(reader_,epoch);if(!worldScope)return failed(Timings::FrameUnavailable);
   auto fresh=[this](uint32_t p,void*out,size_t n){return external::radar::liveRead(reader_,p,out,n);};
+  const auto recent=[&](const external::radar::Frame&frame){
+   return external::radar::recentMarkers(frame,external::radar::publicationContext(fresh),now+uint32_t(clock()-started));
+  };
+  const auto recoverScene=[&]()->std::shared_ptr<const external::radar::Frame>{
+   const auto source=external::radar::sourceFrame(reader_);
+   auto bank=external::radar::sceneBank().get(process,epoch,revealMap,now,true,source);
+   return bank&&external::radar::recoverableScene(*bank,external::radar::publicationContext(fresh),
+    now+uint32_t(clock()-started),sourceFrame_,profile_.revealUnits,profile_.particles,profile_.lasers,source)?bank:nullptr;
+  };
+  external::radar::FrameScope worldScope(reader_,epoch);
+  std::shared_ptr<const external::radar::Frame> bank;
+  std::optional<external::radar::FrameScope<Reader>> recoveryScope;
+  if(!worldScope){
+   bank=recoverScene();
+   if(!bank)return failed(Timings::FrameUnavailable);
+   recoveryScope.emplace(reader_,epoch,bank->sourceFrame);
+   if(!*recoveryScope)return failed(Timings::FrameUnavailable);
+  }
   auto proof=[&](uint32_t p,void*out,size_t n){return external::radar::completeFrame(reader_)&&fresh(p,out,n);};
   bool manual=false;for(auto&t:tracks){bool had=bool(t);external::watch::follow(read_,t,proof);if(had&&!t)autoSuppressed=true;manual|=bool(t);}
   if(!manual&&!autoSuppressed){
@@ -52,9 +70,12 @@ public:
   // With automatic tracking explicitly off/suppressed and no pinned target,
   // there is no camera to draw. Do not sample/decode a world for empty panels.
   if(!manual&&(!danger||autoSuppressed)){for(auto&v:views)v={};sourceTick=now;sharedSource=gpuAttempted=gpuUsed=false;return true;}
-  auto bank=external::radar::sharedScene(reader_,process,epoch,revealMap,now,external::radar::SceneConsumer::Watch,true,profile_.particles,profile_.lasers);
+  if(!bank){
+   bank=external::radar::sharedScene(reader_,process,epoch,revealMap,now,external::radar::SceneConsumer::Watch,true,profile_.particles,profile_.lasers);
+   if(!bank)bank=recoverScene();
+  }
   if(!bank)return failed(Timings::SceneUnavailable);
-  if(!external::radar::recentMarkers(*bank,external::radar::publicationContext(fresh),now+uint32_t(clock()-started)))return failed(Timings::SceneStale);
+  if(!recent(*bank))return failed(Timings::SceneStale);
   external::radar::FrameScope sceneScope(reader_,epoch,bank->sourceFrame);
   if(!sceneScope)return failed(Timings::FrameUnavailable);
   sharedSource=true;

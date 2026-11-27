@@ -786,7 +786,8 @@ public:
   const bool reusableResolve=gpuMode_||cpuReusable;
   const auto*reusePlan=reusableResolve&&fallbacks.empty()&&effectPlanReady&&!guideEnabled_?
    detailed_.completeGpuPlan(masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr):nullptr;
-  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(previous->gpu);stageStats_.reused=true;stage(stageStats_.resolveMs,stageStats_.resolveReads);return previous;}}}
+  const auto prefix=reusePlan?detailed_.drawPrefix():vulkancompute::DrawPrefix{};
+  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan,prefix)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(previous->gpu);stageStats_.reused=true;stage(stageStats_.resolveMs,stageStats_.resolveReads);return previous;}}}
   else gpuFrameReuse_.reset();
   const bool directReady=directPresentation_&&gpuMode_&&effectPlanReady&&!guideEnabled_;
   auto*maskReadback=!directReady&&masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_?&mask_.alpha:nullptr;
@@ -834,7 +835,7 @@ public:
   if(!beacons.empty()&&!gpuEffectsDone){sceneextras::RadarCPU sink(*out);for(const auto&b:beacons)sink.uiImage(b.draw.image,b.rgba,(b.draw.x-effectView.x)*width/effectView.width,(b.draw.y-effectView.y)*height/effectView.height,width/effectView.width,height/effectView.height);}
   if(radarExtras&&!gpuEffectsDone){sceneextras::RadarCPU sink(*out);sceneextras::radarDecorations(frame,width,height,read,assets,extraLayers_,sink);}
   if(areaGpuMode&&staticView){areaCachedGpu_=areaUsed;if(masked)maskedBaseScene_=out;else baseScene_=out;}
-  if(reusePlan&&(detailed_.gpuCompleted()||cpuReusable))gpuFrameReuse_.completed(*reusePlan,out);else gpuFrameReuse_.reset();
+  if(reusePlan&&(detailed_.gpuCompleted()||cpuReusable))gpuFrameReuse_.completed(*reusePlan,out,prefix);else gpuFrameReuse_.reset();
   stage(stageStats_.effectsMs,stageStats_.effectReads);return out;
  }
 };

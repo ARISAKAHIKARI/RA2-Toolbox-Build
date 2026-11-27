@@ -67,9 +67,13 @@ assert "!graphCatalogueDue" in direct_admission
 assert "hostDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)" in direct_admission
 assert "(!hostDemand&&runtimeWorldDemands.empty()&&!runtimeDemandOverflow)" in direct_admission
 assert "if(graphCatalogueDue)worldDemand|=worldframe::TypeCatalogue;" in bridge
-assert "external::catalogue::captureVisit(readLiveWorld,stamp,collectProbe)" in bridge
-assert "||scanTypes(true,&probes)" in bridge
-assert "for(auto&batch:probes)batch.clear();" in bridge
+isolated=bridge.split("if(nativeCatalogue&&catalogueDue){",1)[1].split("uint32_t worldDemand=",1)[0]
+assert "worldFramePublication.takeCatalogue(catalogueKey,catalogue)" in isolated
+assert "worldFramePublication.requestCatalogue(catalogueKey)" in isolated
+assert "SampleReadScope sample(false,&catalogue)" in isolated
+assert "scanTypes()&&sample.complete()" in isolated and "readLiveWorld" not in isolated
+assert "if(!isolated)requestWorldRange(at,n)" in runtime
+assert "if(!isolated)rememberMissingWorldSpan(at,n)" in runtime
 assert "if(internal&&runtimeDirectActions)" in bridge
 assert "if(runtimeDirectActions){if(!collect())return -12;}" in bridge
 assert "allowDirect" not in runtime

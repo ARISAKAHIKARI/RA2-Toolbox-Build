@@ -35,4 +35,10 @@ inline bool recentMarkers(const Frame&sample,const PublicationContext&current,ui
   ((sample.sourceFrame&&sample.frame==current.frame)||
    uint32_t(now-(sample.observationTick?sample.observationTick:sample.tick))<=maximumAge);
 }
+inline bool recoverableScene(const Frame&sample,const PublicationContext&current,uint32_t now,
+ int previousFrame,uint8_t revealOptions,bool particles,bool lasers,const worldframe::Token&source){
+ return sample.sourceFrame&&sample.frame>=previousFrame&&sample.revealOptions==revealOptions&&
+  (!source||sample.sourceFrame->key.sameWorld(source->key))&&
+  supportsEffects(sample,particles,lasers)&&recentMarkers(sample,current,now);
+}
 }}

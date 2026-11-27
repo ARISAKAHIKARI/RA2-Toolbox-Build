@@ -1,9 +1,16 @@
-#include "../../shared/source/overlay_composition.h"
+#include "../../shared/source/overlay_submit_policy.h"
 #include <cassert>
 #include <chrono>
 #include <climits>
 #include <cstdio>
 using namespace overlaycomposition;
+struct BitmapBacking {
+ int w=0,h=0;bool dc=false;void*bits=nullptr;std::vector<uint32_t> pixels;
+ bool resize(int width,int height){
+  if(dc&&w==width&&h==height)return true;
+  w=width;h=height;pixels.assign(size_t(w)*h,0);bits=pixels.data();dc=true;return true;
+ }
+};
 int main(){
  Context c{1,101,22,3,80,60,100,200};
  auto ground=std::make_shared<const std::vector<uint32_t>>(100*80,0xff123456);
@@ -96,5 +103,18 @@ int main(){
  uint64_t holesPixels=0;for(const auto&r:moving.dirtyRegions())holesPixels+=uint64_t(r.w)*r.h;assert(holesPixels==3);
  assert(compose(large,{base,mouse,far},expected)&&moving.pixels()==expected);
  assert(moving.update(large,{base,mouse}));assert(compose(large,{base,mouse},expected)&&moving.pixels()==expected);
+ // Move the cursor and update a distant HUD on separate composed revisions
+ // before the upload deadline. The staged DIB copy must cover both diffs.
+ overlaypublication::CpuStage publication;BitmapBacking bitmap;
+ assert(publication.compose(large,{base,mouse,far},bitmap)&&publication.copy(bitmap));
+ const auto before=bitmap.pixels;
+ ++mouse.rect.x;assert(publication.compose(large,{base,mouse,far},bitmap));
+ far.opacity=120;assert(publication.compose(large,{base,mouse,far},bitmap));
+ assert(publication.compose(large,{base,mouse,far},bitmap)); // identical revision must retain pending dirty work
+ assert(publication.needsUpload(false)&&bitmap.pixels==before&&publication.copy(bitmap));
+ assert(publication.copiedPixels()==33*32+32*32&&!publication.needsCopy());
+ assert(compose(large,{base,mouse,far},expected)&&bitmap.pixels==expected);
+ // Repair still overwrites the full backing after an unsuccessful upload.
+ publication.lost();assert(publication.copy(bitmap)&&publication.copiedPixels()==expected.size()&&bitmap.pixels==expected);
  std::printf("PASS: destination clip, sparse holes, crossing strips, bounded fragmentation and full-composition equivalence; 4K cursor %llu pixels/30 frames (%.4f ms/frame CPU); distant changes %llu pixels vs %llu union; sparse holes3 pixels\n",(unsigned long long)repainted,milliseconds/30,(unsigned long long)separated,(unsigned long long)unionPixels);
 }

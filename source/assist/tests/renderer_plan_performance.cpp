@@ -23,12 +23,28 @@ int main(){
  auto base=std::make_shared<std::vector<uint32_t>>();assert(world.presentRegion(600,300,*base,0,0,6000,3000,1));camera::ViewportCanvas canvas;
  auto prepare=[&](camera::ViewportCanvas&target,const camera::NativeCanvas&source,double x=0,unsigned mode=1,colorprecision::Mode precision=colorprecision::Mode::NativeSteps){return target.prepare(source,*base,600,300,x,0,6000,3000,1,precision,mode,base,{}, {},1);};
  assert(prepare(canvas,world));assert(canvas.recordedGpuFrame()->draws.size()==10000);const auto firstPlan=*canvas.completeGpuPlan();std::vector<uint32_t>first;assert(canvas.finish(first,true));
+ camera::FrameReuse<std::vector<uint32_t>> reusedFrame;
+ auto result=std::make_shared<const std::vector<uint32_t>>(first);
+ const auto prefix=canvas.drawPrefix();assert(prefix.count==10000&&prefix.owner);
+ const auto terrainOwners=tile.use_count();
+ reusedFrame.completed(firstPlan,result,prefix);
+ assert(tile.use_count()==terrainOwners); // A completed frame retains no second list of terrain draws.
+ assert(prepare(canvas,world)&&canvas.drawPrefix()==prefix);
+ assert(reusedFrame.get(*canvas.completeGpuPlan(),canvas.drawPrefix())==result);
+ camera::FrameReuse<std::vector<uint32_t>> fullComparison;
+ const double copiedAt=now();
+ for(int n=0;n<80;++n){fullComparison.completed(firstPlan,result);assert(fullComparison.get(firstPlan)==result);}
+ const double copiedMs=(now()-copiedAt)/80;
+ const double retainedAt=now();
+ for(int n=0;n<80;++n){reusedFrame.completed(firstPlan,result,prefix);assert(reusedFrame.get(firstPlan,prefix)==result);}
+ const double retainedMs=(now()-retainedAt)/80;
  const double start=now();for(int n=0;n<80;++n){assert(prepare(canvas,world));assert(camera::samePixels(firstPlan,*canvas.completeGpuPlan()));}const double prepareMs=(now()-start)/80;
 #ifdef STATIC_PREFIX_TEST
  assert(canvas.terrainPlanReused());
 #endif
  // The cached prefix must discard all previous dynamic calls, effects and fog.
- canvas.blit(*actor,300,300,1,1,300,{},0,0,actor);auto fog=std::make_shared<const std::vector<uint8_t>>(180000,63);std::vector<uint32_t>dynamic;assert(canvas.finish(dynamic,true,fog));assert(dynamic!=first);
+ canvas.blit(*actor,300,300,1,1,300,{},0,0,actor);assert(!reusedFrame.get(*canvas.completeGpuPlan(),canvas.drawPrefix()));
+ auto fog=std::make_shared<const std::vector<uint8_t>>(180000,63);std::vector<uint32_t>dynamic;assert(canvas.finish(dynamic,true,fog));assert(dynamic!=first);
  assert(prepare(canvas,world));std::vector<uint32_t>again;assert(canvas.finish(again,true));assert(again==first);
  assert(prepare(canvas,world));canvas.annotationDot(20,30,0xff0000);worldfx::View effectView;effectView.width=6000;effectView.height=3000;effectView.pixelsW=600;effectView.pixelsH=300;gpueffects::Builder effects(effectView);effects.line({20,20},{40,40},0xff00ff);canvas.gpuEffects(effects.finish());canvas.gpuMaskPlan(std::make_shared<const gpushroud::Plan>());vulkancompute::MotionView motion;canvas.motion(motion,true);
  assert(canvas.recordedGpuFrame()->draws.size()==10001&&canvas.recordedGpuFrame()->effects&&canvas.recordedGpuFrame()->maskPlan&&canvas.recordedGpuFrame()->collectGuides);
@@ -37,6 +53,7 @@ int main(){
  // Holding the terrain owner forces COW on a real mutation: same revision,
  // pointer to world and simulation frame must not hide a changed light.
  auto prior=world.fork();lighting::State dark;dark.ambient=400;world.terrainSource(0,tile,30,15,15,dark,1);assert(prepare(canvas,world));
+ assert(!(canvas.drawPrefix()==prefix)&&!reusedFrame.get(*canvas.completeGpuPlan(),canvas.drawPrefix()));
 #ifdef STATIC_PREFIX_TEST
  assert(!canvas.terrainPlanReused());
 #endif
@@ -52,5 +69,5 @@ int main(){
  // An unrelated invalid dynamic draw cannot poison the retained terrain.
  assert(prepare(canvas,prior));voxel::Image invalid=*actor;invalid.pixels.clear();canvas.blit(invalid,300,300,1,1,300,{},0,0);assert(!canvas.completeGpuPlan());assert(prepare(canvas,prior));assert(canvas.completeGpuPlan());
  canvas.reset();assert(prepare(canvas,prior));assert(canvas.recordedGpuFrame()->draws.size()==10000);
- std::printf("PASS actual ViewportCanvas/GpuSceneRecord: 10000 TMP commands; CPU pixels/depth; dynamic tail removal; fog reset; same-frame light/COW identity; crop/mode/precision; invalid-tail recovery. prepare_mean_ms=%.6f output_hash=%llu\n",prepareMs,(unsigned long long)hash(first));
+ std::printf("PASS actual ViewportCanvas/GpuSceneRecord: 10000 TMP commands; CPU pixels/depth; dynamic tail removal; fog reset; same-frame light/COW identity; crop/mode/precision; invalid-tail recovery. prepare_mean_ms=%.6f reuse_store_and_compare_mean_ms=%.6f->%.6f output_hash=%llu\n",prepareMs,copiedMs,retainedMs,(unsigned long long)hash(first));
 }

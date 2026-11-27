@@ -157,8 +157,9 @@ public:
   if(!radials.empty())radialindicators::geometry(radials,view,world->zscale,*radialMath,builder,width,height,radial555);
   auto plan=builder.finish();canvas_.gpuEffects((hasWorld||bolts||sparkles||chrono_.active()||!world->beacons.empty()||!radials.empty())?plan:nullptr);
   const auto*inputs=plan->valid?canvas_.completeGpuPlan({},mask_):nullptr;
+  const auto prefix=inputs?canvas_.drawPrefix():vulkancompute::DrawPrefix{};
   world_=world;view_=view;width_=width;height_=height;
-  stage(1);if(inputs)if(auto prior=reuse_.get(*inputs)){if(!prior->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(prior->gpu);reused_=true;return prior;}}
+  stage(1);if(inputs)if(auto prior=reuse_.get(*inputs,prefix)){if(!prior->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(prior->gpu);reused_=true;return prior;}}
   auto out=outputs_.acquire();out->width=width;out->height=height;out->gpu.reset();out->guides.reset();out->boltsRendered=false;
   if(!canvas_.finish(out->pixels,true,{},mask_,nullptr,&out->gpu))return {};
   stage(2);
@@ -181,7 +182,7 @@ public:
   }
   // Reuse a completed CPU frame too, only after comparing the full current
   // ordered draw/material/Z/A/effect inputs. Game-frame equality is not a key.
-  stage(3);if(inputs)reuse_.completed(*inputs,out);else reuse_.reset();
+  stage(3);if(inputs)reuse_.completed(*inputs,out,prefix);else reuse_.reset();
   return out;
  }
 };

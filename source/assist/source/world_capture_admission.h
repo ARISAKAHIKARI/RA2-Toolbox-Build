@@ -5,7 +5,13 @@
 // Do not confuse this with permission to execute commands from Host samples.
 namespace assist { namespace capturepolicy {
 constexpr uint32_t PassiveVisualFlags=
- Capacity|Iron|Production|AllTransports|Psychic|Crates|TextPanel;
+ Capacity|Iron|Production|AllTransports|Psychic|Crates|TextPanel|Frozen;
+// These preferences use the native placement/sidebar paths or Host input.
+// A pending command still goes through the dispatcher admission checks.
+constexpr uint32_t LocalDispatchFlags=BuildAnywhere|ReserveConstruction|DiskPrimary|SellDrained|SellVehicles;
+inline bool pointerNeedsGraph(uint32_t flags,uint32_t request,uint32_t ack){
+ return request!=ack&&(flags&(DiskPrimary|SellDrained|SellVehicles));
+}
 inline bool needsNativeFlagWork(uint32_t flags,bool externalDisplay){
  // A non-external legacy renderer still draws these overlays in the injected
  // Runtime, so keep its original conservative capture admission.

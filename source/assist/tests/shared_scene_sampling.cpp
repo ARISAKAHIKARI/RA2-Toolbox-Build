@@ -105,6 +105,15 @@ int main(){
  auto rescanned=*fastC;rescanned.observationTick=133;
  assert(radar::recentMarkers(rescanned,freshContext,470));
  assert(!radar::recentMarkers(rescanned,freshContext,484));
+ assert(radar::recoverableScene(rescanned,freshContext,470,fastC->frame,rescanned.revealOptions,false,false,fastSource));
+ assert(radar::recoverableScene(rescanned,freshContext,470,fastC->frame,rescanned.revealOptions,false,false,{}));
+ assert(!radar::recoverableScene(rescanned,freshContext,484,fastC->frame,rescanned.revealOptions,false,false,{}));
+ assert(!radar::recoverableScene(rescanned,freshContext,470,fastC->frame+1,rescanned.revealOptions,false,false,fastSource));
+ assert(!radar::recoverableScene(rescanned,freshContext,470,fastC->frame,rescanned.revealOptions^1,false,false,fastSource));
+ assert(!radar::recoverableScene(rescanned,freshContext,470,fastC->frame,rescanned.revealOptions,true,false,fastSource));
+ auto replacedWorld=std::make_shared<worldframe::Snapshot>();
+ auto newKey=fastSource->key;++newKey.generationLow;replacedWorld->reset(newKey);
+ assert(!radar::recoverableScene(rescanned,freshContext,470,fastC->frame,rescanned.revealOptions,false,false,replacedWorld));
  auto standalone=*fastC;standalone.sourceFrame.reset();standalone.observationTick=0;standalone.tick=500;
  assert(radar::recentMarkers(standalone,freshContext,850));
  assert(!radar::recentMarkers(standalone,freshContext,851));

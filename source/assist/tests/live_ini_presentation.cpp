@@ -103,9 +103,11 @@ int main(){
  bindings.artINI.parse(std::vector<uint8_t>(art,art+std::strlen(art)));
  stringAt(Type+0x1F8,"DIRECT");typeNameReads=0;
  check(bindings.artValue(Type,"missing").empty()&&typeNameReads==1);
- check(bindings.artValue(Type,"palette")=="DIRECTPAL");
+ check(bindings.artValue(Type,"palette")=="DIRECTPAL"&&typeNameReads==1);
  stringAt(Type+0x1F8,"ORIGINAL");typeNameReads=0;
+ bindings.beginPresentation(1001);
  auto sections=bindings.artSections(Type);
  check(sections.image=="ALIAS"&&bindings.artValue(sections,"palette")=="ALIASPAL"&&bindings.artYes(sections,"terrainpalette")&&typeNameReads==1);
+ check(bindings.imageName(Type)=="ALIAS"&&bindings.artValue(Type,"palette")=="ALIASPAL"&&typeNameReads==1);
  std::printf("PASS %u active assertions: exact fallback/empty semantics, render cooldown, root/header/generation invalidation, key retry and shared asset binding resolution. No game or GPU execution.\n",checks);
 }

@@ -224,7 +224,7 @@ class Snapshot {
  }
 public:
  Key key{};Counters counters{};PageBuffer pages;
- struct CatalogueObservation { uint64_t hash=0;bool attempted=false,complete=false; } catalogue;
+ struct CatalogueObservation { uint64_t hash=0;bool attempted=false,complete=false,isolated=false; } catalogue;
  // Local provenance only; not part of Key/Page/Channel wire layouts. All
  // command consumers unwrap this owner and read only its authoritative bytes.
  std::shared_ptr<const Snapshot> controlSource;

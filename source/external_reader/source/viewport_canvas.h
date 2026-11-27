@@ -157,6 +157,7 @@ public:
  void motion(vulkancompute::MotionView view,bool enabled){if(gpuRecording_)gpuRecord_.motion(std::move(view),enabled);}
  std::shared_ptr<const gpumotion::Guides> guides()const{return guides_;}
  const vulkancompute::FrameJob*recordedGpuFrame()const{return gpuRecording()?&gpuRecord_.frame():nullptr;}
+ vulkancompute::DrawPrefix drawPrefix()const{return gpuRecord_.prefix();}
  const vulkancompute::FrameJob*completeGpuPlan(std::shared_ptr<const std::vector<uint8_t>>fog={},std::shared_ptr<const gpushroud::Plan>mask={}){
   if(!gpuRecording())return nullptr;
   const int l=std::clamp(int(std::ceil(-x_*sx_-.5)),0,width_),r=std::clamp(int(std::ceil((backingW_-x_)*sx_-.5)),0,width_);

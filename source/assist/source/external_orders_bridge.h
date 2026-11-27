@@ -110,11 +110,26 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now,bool allowNa
   if(!refreshFeatureTypes())return false;
   defenseRevision=featureConfigRevision;
   Vec buildings{};if(!sampleRoster(0xA8EB40,buildings))return false;
-  for(int n=0;n<buildings.count;++n){const auto p=item(buildings,n);
-   if(p&&own(p,house)&&!get<bool>(p+0x81)&&antiTheftBuilding(p)){defense=true;break;}
+  // A positive result needs only one current defender. Recheck its slot,
+  // UID and native eligibility before considering another full roster walk.
+  // An absent defender is never cached: one could appear later this frame.
+  struct Defender {uint32_t match=0,house=0,pointer=0,id=0;int frame=-1,slot=-1;long revision=-1;};
+  static Defender previous;
+  Defender next{match,house,0,0,frame,-1,defenseRevision};
+  const auto eligible=[&](uint32_t p){return p&&own(p,house)&&!get<bool>(p+0x81)&&antiTheftBuilding(p);};
+  if(previous.match==match&&previous.house==house&&previous.frame==frame&&
+     previous.revision==defenseRevision&&previous.id&&previous.slot>=0&&previous.slot<buildings.count&&
+     item(buildings,previous.slot)==previous.pointer&&get<uint32_t>(previous.pointer+0x10)==previous.id&&
+     eligible(previous.pointer))next=previous;
+  else for(int n=0;n<buildings.count;++n){const auto p=item(buildings,n);
+   if(eligible(p)){next.pointer=p;next.id=get<uint32_t>(p+0x10);next.slot=n;break;}
   }
+  defense=next.pointer!=0;
   MemoryBarrier();defenseProven=!(defenseRevision&1)&&sh->featureConfigSeq==defenseRevision;
   if(!defenseProven)return false;
+  if((defense||(lastMode&AntiTheft))&&(previous.match!=match||previous.house!=house||
+     previous.pointer!=next.pointer||previous.id!=next.id||previous.revision!=defenseRevision))planningFrame=-1;
+  previous=next;
  }else if(defenseRequested&&strictDefenseSource){
   bool changed=false;
   defenseProven=collectAntiTheftPresence(house,defense,changed,defenseRevision);

@@ -37,10 +37,14 @@ static bool fault=false,enhancementChangedCatalogue=false,catalogueDirty=false,c
 static uint64_t catalogueHash=0,techScanCatalogue=0;
 static DWORD catalogueAt=0,catalogueRequestedAt=0,worldFrameCatalogueProbeAt=0;
 static external::catalogue::ProbeRetryGate nativeCatalogueProbe;
+static struct {void invalidateCatalogue(){}} worldFramePublication;
 static DWORD GetTickCount(){return 1000;}
 static unsigned sampleReadDepth=0;
 static bool sampleReadComplete=true;
-static struct {struct{bool complete=true;} catalogue;} observedCatalogue,*sampleWorldSource=&observedCatalogue;
+static struct {
+ struct{bool complete=true,isolated=false;} catalogue;
+ bool read(uint32_t,void*,size_t)const{return false;}
+} observedCatalogue,*sampleWorldSource=&observedCatalogue;
 struct ObservationReadScope {
  ObservationReadScope(){++sampleReadDepth;sampleReadComplete=true;}
  ~ObservationReadScope(){--sampleReadDepth;}
