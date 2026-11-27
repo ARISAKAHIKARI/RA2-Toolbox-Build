@@ -85,7 +85,9 @@ public:
    auto it=icons_.find(type);
    if(it!=icons_.end()&&(it->second.ready||uint32_t(now-it->second.retryAt)<5000))return false;
    if(!palette(read,now,files))return false;
-   if(icons_.size()>=128)icons_.clear(); // bounded across very large mods
+   // Eviction changes the rendered icon set even when the next decode
+   // fails. Invalidate cached panel pixels at the point of eviction.
+   if(icons_.size()>=128){icons_.clear();++revision_;}
    Icon&icon=icons_[type];icon.retryAt=now;
    bool ok=readIcon(read,resolve,files,type,icon);
    if(ok)++revision_;
