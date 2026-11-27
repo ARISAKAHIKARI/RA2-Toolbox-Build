@@ -69,13 +69,19 @@ struct TintCache {
   std::shared_ptr<const std::vector<uint32_t>>table;
  };
  std::unordered_map<uint32_t,Entry> entries;
+ // A single map operation serves both tint and metadata. The old shade()
+ // sampled tint and then looked up the same converter a second time.
+ template<class Read>Entry& entry(Read read,uint32_t convert){
+  auto result=entries.try_emplace(convert);auto&e=result.first->second;
+  if(result.second)e.valid=converterTint(read,convert,e.tint);
+  return e;
+ }
  template<class Read>bool sample(Read read,uint32_t convert,std::array<int,3>&out){
-  auto found=entries.find(convert);
-  if(found==entries.end()){Entry e;e.valid=converterTint(read,convert,e.tint);found=entries.emplace(convert,e).first;}
-  if(!found->second.valid)return false;out=found->second.tint;return true;
+  auto&e=entry(read,convert);
+  if(!e.valid)return false;out=e.tint;return true;
  }
  template<class Read>void shade(Read read,uint32_t convert,State&out){
-  sample(read,convert,out.tint);auto&e=entries.find(convert)->second;
+  auto&e=entry(read,convert);if(e.valid)out.tint=e.tint;
   // Metadata is shared by the same converter during this presentation too.
   // Its failure paths preserve some incoming fields, so include those inputs
   // rather than caching a complete State (cell intensity remains individual).
