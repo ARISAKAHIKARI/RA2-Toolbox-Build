@@ -13,6 +13,7 @@
 #include "enemy_markers.h"
 #include "unit_status.h"
 #include "projection.h"
+#include "owned_marker_projection.h"
 #include "../../shared/source/native_viewport_projection.h"
 #include "idle_aircraft.h"
 #include "unit_info_panel_model.h"
@@ -30,6 +31,9 @@ template<class Read> class TacticalSampler {
  nativeviewportprojection::Transform viewport_{},sampledViewport_{};bool viewportReady_=true;
  status::Frame statuses_{},publishedStatuses_{};uint32_t statusOptions_=0,sceneStatusOptions_=0;
  enemies::Frame enemies_{},publishedEnemies_{},specialEnemies_{},publishedSpecialEnemies_{};
+ // Owned-only display data. Positions are camera-independent screen anchors.
+ enemies::Frame owned_{},publishedOwned_{};bool sceneOwned_=false;
+ std::unordered_map<uint32_t, std::array<uint16_t,40>> ownedNames_;
  bool sceneEnemies_=false,specialOnly_=false,sceneSpecialOnly_=false,collectGeneral_=false,collectSpecial_=false,sceneSpecialEnabled_=false;
  uint32_t sceneSourceSerial_=0;int sceneEnemyWidth_=0,sceneEnemyHeight_=0;uint32_t enemyOwnerSignature_=0,sceneEnemyOwners_=0;
  struct EnemyOwner {uint32_t pointer=0,color=0;int index=-1;};
@@ -112,6 +116,19 @@ template<class Read> class TacticalSampler {
   }std::memcpy(mark.name,found->second.text,sizeof mark.name);
   if(addGeneral)enemies_.items[enemies_.count++]=mark;
   if(addSpecial)specialEnemies_.items[specialEnemies_.count++]=mark;
+ }
+ void addOwned(uint32_t p,uint32_t t,int k,uint32_t owner,uint32_t house,const Projection&proj){
+  if(!ownedmarkers::local(owner,house)||t<0x10000||k<0||k>3||(k!=3&&get<uint32_t>(p+0x11C,0xffffffffu)))return;
+  const uint32_t id=get<uint32_t>(p+0x10);if(!id)return;
+  int x=0,y=0,wx=get<int>(p+0x9C,INT32_MIN),wy=get<int>(p+0xA0,INT32_MIN);
+  if(!ownedmarkers::anchor(proj,wx,wy,get<int>(p+0xA4,INT32_MIN),x,y))return;
+  if(owned_.count>=enemies::Maximum){++owned_.omitted;return;}
+  auto&m=owned_.items[owned_.count++];m={};m.object=p;m.id=id;m.type=t;m.owner=house;
+  m.kind=k;m.worldX=wx;m.worldY=wy;m.x=x;m.y=y;
+  m.color=0xffa5e6ffu;
+  auto found=ownedNames_.find(t);
+  if(found==ownedNames_.end()){std::array<uint16_t,40> text{};name(t,text.data());found=ownedNames_.emplace(t,text).first;}
+  std::copy(found->second.begin(),found->second.end(),m.name);
  }
  void publishEnemies(uint32_t house,int frame,uint32_t now,bool enabled){
   for(auto*f:{&enemies_,&specialEnemies_}){f->match=state_.match;f->house=house;f->frame=frame;f->tick=now;}
@@ -231,6 +248,7 @@ public:
  layout::Result probe()const{return probe_;}
  display::State displayState()const{return display_;}
  const enemies::Frame& enemyMarkers()const{return enemies_;}
+ const enemies::Frame& ownedMarkers()const{return publishedOwned_;}
  const enemies::Frame& specialEnemyMarkers()const{return specialEnemies_;}
  const status::Frame& unitStatuses()const{return statuses_;}
  const aircraft::Sample& idleAircraftDisplay()const{return publishedAircraft_;}
@@ -245,18 +263,29 @@ public:
  const nativeviewportprojection::Transform&sampledViewport()const{return sampledViewport_;}
  void viewport(const nativeviewportprojection::Transform&t,bool ready=true){if(viewport_!=t||viewportReady_!=ready)sceneFrame_=-1;viewport_=t;viewportReady_=ready;}
  void productionReminders(uint32_t enabled,uint32_t&idle,uint32_t&paused)const{idle=paused=0;for(int i=0;i<6;++i){unsigned tab=i<4?i:3;if(!(enabled&(1u<<i))||(activeTabs_&(1u<<tab)))continue;if(idleLines_&(1u<<i))idle|=1u<<tab;if(pausedLines_&(1u<<i))paused|=1u<<tab;}}
- void reset(){panel_=publishedPanel_={};catalogueDependencies_.clear();idleLines_=pausedLines_=activeTabs_=0;idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;aircraftSample_=publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_=publishedEnemies_={};specialEnemies_=publishedSpecialEnemies_={};collectGeneral_=collectSpecial_=sceneSpecialEnabled_=false;statuses_=publishedStatuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
+ void reset(){owned_=publishedOwned_={};ownedNames_.clear();sceneOwned_=false;panel_=publishedPanel_={};catalogueDependencies_.clear();idleLines_=pausedLines_=activeTabs_=0;idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;aircraftSample_=publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_=publishedEnemies_={};specialEnemies_=publishedSpecialEnemies_={};collectGeneral_=collectSpecial_=sceneSpecialEnabled_=false;statuses_=publishedStatuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  const assist::Snapshot&state()const{return state_;}
  const unitpanel::Model&selectionPanel()const{return panel_;}
  void unitPanelEnabled(bool on){if(on!=unitPanelEnabled_){unitPanelEnabled_=on;sceneFrame_=-1;panel_=publishedPanel_={};}}
- void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){catalogueDependencies_.clear();catalogueReady_=false;catalogueHash_=0;catalogueAt_=0;state_.typeCount=0;sceneFrame_=-1;productionAt_=0;clearAircraftCandidate();publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;}sharedMatch_=epoch;}
- void commitSample(){publishedPanel_=panel_;enemies::copyFrame(publishedEnemies_,enemies_);enemies::copyFrame(publishedSpecialEnemies_,specialEnemies_);publishedStatuses_=statuses_;
+ void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){owned_=publishedOwned_={};ownedNames_.clear();sceneOwned_=false;catalogueDependencies_.clear();catalogueReady_=false;catalogueHash_=0;catalogueAt_=0;state_.typeCount=0;sceneFrame_=-1;productionAt_=0;clearAircraftCandidate();publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;}sharedMatch_=epoch;}
+ void commitSample(){if(state_.status!=1||state_.renderStatus!=1)owned_.count=0;enemies::copyFrame(publishedOwned_,owned_);publishedPanel_=panel_;enemies::copyFrame(publishedEnemies_,enemies_);enemies::copyFrame(publishedSpecialEnemies_,specialEnemies_);publishedStatuses_=statuses_;
   if(aircraftChanged_){publishedAircraft_=aircraftSample_;std::copy_n(idleAircraftIDs,idleAircraftCount,publishedAircraftIDs_.begin());aircraftChanged_=false;}}
- void invalidateSample(const assist::Snapshot*stable=nullptr){panel_=publishedPanel_;sceneFrame_=-1;catalogueReady_=false;catalogueHash_=0;sceneAt_=0;productionAt_=0;for(auto&f:factories_)f={};enemyNames_.clear();enemyOwnerCount_=0;
+ void invalidateSample(const assist::Snapshot*stable=nullptr){enemies::copyFrame(owned_,publishedOwned_);panel_=publishedPanel_;sceneFrame_=-1;catalogueReady_=false;catalogueHash_=0;sceneAt_=0;productionAt_=0;for(auto&f:factories_)f={};enemyNames_.clear();enemyOwnerCount_=0;
   if(stable){state_=*stable;enemies::copyFrame(enemies_,publishedEnemies_);enemies::copyFrame(specialEnemies_,publishedSpecialEnemies_);statuses_=publishedStatuses_;}else enemies_.count=specialEnemies_.count=statuses_.count=0;
   if(stable&&stable->match==publishedAircraft_.match){aircraftSample_=publishedAircraft_;idleAircraftTick=publishedAircraft_.tick;idleAircraftCount=publishedAircraft_.count;aircraftTotal=publishedAircraft_.total;std::copy_n(publishedAircraftIDs_.begin(),idleAircraftCount,idleAircraftIDs);}
   else{clearAircraftCandidate();publishedAircraft_={};}aircraftChanged_=false;}
+ // Camera-only refresh for ordinary local UI. Failure never mutates the
+ // last sample or its tick, and no world-page request is made here.
+ bool refreshOwnedCamera(){
+  if(state_.status!=1||!house_)return false;
+  uint32_t tactical=0,house=0;int xy[2]{};
+  if(!current(read_,0xA83D4C,&house,4,0)||house!=house_||
+     !current(read_,0x887324,&tactical,4,0)||tactical<0x10000||
+     !current(read_,tactical+0xB0,xy,sizeof xy,0))return false;
+  if(state_.cameraX==xy[0]&&state_.cameraY==xy[1])return false;
+  rebaseCamera(xy[0],xy[1]);return true;
+ }
  void refreshCamera(uint32_t now){
   if(state_.status!=1)return;catalogueDependencies_.maintain(read_);uint32_t tactical=uiValue<uint32_t>(0x887324);if(tactical<0x10000)return;
   rebaseCamera(uiValue<int>(tactical+0xB0),uiValue<int>(tactical+0xB4));
@@ -271,8 +300,9 @@ public:
   for(auto*f:{&enemies_,&specialEnemies_})for(int i=0;i<f->count;++i){shift(f->items[i].x,dx);shift(f->items[i].y,dy);}
   for(int i=0;i<statuses_.count;++i){shift(statuses_.items[i].x,dx);shift(statuses_.items[i].y,dy);}
  }
- const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false,uint32_t statusOptions=0,uint32_t sourceSerial=0,bool specialOnly=false,bool specialMarkers=false){
+ const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false,uint32_t statusOptions=0,uint32_t sourceSerial=0,bool specialOnly=false,bool specialMarkers=false,bool ownMarkers=false){
   specialOnly_=specialOnly;collectGeneral_=enemyMarkers;collectSpecial_=specialMarkers;
+  if(!ownMarkers)owned_.count=0;
   failedAircraftRefresh_={};
   auto ui=[&](uint32_t at,void*out,size_t n){return current(read_,at,out,n,0);};
   statusOptions_=statusOptions&3;state_.sampledTick=now;state_.renderStatus=0;display_=display::inspect(ui);
@@ -291,7 +321,7 @@ public:
    idleProductionMask=pausedProductionMask=0;clearAircraftCandidate();state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
    state_.threatCount=state_.crateCount=0;house_=0;catalogueReady_=false;catalogueDependencies_.clear();return state_;
   }
-  bool fresh=house!=house_||frame<lastFrame_;if(fresh){catalogueDependencies_.clear();++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;state_.typeCount=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=specialEnemies_.count=statuses_.count=0;enemyNames_.clear();}lastFrame_=frame;
+  bool fresh=house!=house_||frame<lastFrame_;if(fresh){owned_=publishedOwned_={};ownedNames_.clear();sceneOwned_=false;catalogueDependencies_.clear();++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;state_.typeCount=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=specialEnemies_.count=statuses_.count=0;enemyNames_.clear();}lastFrame_=frame;
   catalogueDependencies_.maintain(read_);
   if(fresh||!catalogueAt_||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100)){
    catalogue::Stamp stamp;catalogueAt_=now;
@@ -320,13 +350,16 @@ public:
   int sw=uiValue<int>(0xB0CE30),sh=uiValue<int>(0xB0CE34);if(sw>0&&sw<statuses_.width)statuses_.width=sw;if(sh>0&&sh<statuses_.height)statuses_.height=sh;
   uint32_t selectedHash=2166136261u;for(uint32_t p:vec(0xA8ECB8,4096))selectedHash=(selectedHash^p)*16777619u;
   bool cameraChanged=proj.cameraX!=sceneX_||proj.cameraY!=sceneY_;
-  bool scene=fresh||statusOptions_!=sceneStatusOptions_||showEnemies!=sceneEnemies_||showSpecial!=sceneSpecialEnabled_||specialOnly_!=sceneSpecialOnly_||((specialOnly_||showSpecial)&&sourceSerial!=sceneSourceSerial_)||frame!=sceneFrame_||flags!=sceneFlags_||selectedHash!=selectionHash_||proj.width!=sceneWidth_||proj.height!=sceneHeight_||(showEnemyData&&(enemyProj.width!=sceneEnemyWidth_||enemyProj.height!=sceneEnemyHeight_||enemyOwnerSignature_!=sceneEnemyOwners_))||(cameraChanged&&uint32_t(now-sceneAt_)>=16);
+  const bool showOwned=ownMarkers&&state_.renderStatus==1;
+  bool scene=fresh||showOwned!=sceneOwned_||statusOptions_!=sceneStatusOptions_||showEnemies!=sceneEnemies_||showSpecial!=sceneSpecialEnabled_||specialOnly_!=sceneSpecialOnly_||((specialOnly_||showSpecial)&&sourceSerial!=sceneSourceSerial_)||frame!=sceneFrame_||flags!=sceneFlags_||selectedHash!=selectionHash_||proj.width!=sceneWidth_||proj.height!=sceneHeight_||(showEnemyData&&(enemyProj.width!=sceneEnemyWidth_||enemyProj.height!=sceneEnemyHeight_||enemyOwnerSignature_!=sceneEnemyOwners_))||(cameraChanged&&uint32_t(now-sceneAt_)>=16);
   if(!scene&&(!(specialOnly_||showSpecial)||sourceSerial)&&refreshLabels(proj)&&(!statusOptions_||refreshStatuses(proj))&&(!showEnemyData||refreshEnemies(enemyProj))){
    int dx=proj.cameraX-priorX,dy=proj.cameraY-priorY;
    for(int i=0;i<state_.crateCount;++i){state_.crates[i].x-=dx;state_.crates[i].y-=dy;}
    for(int i=0;i<state_.threatCount;++i){auto&t=state_.threats[i];t.x-=dx;t.y-=dy;t.tx-=dx;t.ty-=dy;}
    publishEnemies(house,frame,now,showEnemyData);publishStatuses(house,frame,now);return state_;
   }
+  sceneOwned_=showOwned;owned_.count=owned_.omitted=0;ownedNames_.clear();
+  owned_.match=state_.match;owned_.house=house;owned_.frame=frame;owned_.tick=now;owned_.width=statuses_.width;owned_.height=statuses_.height;
   sceneStatusOptions_=statusOptions_;statuses_.count=0;sceneAt_=now;
   sceneFrame_=frame;sceneFlags_=flags;selectionHash_=selectedHash;sceneX_=proj.cameraX;sceneY_=proj.cameraY;sceneWidth_=proj.width;sceneHeight_=proj.height;
   sceneSourceSerial_=sourceSerial;sceneSpecialOnly_=specialOnly_;sceneEnemies_=showEnemies;sceneSpecialEnabled_=showSpecial;sceneEnemyWidth_=enemyProj.width;sceneEnemyHeight_=enemyProj.height;sceneEnemyOwners_=enemyOwnerSignature_;enemies_.count=enemies_.omitted=specialEnemies_.count=specialEnemies_.omitted=0;
@@ -361,6 +394,7 @@ public:
      }
     }
    }
+   if(showOwned&&local)addOwned(p,t,k,owner,house,proj);
    if(showEnemyData)addEnemy(p,t,k,owner,enemyProj);
    if(statusOptions_&&statuses_.count<status::Maximum){status::Marker mark;if(readStatus(p,t,k,owner,proj,mark))statuses_.items[statuses_.count++]=mark;}
    int cap=local&&t&&k!=3&&(flags&assist::Capacity)?get<int>(t+0x5E0):0;

@@ -192,6 +192,7 @@ static bool autoSettingChanged(int id,int notification){
  if((id==892||id==893)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==892)extra.parasiteMarker=on;else extra.crateBuffMarkers=on;changedSetting();return true;}
  if(id==9764&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=1){extra.enemySpecialMode=mode;changedSetting();}return true;}
  if(id==9763&&notification==BN_CLICKED){extra.enemySpecialOnly=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
+ if(id==9771&&notification==BN_CLICKED){extra.ownMarkers=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id==785&&notification==BN_CLICKED){extra.enemyMarkers=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();return true;}
  if(id>=9200&&id<9200+2*featuretypes::Count){int f=(id-9200)/2;
   if(!(id&1)&&notification==BN_CLICKED){featureTypes.filters[f].custom=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();}
