@@ -7,6 +7,8 @@ on:
       - 'source/assist/source/readonly_idle_retirement.h'
       - 'source/assist/source/protocol.h'
       - 'source/assist/tests/type_catalog.cpp'
+      - 'source/assist/tests/owned_marker_projection.cpp'
+      - 'source/external_reader/source/owned_marker_projection.h'
       - 'tools/sampling_admission_summary.mjs'
       - '.github/workflows/verify-passive-closeout.yml'
   push:
@@ -17,6 +19,8 @@ on:
       - 'source/assist/source/readonly_idle_retirement.h'
       - 'source/assist/source/protocol.h'
       - 'source/assist/tests/type_catalog.cpp'
+      - 'source/assist/tests/owned_marker_projection.cpp'
+      - 'source/external_reader/source/owned_marker_projection.h'
       - 'tools/sampling_admission_summary.mjs'
       - '.github/workflows/verify-passive-closeout.yml'
   workflow_dispatch:
@@ -39,6 +43,10 @@ jobs:
         run: |
           printf '#include "readonly_idle_retirement.h"\nint main() {}\n' | g++ -std=c++17 -Wall -Wextra -Werror -Isource/assist/source -x c++ -fsyntax-only -
           echo "PASS: read-only retirement compile-time assertions"
+      - name: Verify own-unit camera projection and clustering
+        run: |
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/owned_marker_projection.cpp -o /tmp/ra2-owned-marker-test
+          /tmp/ra2-owned-marker-test
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
