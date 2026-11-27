@@ -755,15 +755,15 @@ static void loadCatalogue(){
 }
 static void rememberLiveTypes(){
  if(snap.status!=1||snap.typeCount<=0)return;
- static uint32_t learnedMatch;static int learnedCount=-1;
- if(learnedMatch!=snap.match||learnedCount!=snap.typeCount){
-  learnedMatch=snap.match;learnedCount=snap.typeCount;
+ static typecatalog::ObservedCatalogue observed;
+ const auto now=GetTickCount();
+ if(observed.changed(snap.match,snap.types,size_t(std::min(snap.typeCount,MaxTypes)),now)){
   bool changed=false;
   for(int i=0;i<snap.typeCount&&i<MaxTypes;++i)
    changed=savedTypes.remember(snap.types[i])||changed;
   if(changed)++catalogueRevision;
  }
- if(catalogueRevision&&catalogueWrites.due(catalogueRevision,GetTickCount())&&!saveCatalogue())
+ if(catalogueRevision&&catalogueWrites.due(catalogueRevision,now)&&!saveCatalogue())
   diag(L"TypeCatalogue write failed: check Assist.ini permissions");
 }
 static UINT modifiers(WORD key){BYTE f=HIBYTE(key);return MOD_NOREPEAT|((f&HOTKEYF_CONTROL)?MOD_CONTROL:0)|((f&HOTKEYF_ALT)?MOD_ALT:0)|((f&HOTKEYF_SHIFT)?MOD_SHIFT:0);}

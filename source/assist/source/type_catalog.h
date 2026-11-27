@@ -41,6 +41,27 @@ inline bool validType(const assist::Type& t){
  auto id=idView(t);
  return validId(id)&&std::find(std::begin(t.name),std::end(t.name),uint16_t(0))!=std::end(t.name);
 }
+// Compare only the already available Host metadata, never live game memory.
+// Bound the number of comparisons when the display updates at high FPS.
+class ObservedCatalogue {
+ std::vector<assist::Type> previous_;
+ uint32_t epoch_=0,checkedAt_=0;
+ bool initialized_=false;
+public:
+ bool changed(uint32_t epoch,const assist::Type* rows,size_t count,uint32_t now){
+  if(!rows||!count||count>MaxSavedTypes)return false;
+  const bool identityChanged=!initialized_||epoch_!=epoch||previous_.size()!=count;
+  if(!identityChanged&&uint32_t(now-checkedAt_)<250u)return false;
+  checkedAt_=now;
+  if(!identityChanged&&std::equal(previous_.begin(),previous_.end(),rows,
+   [](const assist::Type&a,const assist::Type&b){
+    return a.kind==b.kind&&a.index==b.index&&a.naval==b.naval&&a.cost==b.cost&&
+     !std::memcmp(a.id,b.id,sizeof a.id)&&!std::memcmp(a.name,b.name,sizeof a.name);
+   }))return false;
+  previous_.assign(rows,rows+count);epoch_=epoch;initialized_=true;
+  return true;
+ }
+};
 inline assist::Type placeholder(const std::string& id){
  assist::Type t{};
  t.kind=-1;t.index=-1;
