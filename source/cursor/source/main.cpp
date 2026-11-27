@@ -1135,7 +1135,8 @@ static void draw(){
  int mapGH=presentation.mapped?presentation.input.height():gameHOverride?gameHOverride:sampleGH>0?sampleGH:clickGameHeight>0?clickGameHeight:768;
  const bool mapPoint=cursorMapPoint(presentedPoint,presentation.output,mapGW,mapGH,presentation.mapped);
  if(hint.mode!=commandcursor::None&&mapPoint&&!nativeMenuHold&&!(shared&&shared->menuSuspend)&&
-    (commandcursor::ordinary(cursorID)||(hint.mode==commandcursor::Enter&&cursorID==25))&&gameinput::heldBinding(hint.binding))commandMode=hint.mode;
+    (commandcursor::tool(hint.mode)?commandcursor::matchesTool(hint,cursorID,presentedPoint.x,presentedPoint.y):
+     (commandcursor::ordinary(cursorID)||(hint.mode==commandcursor::Enter&&cursorID==25))&&gameinput::heldBinding(hint.binding)))commandMode=hint.mode;
  const uint32_t commandAnimationNow=inputNow();
  if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=commandAnimationNow;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
  if(commandMode!=commandcursor::None){

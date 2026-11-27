@@ -87,7 +87,7 @@ static void servicePointer(){
  // cancellation arriving afterwards must not erase its passenger follow-up.
  if(e.operation==5&&hookSmartUnload&&LOBYTE(unloadKey)&&
     pointerinput::matchesHold(e.keys,unloadKey,pointerinput::Enhanced))return;
- if(!keyboardOnly){if(buildreserve::nativePointer(e)){leftCaptured=false;return;}airway::manual(e);}
+ if(!keyboardOnly){if(buildreserve::nativePointer(e)){leftCaptured=false;return;}if(captureOfflineToolClick(e,viewport)){leftCaptured=false;return;}airway::manual(e);}
  // Native Z planning owns the original click; do not append another feature.
  if((airway::native()||airpathpolicy::direct(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork))&&airway::held(e.keys)&&airway::selectedAircraft()){leftCaptured=false;return;}
  RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height)return;

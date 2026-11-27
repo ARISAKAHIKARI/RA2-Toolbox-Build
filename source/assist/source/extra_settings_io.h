@@ -26,6 +26,7 @@ static void syncDebugEntrySettings(){
 static void loadAdditionalSettings(){
  autofeatures::loadKeys(extra.automaticKeys,[](const wchar_t*section,const wchar_t*name,int fallback){return value(section,name,fallback);});
  {const int rate=value(L"SinglePlayer",L"FPS",0);extra.singlePlayerFPS=singlefps::valid(unsigned(rate))?rate:0;}
+ extra.offlineWrench=value(L"SinglePlayer",L"ExtendedWrench",0)!=0;extra.offlineVehicleSell=value(L"SinglePlayer",L"ExtendedVehicleSell",0)!=0;
  extra.keepInputUnlocked=value(L"Input",L"KeepUnlocked",0)!=0;extra.blockTriggerCamera=value(L"Input",L"BlockTriggerCamera",0)!=0;
  extra.bombBoardEnabled=value(L"BombBoard",L"Enabled",0)!=0;extra.bombBoardRangeCells=std::clamp(value(L"BombBoard",L"RangeCells",8),1,64);
  extra.minerDefenseEnabled=value(L"MinerDefense",L"Enabled",0)!=0;
@@ -173,6 +174,7 @@ static void loadAdditionalSettings(){
 static bool saveAdditionalSettings(){
  autofeatures::saveKeys(extra.automaticKeys,[](const wchar_t*section,const wchar_t*name,uint32_t key){write(section,name,int(key));});
  write(L"SinglePlayer",L"FPS",extra.singlePlayerFPS);
+ write(L"SinglePlayer",L"ExtendedWrench",extra.offlineWrench);write(L"SinglePlayer",L"ExtendedVehicleSell",extra.offlineVehicleSell);
  write(L"Input",L"KeepUnlocked",extra.keepInputUnlocked);write(L"Input",L"BlockTriggerCamera",extra.blockTriggerCamera);
  write(L"BombBoard",L"Enabled",extra.bombBoardEnabled);write(L"BombBoard",L"RangeCells",extra.bombBoardRangeCells);
  write(L"MinerDefense",L"Enabled",extra.minerDefenseEnabled);write(L"MinerDefense",L"ExtraRangeCells",extra.minerDefenseRangeCells);
@@ -313,6 +315,7 @@ static void syncAdditional(){
  shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;
  shared->smallMapClamp=extra.smallMapClamp;
  shared->singlePlayerFPS=uint32_t(extra.singlePlayerFPS);
+ shared->offlineToolMask=(extra.offlineWrench?1u:0u)|(extra.offlineVehicleSell?2u:0u);
  shared->keepInputUnlocked=extra.keepInputUnlocked;shared->blockTriggerCamera=extra.blockTriggerCamera;
  shared->bombBoardRangeCells=uint32_t(std::clamp(extra.bombBoardRangeCells,1,64));shared->bombBoardEnabled=extra.bombBoardEnabled;
  shared->minerDefenseRangeCells=uint32_t(std::clamp(extra.minerDefenseRangeCells,0,30));shared->minerDefenseEnabled=extra.minerDefenseEnabled;

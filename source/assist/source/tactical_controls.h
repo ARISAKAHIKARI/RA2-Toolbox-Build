@@ -322,6 +322,8 @@ label(L"固定区域／跟随选中单位快捷键",20,306);key(uilayout::Native
 button(uilayout::NativePipPin,L"固定当前区域／跟随选中单位",20,605);next();
 note(L"使用游戏原生画面，在右上角观察另一区域。开启时固定当前视野；按快捷键或点击按钮，有选中单位时独立跟随，无选中时固定当前区域。左击小窗可跳转主视图。与工具箱游戏内小窗互斥，副屏小窗独立。",65);
 item(L"STATIC",L"原生画中画：关闭",20,605,uilayout::NativePipStatus,0,44);next(44);
+toggle(uilayout::OfflineWrenchToggle,L"扩展扳手维修（仅单机）",extra.offlineWrench);next();
+toggle(uilayout::OfflineVehicleSellToggle,L"扩展变卖战车（仅单机）",extra.offlineVehicleSell);next();
 toggle(9536,L"保持操作权限（解除触发输入锁）",extra.keepInputUnlocked);next();
 note(L"恢复被剧情触发器限制的鼠标和操作状态，并可阻止重复锁定或强制切换视角。重复锁定拦截与视角保护共用一个硬件断点。",60);
 item(L"STATIC",L"保持操作权限：关闭",20,605,9537,0,44);next(44);

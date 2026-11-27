@@ -26,7 +26,7 @@ static void pointerFinish(int result){
  if(b.intent.operation==pointerinput::Sell)b.rejected=b.accepted?0:1;
  if(b.rejected<0)b.rejected=0;MemoryBarrier();b.ack=b.request;notifyHost();
 }
-static bool pointerLocation(const pointerinput::Intent&i,bool* missingCandidate=nullptr){
+static bool pointerLocation(const pointerinput::Intent&i,bool* missingCandidate=nullptr,bool requireRoster=true){
  if(i.operation==pointerinput::AirWaypoint&&!nativeDependencyReady(0x578080))return false;
  if(nativeSidebarUIHit(i.x,i.y))return false;
  uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return false;
@@ -48,7 +48,7 @@ static bool pointerLocation(const pointerinput::Intent&i,bool* missingCandidate=
  // YRpp DisplayClass::ProcessClickCoords: thiscall, six pointer arguments.
  if(!nativeViewQuery(&point,&cell,&coord,&object,&a,&b)||!nativeViewTransformUnchanged(view))return false;
  if(cell.x<=0||cell.y<=0||cell.x>=512||cell.y>=512||!readMapCell(cell.x,cell.y))return false;
- if(object&&!worldObjects.contains(object)){
+ if(object&&requireRoster&&!worldObjects.contains(object)){
   if(missingCandidate)*missingCandidate=true;
   return false;
  }
@@ -89,6 +89,7 @@ static bool pointerEntryOrder(uint32_t p,int mission,uint32_t cell,bool planning
  recordReceipt(receipt);actorLeaseArbiter.record(match,frame,id,p,manualVersions.get(id),taskarbiter::Owner::Generic,receipt.serial);
  return true;
 }
+#include "offline_tool_runtime.h"
 static void pointerTick(bool candidateEntry=false){
  auto&b=sh->pointer;uint32_t request=b.request;MemoryBarrier();
  if(candidateEntry&&(!(sh->flags&AdvancedEnter)||!candidateEntryCohortReady()||
@@ -107,6 +108,7 @@ static void pointerTick(bool candidateEntry=false){
  if(!nativeviewportprojection::sample(sh,viewport)||viewport.generation!=sh->pointerViewportGeneration){pointerFinish(-7);return;}
  const auto&i=b.intent;DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
  const bool local=eventdelivery::isSingleplayer(snap.session);
+ if(i.operation==pointerinput::OfflineRepair||i.operation==pointerinput::OfflineSell){b.accepted=b.rejected=0;pointerFeedback=0;offlineToolClick(i,now,frame);return;}
  // Reject this feature before cancelling prior work or clearing selection.
  if((i.operation==pointerinput::PlayerSelect&&(!nativeDependencyReady(0x6FBFA0)||(!(i.bindings&pointerinput::Shift)&&!nativeDependencyReady(0x48DC90))))||
     (i.operation==pointerinput::AirWaypoint&&!nativeDependencyReady(0x578080))){b.accepted=0;pointerFinish(-12);return;}

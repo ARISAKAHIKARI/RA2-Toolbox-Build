@@ -51,6 +51,8 @@ inline constexpr Feature Features[]={
  {9492,categories::Rules,L"地图显示与揭示",L"硬件黑幕显示",true,{9492,9493}},
  {9199,categories::Rules,L"地图显示与揭示",L"手动地图揭示",true,{9199,108,208}},
  {860,categories::Rules,L"操控与变卖",L"跨玩家操控",true,{860,9250,9193,865,9194}},
+ {9545,categories::Rules,L"维修与变卖",L"扩展扳手维修（仅单机）",true,{9545}},
+ {9546,categories::Rules,L"维修与变卖",L"扩展变卖战车（仅单机）",true,{9546}},
  {9189,categories::Rules,L"操控与变卖",L"原生变卖光标",true,{9189,9190}},
  {9473,categories::Rules,L"运行状态",L"硬件断点预算",false,{9473}},
 

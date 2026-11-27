@@ -17,6 +17,7 @@
 #include "mega_queue_backend.h"
 #include "cooperative_types.h"
 #include "pointer_intent.h"
+#include "offline_tool_policy.h"
 #include "construction_input.h"
 #include "compute_policy.h"
 #include "compute_tasks.h"
@@ -29,7 +30,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=116; // Append sampling admission diagnostics; both components must match
+constexpr uint32_t Magic=0x41533130, Version=117; // Append offline tool input and preview mailboxes; both components must match
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -318,6 +319,10 @@ struct Shared {
   // two counters are independent context flags, not causal proof.
   volatile uint32_t graphHostDemand=0,graphDisplayOnly=0,graphNoHost=0,graphCatalogue=0,graphRequestedPages=0;
  } sampling{};
+ // Offline tool mode is a Host preference; hover replies never authorize orders.
+ volatile uint32_t offlineToolMask=0;
+ volatile long offlineToolPointSeq=0;offlinetools::Point offlineToolPoint{};
+ volatile long offlineToolHintSeq=0;offlinetools::Hint offlineToolHint{};
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

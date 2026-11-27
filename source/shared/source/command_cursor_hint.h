@@ -5,8 +5,8 @@
 // EXE-only presentation state shared by the Tactical and Cursor UI threads.
 // No game write, input interception, command submission or extra Runtime IPC.
 namespace commandcursor {
-enum Mode : uint32_t { None, Advanced, AirFirst, AirSecond, CS, Magnetron, Enter, Disk };
-struct Hint {uint32_t pid=0,match=0,tick=0,binding=0;Mode mode=None;};
+enum Mode : uint32_t { None, Advanced, AirFirst, AirSecond, CS, Magnetron, Enter, Disk, OfflineRepair, OfflineSell };
+struct Hint {uint32_t pid=0,match=0,tick=0,binding=0;Mode mode=None;int screenX=0,screenY=0;};
 struct Bus {std::mutex mutex;Hint hint;};
 inline Bus& bus(){static Bus b;return b;}
 inline void publish(Hint h){auto&b=bus();std::lock_guard<std::mutex> lock(b.mutex);b.hint=h;}
@@ -16,7 +16,9 @@ inline Hint read(uint32_t pid,uint32_t now){auto&b=bus();std::lock_guard<std::mu
 // Only ordinary tactical cursors may be replaced. Scroll, sell, repair,
 // superweapon targets, waypoints and other native tools keep their own art.
 inline bool ordinary(int id){return id==0||(id>=17&&id<=21)||id==71;}
-inline int definition(Mode m){return m==Advanced||m==CS||m==Magnetron?71:m==Enter?25:20;}
+inline bool tool(Mode m){return m==OfflineRepair||m==OfflineSell;}
+inline bool matchesTool(const Hint&h,int cursor,int x,int y){const int64_t dx=int64_t(x)-h.screenX,dy=int64_t(y)-h.screenY;return tool(h.mode)&&cursor==(h.mode==OfflineRepair?35:32)&&dx>=-2&&dx<=2&&dy>=-2&&dy<=2;}
+inline int definition(Mode m){return m==OfflineRepair?33:m==OfflineSell?31:m==Advanced||m==CS||m==Magnetron?71:m==Enter?25:20;}
 // True only for adjacent frames (including the loop edge) of a validated
 // command-cursor animation. These edges may be prepared on demand even when
 // a user-edited groups.json omits the command cursor sequence.

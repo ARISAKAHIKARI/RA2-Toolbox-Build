@@ -3,7 +3,7 @@
 namespace assist { namespace uilayout {
 constexpr int Width=685,BodyTop=124,FooterHeight=84;
 // Keep these HWND IDs outside the per-feature unit filter range.
-enum : int {NativePipToggle=9541,NativePipShortcut,NativePipPin,NativePipStatus};
+enum : int {NativePipToggle=9541,NativePipShortcut,NativePipPin,NativePipStatus,OfflineWrenchToggle,OfflineVehicleSellToggle};
 struct Rect {int x,y,w,h;};
 struct Placement {int page;Rect rect;};
 inline Placement legacy(int id,Rect r){

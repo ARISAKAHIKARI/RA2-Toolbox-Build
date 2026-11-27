@@ -4,7 +4,7 @@ namespace suite { namespace categories {
 enum Category {Video=0,Keyboard=1,Tactical=2,Entry=3,Automatic=4,Rules=5,Experimental=6,Debug=7,Count=8,Control=Tactical};
 inline const wchar_t*name(int category){constexpr const wchar_t*names[]={L"视频",L"键鼠与选兵",L"战术操作",L"进驻与装卸",L"自动功能",L"游戏规则",L"实验功能",L"调试"};return category>=0&&category<Count?names[category]:L"设置";}
 inline bool rule(int id){
- if(id==9250||id==9251||id==9252||id==807||id==865||id==9193||id==9194)return true;
+ if(id==9545||id==9546||id==9250||id==9251||id==9252||id==807||id==865||id==9193||id==9194)return true;
  if(id>=420&&id<=428)return true;
  switch(id){case 108:case 208:case 9199:case 476:case 808:case 809:case 814:case 815:case 896:case 860:case 722:case 9189:case 9190:case 9096:case 9097:case 9098:case 9470:case 9471:case 9473:case 9472:case 9494:case 9753:case 9607:case 9612:return true;default:return false;}
 }
