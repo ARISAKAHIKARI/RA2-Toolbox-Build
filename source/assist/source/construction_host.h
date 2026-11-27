@@ -267,7 +267,12 @@ static void removeItem(int tab,int item,bool all=false){
  queueLog(tab,all?L"user-cleared-reservations":L"user-canceled-reservation");refreshChoices();requestPaint();
 
 }
-static void removeTop(bool all=false){if(activeTab>=0&&activeTab<4)removeItem(activeTab,int(books[activeTab].items.size())-1,all);}
+static void removeVisibleRow(int tab,int row,bool all=false){
+ if(tab<0||tab>=4||row<0||row>=construction::VisibleCapacity)return;
+ const auto&b=books[tab];const int index=b.visibleStart()+row;
+ if(index>=int(b.items.size()))return;
+ removeItem(tab,index,all);
+}
 static bool nativePointer(const gameinput::PointerPress&e){
  if(!usable()||e.match!=commandMatch()||uint32_t(GetTickCount()-e.tick)>100)return false;
  RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height||e.width<1||e.height<1||!readNative())return false;
@@ -501,7 +506,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
    refreshed=0;publishReservationPolicy({});return 0;
   }
   if(!panelInputReady())return 0;
-  if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>3)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=layout.queueAt(x,y,int(books[activeTab].items.size()));if(slot>=0)removeTop(all);else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
+  if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>3)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=paintedLayout.queueAt(x,y,int(paintedFrame->request.book.items.size()));if(slot>=0){const auto&shown=paintedFrame->request.book;const auto&live=books[activeTab];if(shown.items==live.items&&shown.stage==live.stage&&shown.token==live.token)removeVisibleRow(activeTab,slot,all);}else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
   else reserve(layout.choiceAt(x,y,scroll,int(choices.size())));return 0;
  }
  if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC target=BeginPaint(w,&ps);

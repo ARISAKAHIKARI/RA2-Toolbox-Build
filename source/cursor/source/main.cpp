@@ -136,6 +136,14 @@ static Tween tween;static Burst burst;static bool smoothing=true,clickEnabled=tr
 static int clickGameWidth=0,clickGameHeight=0;static DWORD clickLoggedAt=0;static LONG clickDenyReason=0;static bool clickNeedsLog=false;static unsigned clickSendOk=0,clickSendFail=0;
 static bool physicalLeftDown=false;static bool autoStart=true,autoPaused=false,focusRefresh=true,wasInside=false;static HWND autoStartBox,observedForeground;static DWORD lastAutoCheck=0,lastWindowCheck=0;static int refreshTries=0;static DWORD refreshAt=0;
 static bool hookStartupPending=false;static DWORD hookStartupAttemptAt=0;
+static DWORD hideRetryPid=0,hideRetryAt=0;static unsigned hideRetryFailures=0;
+static void resetHideRetry(){hideRetryPid=hideRetryAt=0;hideRetryFailures=0;}
+static DWORD deferHideRetry(DWORD now,DWORD target){
+ if(hideRetryPid!=target){resetHideRetry();hideRetryPid=target;}
+ const DWORD delay=2000u<<std::min(hideRetryFailures,2u);
+ if(hideRetryFailures<3)++hideRetryFailures;
+ hideRetryAt=now+delay;return delay;
+}
 static LARGE_INTEGER freq;static bool fallback=false;static int modeId=0;static std::wstring lastStatus;
 // Drawing only reads a resident bank. Missing observed edges are queued for
 // a separate, low-priority process; disk loading/decoding stays in its worker.
@@ -283,6 +291,19 @@ static void motionPoll(){
 }
 static std::wstring widen(const char* x){int n=MultiByteToWideChar(CP_UTF8,0,x,-1,0,0);std::wstring s(n,0);MultiByteToWideChar(CP_UTF8,0,x,-1,&s[0],n);if(n)s.pop_back();return s;}
 static void log(const std::wstring& s){FILE* f=_wfopen((root+L"\\cursor.log").c_str(),L"a, ccs=UTF-8");if(f){SYSTEMTIME t;GetLocalTime(&t);fwprintf(f,L"%02u:%02u:%02u %ls\n",t.wHour,t.wMinute,t.wSecond,s.c_str());fclose(f);}}
+static void foregroundTransition(HWND foreground,DWORD foregroundPid){
+ static HWND previous=nullptr;static DWORD previousPid=0,previousGame=0;static bool initialized=false;
+ if(initialized&&foreground==previous&&foregroundPid==previousPid&&pid==previousGame)return;
+ const HWND old=previous;const DWORD oldPid=previousPid;previous=foreground;previousPid=foregroundPid;previousGame=pid;initialized=true;
+ wchar_t klass[128]{},title[256]{},image[1024]{};DWORD length=DWORD(sizeof(image)/sizeof(*image));
+ if(foreground){GetClassNameW(foreground,klass,128);GetWindowTextW(foreground,title,256);}
+ if(foregroundPid){HANDLE process=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,foregroundPid);if(process){QueryFullProcessImageNameW(process,0,image,&length);CloseHandle(process);}}
+ std::wstring exe=image;const auto slash=exe.find_last_of(L"\\\\/");if(slash!=std::wstring::npos)exe.erase(0,slash+1);
+ std::wstring caption=title;for(auto&ch:caption)if(ch<L' ')ch=L' ';
+ log(L"Foreground transition tick="+std::to_wstring(GetTickCount())+L" gamePID="+std::to_wstring(pid)+L" hostPID="+std::to_wstring(GetCurrentProcessId())+
+  L" previousHWND="+std::to_wstring(uintptr_t(old))+L" previousPID="+std::to_wstring(oldPid)+L" HWND="+std::to_wstring(uintptr_t(foreground))+
+  L" PID="+std::to_wstring(foregroundPid)+L" exe="+exe+L" class="+klass+L" title="+caption);
+}
 static void coordinateDiagnostic(const wchar_t* stage,const cursorcoordinates::CoordinateScope& coordinates,
  const POINT& point,bool pointValid,const cursorcoordinates::Rect& client,int gw=0,int gh=0,
  int rasterW=0,int rasterH=0,int hotX=0,int hotY=0,double sx=1,double sy=1,int monitorW=0,int monitorH=0,DWORD apiError=0){
@@ -851,10 +872,10 @@ static void syncTargetSelection(){
  if(running||hookStartupPending||shared||hook||mapping)stop();
  cursorReader.close();pid=threadId=gameParentPid=0;game=nullptr;readRestricted=false;
  clickGameWidth=clickGameHeight=0;lastWindowCheck=0;lastAutoCheck=0;
- if(autoStart)autoPaused=false;
+ resetHideRetry();if(autoStart)autoPaused=false;
  status(L"当前游戏进程已切换，等待重新连接…");
 }
-static void autoTick(){syncTargetSelection();DWORD now=GetTickCount();if(uint32_t(now-lastAutoCheck)<(hookStartupPending?75u:1000u))return;lastAutoCheck=now;if(autoPaused&&cursorReader.valid()&&!live())autoPaused=false;if(!autoStart||autoPaused||running||!playbackReady)return;try{if(!hookStartupPending||!live()||!IsWindow(game))attach(true);start();}catch(const std::exception& e){hookStartupPending=false;status(L"自动等待："+widen(e.what()));}}
+static void autoTick(){syncTargetSelection();DWORD now=GetTickCount();if(uint32_t(now-lastAutoCheck)<(hookStartupPending?75u:1000u))return;lastAutoCheck=now;if(autoPaused&&cursorReader.valid()&&!live())autoPaused=false;if(!autoStart||autoPaused||running||!playbackReady)return;if(hideRetryPid&&(!live()||hideRetryPid!=pid))resetHideRetry();if(hideRetryPid==pid&&hideRetryAt&&int32_t(now-hideRetryAt)<0)return;try{if(!hookStartupPending&&!(hideRetryPid==pid&&live()&&IsWindow(game)))attach(true);else if(!live()||!IsWindow(game))attach(true);start();}catch(const std::exception& e){hookStartupPending=false;status(L"自动等待："+widen(e.what()));}}
 static void leaveGame(){
  bridgeFrame.clear();lanboStream.reset();usingHeldSample=false;
  // Leaving the client changes presentation, not the subscription lifetime.
@@ -921,9 +942,9 @@ static void draw(){
    log(L"Game ShowCursor detected; conditional HideCursor reapplied: +"+std::to_wstring(rehide-lastRehideSeen)+L", total="+std::to_wstring(rehide)+L", ref="+std::to_wstring(shared->observedRef));
    lastRehideSeen=rehide;
   }
-  if(shared->state==-1){LONG err=shared->error;if(nativeGameRefresh)autoPaused=true;stop();status(L"HideCursor 未执行，错误码 "+std::to_wstring(err)+L"；没有强制绕过校验。");return;}if(shared->state==1&&!hideConfirmed){hideConfirmed=true;log(L"Hide bridge running on game GUI thread; frame sampled="+std::to_wstring(shared->sampledFrame));}if(hideConfirmed&&shared->state==0&&shared->command==0&&!nativeMenuHold&&!shared->menuSuspend){stop();status(L"HideCursor 已恢复或看门狗超时，已停止外部显示。");return;}}
+  if(shared->state==-1){LONG err=shared->error;const bool initialRetry=!hideConfirmed&&(err==1||err==2);const DWORD delay=initialRetry?deferHideRetry(GetTickCount(),pid):0;if(nativeGameRefresh&&!initialRetry)autoPaused=true;stop();status(L"HideCursor 未执行，错误码 "+std::to_wstring(err)+L"；没有强制绕过校验。"+(delay?L" 初始化重试退避 "+std::to_wstring(delay)+L" ms":L""));return;}if(shared->state==1&&!hideConfirmed){hideConfirmed=true;resetHideRetry();log(L"Hide bridge running on game GUI thread; frame sampled="+std::to_wstring(shared->sampledFrame));}if(hideConfirmed&&shared->state==0&&shared->command==0&&!nativeMenuHold&&!shared->menuSuspend){stop();status(L"HideCursor 已恢复或看门狗超时，已停止外部显示。");return;}}
  if(!live()){stop();status(L"游戏已退出。透明版可点击恢复 SHA。");return;}
- HWND fg=GetForegroundWindow();DWORD fp=0;GetWindowThreadProcessId(fg,&fp);
+ HWND fg=GetForegroundWindow();DWORD fp=0;GetWindowThreadProcessId(fg,&fp);foregroundTransition(fg,fp);
  bool compatibleForeground=(fp==pid)||platformHostMatches(fg,fp);
  if(!compatibleForeground){observedForeground=fg;leaveGame();visibilityDiagnostic(L"前台不是游戏或已确认的平台宿主窗口",fp);return;}
  if((nativeGameRefresh||mappedCursorPresentation)&&!noCursorMode&&mode==L"hide"&&shared){
@@ -1446,7 +1467,7 @@ static void applyControlDpi(HWND w,UINT next){
  uiDpi=next;
  if(uiReady){setUiFont();viewport(w,scrollX,scrollY);relayout(w);}
 }
-static void error(const std::exception& e){std::wstring s=widen(e.what());status(L"错误："+s);cursorDialog(s.c_str(),L"高刷鼠标 v" RA2_RELEASE_VERSION_W,MB_OK|MB_ICONWARNING);}
+static void error(const std::exception& e,bool interactive=true){std::wstring s=widen(e.what());status(L"错误："+s);if(interactive)cursorDialog(s.c_str(),L"高刷鼠标 v" RA2_RELEASE_VERSION_W,MB_OK|MB_ICONWARNING);}
 static int numeric(HWND w,int min,int max){wchar_t b[32];GetWindowTextW(w,b,32);wchar_t* end;long n=wcstol(b,&end,10);if(end==b||*end||n<min||n>max)fail("Invalid numeric setting; check the range in README");return (int)n;}
 static void applyTargetRate(){
  wchar_t text[32];GetWindowTextW(targetBox,text,32);
@@ -1854,7 +1875,7 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
   break;
  }
  case 9:hudEnabled=SendMessageW(hudBox,BM_GETCHECK,0,0)==BST_CHECKED;WritePrivateProfileStringW(L"Display",L"HUD",hudEnabled?L"1":L"0",ini().c_str());if(!hudEnabled)ShowWindow(hud,SW_HIDE);hudPaintAt=0;break;case 8:autoStart=SendMessageW(autoStartBox,BM_GETCHECK,0,0)==BST_CHECKED;autoPaused=!autoStart;if(!autoStart&&(running||hookStartupPending))stop();WritePrivateProfileStringW(L"Startup",L"AutoStart",autoStart?L"1":L"0",ini().c_str());updatePrimaryAction();break;}}catch(const std::exception& e){error(e);}return 0;
- case WM_HOTKEY:if(a==4){manualCursorPause=!manualCursorPause;if(manualCursorPause){ShowWindow(overlay,SW_HIDE);if(mode==L"hide")hookStop();}hudPaintAt=0;if(!manualCursorPause)wasInside=false;log(manualCursorPause?L"External pointer paused with F9":L"External pointer resumed with F9");return 0;}if(a==3){hudEnabled=!hudEnabled;SendMessageW(hudBox,BM_SETCHECK,hudEnabled?BST_CHECKED:BST_UNCHECKED,0);WritePrivateProfileStringW(L"Display",L"HUD",hudEnabled?L"1":L"0",ini().c_str());if(!hudEnabled)ShowWindow(hud,SW_HIDE);hudPaintAt=0;return 0;}if(a==2){SendMessageW(w,WM_CLOSE,0,0);return 0;}try{togglePrimary();}catch(const std::exception& e){error(e);}return 0;
+ case WM_HOTKEY:if(a==4){manualCursorPause=!manualCursorPause;if(manualCursorPause){ShowWindow(overlay,SW_HIDE);if(mode==L"hide")hookStop();}hudPaintAt=0;if(!manualCursorPause)wasInside=false;log(manualCursorPause?L"External pointer paused with F9":L"External pointer resumed with F9");return 0;}if(a==3){hudEnabled=!hudEnabled;SendMessageW(hudBox,BM_SETCHECK,hudEnabled?BST_CHECKED:BST_UNCHECKED,0);WritePrivateProfileStringW(L"Display",L"HUD",hudEnabled?L"1":L"0",ini().c_str());if(!hudEnabled)ShowWindow(hud,SW_HIDE);hudPaintAt=0;return 0;}if(a==2){SendMessageW(w,WM_CLOSE,0,0);return 0;}try{togglePrimary();}catch(const std::exception& e){error(e,false);}return 0;
  case WM_DPICHANGED:{
   // Use the OS-recommended outer rect and refresh every child and font.
   // Only scale the original 96-DPI layout, never the previous DPI layout.
@@ -2118,7 +2139,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   LARGE_INTEGER now;QueryPerformanceCounter(&now);
   if(now.QuadPart>=next.QuadPart){
    LONGLONG drawStarted=now.QuadPart;
-   try{draw();}catch(const std::exception& e){autoPaused=true;stop();error(e);}
+   try{draw();}catch(const std::exception& e){autoPaused=true;stop();error(e,false);}
    QueryPerformanceCounter(&now);LONGLONG cost=now.QuadPart-drawStarted;drawTotalTicks+=cost;drawMaxTicks=std::max(drawMaxTicks,cost);++drawMeasured;
    next.QuadPart=cursorperf::nextFrameTick(next.QuadPart,now.QuadPart,freq.QuadPart,pollHz);
   }

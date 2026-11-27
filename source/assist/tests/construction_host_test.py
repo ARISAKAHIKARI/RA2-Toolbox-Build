@@ -106,8 +106,13 @@ int main(){
 
  setup();assert(choice(0)<0&&choice(1)>=0&&choice(2)<0);assert(choices[choice(1)].future);assert(layout.width()==216&&layout.x(60)==90&&layout.y(48)==72);
  constructionScalePercent=150;tick();assert(layout.width()==324&&layout.x(60)==135);constructionScalePercent=100;tick();
- reserve(choice(1));assert(choice(2)>=0);reserve(choice(2));reserve(choice(1));reserveChoice({0,0,0,T,false},true);reserve(choice(0));assert(books[0].items==std::vector<int>({1,2,1,0,0}));reserve(choice(0));assert(books[0].items.size()==6);removeTop();
- removeTop();assert(books[0].items==std::vector<int>({1,2,1,0}));removeItem(0,1);assert(books[0].items==std::vector<int>({1,1,0}));removeTop(true);assert(books[0].items.empty());
+ reserve(choice(1));assert(choice(2)>=0);reserve(choice(2));reserve(choice(1));reserveChoice({0,0,0,T,false},true);reserve(choice(0));assert(books[0].items==std::vector<int>({1,2,1,0,0}));reserve(choice(0));assert(books[0].items.size()==6);removeVisibleRow(activeTab,std::min(int(books[activeTab].items.size()),construction::VisibleCapacity)-1);
+ removeVisibleRow(activeTab,std::min(int(books[activeTab].items.size()),construction::VisibleCapacity)-1);assert(books[0].items==std::vector<int>({1,2,1,0}));removeVisibleRow(0,1);assert(books[0].items==std::vector<int>({1,1,0}));removeVisibleRow(activeTab,0,true);assert(books[0].items.empty());
+ setup();reserve(choice(1));reserve(choice(2));reserve(choice(1));reserveChoice({0,0,0,T,false},true);reserve(choice(0));reserve(choice(0));
+ assert(books[0].items==std::vector<int>({1,2,1,0,0,0}));
+ removeVisibleRow(0,0);assert(books[0].items==std::vector<int>({1,1,0,0,0})); // displayed row zero was FIFO index one
+ removeVisibleRow(0,2);assert(books[0].items==std::vector<int>({1,1,0,0}));
+ removeVisibleRow(0,4);assert(books[0].items.size()==4);removeVisibleRow(0,1,true);assert(books[0].items.empty());
  reserve(choice(1));w(P+0x6C,0);byte(P+0x74,0);for(int i=0;i<20;++i)tick();assert(books[0].items==std::vector<int>({1})&&commandQueue.size==0);w(F+0x58,0);tick();tick(300);assert(books[0].items.empty());
  setup();reserve(choice(1));w(F+0x58,0);tick();assert(!books[0].items.empty());tick(300);assert(books[0].items.empty());
  setup();reserve(choice(1));reserve(choice(2));place();assert(books[0].stage==1&&commandQueue.size==1);auto token=books[0].token;result(1,1,100,token+1);assert(books[0].stage==1);result(1,1,100,token);assert(books[0].stage==2);commandQueue.clear();
@@ -193,15 +198,15 @@ int main(){
   for(int i=0;i<std::min(candidates,l.rows*2);++i)assert(l.choiceAt(l.x(i%2*72+36),l.pointY(l.headerHeight()+i/2*66+33),0,candidates)==i);
   assert(l.choiceAt(l.x(36),l.height(),0,candidates)==-1);
  }
- setup();reserve(choice(1));int addedSound=soundRequests;removeTop();assert(soundRequests==addedSound+1);removeTop();assert(soundRequests==addedSound+1);
- reserve(choice(1));reserve(choice(1));addedSound=soundRequests;removeTop(true);assert(soundRequests==addedSound+1); // clear once, not once per item
- reserve(choice(1));place();commandQueue.clear();addedSound=soundRequests;removeItem(0,0);assert(soundRequests==addedSound); // submitted head cannot be removed
+ setup();reserve(choice(1));int addedSound=soundRequests;removeVisibleRow(activeTab,std::min(int(books[activeTab].items.size()),construction::VisibleCapacity)-1);assert(soundRequests==addedSound+1);removeVisibleRow(activeTab,std::min(int(books[activeTab].items.size()),construction::VisibleCapacity)-1);assert(soundRequests==addedSound+1);
+ reserve(choice(1));reserve(choice(1));addedSound=soundRequests;removeVisibleRow(activeTab,0,true);assert(soundRequests==addedSound+1); // clear once, not once per item
+ reserve(choice(1));place();commandQueue.clear();addedSound=soundRequests;removeVisibleRow(0,0);assert(soundRequests==addedSound); // submitted head cannot be removed
  setup();assert(panelAlpha==construction::PanelOpacity&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.pointY(132));
  int shortHeight=layout.height();reserve(choice(1));assert(soundRequests==1&&layout.queueCount==1&&layout.height()>shortHeight);
  reserveChoice({0,0,0,T,false},true);assert(soundRequests==1); // original sidebar owns its sound
  focused=false;reserve(choice(1));assert(soundRequests==1);focused=true;
  while(books[0].items.size()<construction::Capacity)reserve(choice(1));int heard=soundRequests;reserve(choice(1));assert(soundRequests==heard); // rejected click stays quiet
- removeTop(true);assert(layout.queueCount==0&&layout.height()==shortHeight);
+ removeVisibleRow(activeTab,0,true);assert(layout.queueCount==0&&layout.height()==shortHeight);
  std::cout<<"PASS: 2016 content/scale/viewport combinations, fitted growth/shrink, 236/255 alpha, successful add/cancel feedback, clear once and no sound on empty/locked cancel\n";
  // A live read-only panel must survive a suspended command lane. Native
  // input authorization closes and no Produce is issued until commands resume.
@@ -249,7 +254,7 @@ int main(){
  // cameo appears. The service checks the sidebar before the 100 ms throttle.
  auto reserveNativeInfantry=[&]{reserveChoice({3,encode(16,0),2,I,false},true,true);};
  reserveNativeInfantry();assert(books[2].items.size()==1&&choice(encode(16,0))>=0);
- removeTop(true);assert(choice(encode(16,0))<0);
+ removeVisibleRow(activeTab,0,true);assert(choice(encode(16,0))<0);
  extra.constructionShowNativeUnits=true;refreshChoices();assert(choice(encode(16,0))>=0);
  extra.constructionShowNativeUnits=false;refreshChoices();assert(choice(encode(16,0))<0);
  // A larger host FIFO preserves the native 30-item factory window; remaining
@@ -315,7 +320,7 @@ int main(){
  tick(6000);
  assert(books[2].confirmationWarned&&books[2].items.size()==2&&!commandQueue.size);
  removeItem(2,0);assert(books[2].stage==0&&books[2].items.size()==1);
- removeTop(true);assert(books[2].items.empty());
+ removeVisibleRow(activeTab,0,true);assert(books[2].items.empty());
  setupInfantry();
  w(H+0x53B0,infantryFactory);unitFactory(infantryFactory,I,29);
  reserveNativeInfantry();reserveNativeInfantry();tick();assert(!commandQueue.size&&books[2].items.size()==2);
@@ -326,7 +331,7 @@ int main(){
  externalReader.fail=0;tick(20);assert(books[2].stage==0&&books[2].items.size()==1);
  tick();assert(!commandQueue.size);unitFactory(infantryFactory,I,28);tick();
  assert(commandQueue.size==1);commandQueue.clear();result(-9,0,0,books[2].token);assert(books[2].items.size()==1);
- removeTop(true);assert(books[2].items.empty());
+ removeVisibleRow(activeTab,0,true);assert(books[2].items.empty());
 
  // One tab carries three independent native factories.
  setup();uint32_t V=T+0x8000,N=T+0xA000,A=T+0xC000;
