@@ -39,6 +39,7 @@
 #include "world_lifecycle.h"
 #include "../../shared/source/world_frame_command_worker_win.h"
 #include "world_capture_admission.h"
+#include "readonly_idle_retirement.h"
 #include "control_link.h"
 #include "control_mode_policy.h"
 #include "scheduler_policy.h"
@@ -1971,30 +1972,46 @@ static void capturePassiveWorld(const worldlife::Sample&world,uint32_t house,DWO
  if(demand)captureWorldFrame(readLiveWorld,world,house,now,demand,true);
 }
 static bool serviceReadOnlyRuntime(DWORD now){
+ // Only the fully retired, explicit read-only path can suppress duplicate
+ // cleanup. Never retain the marker across command authority or a capture.
+ static readonly_idle_cleanup::IdleRetirement idleRetired;
  const bool wasReadOnly=readOnlyState.active;
+ if(!wasReadOnly)idleRetired.valid=false;
  const auto admission=readOnlyState.service(*sh,cancelReadOnlyMailboxes,retireForReadOnly,[]{MemoryBarrier();});
  if(admission==readonly::Admission::Commands){
+  idleRetired.valid=false;
   if(wasReadOnly){commandDormant=worldCleanupPending=false;lastFrame=-1;slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
   return false;
  }
  runtimeKeys.clear();snap.commandStatus=admission==readonly::Admission::Retiring?activation::CleanupPending:activation::HostReadOnly;
  snap.bridgeStatus=1;snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;
  snap.readStatus=snap.renderStatus=0;snap.placementOfferCount=0;
- if(admission==readonly::Admission::Retiring){retireWorldFrame();publishSnapshot(now);return true;}
+ if(admission==readonly::Admission::Retiring){idleRetired.valid=false;retireWorldFrame();publishSnapshot(now);return true;}
  const bool wanted=worldFrameServer.wanted(sh->owner,GetTickCount());
  const auto world=worldlife::capture(readLiveWorld);const auto change=hookWorld.observe(world);
- if(change==worldlife::Change::Unknown){retireWorldFrame();snap.status=hookWorld.bound?1:0;publishSnapshot(now);return true;}
- if(change==worldlife::Change::Absent){retireWorldFrame();sessionTracker.update(false,0,-1,-1);lastHouse=0;lastFrame=-1;snap.status=0;snap.match=0;publishSnapshot(now);return true;}
+ if(change==worldlife::Change::Unknown){idleRetired.valid=false;retireWorldFrame();snap.status=hookWorld.bound?1:0;publishSnapshot(now);return true;}
+ if(change==worldlife::Change::Absent){idleRetired.valid=false;retireWorldFrame();sessionTracker.update(false,0,-1,-1);lastHouse=0;lastFrame=-1;snap.status=0;snap.match=0;publishSnapshot(now);return true;}
  if(change==worldlife::Change::Start||change==worldlife::Change::Replaced||change==worldlife::Change::Rewind){
-  retireWorldFrame();sessionTracker.update(false,0,-1,-1);
+  idleRetired.valid=false;retireWorldFrame();sessionTracker.update(false,0,-1,-1);
  }
- uint32_t house=0;if(worldlife::authority(readLiveWorld,house)==worldlife::Authority::Unknown){retireWorldFrame();snap.status=1;publishSnapshot(now);return true;}
+ uint32_t house=0;if(worldlife::authority(readLiveWorld,house)==worldlife::Authority::Unknown){idleRetired.valid=false;retireWorldFrame();snap.status=1;publishSnapshot(now);return true;}
  const auto transition=sessionTracker.update(true,house,world.session,world.frame);
- if(transition!=sessionepoch::Transition::None)retireWorldFrame();
+ if(transition!=sessionepoch::Transition::None){idleRetired.valid=false;retireWorldFrame();}
  match=sessionTracker.epoch;lastHouse=house;lastFrame=world.frame;
  snap.status=1;snap.match=match;snap.frame=world.frame;snap.session=world.session;
  uint8_t chat=1;snap.chat=!readLiveWorld(0xA8BC79,&chat,1)||chat!=0;
- captureDisplayOnlyWorld(world,house,now,wanted);
+ const uint32_t demand=wanted?worldFrameServer.demandMask():0u;
+ // Admit only the same display boundary as before. Re-read inside the
+ // existing helper on all nonzero demands; never skip mixed-demand cleanup.
+ if(demand!=0u){
+  idleRetired.valid=false;
+  captureDisplayOnlyWorld(world,house,now,wanted);
+ }else if(idleRetired.needsRetirement(sh->owner,match,worldFrameServer.connection(),worldProducerGeneration,
+           worldFrameReady||haveCaptureAttempt||worldFrameCandidateAvailable||
+           !runtimeWorldDemands.empty()||runtimeDemandOverflow)){
+  retireWorldFrame();
+  idleRetired={true,sh->owner,match,worldFrameServer.connection(),worldProducerGeneration};
+ }
  publishSnapshot(now);return true;
 }
 static void tick(){
