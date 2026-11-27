@@ -1974,7 +1974,7 @@ static void capturePassiveWorld(const worldlife::Sample&world,uint32_t house,DWO
 static bool serviceReadOnlyRuntime(DWORD now){
  // Only the fully retired, explicit read-only path can suppress duplicate
  // cleanup. Never retain the marker across command authority or a capture.
- static readonly::IdleRetirement idleRetired;
+ static readonly_idle_cleanup::IdleRetirement idleRetired;
  const bool wasReadOnly=readOnlyState.active;
  if(!wasReadOnly)idleRetired.valid=false;
  const auto admission=readOnlyState.service(*sh,cancelReadOnlyMailboxes,retireForReadOnly,[]{MemoryBarrier();});
