@@ -2926,7 +2926,13 @@ static void layoutPanel(){
 #ifdef RA2_CONSOLE_WEBVIEW2
  // The visible MVVM view owns scrolling, folds and responsive layout. These
  // compatibility controls only retain values and original command semantics.
- for(const auto&c:pageControls)if(c.page>=0)ShowWindow(c.hwnd,c.page==activePage?SW_SHOWNA:SW_HIDE);
+ for(const auto&c:pageControls)if(c.page>=0){
+  // Compare the control's own visibility bit, not IsWindowVisible:
+  // its compatibility parent may be hidden while this page is selected.
+  const bool wanted=c.page==activePage;
+  const bool shown=(GetWindowLongPtrW(c.hwnd,GWL_STYLE)&WS_VISIBLE)!=0;
+  if(shown!=wanted)ShowWindow(c.hwnd,wanted?SW_SHOWNA:SW_HIDE);
+ }
  arrangingPanel=false;return;
 #endif
  RECT client{};GetClientRect(ui,&client);int height=logical(client.bottom),width=logical(client.right),maximum=uilayout::maxScroll(pageBottom(),height);scrollY=std::clamp(scrollY,0,maximum);scrollX=std::clamp(scrollX,0,std::max(0,uilayout::Width-width));
