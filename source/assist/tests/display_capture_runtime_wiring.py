@@ -28,6 +28,19 @@ assert "captureWorldFrame(readLiveWorld,world,house,now,demand,true);" in displa
 assert "else retireWorldFrame();" in displayonly
 readonly=bridge.split("static bool serviceReadOnlyRuntime(",1)[1].split("static void tick()",1)[0]
 assert "captureDisplayOnlyWorld(world,house,now,wanted);" in readonly
+# Duplicate retirement may be skipped only for an unchanged, zero-demand
+# explicit read-only context. All authority transitions and new demand
+# must invalidate the idle marker; the existing display helper is retained.
+assert "if(!wasReadOnly)idleRetired.valid=false;" in readonly
+assert "if(admission==readonly::Admission::Commands){\n  idleRetired.valid=false;" in readonly
+assert "if(admission==readonly::Admission::Retiring){idleRetired.valid=false;retireWorldFrame();" in readonly
+assert "if(demand!=0u){\n  idleRetired.valid=false;\n  captureDisplayOnlyWorld(world,house,now,wanted);" in readonly
+assert "idleRetired.same(sh->owner,match,worldFrameServer.connection(),worldProducerGeneration)" in readonly
+assert "worldFrameReady||haveCaptureAttempt||worldFrameCandidateAvailable||" in readonly
+assert "!runtimeWorldDemands.empty()||runtimeDemandOverflow" in readonly
+assert "retireWorldFrame();\n  idleRetired={true,sh->owner,match,worldFrameServer.connection(),worldProducerGeneration};" in readonly
+assert "if(transition!=sessionepoch::Transition::None){idleRetired.valid=false;retireWorldFrame();}" in readonly
+
 assert "capturePassiveWorld(" not in readonly
 assert "captureWorldFrame(" not in readonly
 assert "if(authority==worldlife::Authority::ViewOnly)\n   captureDisplayOnlyWorld(worldSample,house,now,sharedWorldWanted);" in bridge
