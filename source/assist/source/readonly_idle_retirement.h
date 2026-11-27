@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 // Pure state for explicit read-only cleanup. No game reads or command authority.
-namespace readonly {
+namespace readonly_idle_cleanup {
 struct IdleRetirement {
  bool valid=false;
  uint32_t owner=0,epoch=0;
