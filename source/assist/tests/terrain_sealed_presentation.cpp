@@ -72,6 +72,15 @@ int main(int argc,char**argv){
  }
  assert(count==10000);radar::Frame frame;frame.terrain=terrain;frame.frame=1;frame.tick=1;frame.markerScanValid=true;frame.sourceFrame=memory.seal(1);
  Reader reader;Read read{&reader};Assets assets;Renderer renderer;renderer.outputSized(true);xbrzadapter::gpuPresentation(false);
+ // Exact same sealed Cell bytes need only one intensity read. Live callbacks
+ // and incomplete observations must still perform the ordinary validation.
+ lighting::State fallback;
+ reader.begin(frame.sourceFrame);auto normal=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false);assert(reader.reads==4&&reader.worldFrameComplete());
+ reader.begin(frame.sourceFrame);auto fast=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false,nullptr,true);assert(reader.reads==3&&fast==normal&&reader.worldFrameComplete());
+ reader.begin(frame.sourceFrame);reader.complete=false;auto incomplete=lighting::cell(read,Cells,fallback,lighting::Layer::Terrain,false,nullptr,true);assert(reader.reads==4&&incomplete==normal&&!reader.worldFrameComplete());
+ unsigned intensityReads=0;auto racing=[&](uint32_t at,void*out,size_t n){if(!memory.read(at,out,n))return false;if(at==Cells+0x10A&&n==6&&++intensityReads==2){int16_t changed[3]={1000,600,1000};std::memcpy(out,changed,sizeof changed);}return true;};
+ assert(lighting::cell(racing,Cells,fallback,lighting::Layer::Terrain,false,nullptr,true)==fallback&&intensityReads==2);
+ std::puts("PASS sealed cell reads 4 -> 3; incomplete and live changing reads retain recheck");
  auto draw=[&](radar::SceneRegion region=radar::SceneRegion{},bool highPrecision=false){reader.begin(frame.sourceFrame);++frame.tick;return renderer.render(frame,600,300,read,assets,region,1,false,true,highPrecision,true);};
  auto settle=[&](radar::SceneRegion region=radar::SceneRegion{},bool highPrecision=false){std::shared_ptr<const radar::Scene>out;for(int n=0;n<24;++n){out=draw(region,highPrecision);if(out&&renderer.materialsReady()){out=draw(region,highPrecision);assert(out);return out;}}assert(false);return out;};
  auto initial=settle();assert(reader.worldFrameComplete());const auto initialPixels=initial->pixels;
