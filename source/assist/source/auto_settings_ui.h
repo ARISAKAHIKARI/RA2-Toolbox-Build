@@ -260,6 +260,14 @@ static bool autoSettingChanged(int id,int notification){
   changedSetting();return true;
  }
  if(id==700&&select){int mode=int(SendMessageW(extraControls[LoadLogic],CB_GETCURSEL,0,0));if(mode>=0&&mode<=1){extra.loadMode=mode==1;changedSetting();}return true;}
+ if(id==uilayout::BoardingPickup&&notification==BN_CLICKED){
+  extra.loadPickupSelected=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
+  changedSetting();return true;
+ }
+ if(id==uilayout::BoardingPickupVehiclesOnly&&notification==BN_CLICKED){
+  extra.loadPickupVehiclesOnly=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
+  changedSetting();return true;
+ }
  if((id==703||id==706||id==708)&&select||(id==704||id==707||id==709)&&edit){
   // Validate only this binding, so a partially typed number elsewhere cannot
   // block a key change. Direct field edits retain their complete gesture and

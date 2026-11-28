@@ -1,11 +1,14 @@
 #pragma once
 #include <stdint.h>
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 
 namespace assist { namespace loading {
 constexpr int MaxInfantry=1024, MaxVehicles=256, GraceFrames=90;
 constexpr uint32_t FirstRetryMs=133,RetryIntervalMs=500,NoProgressMs=2000,RetryBackoffMs=100;
+constexpr uint32_t PickupWindowMs=12000,StationaryPickupWindowMs=30000,PickupStartMs=750;
+constexpr int PickupTravelCells=12;
 inline bool elapsed(uint32_t now,uint32_t since,uint32_t duration){return uint32_t(now-since)>=duration;}
 inline bool deadlineReached(uint32_t now,uint32_t deadline){return int32_t(now-deadline)>=0;}
 inline bool retryDue(uint32_t now,bool neverSent,uint32_t lastSentAt,uint32_t progressAt,
@@ -17,7 +20,18 @@ inline bool retryDue(uint32_t now,bool neverSent,uint32_t lastSentAt,uint32_t pr
 struct Infantry {uint32_t object=0,id=0;int x=0,y=0,slots=0;uint32_t type=0;int kind=1;uint32_t ticket=0,queuedAt=0;};
 struct Vehicle {uint32_t object=0,id=0;int x=0,y=0,capacity=0,used=0,reserved=0;double sizeLimit=128;int passengers=0;};
 struct Observation {int mission=0,queued=-1;uint32_t target=0,destination=0;};
-struct Reservation {uint32_t object,id,vehicle,vehicleID;int slots,frame;int lastSent=-1,x=0,y=0,progress=0,lastAttempt=-1,attempts=0;Observation initial{};bool enterObserved=false;int kind=1;uint32_t ticket=0,queuedAt=0,manualToken=0,lastSentAt=0,progressAt=0,retryAfterAt=0;};
+inline bool moving(const Observation&state){return state.mission==2||state.queued==2;}
+inline bool idleForPickup(const Observation&state){
+ return (state.mission==0||state.mission==5)&&state.queued<0&&!state.target&&!state.destination;
+}
+struct Reservation {uint32_t object,id,vehicle,vehicleID;int slots,frame;int lastSent=-1,x=0,y=0,progress=0,lastAttempt=-1,attempts=0;Observation initial{};bool enterObserved=false;int kind=1;uint32_t ticket=0,queuedAt=0,manualToken=0,lastSentAt=0,progressAt=0,retryAfterAt=0;
+ bool pickup=false,stationaryPickup=false,approachAttempted=false;
+ uint32_t pickupAt=0,vehicleManual=0,meeting=0,meetingAddress=0,meetingAt=0,approachAddress=0;
+};
+inline bool pickupCancelled(const Reservation&r,uint32_t vehicleManual,uint32_t now){
+ const uint32_t limit=r.stationaryPickup?StationaryPickupWindowMs:PickupWindowMs;
+ return r.pickup&&(vehicleManual!=r.vehicleManual||(r.lastSent<0&&elapsed(now,r.pickupAt,limit)));
+}
 // Native boarding reservations use a four-state observation. A read error is
 // neither an absent passenger nor a finished Enter. Keep the old ledger state
 // until all fields needed for that transition have been read successfully.
@@ -27,6 +41,7 @@ enum class ReservationState : uint8_t { Unknown, Active, Boarded, Invalid };
 struct ReservationView {
  ReservationState state=ReservationState::Unknown;
  Observation mission{};uint32_t incoming=0;int x=0,y=0;
+ Observation transport{};int vehicleX=0,vehicleY=0;
 };
 template<class Reader,class Present,class Allowed>
 ReservationView inspectReservation(const Reservation&r,uint32_t house,int frame,Reader read,Present present,Allowed allowed){
@@ -74,6 +89,10 @@ ReservationView inspectReservation(const Reservation&r,uint32_t house,int frame,
  field(source,0xAC,view.mission.mission);field(source,0xB4,view.mission.queued);
  field(source,0x2B4,view.mission.target);field(source,0x5A4,view.mission.destination);
  field(source,0x9C,view.x);field(source,0xA0,view.y);
+ if(r.meeting||r.stationaryPickup){
+  field(transport,0x9C,view.vehicleX);field(transport,0xA0,view.vehicleY);
+  field(transport,0xAC,view.transport.mission);field(transport,0xB4,view.transport.queued);
+ }
  if(view.mission.mission==7||view.mission.queued==7){
   uint32_t queued=0;field(source,0x500,queued);
   view.incoming=queued>=0x10000?queued:view.mission.destination?view.mission.destination:view.mission.target;
@@ -83,6 +102,10 @@ ReservationView inspectReservation(const Reservation&r,uint32_t house,int frame,
 }
 inline bool takenOver(Reservation&r,const Observation&now,uint32_t incoming){
  if(incoming&&incoming!=r.vehicle)return true;
+ // The one-shot approach Move still belongs to this reservation. A player
+ // move changes the manual revision before this check is reached.
+ if(!incoming&&!r.enterObserved&&r.approachAddress&&moving(now)&&
+    (now.destination==r.approachAddress||now.queued==2))return false;
  if(now.queued>=0&&now.queued!=7&&now.queued!=r.initial.queued)return true;
  if(incoming==r.vehicle&&(now.mission==7||now.queued==7)){r.enterObserved=true;return false;}
  if(now.mission==0||now.mission==5)return r.enterObserved;
@@ -96,6 +119,10 @@ inline int slots(double size){
  int n=int(size);return n+(size>n);
 }
 inline bool coordinate(int n){return n>=-1048576&&n<=1048576;}
+inline bool pickupNearby(int x,int y,int vx,int vy){
+ return coordinate(x)&&coordinate(y)&&coordinate(vx)&&coordinate(vy)&&
+  std::max(std::abs(x/256-vx/256),std::abs(y/256-vy/256))<=2;
+}
 inline int freeSlots(const Vehicle&v){
  if(v.capacity<1||v.capacity>1024||v.used<0||v.reserved<0)return 0;
  int64_t n=int64_t(v.capacity)-v.used-v.reserved;return n>0?int(n):0;
@@ -114,20 +141,18 @@ struct Workspace {
  uint16_t fairRank[MaxVehicles][MaxInfantry],fairAt[MaxInfantry][MaxVehicles];
  int8_t legality[MaxInfantry][MaxVehicles];
 };
-template<class Compatible> int assign(const Infantry*p,int ns,Vehicle*v,int nv,int mode,int radius,Composition&composition,Workspace&work,int*out,Compatible compatible){
- if(ns<0||ns>MaxInfantry||nv<0||nv>MaxVehicles)return 0;
- for(int i=0;i<ns;++i)out[i]=-1;
+template<class Compatible> int assignRange(const Infantry*p,int ns,Vehicle*v,int first,int nv,int mode,int radius,Composition&composition,Workspace&work,int*out,Compatible compatible,bool singlePickup=false){
  int64_t limit=radius>0&&radius<=512?int64_t(radius)*256:131072;limit*=limit;
  auto distance=[&](int i,int j){if(!coordinate(p[i].x)||!coordinate(p[i].y)||!coordinate(v[j].x)||!coordinate(v[j].y))return INT64_MAX;int64_t dx=int64_t(p[i].x)-v[j].x,dy=int64_t(p[i].y)-v[j].y;return dx*dx+dy*dy;};
  if(mode!=1){
   // Capacity only decreases: each source's ranked carrier cursor advances.
   auto&rank=work.nearRank;auto&at=work.nearAt;auto&known=work.known;
   for(int i=0;i<ns;++i){at[i]=0;known[i]=false;}
-  for(int i=0;i<ns;++i){for(int j=0;j<nv;++j)rank[i][j]=uint8_t(j);std::sort(rank[i],rank[i]+nv,[&](uint8_t a,uint8_t b){int64_t da=distance(i,a),db=distance(i,b);return da!=db?da<db:v[a].id<v[b].id;});}
+  for(int i=0;i<ns;++i){for(int j=first;j<nv;++j)rank[i][j-first]=uint8_t(j);std::sort(rank[i],rank[i]+(nv-first),[&](uint8_t a,uint8_t b){int64_t da=distance(i,a),db=distance(i,b);return da!=db?da<db:v[a].id<v[b].id;});}
   int assigned=0;
   for(;;){int bi=-1,bj=-1;int64_t best=INT64_MAX;
    for(int i=0;i<ns;++i){if(out[i]>=0||p[i].slots<=0)continue;
-    while(at[i]<nv){int j=rank[i][at[i]];int64_t d=distance(i,j);bool valid=d<=limit&&freeSlots(v[j])>=p[i].slots&&v[j].sizeLimit>=p[i].slots;
+    while(at[i]<nv-first){int j=rank[i][at[i]];int64_t d=distance(i,j);bool valid=d<=limit&&freeSlots(v[j])>=p[i].slots&&v[j].sizeLimit>=p[i].slots&&(!singlePickup||!v[j].reserved);
      if(valid&&!known[i]){valid=compatible(p[i],v[j]);known[i]=valid;}
      if(!valid){++at[i];known[i]=false;continue;}
      if(bi<0||d<best||(d==best&&(p[i].id<p[bi].id||(p[i].id==p[bi].id&&v[j].id<v[bj].id)))){bi=i;bj=j;best=d;}break;
@@ -141,15 +166,15 @@ template<class Compatible> int assign(const Infantry*p,int ns,Vehicle*v,int nv,i
  for(int i=0;i<ns;++i){sourceType[i]=composition.index(p[i].type);if(sourceType[i]>=0)++begin[sourceType[i]+1];}
  for(int t=0;t<composition.count;++t)begin[t+1]+=begin[t];
  auto&rank=work.fairRank;auto&at=work.fairAt;auto&legality=work.legality;
- for(int i=0;i<ns;++i)for(int j=0;j<nv;++j)legality[i][j]=0;
- for(int j=0;j<nv;++j){for(int i=0;i<ns;++i)rank[j][i]=uint16_t(i);
+ for(int i=0;i<ns;++i)for(int j=first;j<nv;++j)legality[i][j]=0;
+ for(int j=first;j<nv;++j){for(int i=0;i<ns;++i)rank[j][i]=uint16_t(i);
   std::sort(rank[j],rank[j]+ns,[&](uint16_t a,uint16_t b){int ta=sourceType[a]<0?MaxInfantry:sourceType[a],tb=sourceType[b]<0?MaxInfantry:sourceType[b];if(ta!=tb)return ta<tb;int64_t da=distance(a,j),db=distance(b,j);return da!=db?da<db:p[a].id<p[b].id;});
   for(int t=0;t<composition.count;++t)at[t][j]=uint16_t(begin[t]);
  }
  int assigned=0;bool progress=true;
  while(progress){progress=false;
   for(int type=0;type<composition.count;++type){int bi=-1,bj=-1,same=0,total=0;int64_t best=INT64_MAX;
-   for(int j=0;j<nv;++j){auto&position=at[type][j];
+   for(int j=first;j<nv;++j){auto&position=at[type][j];
     while(position<begin[type+1]){int i=rank[j][position];int64_t d=distance(i,j);
      bool valid=out[i]<0&&p[i].slots>0&&freeSlots(v[j])>=p[i].slots&&v[j].sizeLimit>=p[i].slots&&d<=limit;
      if(valid){if(!legality[i][j])legality[i][j]=compatible(p[i],v[j])?1:-1;valid=legality[i][j]>0;}
@@ -161,6 +186,45 @@ template<class Compatible> int assign(const Infantry*p,int ns,Vehicle*v,int nv,i
    if(bi<0)continue;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;progress=true;
   }
  }return assigned;
+}
+template<class Compatible> int assign(const Infantry*p,int ns,Vehicle*v,int nv,int mode,int radius,
+ Composition&composition,Workspace&work,int*out,Compatible compatible,int preferred=0,bool vehicleOnly=false){
+ if(ns<0||ns>MaxInfantry||nv<0||nv>MaxVehicles||preferred<0||preferred>nv)return 0;
+ std::fill_n(out,ns,-1);
+ if(vehicleOnly)return assignRange(p,ns,v,0,preferred,0,radius,composition,work,out,compatible,true);
+ int assigned=preferred?assignRange(p,ns,v,0,preferred,mode,radius,composition,work,out,compatible):0;
+ if(preferred<nv&&assigned<ns)assigned+=assignRange(p,ns,v,preferred,nv,mode,radius,composition,work,out,compatible);
+ return assigned;
+}
+
+// The fixed rendezvous is shared by all passengers assigned to this carrier.
+// For an even group, the axiswise median interval may contain the carrier.
+// Keeping the center closest to the carrier avoids favoring one side.
+template<class Walkable> uint32_t meetingCell(int vx,int vy,int*x,int*y,int count,bool carrierMoving,Walkable walkable,bool stationary=false){
+ if(count<=0||count>MaxInfantry||!coordinate(vx)||!coordinate(vy))return 0;
+ const auto median=[count](int*values,int origin){
+  const int half=count/2;
+  std::nth_element(values,values+half,values+count);
+  const int high=values[half],low=count%2?high:*std::max_element(values,values+half);
+  return std::clamp(origin,low,high);
+ };
+ const int mx=median(x,vx),my=median(y,vy);
+ if(!coordinate(mx)||!coordinate(my))return 0;
+ const int dx=mx-vx,dy=my-vy,distance=std::max(std::abs(dx),std::abs(dy));
+ if(!carrierMoving&&(stationary?pickupNearby(mx,my,vx,vy):distance<2*256))return 0;
+ const int step=stationary?distance:std::min(distance*2/3,PickupTravelCells*256);
+ const int cx=distance?(vx+int(int64_t(dx)*step/distance))/256:vx/256;
+ const int cy=distance?(vy+int(int64_t(dy)*step/distance))/256:vy/256;
+ const int fromX=vx/256,fromY=vy/256;
+ for(int radius=0;radius<=2;++radius)
+  for(int oy=-radius;oy<=radius;++oy)for(int ox=-radius;ox<=radius;++ox){
+   if(std::max(std::abs(ox),std::abs(oy))!=radius)continue;
+   const int tx=cx+ox,ty=cy+oy;
+   const int travel=std::max(std::abs(tx-fromX),std::abs(ty-fromY));
+   if(tx<=0||ty<=0||tx>=512||ty>=512||!travel||(!stationary&&travel>PickupTravelCells))continue;
+   if(walkable(tx,ty))return uint32_t(ty*1000+tx);
+  }
+ return 0;
 }
 
 template<class Compatible> int nearest(const Infantry&p,const Vehicle*v,int n,Compatible compatible){

@@ -10,6 +10,9 @@ prefix=r'''
 #include "feature_type_config.h"
 #include "protocol.h"
 #include "shroud_policy.h"
+#include "../../shared/source/feature_availability.h"
+#include "../../shared/source/command_cursor_hint.h"
+#include "single_player_fps.h"
 #include <cwchar>
 #include <cassert>
 #include <algorithm>
@@ -31,6 +34,9 @@ static uint32_t computeRequested=compute::Default;static bool minimapEnabled=fal
 static int minimapSecondaryX=10000,minimapSecondaryY=10000,minimapSecondaryWidth=320;
 static bool renderParticleEffects=true,renderLaserEffects=true,renderVoxelLighting=true,renderSpriteLighting=true;
 static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderMaterialRefresh=true,renderPhysicalOutput=false,renderVulkanEnabled=false,renderProcessing=false,renderXbrzEnabled=false;
+static bool renderHighRefresh=true,buildTimeTooltipEnabled=false,harvesterCounterEnabled=false,powerDeltaEnabled=false;
+static bool revealCloakedUnits=false,revealMirageUnits=false,revealEnemySpies=false;
+static struct {bool detached=false,collapsed=false;int x=0,y=0,scale=100,rows=1;} superweaponOptions;
 static int renderColorPrecision=1,renderSceneDetail=1,renderUpgradeLayer=0,renderPaletteRange=1,renderPixelScale=3;
 constexpr unsigned HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|(b<<8));}
@@ -78,7 +84,19 @@ static HWND GetDlgItem(int,int id){return id;}
 static int GetDlgItemInt(int,int id,BOOL*ok,int){*ok=fields.count(id);return *ok?fields[id]:0;}
 static BOOL SetWindowTextW(int id,const wchar_t*value){fields[id]=int(std::wcstol(value,nullptr,10));return 1;}
 static int SendMessageW(int id,int msg,unsigned value,int){if(msg==HKM_SETHOTKEY||msg==CB_SETCURSEL||msg==BM_SETCHECK){fields[id]=value;return 0;}return fields[id];}
+static int SendDlgItemMessageW(HWND window,int id,int message,unsigned value,int arg){return SendMessageW(GetDlgItem(window,id),message,value,arg);}
+static void EnableWindow(HWND,BOOL){}
 static bool keyConflict(WORD next,const std::string&,bool){if(extra.allHotkeys||!next)return false;for(auto k:hotkeys)if(k==next)return true;for(auto k:{csKey,advancedKey,unloadKey,ejectKey,csHoldKey,magnetronKey,idleAircraftKey})if(k==next)return true;return false;}
+static bool automaticKeyConflict(WORD key,int=0){return keyConflict(key,"",false);}
+static bool destructOwnerKeyConflict(WORD key){return keyConflict(key,"",false);}
+static void wakeGame(){}
+static void requestNativePipPin(){}
+static void resetPlacementEvent(){}
+static void selectPlacementEvent(){}
+static void updatePlacementEventUI(){}
+static void setConsoleFeedback(HWND,const std::wstring&value){lastMessage=value;}
+static bool hardwareBudgetAvailable(uint32_t){return true;}
+static std::wstring hardwareBudgetReason(uint32_t){return {};}
 static std::string quotaID(){return selectedID;}
 static void readTargetQuota(){ControlUpdate guard;}
 static bool extraNumber(int control,int lo,int hi,int&out){auto i=fields.find(700+control);if(i==fields.end()||i->second<lo||i->second>hi)return false;out=i->second;return true;}
@@ -92,8 +110,8 @@ radius_load='extra.aircraftDamageRadiusCells='+io.split('extra.aircraftDamageRad
 percent_load='extra.aircraftDamageCoveragePercent='+io.split('extra.aircraftDamageCoveragePercent=',1)[1].split(';',1)[0]+';'
 radius_save='write(L"Cooperative",L"AirDamageRadiusCells",'+io.split('write(L"Cooperative",L"AirDamageRadiusCells",',1)[1].split(';',1)[0]+';'
 percent_save='write(L"Cooperative",L"AirDamagePercent",'+io.split('write(L"Cooperative",L"AirDamagePercent",',1)[1].split(';',1)[0]+';'
-load_mouse=' extra.antiTheft='+io.split(' extra.antiTheft=',1)[1].split(' extra.loadMode=',1)[0]
-save_mouse=' write(L"Modes",L"AntiTheft"'+io.split(' write(L"Modes",L"AntiTheft"',1)[1].split(' write(L"AutoLoad"',1)[0]
+load_mouse=' extra.antiTheft='+io.split(' extra.antiTheft=',1)[1].split(' extra.enter=',1)[0]
+save_mouse=' write(L"Modes",L"AntiTheft"'+io.split(' write(L"Modes",L"AntiTheft"',1)[1].split(' write(L"Cooperative",L"AircraftAllocationPolicy"',1)[0]
 prefix+=r'''
 static std::map<std::wstring,int> profile;
 static std::map<std::wstring,std::wstring> profile_text;static bool saveWriteOK=true;
@@ -113,6 +131,8 @@ gesture_save=''.join('write('+marker+io.split('write('+marker,1)[1].split(';',1)
 prefix+="\nstatic void loadGestureBindings(){"+gesture_load+"}\nstatic void saveGestureBindings(){"+gesture_save+"}\n"
 feature_load=io.split('static void loadAdditionalSettings(){',1)[1].split(' extra.antiTheft=',1)[0]
 feature_save=io.split('static bool saveAdditionalSettings(){',1)[1].split(' write(L"Modes",L"AntiTheft"',1)[0]
+manual_reveal='write(L"Experimental",L"ManualReveal",'+io.split('write(L"Experimental",L"ManualReveal",',1)[1].split(';',1)[0]+';'
+feature_save+=manual_reveal
 prefix+="\nstatic void loadFeatureTypes(){"+feature_load+"}\nstatic void saveFeatureTypes(){"+feature_save+"}\n"
 suffix=r''' 
 int main(){
@@ -131,11 +151,12 @@ int main(){
  fields[895]=9;autoSettingChanged(895,CBN_SELCHANGE);assert(extra.dodgeMode==0);
  // Legacy selectors must no longer modify the internal split.
  for(int i=0;i<compute::Count;++i){fields[9000+i]=1;assert(!autoSettingChanged(9000+i,CBN_SELCHANGE));}
- profile[L"MagnetronGlobal"]=1;profile[L"MagnetronDrop"]=0;profile[L"Magnetron"]=1;
- computeRequested=0;loadFeatureTypes();assert(computeRequested==compute::Fixed);
- profile[L"MagnetronGlobal"]=0;profile[L"MagnetronDrop"]=1;profile[L"Magnetron"]=0;
+ profile[L"Global"]=1;profile[L"AutoDrop"]=0;
+ computeRequested=0;loadFeatureTypes();assert(computeRequested==compute::Fixed&&extra.magnetronGlobal&&!extra.magnetronDrop);
+ extra.magnetronGlobal=false;extra.magnetronDrop=true;
  computeRequested=compute::All;saveFeatureTypes();loadFeatureTypes();assert(computeRequested==compute::Fixed);
- assert(profile[L"MagnetronGlobal"]==0&&profile[L"MagnetronDrop"]==1&&profile[L"Magnetron"]==0);
+ assert(profile[L"Global"]==0&&profile[L"AutoDrop"]==1);
+ extra.magnetronDrop=false;saveFeatureTypes();
 
  minimapEnabled=extra.watchEnabled=false;fields[9162]=fields[9163]=1;assert(autoSettingChanged(9162,BN_CLICKED)&&minimapSecondary);assert(autoSettingChanged(9163,BN_CLICKED)&&extra.watchSecondary);
  assert(!minimapEnabled&&!extra.watchEnabled);saveFeatureTypes();minimapSecondary=extra.watchSecondary=false;loadFeatureTypes();assert(minimapSecondary&&extra.watchSecondary);
@@ -179,9 +200,9 @@ int main(){
   for(int bad:{0,49,251,999}){fields[id]=bad;autoSettingChanged(id,EN_CHANGE);assert(scale==250);}
  }
 
- fields[9090]=1;assert(autoSettingChanged(9090,BN_CLICKED)&&!extra.viewZoomEnabled);
- for(int i=0;i<5;++i){fields[9091]=i;assert(autoSettingChanged(9091,CBN_SELCHANGE)&&extra.viewZoomPercent==100);}
- assert(autoSettingChanged(9092,BN_CLICKED)&&extra.viewZoomPercent==100&&fields[9091]==2);
+ fields[9090]=1;assert(autoSettingChanged(9090,BN_CLICKED)&&extra.viewZoomEnabled);
+ for(int i=0;i<viewzoom::Count;++i){fields[9091]=i;assert(autoSettingChanged(9091,CBN_SELCHANGE)&&extra.viewZoomPercent==viewzoom::Levels[i]);}
+ assert(autoSettingChanged(9092,BN_CLICKED)&&extra.viewZoomPercent==100&&fields[9091]==viewzoom::index(100));
  fields[9090]=0;assert(autoSettingChanged(9090,BN_CLICKED)&&!extra.viewZoomEnabled);
  loadFeatureTypes();for(int f=0;f<featuretypes::Count;++f)assert(!featureTypes.filters[f].custom);
  for(int f=0;f<featuretypes::Count;++f){featureTypes.filters[f].custom=1;featureTypeText[f]=L"custom_a，CUSTOM_B";}
@@ -281,11 +302,12 @@ int main(){
   uint32_t* bindings[]={&extra.enterKey,&extra.airKey1,&extra.airKey2,&extra.diskKey,&extra.sellKey};
   const uint32_t expected[]={doubleCtrl,doubleCtrl,doubleAlt,doubleCtrl,doubleCtrl};
   extra.airKey1=17;extra.airKey2=0;extra.allHotkeys=false;
+  fields[789]='V';assert(autoSettingChanged(789,EN_CHANGE));const auto sellVehicle=extra.sellVehicleKey;
   for(int n=0;n<5;++n){fields[presets[n]]=2;fields[customs[n]]=expected[n];
    assert(autoSettingChanged(customs[n],EN_CHANGE));
    assert(*bindings[n]==expected[n]&&fields[presets[n]]==holdPreset(expected[n])&&fields[customs[n]]==int(expected[n]));
   }
-  assert(fields[789]==int(doubleCtrl)); // both sell fields stay synchronized
+  assert(extra.sellKey==doubleCtrl&&fields[789]=='V'&&extra.sellVehicleKey==sellVehicle);
   saveGestureBindings();for(auto key:bindings)*key=0;loadGestureBindings();
   for(int n=0;n<5;++n)assert(*bindings[n]==expected[n]); // actual production INI expressions preserve all mode bits
   // Legacy continuous keys and explicit Hold keys are the same authorization;
@@ -298,7 +320,8 @@ int main(){
   // Choosing a preset is deliberate: it replaces a prior custom gesture and
   // repaints its field, while direct field edits never inherit that preset.
   for(int id:{706,725,727}){fields[id]=2;assert(autoSettingChanged(id,CBN_SELCHANGE));}
-  assert(extra.airKey1==17&&fields[707]==17&&extra.diskKey==17&&fields[726]==17&&extra.sellKey==17&&fields[728]==17&&fields[789]==17);
+  assert(extra.airKey1==17&&fields[707]==17&&extra.diskKey==17&&fields[726]==17&&extra.sellKey==17&&fields[728]==17);
+  assert(extra.sellVehicleKey==sellVehicle);
   extra=savedSettings;fields=savedFields;profile=savedProfile;
  }
  fields[780]=1;autoSettingChanged(780,BN_CLICKED);assert(repairUnrepairable);fields[780]=0;autoSettingChanged(780,BN_CLICKED);assert(!repairUnrepairable);
@@ -346,12 +369,14 @@ int main(){
  saveMouse();extra.renderReveal=false;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal);
  profile[L"RevealMap"]=1;loadMouse();assert(extra.renderReveal&&!extra.experimentalReveal); // legacy permission loses on load
  fields[808]=4;autoSettingChanged(808,CBN_SELCHANGE);assert(extra.renderReveal==3&&!extra.experimentalReveal);saveFeatureTypes();saveMouse();loadFeatureTypes();loadMouse();assert(extra.mapStrategy==4&&extra.renderReveal==3);
- for(int strategy:{5,6}){fields[808]=strategy;assert(autoSettingChanged(808,CBN_SELCHANGE));assert(extra.mapStrategy==strategy&&extra.renderReveal==unsigned(strategy-1)&&!extra.experimentalReveal);saveFeatureTypes();saveMouse();extra.mapStrategy=0;extra.renderReveal=0;loadFeatureTypes();loadMouse();assert(extra.mapStrategy==strategy&&extra.renderReveal==unsigned(strategy-1));}
- for(int invalid:{-1,7}){fields[808]=invalid;assert(autoSettingChanged(808,CBN_SELCHANGE));assert(extra.mapStrategy==6&&extra.renderReveal==5);}
+ for(int invalid:{-1,5,6,7}){fields[808]=invalid;assert(autoSettingChanged(808,CBN_SELCHANGE));assert(extra.mapStrategy==4&&extra.renderReveal==3);}
+ profile[L"ManualReveal"]=0;
+ for(int retired:{5,6}){profile[L"ShroudStrategy"]=retired;loadMouse();assert(extra.mapStrategy==0&&!extra.renderReveal&&!extra.experimentalReveal);}
  fields[9096]=1;autoSettingChanged(9096,CBN_SELCHANGE);fields[9097]=1;autoSettingChanged(9097,BN_CLICKED);saveFeatureTypes();saveMouse();extra.placementImplementation=0;extra.techEnhance=false;loadFeatureTypes();loadMouse();assert(extra.placementImplementation==1&&extra.techEnhance);
  fields[808]=0;autoSettingChanged(808,CBN_SELCHANGE);assert(!extra.renderReveal);saveFeatureTypes();saveMouse();loadMouse();assert(!extra.renderReveal);
- fields[803]=2;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.nativeAirWaypoints&&airway::resets==1&&pointerMatches.clears==1);
- fields[803]=0;autoSettingChanged(803,CBN_SELCHANGE);assert(!extra.nativeAirWaypoints&&airway::resets==2&&pointerMatches.clears==2);
+ const auto routeResets=airway::resets,routeGestureResets=pointerMatches.clears;
+ fields[803]=2;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.nativeAirWaypoints&&airway::resets==routeResets+1&&pointerMatches.clears==routeGestureResets+1);
+ fields[803]=0;autoSettingChanged(803,CBN_SELCHANGE);assert(!extra.nativeAirWaypoints&&airway::resets==routeResets+2&&pointerMatches.clears==routeGestureResets+2);
  for(int mode:{0,1,2,3,4}){fields[803]=mode;autoSettingChanged(803,CBN_SELCHANGE);assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode>=2)&&extra.nativeAirNetwork==unsigned(mode>=3?mode-2:0));saveMouse();extra.airWaypoints=extra.nativeAirWaypoints=false;extra.nativeAirNetwork=0;loadMouse();assert(extra.airWaypoints==(mode==1)&&extra.nativeAirWaypoints==(mode>=2)&&extra.nativeAirNetwork==unsigned(mode>=3?mode-2:0));}
  for(unsigned key:{0u,unsigned(MAKEWORD('W',2)),0u}){fields[894]=key;autoSettingChanged(894,EN_CHANGE);assert(extra.airPathKey==key);saveMouse();extra.airPathKey=123;loadMouse();assert(extra.airPathKey==key);}
  fields[787]=60;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);fields[787]=61;autoSettingChanged(787,EN_CHANGE);assert(advancedScanHz==60);
@@ -366,6 +391,15 @@ int main(){
  assert(profile[L"EnhancedButton"]==3&&profile[L"SellButton"]==2);
  updatingControls=true;fields[200]='Z';assert(!autoSettingChanged(200,EN_CHANGE));assert(hotkeys[0]=='A');updatingControls=false;
  ready=false;assert(!autoSettingChanged(310,EN_CHANGE));ready=true;
+ assert(!extra.loadPickupSelected&&!extra.loadPickupVehiclesOnly);
+ fields[uilayout::BoardingPickup]=BST_CHECKED;
+ assert(autoSettingChanged(uilayout::BoardingPickup,BN_CLICKED)&&extra.loadPickupSelected&&!extra.loadPickupVehiclesOnly);
+ for(bool enabled:{true,false}){
+  fields[uilayout::BoardingPickupVehiclesOnly]=enabled;autoSavePending=false;
+  assert(autoSettingChanged(uilayout::BoardingPickupVehiclesOnly,BN_CLICKED)&&extra.loadPickupVehiclesOnly==enabled&&extra.loadPickupSelected&&autoSavePending);
+  saveMouse();extra.loadPickupVehiclesOnly=!enabled;extra.loadPickupSelected=false;loadMouse();
+  assert(extra.loadPickupVehiclesOnly==enabled&&extra.loadPickupSelected);
+ }
  fields[700]=1;autoSettingChanged(700,CBN_SELCHANGE);assert(extra.loadMode==1);
  fields[796]=2;assert(autoSettingChanged(796,CBN_SELCHANGE)&&shiftClickMode==2);
  fields[802]=1;assert(autoSettingChanged(802,CBN_SELCHANGE)&&advancedTargetPriority==1);
@@ -384,7 +418,7 @@ int main(){
  fields[707]='K';autoSettingChanged(707,EN_CHANGE);assert(extra.airKey1=='K');fields[709]='K';autoSettingChanged(709,EN_CHANGE);assert(extra.airKey2==0&&fields[708]==0);
  fields[716]=4;fields[717]=5;fields[718]=6;autoSettingChanged(716,EN_CHANGE);assert(targetQuotas.at("TANK").first==4&&fields[715]==1);
  fields.erase(716);fields[715]=0;autoSettingChanged(715,BN_CLICKED);assert(targetQuotas.empty());
- fields[724]='V';autoSettingChanged(724,EN_CHANGE);assert(extra.variantKey=='V');
+ extra.variantKey='T';fields[724]='V';autoSettingChanged(724,EN_CHANGE);assert(extra.variantKey=='T'&&fields[724]=='T');
  autoSettingChanged(441,EN_CHANGE);autoSettingChanged(411,EN_CHANGE);assert(binds==2);
  // Manual control and the separate enemy-sale availability gate stay independent.
  extra.controlAll=extra.sellEnemy=false;fields[860]=BST_CHECKED;
@@ -425,8 +459,8 @@ for module in ('assist','unit_monitor'):
 print('PASS: information adaptive/manual notifications retain the manual rate; refresh mode bounds, persistence and legacy migration; shipped settings handler applies/flushes valid edits, preserves conflicting keys, ignores programmatic updates, saves quotas/custom keys; independent overlays and common read leases')
 
 # Hook permissions are linked only after explicit, valid user activation.
-assert (main+(root/'assist/source/hotkey_host.h').read_text()).count('if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}')>=2
-assert 'hookAutoCS=value(L"Hooks",L"AutoCS",0)' in main
+assert 'if(csMode){hookAutoCS=true;SendMessageW(hookChecks[3],BM_SETCHECK,BST_CHECKED,0);}' in main
+assert 'hookAutoCS=featureavailability::AutoCS&&value(L"Hooks",L"AutoCS",0)' in main
 assert 'value(L"NativeOrders",L"EnableInputHooks",0)' in main
 import re
 assert not re.search(r'shared->(?:ack|result)\s*=(?!=)',main)
@@ -437,8 +471,8 @@ assert 'static BOOL CALLBACK findWindow(' not in cursor
 print('PASS: explicit feature/permission linkage, invalid-key isolation, shared cursor discovery and host ACK single-writer contract')
 
 assert 'const bool passiveVisible=snap.renderStatus==1||passiveDisplayState()!=overlaydisplay::State::Hidden;' in main
-assert 'if(!passiveVisible){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();' in main
-assert 'else if(!foregroundGame()||snap.chat){overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();' in main
+assert 'if(!passiveVisible){overlayRecovery.suspend();hideWorldOverlay();hideSidebarOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();' in main
+assert 'else if(!foregroundGame()||snap.chat){overlayRecovery.suspend();hideWorldOverlay();hideSidebarOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();' in main
 assert 'snap.renderStatus=externalValid&&d.renderStatus==1?1:0;' in main
 monitor=(root/'unit_monitor/source/main.cpp').read_text() if (root/'unit_monitor/source/main.cpp').exists() else (root.parent/'unit_monitor/source/main.cpp').read_text()
 assert 'external::display::inspect' in monitor and 'battlefield&&foregroundGame()' in monitor
@@ -446,12 +480,13 @@ print('PASS shared menu visibility is consumed by both overlays; control tick hi
 
 assert 'tabEnabled&&enabled&&gameActive&&!demo' in monitor
 
-assert 'if(c==RevealMap&&!extra.experimentalReveal)return false;' in main
-assert 'if(command==RevealMap&&!extra.experimentalReveal)' in main
+assert 'if(c==RevealMap&&(!extra.experimentalReveal||extra.renderReveal))return false;' in main
+assert 'if(command==RevealMap&&(!extra.experimentalReveal||(!fromQueue&&!extra.manualReveal)))' in main
 assert 'if(autoRevealNewMatch&&extra.experimentalReveal&&' in main
-assert 'hotkeys[i]=i==8?0:' in main
+assert 'if((i!=8||extra.manualReveal)&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))' in main
 assert 'case 116:toggleOverlay();' in monitor
-assert 'if(a==1){toggleOverlay();}' in monitor
+assert 'case WM_HOTKEY:if(a==1){' in monitor
+assert 'if(foregroundGame()&&reader.readFresh(0xA8BC60+25,&chat,1)&&!chat)toggleOverlay();' in monitor
 assert 'tabui::displayRequested(hidden,demo||!tabEnabled,manualVisible,tabs.visible())' in monitor
 assert '常驻显示（不依赖 Tab）' in monitor
 print('PASS experimental reveal default/roundtrip and all host gates; independent manual overlay controls retain battlefield gating')

@@ -164,6 +164,8 @@ note(L"己方步兵被绑炸弹后，寻找范围内最近且可进入、有空�
 item(L"STATIC",L"绑弹步兵自动上车：关闭",20,605,9532,0,44);next(44);
 label(L"自动装车分配方式",20,260);extraControls[LoadLogic]=combo(700);choices(extraControls[LoadLogic],{L"就近优先",L"兵种均衡"},extra.loadMode);next();
 extraControls[LoadRadius]=number(701,L"自动装车范围 / 格",extra.loadRadius,L"1–512");
+toggle(uilayout::BoardingPickup,L"车和步兵双向会合",extra.loadPickupSelected);next();
+toggle(uilayout::BoardingPickupVehiclesOnly,L"只框载具也接人",extra.loadPickupVehiclesOnly);next();
 automaticToggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
 automaticToggle(885,L"自动躲弹",extra.dodgeEnabled);next();
 label(L"躲弹方式",20,260);choices(combo(895),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();

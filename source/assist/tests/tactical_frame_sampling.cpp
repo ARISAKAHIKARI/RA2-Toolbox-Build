@@ -39,6 +39,9 @@ static std::function<void()> nativeMutation;
 static std::map<uint32_t,int> airOverride;
 static std::set<uint64_t> forbiddenEnter;
 static std::vector<std::pair<uint32_t,uint32_t>> assignments;
+static std::vector<std::pair<uint32_t,uint32_t>> pickupMoves,boardingOrders;
+static bool usePickupSubmit=false,moveBlocked=false;
+static constexpr uint32_t PickupWalkMethod=0x601000,PickupMapCells=0x400000;
 static worldframe::Snapshot worldFrame;
 static worldframe::Snapshot worldFrameCandidate;
 static bool worldFrameCandidateAvailable=false;
@@ -128,7 +131,8 @@ static void MemoryBarrier(){}
 template<class T>static void InterlockedIncrement(volatile T*p){assert(!sampleReadDepth);++*p;}
 static void notifyHost(){assert(!sampleReadDepth);++hostNotifies;}
 static void nativeBoundary(){assert(!sampleReadDepth);++nativeCalls;if(nativeMutation){auto mutation=std::move(nativeMutation);nativeMutation={};mutation();}}
-template<class R,class...Args>static R call(uint32_t,uint32_t,Args...){nativeBoundary();return R(1);}
+template<class R,class...Args>static R call(uint32_t address,uint32_t,Args...){nativeBoundary();return R(address!=PickupWalkMethod);}
+static bool nativeExecutableRange(uint32_t address,unsigned){return address==PickupWalkMethod||address==0x578460||address==0x5F5F00;}
 static bool rawMagnetronDrop(uint32_t p,uint32_t q,uint32_t){nativeBoundary();return p&&q;}
 namespace gameentry {enum class Client{Assist};static bool active(Client){++leaseChecks;return leaseAllowed;}}
 static runtimefault::Context faultContext;
@@ -167,7 +171,18 @@ static bool candidateLoadAdmission(uint32_t,uint32_t,uint32_t id,uint32_t,int){
  assert(!sampleReadDepth);++candidateCapacityChecks;
  return candidateCapacityReady&&(!onlyCandidateActor||onlyCandidateActor==id);
 }
-static bool enterEvent(uint32_t,uint32_t,uint32_t,const executionproof::Ticket&,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
+static bool enterEvent(uint32_t,uint32_t id,uint32_t carrier,const executionproof::Ticket&,uint32_t*ticket){
+ ++loadingResends;if(ticket)*ticket=1234;if(usePickupSubmit)boardingOrders.emplace_back(id,carrier);return true;
+}
+static bool submitProvenMission(uint32_t house,uint32_t id,int mission,uint32_t target,uint32_t cell,int tag,
+ taskarbiter::Owner owner,const executionproof::Ticket&proof){
+ assert(!sampleReadDepth&&mission==2&&!target&&tag==11&&owner==taskarbiter::Owner::AutoLoad);
+ assert(executionproof::verify(proof,{match,house,clockNow},worldByID,
+   [](uint32_t uid){return manualVersions.get(uid);},own)==executionproof::Failure::None);
+ if(moveBlocked)return false;
+ pickupMoves.emplace_back(id,cell);return true;
+}
+static void cancelUnloadPassenger(uint32_t){}
 static loading::Ledger<> loadLedger;
 // This fixture intentionally isolates AutoLoad sampling; cooperative pending
 // capacity is exercised separately against source-extracted production code.
@@ -177,7 +192,9 @@ static repairdelivery::Pending<> pendingRepairs;
 static repairdelivery::Source repairOrders[8192];static uint32_t repairTaskSeen;static int repairCount,repairAt,repairCursor;
 static bool repairCalculationPending;static DWORD repairCalculationStarted;
 static void finishLoadingReservation(const loading::Reservation&,uint32_t,int,bool boarded){assert(!sampleReadDepth);++loadingFinished;if(boarded)++loadingBoarded;}
-static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens,bool candidateOnly=false){
+static int submitLoadingForPickup(uint32_t,const loading::Infantry*,int,const loading::Vehicle*,int,const int*,const uint32_t*,bool);
+static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens,bool candidateOnly=false){
+ if(usePickupSubmit)return submitLoadingForPickup(house,soldiers,ns,vehicles,nv,assignment,tokens,candidateOnly);
  loadingCandidatePath=candidateOnly;
  if(loadingSubmitResult==-30)return -30;
  assert(!sampleReadDepth);++submissions;assignments.clear();
@@ -236,7 +253,9 @@ static void reset(){
  check(!sampleReadDepth,"scope leaked between tests");memory.assign(memory.size(),0);::new(static_cast<void*>(sh)) Shared{};std::memset(&snap,0,sizeof snap);
  leaseChecks=0;leaseAllowed=true;worldObjects.unbind();worldObjects.clear();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;indexedFrame=indexedCount=-1;indexedItems=0;globalVehicleCandidateCount=0;indexedGlobalVehicles=false;indexedVehicleHouse=0;manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
  worldFrameReady=false;worldFrameCaptureScratch.reset();nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
- loadCalculationPending=loadCaptureWaiting=false;candidateReadyForCooperative=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
+ loadCalculationPending=loadCaptureWaiting=loadVehicleOnly=false;loadPickupOptions=0;candidateReadyForCooperative=false;
+ loadSelectionCount=loadFactCount=loadPickupCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
+ usePickupSubmit=moveBlocked=false;pickupMoves.clear();boardingOrders.clear();
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
  dodgeThreatCount=dodgeCursor=dodgeJobCursor=0;unloadSampleTargetFrame=-1;unloadSampleTargetCount=0;planningFrame=-1;planningWorld.count=planningWorld.intentCount=0;planningSerial=inputSerial=0;std::memset(weaponCache,0,sizeof weaponCache);oreHarvestReset();harvestEvents=0;
  repairFrames.clear();pendingRepairs.clear();repairCount=repairAt=repairCursor=0;repairTaskSeen=repairCalculationStarted=0;repairCalculationPending=false;
@@ -402,6 +421,74 @@ static void testLoad(){
  check(candidateCapacityChecks==4&&loadingResends==1,"a denied carrier starved the next candidate in the ledger");
  onlyCandidateActor=0;
  std::puts("PASS 32 load assignment variants, frozen candidate click, bounded seat proof and single retry");
+}
+struct PickupFixture {uint32_t carrier,other,first,second,overflow;};
+static PickupFixture setupPickup(bool paired){
+ reset();sh->computeApplied=compute::All;sh->loadRadius=30;usePickupSubmit=true;
+ const uint32_t transportType=makeType(),infantryType=makeType();
+ set<int>(transportType+0x5E0,2);set<double>(transportType+0x388,2.0);set<double>(infantryType+0x380,1.0);
+ const uint32_t a=object(transportType,2,10,lastHouse,10*256,10*256),b=object(transportType,2,11,lastHouse,26*256,10*256);
+ const uint32_t p=object(infantryType,1,20,lastHouse,22*256,10*256),q=object(infantryType,1,21,lastHouse,23*256,10*256);
+ const uint32_t excess=object(infantryType,1,22,lastHouse,(paired?24:120)*256,10*256);
+ const uint32_t busy=object(infantryType,1,23,lastHouse,11*256,10*256),foreign=object(infantryType,1,24,0x30000,12*256,10*256);
+ set<int>(busy+0xAC,2);
+ for(uint32_t table:{0x7EB058u,0x7F5C70u})set<uint32_t>(table+0x1AC,PickupWalkMethod);
+ for(int y=6;y<=14;++y)for(int x=8;x<=32;++x)
+  set<uint32_t>(PickupMapCells+uint32_t(y*512+x)*4,0x510000+uint32_t(y*512+x)*4);
+ vectorAt(0xA8EC78,0x800000,{a,b,p,q,excess,busy,foreign});
+ vectorAt(0xA8ECB8,0x820000,paired?std::vector<uint32_t>{a,p,q,excess}:std::vector<uint32_t>{a,b});seal();
+ return {a,b,p,q,excess};
+}
+static void pickupTime(uint32_t delay=loading::FirstRetryMs){
+ clockNow+=delay;advance();autoLoadTick(lastHouse,snap.frame);
+}
+static void arrived(const loading::Reservation&job){
+ check(job.meeting&&job.meetingAddress,"expected carrier route is missing");
+ set<int>(job.vehicle+0x9C,int(job.meeting%1000)*256+128);
+ set<int>(job.vehicle+0xA0,int(job.meeting/1000)*256+128);
+ set<int>(job.vehicle+0xAC,5);
+}
+static void testPickup(){
+ auto f=setupPickup(true);
+ set<int>(f.carrier+0xAC,2);forbiddenEnter.insert((uint64_t(20)<<32)|10);forbiddenEnter.insert((uint64_t(21)<<32)|10);seal();
+ check(autoLoad(lastHouse,nullptr,false,AutoBoardPickupSelected)==2&&loadLedger.count==3&&
+       boardingOrders==decltype(boardingOrders){{22,11}}&&pickupMoves.empty(),
+       "moving selected transport should reserve a full group and leave overflow on legacy boarding");
+ check(loadLedger.records[0].meeting&&loadLedger.records[0].meeting==loadLedger.records[1].meeting,
+       "two passengers assigned to one selected transport need one shared meeting");
+ set<int>(f.overflow+0xAC,7);set<uint32_t>(f.overflow+0x500,f.other);
+ moveBlocked=true;pickupTime();check(pickupMoves.empty()&&boardingOrders.size()==1,"queue refusal advanced a pickup");
+ moveBlocked=false;pickupTime();pickupTime();
+ check(pickupMoves.size()==3&&pickupMoves[0].first==10&&pickupMoves[1].first!=pickupMoves[2].first&&
+       pickupMoves[1].second!=pickupMoves[2].second&&boardingOrders.size()==1,
+       "mixed selection requires one carrier movement and two distinct infantry approaches");
+ for(int n=0;n<2;++n){const auto&job=loadLedger.records[n];set<int>(job.object+0xAC,2);set<uint32_t>(job.object+0x5A4,job.approachAddress);}
+ arrived(loadLedger.records[0]);forbiddenEnter.clear();pickupTime();
+ check(boardingOrders.size()==3&&boardingOrders[1].second==10&&boardingOrders[2].second==10&&pickupMoves.size()==3,
+       "after verified arrival both reservations must enter instead of losing their own approach missions");
+
+ f=setupPickup(false);
+ check(autoLoad(lastHouse,nullptr,false,AutoBoardPickupSelected)==1&&!loadLedger.count&&
+       boardingOrders.empty()&&pickupMoves.empty(),"mixed pickup switch should not discover unselected infantry");
+ check(autoLoad(lastHouse,nullptr,false,AutoBoardPickupVehiclesOnly)==2&&loadLedger.count==2,
+       "vehicles-only mode did not find the two idle local unselected infantry");
+ const auto first=loadLedger.records[0],second=loadLedger.records[1];
+ check(first.object==f.first&&second.object==f.second&&first.vehicle!=second.vehicle&&
+       first.stationaryPickup&&second.stationaryPickup,"vehicle-only matching should use two carriers and skip busy, foreign, and distant units");
+ clockNow+=loading::FirstRetryMs;advance();autoLoadTick(lastHouse,snap.frame,true);
+ check(pickupMoves.empty()&&boardingOrders.empty()&&loadLedger.count==2,"candidate-only lane sent a vehicle-only pickup");
+ pickupTime();pickupTime();
+ check(pickupMoves.size()==2&&pickupMoves[0].first==first.vehicleID&&pickupMoves[1].first==second.vehicleID&&boardingOrders.empty(),
+       "only the selected carriers should move before pickup");
+ arrived(loadLedger.records[0]);manualVersions.change(second.vehicleID);
+ pickupTime();check(boardingOrders==decltype(boardingOrders){{first.id,first.vehicleID}}&&loadLedger.count==1&&pickupMoves.size()==2,
+       "unselected infantry should board after arrival and honor a new manual vehicle order");
+
+ f=setupPickup(true);
+ autoLoad(lastHouse,nullptr,false,AutoBoardPickupVehiclesOnly);
+ check(!loadVehicleOnly&&std::none_of(loadLedger.records,loadLedger.records+loadLedger.count,[](const auto&r){return r.pickup;}),
+       "vehicle-only switch leaked into the mixed-selection path");
+ std::puts("PASS grouped pickup, ordinary overflow, vehicles-only rendezvous, independent switches, arrival and manual takeover");
 }
 static void testBoardingLedgerUnknown(){
  setupLoad(0);const uint32_t passenger=get<uint32_t>(0x820000),carrier=get<uint32_t>(0x800000),passengerID=get<uint32_t>(passenger+0x10),carrierID=get<uint32_t>(carrier+0x10);
@@ -902,5 +989,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDodgeThreatIndex();testDirectCombatDodge();testDirectMissileLoad();testOre();testDirectOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testPickup();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testDirectRuntimeRepair();testDodgeThreatIndex();testDirectCombatDodge();testDirectMissileLoad();testOre();testDirectOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif

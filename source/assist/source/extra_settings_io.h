@@ -156,6 +156,8 @@ static void loadAdditionalSettings(){
  }
 
  extra.loadMode=std::clamp(value(L"AutoLoad",L"Logic",0),0,1);extra.loadRadius=std::clamp(value(L"AutoLoad",L"RangeCells",30),1,512);
+ extra.loadPickupSelected=value(L"AutoLoad",L"SelectedVehiclePickup",0)!=0;
+ extra.loadPickupVehiclesOnly=value(L"AutoLoad",L"VehiclesOnlyPickup",0)!=0;
  extra.enter=value(L"Cooperative",L"AdvancedEnter",0)!=0;extra.air=value(L"Cooperative",L"AircraftSpread",0)!=0;
  extra.aircraftAllocationPolicy=std::clamp(value(L"Cooperative",L"AircraftAllocationPolicy",0),0,2);
   extra.aircraftDamageRadiusCells=std::clamp(value(L"Cooperative",L"AirDamageRadiusCells",cooperative::DefaultDamageRadiusCells),cooperative::MinDamageRadiusCells,cooperative::MaxDamageRadiusCells);
@@ -270,6 +272,8 @@ static bool saveAdditionalSettings(){
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
  write(L"AutoLoad",L"Logic",extra.loadMode);write(L"AutoLoad",L"RangeCells",extra.loadRadius);
+ write(L"AutoLoad",L"SelectedVehiclePickup",extra.loadPickupSelected);
+ write(L"AutoLoad",L"VehiclesOnlyPickup",extra.loadPickupVehiclesOnly);
  write(L"Cooperative",L"AircraftAllocationPolicy",extra.aircraftAllocationPolicy);write(L"Cooperative",L"AirDamageRadiusCells",extra.aircraftDamageRadiusCells);write(L"Cooperative",L"AirDamagePercent",extra.aircraftDamageCoveragePercent);write(L"Cooperative",L"AdvancedEnter",extra.enter);write(L"Cooperative",L"AircraftSpread",extra.air);write(L"Cooperative",L"EnterHoldKey",extra.enterKey);write(L"Cooperative",L"AirHoldKey1",extra.airKey1);write(L"Cooperative",L"AirHoldKey2",extra.airKey2);
  write(L"SpecialClick",L"DiskHoldKey",extra.diskKey);write(L"SpecialClick",L"SellHoldKey",extra.sellKey);write(L"SpecialClick",L"SellVehicleHoldKey",extra.sellVehicleKey);write(L"SpecialClick",L"AttackMoveHoldKey",extra.attackMoveKey);
  write(L"SpecialClick",L"DiskPrimary",extra.disk);write(L"SpecialClick",L"SellDrained",extra.sellDrained);write(L"SpecialClick",L"SellVehicles",extra.sellVehicles);write(L"SpecialClick",L"SellEnemyBuildings",playertest::SellAvailable&&extra.sellEnemy);

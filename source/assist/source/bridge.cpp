@@ -1581,7 +1581,7 @@ static void command(uint32_t house,DWORD now,commandsampling::Sample sample=comm
   }
  }
  else if(c==CancelAdvanced){Vec v=vec(0xA8ECB8);for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(p&&own(p,house)){cancelAutomatic(p);++n;}}}
- else if(c==AutoBoard){result=autoLoad(house,nullptr,candidateOnly);n=snap.loadIssued;
+ else if(c==AutoBoard){result=autoLoad(house,nullptr,candidateOnly,uint32_t(arg));n=snap.loadIssued;
   if(result==-30){result=AutoBoardStaged;n=0;}
  }
  else if(c>=CombatSelection&&c<=DamagedSelection){n=selectFilter(house,c);if(n<0){result=n;n=0;}}

@@ -65,7 +65,7 @@ def production():
     add(function(coop, "static void captureCooperativeFrame("))
     add(function(coop, "static void serviceCooperativePlan("))
     load = source["autoload_bridge.h"]
-    add(load[load.index("static bool loadCalculationPending;"):load.index("static int submitLoading(")])
+    add(load[load.index("static bool loadCalculationPending;"):load.index("struct PickupWalk")])
     for signature in ("static bool loadingObject(", "static uint32_t incomingVehicle(",
                       "static loading::Observation loadingObservation(", "static int loadingFilterStatus(",
                       "static loading::ReservationView loadingReservationView(", "static int passengerSlots("):
@@ -73,8 +73,12 @@ def production():
     add("static bool loadQueryFailed;")
     add(function(load, "static bool queryEnterAction("))
     add(function(load, "static bool canEnter("))
+    add('#include "reverse_dodge.h"')
+    add(load[load.index("struct PickupWalk"):load.index("static int submitLoading(")])
+    add(function(load, "static int submitLoading(").replace("submitLoading(", "submitLoadingForPickup(", 1)
+        .replace("bool candidateOnly=false", "bool candidateOnly", 1))
     for signature in ("static bool captureLoadSelection(", "static bool collectLoadFacts(",
-                      "static int autoLoad(uint32_t house,const compute::LoadInput*cohort,bool candidateOnly){",
+                      "static int autoLoad(uint32_t house,const compute::LoadInput*cohort,bool candidateOnly,uint32_t pickup){",
                       "static void autoLoadTick(", "static void loadingCalculationTick("):
         add(function(load, signature))
     unload = source["unload_compute_bridge.h"]

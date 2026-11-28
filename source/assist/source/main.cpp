@@ -1132,6 +1132,8 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
   constructionResult(-13,0,uint32_t(arg2),requestToken);return;
  }
  if(command==OpenTech)arg2=techImplementation;
+ if(command==AutoBoard&&!fromQueue)arg=(extra.loadPickupSelected?AutoBoardPickupSelected:0)|
+  (extra.loadPickupVehiclesOnly?AutoBoardPickupVehiclesOnly:0);
  if(command==RevealMap&&(!extra.experimentalReveal||(!fromQueue&&!extra.manualReveal))){notify(L"请先开启允许手动地图揭示。");return;}
  if(command==RevealMap&&extra.renderReveal){notify(L"请先将黑幕绘制方式设为关闭；当前绘制补丁与原生揭示不能同时执行。");return;}
  DWORD now=GetTickCount();

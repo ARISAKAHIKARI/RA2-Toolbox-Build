@@ -60,7 +60,7 @@ struct AdditionalSettings {
  bool missileDefense=false;int missileScanHz=10,missileScope=0,missileAllocation=0;bool magnetronGlobal=false;
  bool missileReserve=true,lowDamageFilter=false,lowDamageNetwork=false;
  bool allHotkeys=false,overrideNative=false;
- int loadMode=0,loadRadius=30;
+ int loadMode=0,loadRadius=30;bool loadPickupSelected=false,loadPickupVehiclesOnly=false;
  uint32_t mouseButtons[pointerinput::MouseCount]={1,1,1,1,1,1,1,2,3,3}; // 0=off, 1=middle, 2/3=side, 4=right
  bool enter=false,air=false,disk=false,sellDrained=false,sellVehicles=false,sellEnemy=false,frozen=false;
  int aircraftAllocationPolicy=0; // 0=quotas, 1=variable-radius vehicle coverage, 2=single target + deselect sent
