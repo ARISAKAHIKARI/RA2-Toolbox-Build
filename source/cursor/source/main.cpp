@@ -200,20 +200,43 @@ static void performanceSample(){
  drawTotalTicks=drawMaxTicks=0;drawMeasured=0;epoch=now;
 }
 static DWORD lastRefreshSampleAt=0;
-struct CommandDefinition {int first=-1,count=0,interval=4,hotX=12345,hotY=12345;};
-static CommandDefinition commandDefs[86];
+static CursorDefinition commandDefs[86];
 static commandcursor::Mode shownCommand=commandcursor::None;
 static DWORD commandSince=0;
 static void resetCommandDefinitions(){
  for(auto&d:commandDefs)d={};
- // Verified stock definitions; live table replaces these when readable.
- // The stock fallback is used only with a standard 55x43 SHA canvas.
- if(asset.w==55&&asset.h==43){
-  commandDefs[20]={53,5,4,12345,12345};
-  commandDefs[25]={89,10,4,12345,12345};
-  commandDefs[71]={404,9,4,12345,12345};
- }
  shownCommand=commandcursor::None;commandSince=0;
+}
+static CursorDefinition commandDefinition(int id){
+ const auto& d=commandDefs[id];
+ if(cursorRangeMatches(d.first,d.count,d.first,asset.frames.size()))return d;
+ if(asset.w==55&&asset.h==43){
+  // Verified stock definitions for ordinary command cursor art.
+  switch(id){
+   case 20:return {53,5,4};
+   case 25:return {89,10,4};
+   case 71:return {404,9,4};
+  }
+ }
+ return {};
+}
+static void rebuildFallbackDefinitions(){
+ fallbackDefs.clear();
+ for(size_t i=0;i<std::size(commandDefs);++i){
+  const auto& d=commandDefs[i];
+  if(d.count>1&&cursorRangeMatches(d.first,d.count,d.first,asset.frames.size()))
+   fallbackDefs.push_back({d.first,d.count,int(i)*2});
+  if(d.miniCount>1&&cursorRangeMatches(d.miniFirst,d.miniCount,d.miniFirst,asset.frames.size()))
+   fallbackDefs.push_back({d.miniFirst,d.miniCount,int(i)*2+1});
+ }
+}
+static bool matchesCommandTool(const commandcursor::Hint& hint,int cursorID,int frame,int x,int y){
+ if(usingHeldSample)return false;
+ if(cursorID<0){
+  const int denied=commandcursor::rejectedDefinition(hint.mode);
+  if(denied>=0&&commandDefs[denied].contains(frame,asset.frames.size()))cursorID=denied;
+ }
+ return commandcursor::matchesTool(hint,cursorID,x,y);
 }
 static motion::Image frameCanvas(int n){
  bool styled=displayLoaded&&n<int(displayAsset.frames.size());
@@ -468,6 +491,17 @@ static void setDir(const std::wstring& d){gameDir=d;uint32_t h=2166136261;for(wc
 static bool rpm(uint32_t a,void* out,size_t n){return cursorReader.readFresh(a,out,n);}
 static Bytes read(uint32_t a,size_t n){if(n>32*1024*1024)fail("Read bound");Bytes b(n);if(!rpm(a,b.data(),n))fail("Game memory not available");return b;}
 static uint32_t word(uint32_t a){return u32(read(a,4),0);}
+static void readCursorDefinitions(){
+ const Bytes table=read(0x82d028,std::size(commandDefs)*28);
+ for(size_t i=0;i<std::size(commandDefs);++i){
+  const size_t off=i*28;
+  // The game can publish a larger SHA after attach. Keep the definitions
+  // until the source is known and validate their ranges at use time.
+  commandDefs[i]={int(u32(table,off)),int(u32(table,off+4)),int(u32(table,off+8)),
+   int(u32(table,off+12)),int(u32(table,off+16)),int(u32(table,off+20)),int(u32(table,off+24))};
+ }
+ rebuildFallbackDefinitions();
+}
 static bool live(){return cursorReader.alive();}
 static uint32_t mouse(){uint32_t p=word(0x887640);Bytes obj=read(p,0x30),vt=read(u32(obj,0),20);if(u32(vt,4)!=0x7B8A00||u32(vt,12)!=0x7B9930||u32(vt,16)!=0x7B9750)fail("Unknown mouse vtable: this game build is not supported");return p;}
 static uint32_t imageBase(uint32_t p){uint32_t img=word(p+4);Bytes h=read(img,8);if(u16(h,0)==0xffff){img=word(img+12);h=read(img,8);}validHeader(h);return img;}
@@ -599,13 +633,8 @@ static void attach(bool quiet=false){bridgeFrame.clear();lanboStream.reset();if(
  // Read the read-only, 86-entry built-in definition table once per connection.
  // Even when the guessed cursor-type field differs, consecutive frame ranges
  // still provide a conservative way to recognize an animation.
- if(loaded&&!readRestricted){try{Bytes table=read(0x82d028,86*28);
-   for(int i=0;i<86;++i){size_t off=size_t(i)*28;int first=int(u32(table,off)),count=int(u32(table,off+4));
-    if(cursorRangeMatches(first,count,first,asset.frames.size()))commandDefs[i]={first,count,int(u32(table,off+8)),int(u32(table,off+20)),int(u32(table,off+24))};}
-   for(int i=0;i<86;i++)for(int mini=0;mini<2;mini++){
-    size_t off=size_t(i)*28+(mini?12:0);int first=(int)u32(table,off),count=(int)u32(table,off+4);
-    if(count>1&&cursorRangeMatches(first,count,first,asset.frames.size()))fallbackDefs.push_back({first,count,i*2+mini});
-   }
+ if(!readRestricted){try{
+   readCursorDefinitions();
    log(L"Read-only cursor definition scan ready; animated variants="+std::to_wstring(fallbackDefs.size()));
   }catch(const std::exception&){log(L"Definition scan unavailable; raw index matching only");}}
  wchar_t msg[160];wsprintfW(msg,L"已连接 PID %lu；PE 时间戳 %08X；%ls",pid,peTimeStamp,loaded?L"内置原版资源已就绪":L"资源加载失败");if(!quiet)status(msg);}
@@ -914,7 +943,7 @@ static void pollOriginalResource(){
    if(manuallyBlankSHA())save(cacheKey+L"\\legacy-transparent.sha",file(gameDir+L"\\mouse.sha"));
    save(cacheKey+L"\\original.sha",canonical);save(cacheKey+L"\\palette.bgra",colors);
    streamShapeGate.reset();original=std::move(canonical);asset=std::move(captured);memcpy(palette,colors.data(),1024);palette[0]=0;loaded=true;
-   bridgeFrame.clear();fallbackTracker.reset();syncDefaultDisplay();resetPrepared(false);
+   bridgeFrame.clear();fallbackTracker.reset();rebuildFallbackDefinitions();syncDefaultDisplay();resetPrepared(false);
    if(!exists(gameDir+L"\\mouse.sha.cursor-preview-state"))save(cacheKey+L"\\transparent.sha",encode(asset,true));
   }
   shared->cursorFrameCount=LONG(asset.frames.size());shared->cursorCanvasW=asset.w;shared->cursorCanvasH=asset.h;
@@ -1135,17 +1164,21 @@ static void draw(){
  int mapGH=presentation.mapped?presentation.input.height():gameHOverride?gameHOverride:sampleGH>0?sampleGH:clickGameHeight>0?clickGameHeight:768;
  const bool mapPoint=cursorMapPoint(presentedPoint,presentation.output,mapGW,mapGH,presentation.mapped);
  if(hint.mode!=commandcursor::None&&mapPoint&&!nativeMenuHold&&!(shared&&shared->menuSuspend)&&
-    (commandcursor::tool(hint.mode)?commandcursor::matchesTool(hint,cursorID,pos.x,pos.y):
+    (commandcursor::tool(hint.mode)?matchesCommandTool(hint,cursorID,frame,pos.x,pos.y):
      (commandcursor::ordinary(cursorID)||(hint.mode==commandcursor::Enter&&cursorID==25))&&gameinput::heldBinding(hint.binding)))commandMode=hint.mode;
+ CursorDefinition d;
+ int chx=0,chy=0;
+ if(commandMode!=commandcursor::None){
+  d=commandDefinition(commandcursor::definition(commandMode));
+  if(!cursorRangeMatches(d.first,d.count,d.first,asset.frames.size())||!hot(d.hotX,w,chx)||!hot(d.hotY,h,chy))
+   commandMode=commandcursor::None;
+ }
  const uint32_t commandAnimationNow=inputNow();
  if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=commandAnimationNow;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
  if(commandMode!=commandcursor::None){
-  const auto&d=commandDefs[commandcursor::definition(commandMode)];int chx=0,chy=0;
-  if(cursorRangeMatches(d.first,d.count,d.first,asset.frames.size())&&hot(unsigned(d.hotX),w,chx)&&hot(unsigned(d.hotY),h,chy)){
-   unsigned duration=unsigned(std::clamp(d.interval,1,60))*1000u/60u;
-   frame=d.first+int((commandAnimationNow-commandSince)/std::max(1u,duration)%unsigned(d.count));
-   animStart=d.first;animCount=d.count;animKey=2000+int(commandMode);hx=chx;hy=chy;approx=false;inferredRange=false;
-  }else commandMode=commandcursor::None;
+  unsigned duration=unsigned(std::clamp(d.interval,1,60))*1000u/60u;
+  frame=d.first+int((commandAnimationNow-commandSince)/std::max(1u,duration)%unsigned(d.count));
+  animStart=d.first;animCount=d.count;animKey=2000+int(commandMode);hx=chx;hy=chy;approx=false;inferredRange=false;
  }
  const auto visualCenter=superCenter?superhot::resolve(superCenters,cursorID,frame,animStart,animCount):superhot::Point{};
  diagFrame=frame;diagHotX=visualCenter.valid?int(std::lround(visualCenter.x)):hx;diagHotY=visualCenter.valid?int(std::lround(visualCenter.y)):hy;

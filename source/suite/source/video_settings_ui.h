@@ -75,6 +75,7 @@ inline constexpr VideoEntry videoEntries[]={
  {SuperweaponPanel,VideoGroup::Monitor,L"超级武器面板",L"",VideoSection::Information,true},
  {UnitPanel,VideoGroup::Monitor,L"单位面板",L"",VideoSection::Information,true},
  {PassengerBubbles,VideoGroup::Monitor,L"载员气泡",L"",VideoSection::Information,true},
+ {PassengerDangerOnly,VideoGroup::Monitor,L"仅显示危险载员",L"",VideoSection::Information},
  {PassengerOwn,VideoGroup::Monitor,L"显示己方载员",L"",VideoSection::Information},
  {PassengerAlways,VideoGroup::Monitor,L"载员气泡常驻显示",L"",VideoSection::Information},
  {DangerPassengers,VideoGroup::Monitor,L"危险载员提示",L"",VideoSection::Information,true},
@@ -94,7 +95,7 @@ class VideoSettings {
  static bool ready(DisplayOption option,const DisplayState&s){
   auto on=[&](DisplayOption o){return s.values[o]!=0;};
   if(option==PassengerOwn)return on(PassengerBubbles)||on(DangerPassengers);
-  if(option==PassengerAlways)return on(PassengerBubbles);
+  if(option==PassengerAlways||option==PassengerDangerOnly)return on(PassengerBubbles);
   if(option==RenderUpgrade)return on(RenderUpgrade); // Existing saved activation may be closed; new activation stays unavailable.
   // Camera motion still consumes this preference while the main renderer is off.
   if(option==RenderHighRefresh)return true;
@@ -123,6 +124,7 @@ public:
    if(e.option==OverlayToggleKey)modernui::tip(h,L"使用同一个快捷键显示或隐藏所有覆盖层。");
    if(e.option==RenderProcessing)modernui::tip(h,L"增强渲染开启时可启用额外画质。扩色、精细场景和 xBRZ 等选项随此项启用。");
    if(e.option==PassengerBubbles)modernui::tip(h,L"悬停或选中载具时，在车顶显示乘员类型与数量。可另选己方载具和常驻显示。");
+   if(e.option==PassengerDangerOnly)modernui::tip(h,L"仅列出工程师、能用 C4 爆破、能绑伊文炸弹、能心控或能渗透的载员。");
    if(e.option==DangerPassengers)modernui::tip(h,L"敌方载具内含工程师、间谍或爆破单位时，在战场上常驻提示。");
    y+=42;
   }

@@ -128,7 +128,12 @@ external::assets::EffectiveINI<ResourceRead> artINI,rulesINI;uint64_t iniRevisio
   if(!gpuVplSnapshot_||*gpuVplSnapshot_!=next)gpuVplSnapshot_=std::make_shared<const gpuvoxel::PacketCache::VplSnapshot>(std::move(next));
   gpuVplSignature_=voxelLight.signature();
  }
- void resolveCameo(um::Type&t){update();auto file=cameoCatalog.resolve([&](const char*n,std::vector<uint8_t>&b){return files.load(n,b);},files.revision(),files.revision()^(GetTickCount64()/5000),t.id,text(t.ptr+0x1F8,25),t.cameo);memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());}
+ void resolveCameo(um::Type&t){
+  update();
+  const auto image=t.ptr>=0x10000?text(t.ptr+0x1F8,25):std::string{};
+  auto file=cameoCatalog.resolve([&](const char*n,std::vector<uint8_t>&b){return files.load(n,b);},files.revision(),files.revision()^(GetTickCount64()/5000),t.id,image,t.cameo);
+  memset(t.cameo,0,sizeof t.cameo);if(file.size()<sizeof t.cameo)memcpy(t.cameo,file.data(),file.size());
+ }
  void vpl(bool force=false){
   auto revision=files.revision();if(voxelRevision!=revision){voxelRevision=revision;voxelLight={};voxelChecked=voxelNative=false;}
   if(!voxelRelight_&&voxelLight.ready())return; // freeze the verified table; no live table recapture

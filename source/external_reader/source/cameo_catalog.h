@@ -22,7 +22,8 @@ public:
   if(usable(current)){if(current.find('.')==current.npos)current+=".SHP";return current;}
   auto get=[&](bool rules,const std::string&s,const std::string&k,bool*present=nullptr){std::string out;bool found=(live_&&live_(rules,s,k,out));if(!found)found=(rules?rules_:art_).find(s,k,out);if(present)*present=found;return out;};
   std::vector<std::string> roots;if(usable(nativeImage))roots.push_back(nativeImage);
-  auto image=get(true,id,"IMAGE");if(usable(image))roots.push_back(image);else roots.push_back(id);
+  auto image=get(true,id,"IMAGE");if(usable(image))roots.push_back(image);
+  roots.push_back(id);
   std::set<std::string> seen;
   for(auto section:roots)for(int hops=0;hops<8&&usable(section);++hops){
    section=name(section);if(!seen.insert(section).second)break;

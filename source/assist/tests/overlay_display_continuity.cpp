@@ -60,6 +60,28 @@ int main(){
  broken=external::passengers::sampleChecked(read,House,projection,true,false);CHECK(!broken.complete);
  put(0xA8EC78+8,1);CHECK(!passengers.observe(8,false,{},250)); // different world
 
+ const uint32_t other=Passenger+0x1000,otherType=PassengerType+0x8000;
+ put(Carrier+0x114,2);put(Passenger+0x30,other);
+ put(other,0x7EB058u);put(other+0x6C,100);put(other+0x11C,Carrier);put(other+0x6C0,otherType);
+ const auto filtered=[&](bool persistent=false){return external::passengers::sampleChecked(read,House,projection,true,persistent,false,false,true);};
+ CHECK(filtered().complete&&filtered().bubbles.empty());
+ for(const uint32_t capability:{0xEAEu,0xEBEu,0xEC2u,0xEC3u}){
+  put(PassengerType+capability,uint8_t(1));const auto result=filtered();
+  CHECK(result.complete&&result.bubbles.size()==1&&result.bubbles[0].dangerous);
+  CHECK(result.bubbles[0].groups.size()==1&&result.bubbles[0].groups[0].type==PassengerType&&result.bubbles[0].groups[0].count==1);
+  put(PassengerType+capability,uint8_t(0));
+ }
+ const uint32_t weapon=0x410000,projectile=0x420000,warhead=0x430000;
+ put(PassengerType+0x898,weapon);put(weapon+0xB4,2048);put(weapon+0xA0,projectile);put(weapon+0xAC,warhead);
+ put(warhead+0x178,uint8_t(1));CHECK(filtered().bubbles.empty()); // psychic damage alone
+ put(weapon+0x144,uint8_t(1));CHECK(filtered().bubbles.empty()); // suicide alone
+ put(warhead+0x155,uint8_t(1));const auto psychic=filtered(true);
+ CHECK(psychic.complete&&psychic.bubbles.size()==1&&psychic.bubbles[0].groups.size()==1);
+ const auto unfiltered=external::passengers::sampleChecked(read,House,projection,true,false);
+ CHECK(unfiltered.complete&&unfiltered.bubbles.size()==1&&unfiltered.bubbles[0].groups.size()==2);
+ put(other+0x11C,0u);
+ CHECK(!filtered().complete); // hidden ordinary members still need a valid list
+
  sidebarSetup();using namespace assist::construction;
  NativeDisplay display;NativeDisplayKey key{1,2,House,800,600};
  auto frame=display.sample(read,key,100);CHECK(frame&&frame->cells.size()==1&&frame->cells[0].index==9);

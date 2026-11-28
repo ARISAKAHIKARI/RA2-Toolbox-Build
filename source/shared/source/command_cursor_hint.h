@@ -17,7 +17,8 @@ inline Hint read(uint32_t pid,uint32_t now){auto&b=bus();std::lock_guard<std::mu
 // superweapon targets, waypoints and other native tools keep their own art.
 inline bool ordinary(int id){return id==0||(id>=17&&id<=21)||id==71;}
 inline bool tool(Mode m){return m==OfflineRepair||m==OfflineSell;}
-inline bool matchesTool(const Hint&h,int cursor,int x,int y){const int64_t dx=int64_t(x)-h.screenX,dy=int64_t(y)-h.screenY;return tool(h.mode)&&cursor==(h.mode==OfflineRepair?35:32)&&dx>=-2&&dx<=2&&dy>=-2&&dy<=2;}
+inline int rejectedDefinition(Mode m){return m==OfflineRepair?35:m==OfflineSell?32:-1;}
+inline bool matchesTool(const Hint&h,int cursor,int x,int y){const int64_t dx=int64_t(x)-h.screenX,dy=int64_t(y)-h.screenY;return tool(h.mode)&&cursor==rejectedDefinition(h.mode)&&dx>=-2&&dx<=2&&dy>=-2&&dy<=2;}
 inline int definition(Mode m){return m==OfflineRepair?33:m==OfflineSell?31:m==Advanced||m==CS||m==Magnetron?71:m==Enter?25:20;}
 // True only for adjacent frames (including the loop edge) of a validated
 // command-cursor animation. These edges may be prepared on demand even when

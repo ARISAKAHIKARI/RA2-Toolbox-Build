@@ -37,6 +37,7 @@ static bool logged(const wchar_t*part){for(const auto&line:logs)if(line.find(par
 static void setup(){
  ++scenarios;now+=10000;lastData=messageAt=now;shared=storage.get();shared->stop=0;
  shared->request=shared->ack=shared->selectRequest=shared->selectAck=0;
+ ack=0;registrationError=5;occupiedVk=occupiedAttempts=0;
  shared->formationPreview.active=0;shared->formationPreview.match=8;shared->formationConsumedUntil=0;
  shared->moOrdersPreview.active=0;shared->moOrdersPreview.match=8;
  incoming={};incoming.status=incoming.commandStatus=1;incoming.match=8;snap=incoming;snap.readStatus=snap.renderStatus=1;
@@ -108,10 +109,15 @@ int main(){try{
  check(commands.empty()&&!logged(L"hotkey-physical"),"unconfigured input leaves no event log");
  check(hotkeyInputMonitor.reads==2,"reads still accurately count observation");pass("unconfigured key privacy");
 
+ setup();occupiedVk='F';registerKeys();advance();serviceHotkeyBatch();press();
+ check(hotkeyDiagnostics.fallbacks==0&&!hotkeyRegistry.find(1011),"OS conflict removes the occupied chord");
+ check(commands.empty(),"polling cannot dispatch a shortcut owned by another program");
+ check(logged(L"occupied Win32=1409"),"occupied chord is reported");pass("registration conflict blocked");
+
  setup();osInstallOkay=false;registerKeys();advance();serviceHotkeyBatch();press();
- check(hotkeyDiagnostics.fallbacks==1&&hotkeyRegistry.find(1011),"OS conflict retains registry binding");
- check(commands.size()==1&&commands.back()==AutoBoard,"conflict fallback dispatches once");
- check(logged(L"foreground-poll Win32=1409"),"registration error remains automatic");pass("registration conflict fallback");
+ check(hotkeyDiagnostics.fallbacks==1&&hotkeyRegistry.find(1011),"other registration failures retain the edge sampler");
+ check(commands.size()==1&&commands.back()==AutoBoard,"foreground polling still handles a non-conflict failure");
+ check(logged(L"foreground-poll Win32=5"),"polling failure route is reported");pass("registration fallback");
 
  setup();advance();rawKeys[17]=rawKeys['F']=1;handleHotkey(1011,LPARAM(('F'<<16)|MOD_CONTROL));serviceHotkeyBatch();
  check(hotkeyDiagnostics.messages==1&&commands.size()==1,"OS and sampled route share exactly one dispatch");

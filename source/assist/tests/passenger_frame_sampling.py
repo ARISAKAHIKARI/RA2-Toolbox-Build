@@ -61,7 +61,7 @@ for i, cmd in enumerate([['g++', *flags, str(HERE / 'passenger_frame_sampling.cp
 paths = [a.host, SRC / 'main.cpp', SRC / 'passenger_motion.h', SRC / 'display_sample_lease.h', SRC / 'label_motion.h',
          SOURCE / 'external_reader/source/passenger_bubbles.h', SOURCE / 'external_reader/source/game_view.h',
          SOURCE / 'external_reader/source/process_reader.h', SOURCE / 'shared/source/world_frame.h',
-         SOURCE / 'shared/source/world_frame_capture.h', SOURCE / 'shared/source/world_frame_transport.h',
+         SOURCE / 'shared/source/world_frame_capture.h', SOURCE / 'shared/source/world_frame_catalogue.h', SOURCE / 'shared/source/world_frame_transport.h',
          HERE / 'world_frame_core.cpp', HERE / 'world_frame_core_test.py', HERE / 'passenger_frame_sampling.cpp', Path(__file__).resolve()]
 report = {'pass': all(r['exit_code'] == 0 for r in runs), 'scope': __doc__, 'runs': runs,
           'source_sha256': {str(f): hashlib.sha256(f.read_bytes()).hexdigest() for f in paths},

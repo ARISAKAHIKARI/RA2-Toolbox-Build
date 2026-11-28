@@ -345,10 +345,17 @@ struct PanelPainter {
 RECT rect(int x,int y,int r,int bottom){return {layout.x(x),layout.pointY(y),layout.x(r),layout.pointY(bottom)};}
 void paintIcon(HDC dc,int index,int x,int y,bool gray){
  auto found=request.types.find(index);if(found==request.types.end())return;const auto&t=found->second;
- uint32_t ptr=request.pointers.at(index);
- um::Type type{};type.category=t.kind==7?3:t.kind==16?1:t.kind==40?2:0;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readLive(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;assets.resolveCameo(type);
- static thread_local um::Snapshot palette{};palette.paletteReady=0;bool ready=icons.restore(type,palette);
- if(!ready&&ptr>=0x10000){static thread_local uint8_t buffer[32+256*1024];auto read=[&](uint32_t at,void*out,size_t size){return externalReader.readLive(at,out,size);};auto resolve=[](uint32_t){return 0u;};if(um::readCameo(read,resolve,type,buffer,sizeof buffer,loadPanelAsset)&&um::readCameoPalette(read,palette,loadPanelAsset)){ready=true;icons.remember(type,palette);}}
+ um::Type type{};
+ type.category=t.kind==16?0:t.kind==40?1:t.kind==3?2:3;
+ type.ptr=request.pointers.at(index);
+ memcpy(type.id,t.id,sizeof type.id);type.id[sizeof type.id-1]=0;
+ auto read=[&](uint32_t at,void*out,size_t size){return externalReader.readLive(at,out,size);};
+ if(type.ptr>=0x10000&&!read(type.ptr+1750,type.cameo,24))type.cameo[0]=0;
+ static thread_local um::Snapshot palette{};
+ static thread_local uint8_t buffer[32+256*1024];
+ palette.paletteReady=0;
+ const bool ready=um::readCameoWithMetadata(read,[&](um::Type& candidate){assets.resolveCameo(candidate);},
+  icons,type,palette,buffer,sizeof buffer,loadPanelAsset);
  RECT icon=rect(x,y,x+60,y+48);
  if(ready){uint32_t pixels[60*48];for(int i=0;i<60*48;++i){uint32_t color=palette.palette[type.icon[i]];if(gray){unsigned value=(((color>>16)&255)*3+((color>>8)&255)*6+(color&255))/10;color=(value<<16)|(value<<8)|value;}pixels[i]=color&0xFFFFFF;}
   BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=60;info.bmiHeader.biHeight=-48;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;

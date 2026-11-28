@@ -76,6 +76,7 @@ using namespace assist;
 using DWORD=uint32_t;using WORD=uint16_t;using BYTE=uint8_t;
 using UINT=unsigned;using WPARAM=uintptr_t;using LPARAM=intptr_t;using HWND=uintptr_t;
 constexpr UINT MOD_ALT=1,MOD_CONTROL=2,MOD_SHIFT=4,MOD_NOREPEAT=0x4000;
+constexpr DWORD ERROR_HOTKEY_ALREADY_REGISTERED=1409;
 constexpr unsigned HOTKEYF_SHIFT=1,HOTKEYF_CONTROL=2,HOTKEYF_ALT=4;
 constexpr int CB_SETCURSEL=1;
 static unsigned LOBYTE(uintptr_t v){return v&255;}
@@ -84,6 +85,8 @@ static unsigned LOWORD(uintptr_t v){return v&65535;}
 static unsigned HIWORD(uintptr_t v){return (v>>16)&65535;}
 static WORD MAKEWORD(unsigned a,unsigned b){return WORD((a&255)|((b&255)<<8));}
 static DWORD now=10000,lastData=10000,messageAt=10000;
+static DWORD ack=0,registrationError=5;
+static unsigned occupiedVk=0,occupiedAttempts=0;
 static DWORD GetTickCount(){return now;}
 static long GetMessageTime(){return static_cast<int32_t>(messageAt);}
 static uint8_t rawKeys[256]{};
@@ -106,21 +109,26 @@ static std::vector<std::wstring> notifications;
 static WORD hotkeys[12]{},ejectKey=0,unloadKey=0,csKey=0,idleAircraftKey=0,socialKeys[9]{};
 struct Binding{std::string id;WORD key;};
 static std::vector<Binding> swBindings,typeBindings;
-static struct{int size=0;}commandQueue;
+static struct{int size=0;int nextReadyIndex(DWORD)const{return size?0:-1;}}commandQueue;
 struct ControlUpdate{};
 static void SendDlgItemMessageW(HWND,int,int,int,int){}
 static void changedSetting(){}static void syncAdditional(){}static void save(){}
 static void notify(const std::wstring&s){notifications.push_back(s);}
 static void critical(const std::wstring&){}
-struct HotkeyDiagnostics{uint32_t messages=0,sampled=0,actions=0,blocked=0,fallbacks=0,lastError=0;};
+struct HotkeyDiagnostics{uint32_t messages=0,sampled=0,actions=0,blocked=0,fallbacks=0,lastError=0;std::vector<WORD> occupied;};
 static HotkeyDiagnostics hotkeyDiagnostics;
+static std::wstring keyText(WORD key){return keygesture::describe(key,std::wstring(1,wchar_t(LOBYTE(key))));}
 static void logHotkeyInput(const wchar_t*,int=0,uint16_t=0,DWORD=0){}
 static void logHotkeyBindings(){}
 static void traceHotkeyService(bool,bool,bool,bool){}
 static void traceHotkeyKeys(const uint8_t*){}
-static bool RegisterHotKey(HWND,int id,UINT,unsigned){if(!osInstallOkay)return false;osRegistered.push_back(id);return true;}
+static bool RegisterHotKey(HWND,int id,UINT,unsigned vk){
+ if(occupiedVk==vk){++occupiedAttempts;registrationError=ERROR_HOTKEY_ALREADY_REGISTERED;return false;}
+ if(!osInstallOkay)return false;
+ osRegistered.push_back(id);return true;
+}
 static bool UnregisterHotKey(HWND,int id){osRegistered.erase(std::remove(osRegistered.begin(),osRegistered.end(),id),osRegistered.end());return true;}
-static DWORD GetLastError(){return 1409;}
+static DWORD GetLastError(){return registrationError;}
 static bool destructOwnerKeyConflict(WORD){return false;}
 static unsigned destructSubmissions=0,placementSubmissions=0;
 static void submitDestructSelectedOwner(){++destructSubmissions;}
@@ -149,6 +157,7 @@ static void check(bool okay,const char*label){++checks;if(!okay)throw std::runti
 static void reset(int render=0){
  ++scenarios;now+=3000;lastData=messageAt=now;
  shared=storage.get();shared->stop=0;shared->request=shared->ack=0;
+ ack=0;registrationError=5;occupiedVk=occupiedAttempts=0;
  shared->selectRequest=shared->selectAck=0;shared->formationPreview.active=0;
  incoming={};incoming.status=1;incoming.commandStatus=activation::Ready;incoming.match=8;
  snap=incoming;snap.renderStatus=render;snap.readStatus=render;
@@ -170,7 +179,7 @@ static void message(){
  ++now;messageAt=now;rawKeys[17]=rawKeys['F']=1;
  handleHotkey(1011,LPARAM(('F'<<16)|MOD_CONTROL));
 }
-static void acknowledge(){shared->ack=shared->request;shared->selectAck=shared->selectRequest;}
+static void acknowledge(){ack=shared->ack=shared->request;shared->selectAck=shared->selectRequest;}
 static void release(){++now;rawKeys['F']=0;serviceHotkeyBatch();rawKeys[17]=0;}
 static void expectOneAutoBoard(const char*label){check(commands.size()==1&&commands[0]==AutoBoard,label);}
 
@@ -256,13 +265,39 @@ static void polledHostTrigger(){
   reset(0);osInstallOkay=installed;registerKeys();
   check(hotkeyRegistry.find(1011)!=nullptr,"failed OS registration must retain AutoBoard binding");
   check(osRegistered.empty()==!installed,"fixture must observe actual OS registration result");
-  if(!installed)check(hotkeyDiagnostics.fallbacks==1&&hotkeyDiagnostics.lastError==1409,"actual registerKey failure must identify its polling fallback");
+  if(!installed)check(hotkeyDiagnostics.fallbacks==1&&hotkeyDiagnostics.lastError==5,"a non-conflict registration failure retains its polling fallback");
   ++now;rawKeys[17]=rawKeys['F']=1;serviceHotkeyBatch();
   expectOneAutoBoard("actual Host sampler must dispatch AutoBoard without WM_HOTKEY");
   acknowledge();serviceHotkeyBatch();serviceHotkeyBatch();
   check(commands.size()==1,"held polling fallback must not repeat AutoBoard");
   release();++now;rawKeys[17]=rawKeys['F']=1;serviceHotkeyBatch();
   check(commands.size()==2&&commands.back()==AutoBoard,"next physical press must dispatch another AutoBoard");
+ }
+}
+static void occupiedWatchShortcut(){
+ const WORD watch='W'|0x600;
+ for(int mode:{1,2}){
+  reset(1);enabled=mode==2;extra.watchSecondary=true;extra.allHotkeys=true;
+  extra.watchKeys[0]=watch;
+  if(enabled)hotkeys[0]=watch; // Two actions sharing the occupied key must both be blocked.
+  occupiedVk='W';registerKeys();
+  check(registeredHotkeyMode==mode,"workspace must exercise both watch registration modes");
+  check(!hotkeyRegistry.find(1730)&&!hotkeyRegistry.find(1000),"occupied watch chord must not enter the polling registry");
+  check(hotkeyDiagnostics.fallbacks==0&&hotkeyDiagnostics.occupied==std::vector<WORD>{watch}&&occupiedAttempts==1,
+        "occupied physical chord must be rejected once, even for fan-out");
+  check(!notifications.empty()&&notifications.back().find(keyText(watch))!=std::wstring::npos,
+        "status must identify the shortcut that needs rebinding");
+  rawKeys[17]=rawKeys[18]=rawKeys['W']=1;
+  unsigned dispatched=0;
+  auto poll=[&]{hotkeyRegistry.sample(rawKeys,++now,snap.match,[&](const auto&){++dispatched;});};
+  poll();
+  check(dispatched==0,"physical polling must never route an occupied watch key");
+  if(enabled)check(hotkeyRegistry.find(1011),"unrelated AutoBoard binding stays registered");
+  occupiedVk=0;registerKeys();
+  check(hotkeyDiagnostics.occupied.empty(),"successful retry must clear the conflict");
+  poll();check(dispatched==0,"retry cannot treat the existing held key as a new press");
+  rawKeys['W']=0;poll();rawKeys['W']=1;poll();
+  check(dispatched==1,"a new press works once the other program releases the shortcut");
  }
 }
 static void sampledImmediateLifetime(){
@@ -300,7 +335,7 @@ int main(int argc,char**argv){
   else if(which=="service")displayService();
   else if(which=="all"){
    displayRegistration();displayMessage();displayService();displayIdentityIndependence();
-   runtimeGates();staleConnectionRecovery();inputOwnershipAndMailbox();polledHostTrigger();sampledImmediateLifetime();readonlyMode();
+   runtimeGates();staleConnectionRecovery();inputOwnershipAndMailbox();polledHostTrigger();occupiedWatchShortcut();sampledImmediateLifetime();readonlyMode();
   }else throw std::runtime_error("unknown fixture selection");
   std::cout<<"{\"passed\":true,\"checks\":"<<checks<<",\"scenarios\":"<<scenarios<<"}\n";return 0;
  }catch(const std::exception&e){

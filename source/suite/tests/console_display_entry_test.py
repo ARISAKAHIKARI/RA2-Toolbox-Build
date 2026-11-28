@@ -217,13 +217,19 @@ int main(){
 
  if(std::getenv("RA2_PASSENGER_MODES_TEST")){
   ++scenarios;
-  for(int id:{897,898,9533,9534}){const int option=optionFor(id);check(option>=0,"passenger option has unique owner spec");if(option>=0)check(visible[12000+option]!=0,"passenger option visible on video page");}
-  const int inspect=optionFor(897),danger=optionFor(898),own=optionFor(9533),always=optionFor(9534);
-  if(inspect>=0&&danger>=0&&own>=0&&always>=0){
+  for(int id:{897,898,9533,9534,9772}){const int option=optionFor(id);check(option>=0,"passenger option has unique owner spec");if(option>=0)check(visible[12000+option]!=0,"passenger option visible on video page");}
+  const int inspect=optionFor(897),danger=optionFor(898),own=optionFor(9533),always=optionFor(9534),filter=optionFor(9772);
+  if(inspect>=0&&danger>=0&&own>=0&&always>=0&&filter>=0){
+   const HWND filterControl=visible[12000+filter];
    sharedDisplay.values[inspect]=1;sharedDisplay.values[danger]=0;video.sync(true);
    check(IsWindowEnabled(visible[12000+own])&&IsWindowEnabled(visible[12000+always]),"inspect enables own and permanent choices");
+   check(IsWindowEnabled(filterControl),"dangerous-passenger filter requires the bubble parent");
+   controls[filterControl].value=1;posted.clear();video.command(MAKEWPARAM(12000+filter,BN_CLICKED));
+   check(posted.size()==1&&posted[0].option==filter&&posted[0].value==1,"filter edit routed to the setting owner");posted.clear();
+   sharedDisplay.values[filter]=1;
    sharedDisplay.values[inspect]=0;sharedDisplay.values[danger]=1;video.sync(true);
    check(IsWindowEnabled(visible[12000+own])&&!IsWindowEnabled(visible[12000+always]),"danger-only allows own without enabling general permanence");
+   check(!IsWindowEnabled(filterControl)&&controls[filterControl].value==1,"filter stays saved but disabled under the separate warning toggle");
    controls[visible[12000+own]].value=1;posted.clear();video.command(MAKEWPARAM(12000+own,BN_CLICKED));
    check(posted.size()==1&&posted[0].option==own&&posted[0].value==1,"own edit routed to original owner");posted.clear();
    sharedDisplay.values[danger]=0;video.sync(true);

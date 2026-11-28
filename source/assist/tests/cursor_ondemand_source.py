@@ -28,6 +28,11 @@ def main():
     source_bytes = main_cpp.read_bytes()
     body = source_bytes.decode('utf-8').replace('\r\n', '\n')
     signatures = (
+        'static void resetCommandDefinitions(){',
+        'static CursorDefinition commandDefinition(int id){',
+        'static void rebuildFallbackDefinitions(){',
+        'static bool matchesCommandTool(const commandcursor::Hint& hint,int cursorID,int frame,int x,int y){',
+        'static void readCursorDefinitions(){',
         'static motion::Image frameCanvas(int n){',
         'static void rebuildDisplay(){',
         'static unsigned pairKey(int a,int b){',
@@ -60,7 +65,8 @@ def main():
     inputs = [main_cpp, fixture, Path(__file__), here / 'runtime_broker_retirement.py']
     inputs += [cursor / (name + '.h') for name in (
         'core', 'ondemand', 'bridge', 'playback', 'motion', 'rotation',
-        'super_hotspot', 'snapshot_latch', 'sequence')]
+        'super_hotspot', 'snapshot_latch', 'sequence', 'recognition')]
+    inputs += [source / 'shared/source/command_cursor_hint.h']
     hashes = {str(path.relative_to(source.parent)): digest(path) for path in inputs}
     if hashlib.sha256(source_bytes).hexdigest() != hashes[str(main_cpp.relative_to(source.parent))]:
         raise SystemExit('Cursor source changed during extraction')

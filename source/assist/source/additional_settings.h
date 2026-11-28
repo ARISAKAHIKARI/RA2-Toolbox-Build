@@ -52,8 +52,9 @@ struct AdditionalSettings {
  uint32_t nativeAirNetwork=0; // 0=native events, 1=UI gate experiment, 2=full native experiment
  bool parasiteMarker=false,crateBuffMarkers=false;
  bool nativePip=false;uint32_t nativePipKey=0;
- bool watchEnabled=false,watchSecondary=false,watchDanger=false;int watchSecondaryX=10000,watchSecondaryY=0;uint32_t watchKeys[3]={'W'|(6<<8),'W'|(6<<8),'W'|(6<<8)};
- bool passengerBubbles=false,dangerPassengers=false,passengerOwn=false,passengerAlways=false,magnetronDrop=false;
+ bool watchEnabled=false,watchSecondary=false,watchDanger=false;int watchSecondaryX=10000,watchSecondaryY=0;
+ uint32_t watchKeys[3]={0x377,0x377,0x377}; // Ctrl+Shift+F8
+ bool passengerBubbles=false,dangerPassengers=false,passengerOwn=false,passengerAlways=false,passengerDangerOnly=false,magnetronDrop=false;
  bool dodgeEnabled=false;int dodgeMode=0;
  bool burstEnabled=false,burstHoldEnabled=false;uint32_t burstKey=0; // Reserved for configuration compatibility.
  bool missileDefense=false;int missileScanHz=10,missileScope=0,missileAllocation=0;bool magnetronGlobal=false;

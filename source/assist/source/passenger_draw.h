@@ -3,9 +3,9 @@
 #include "display_sample_lease.h"
 static passengers::Motion passengerMotion;
 struct PassengerDisplayKey {
- uint32_t pid=0,match=0,house=0;int width=0,height=0,cameraX=0,cameraY=0;bool inspect=false,persistent=false,showOwn=false,always=false;
+ uint32_t pid=0,match=0,house=0;int width=0,height=0,cameraX=0,cameraY=0;bool inspect=false,persistent=false,showOwn=false,always=false,dangerousOnly=false;
  uint64_t projection=0;
- bool operator==(const PassengerDisplayKey&o)const{return pid==o.pid&&match==o.match&&house==o.house&&width==o.width&&height==o.height&&cameraX==o.cameraX&&cameraY==o.cameraY&&inspect==o.inspect&&persistent==o.persistent&&showOwn==o.showOwn&&always==o.always&&projection==o.projection;}
+ bool operator==(const PassengerDisplayKey&o)const{return pid==o.pid&&match==o.match&&house==o.house&&width==o.width&&height==o.height&&cameraX==o.cameraX&&cameraY==o.cameraY&&inspect==o.inspect&&persistent==o.persistent&&showOwn==o.showOwn&&always==o.always&&dangerousOnly==o.dangerousOnly&&projection==o.projection;}
 };
 static displaylease::Sample<PassengerDisplayKey,std::vector<external::passengers::Bubble>> passengerSamples;
 static void clearPassengerDisplay(){passengerMotion.clear();passengerSamples.clear();}
@@ -27,7 +27,8 @@ static std::vector<PassengerVisual> passengerView(uint32_t renderNow,const nativ
  if(transform.active){projection.width=transform.logical.w;projection.height=transform.logical.h;}passengerMotion.projection(transform.generation);
  const auto area=nativeviewhost::clip(transform,projection.width,projection.height);
  const uint32_t house=source->key.house;
- PassengerDisplayKey key{pid,externalData->match,house,projection.width,projection.height,projection.cameraX,projection.cameraY,extra.passengerBubbles,extra.dangerPassengers,extra.passengerOwn,extra.passengerAlways,nativeviewhost::key(transform)};
+ const bool dangerousOnly=extra.passengerBubbles&&extra.passengerDangerOnly;
+ PassengerDisplayKey key{pid,externalData->match,house,projection.width,projection.height,projection.cameraX,projection.cameraY,extra.passengerBubbles,extra.dangerPassengers,extra.passengerOwn,extra.passengerAlways,dangerousOnly,nativeviewhost::key(transform)};
  external::passengers::Sample sampled;sampled.complete=false;
  if(confirmed){
   external::WorldFrameScope worldScope(externalReader,externalData->match,source);
@@ -35,7 +36,7 @@ static std::vector<PassengerVisual> passengerView(uint32_t renderNow,const nativ
    projection.zScale=externalReader.get<double>(0xB0CD48,0.0866025403784);
    auto read=[](uint32_t at,void*p,size_t n){return externalReader.read(at,p,n);};
    uint32_t observed=0;const bool houseReady=read(0xA83D4C,&observed,4)&&house>=0x10000&&observed==house;
-   if(houseReady)sampled=external::passengers::sampleChecked(read,house,projection,extra.passengerBubbles,extra.dangerPassengers,extra.passengerOwn,extra.passengerAlways);
+   if(houseReady)sampled=external::passengers::sampleChecked(read,house,projection,extra.passengerBubbles,extra.dangerPassengers,extra.passengerOwn,extra.passengerAlways,dangerousOnly);
    sampled.complete=houseReady&&sampled.complete&&worldScope.complete();
   }
  }

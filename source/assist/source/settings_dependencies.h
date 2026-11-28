@@ -9,17 +9,18 @@
 // never erase a child's checked value, key, quota or position.
 namespace assist { namespace settingsdeps {
 enum class Need : unsigned {
- None, Render, Host64, GPU, Detail, Missile, LowDamage, ControlAll, Formation,
+ PassengerBubbles, Render, Host64, GPU, Detail, Missile, LowDamage, ControlAll, Formation,
  Watch, WatchSecondary, Minimap, MinimapPrimary, MinimapSecondary, CustomMinimap,
  ShiftClick, AppendClicks, Ore, CustomMiners, CustomRefineries, Production,
  ManualRate, Capacity, Advanced, C4, Dodge, Construction, BuildAnywhere,
- Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, NativeControl, NetworkControlAllowed, EventPlacement, ToolTechnologyOrders, ExactTechnology, HardwareBudget, TypeListFirst
+ Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, NativeControl, NetworkControlAllowed, EventPlacement, ToolTechnologyOrders, ExactTechnology, HardwareBudget, TypeListFirst,
+ None=64
 };
 constexpr Need typeListNeed(int feature){return Need(unsigned(Need::TypeListFirst)+unsigned(feature));}
 static_assert(unsigned(Need::TypeListFirst)+featuretypes::Count<=64,"dependency state covers every type filter");
 struct State {
  uint64_t available=0;uint32_t hardwareBlocked=0; // UI admission bits: control/full/enhance/compare/map
- void set(Need need,bool on){const auto bit=uint64_t(1)<<unsigned(need);if(on)available|=bit;else available&=~bit;}
+ void set(Need need,bool on){if(need==Need::None)return;const auto bit=uint64_t(1)<<unsigned(need);if(on)available|=bit;else available&=~bit;}
  bool has(Need need)const{return need==Need::None||(available&(uint64_t(1)<<unsigned(need)))!=0;}
 };
 struct Decision {
@@ -58,6 +59,7 @@ inline const wchar_t* reason(Need need){
  case Need::Production:return L"需先开启生产队列提醒";
  case Need::ManualRate:return L"需先关闭自适应刷新率";
  case Need::Capacity:return L"需先开启载具载员信息";
+ case Need::PassengerBubbles:return L"需先开启载员气泡";
  case Need::Advanced:return L"需先开启高级移动攻击";
  case Need::C4:return L"需先开启步兵强制进入";
  case Need::Dodge:return L"需先开启自动躲弹";
@@ -113,6 +115,7 @@ inline Decision decision(int id,const State&s){
  case 784:return require(s,{Need::Ore,Need::CustomRefineries});
  case 9070:case 9071:case 9072:case 9073:case 9074:case 9075:return require(s,{Need::Production});
  case 303:return require(s,{Need::Capacity});
+ case 9772:return require(s,{Need::PassengerBubbles});
  case 310:return require(s,{Need::ManualRate});
  case 787:case 818:case 802:return require(s,{Need::Advanced});
  case 812:case 9180:return require(s,{Need::C4});
@@ -134,7 +137,7 @@ inline bool effective(bool saved,int id,const State&s){return saved&&decision(id
 inline constexpr int BasicControls[]={
  9492,860,420,9097,9472,9304,9305,9306,9307,9308,9309,9313,9314,9324,9040,9041,9181,881,9183,9193,9187,9056,
  9061,9164,9165,9065,831,850,851,852,9100,9101,9166,9167,9168,796,797,
- 781,782,783,784,9070,9071,9072,9073,9074,9075,303,310,787,818,802,812,
+ 781,782,783,784,9070,9071,9072,9073,9074,9075,303,9772,310,787,818,802,812,
  9180,895,817,9796,9096,9251,9252,423,814,710,711,712,713,714,751,715,716,717,718,312,445,446,447,448,466,810,811,108,208
 };
 inline constexpr auto Controls=[](){

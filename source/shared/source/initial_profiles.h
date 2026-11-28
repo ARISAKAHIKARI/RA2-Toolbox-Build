@@ -27,6 +27,7 @@ EnemyMarkers=0
 IdleAircraftIndicator=0
 Frozen=0
 PassengerBubbles=0
+PassengerDangerOnly=0
 DangerPassengers=0
 ShroudStrategy=0
 MinimapPosition=0
@@ -351,9 +352,9 @@ Percent=100
 [Watch]
 Enabled=0
 DangerCarriers=0
-PinKey=1623
-PinKey2=1623
-PinKey3=1623
+PinKey=887
+PinKey2=887
+PinKey3=887
 [Formation]
 Enabled=0
 HoldKey=32786

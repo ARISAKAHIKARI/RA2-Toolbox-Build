@@ -7,6 +7,12 @@
 inline bool cursorRangeMatches(int first,int count,int frame,size_t total){
  return first>=0&&count>=1&&count<=256&&int64_t(first)+count<=int64_t(total)&&frame>=first&&int64_t(frame)<int64_t(first)+count;
 }
+struct CursorDefinition {
+ int first=-1,count=0,interval=4,miniFirst=-1,miniCount=0,hotX=12345,hotY=12345;
+ bool contains(int frame,size_t total)const{
+  return cursorRangeMatches(first,count,frame,total)||cursorRangeMatches(miniFirst,miniCount,frame,total);
+ }
+};
 struct CursorRange {
  int first=0,count=0,key=-1;
 };

@@ -142,6 +142,7 @@ static void loadAdditionalSettings(){
  extra.idleAircraft=value(L"Display",L"IdleAircraftIndicator",0)!=0;
  extra.parasiteMarker=value(L"Display",L"ParasiteMarker",0)!=0;extra.crateBuffMarkers=value(L"Display",L"CrateBuffMarkers",0)!=0;
  extra.passengerBubbles=value(L"Display",L"PassengerBubbles",0)!=0;extra.dangerPassengers=value(L"Display",L"DangerPassengers",0)!=0;extra.passengerOwn=value(L"Display",L"PassengerOwn",0)!=0;extra.passengerAlways=value(L"Display",L"PassengerAlways",0)!=0;extra.magnetronDrop=value(L"Magnetron",L"AutoDrop",0)!=0;
+ extra.passengerDangerOnly=value(L"Display",L"PassengerDangerOnly",0)!=0;
  extra.enemyMarkers=value(L"Display",L"EnemyMarkers",0)!=0;extra.ownMarkers=value(L"Display",L"OwnMarkers",0)!=0;
  extra.enemySpecialOnly=value(L"Display",L"EnemySpecialEnabled",value(L"Display",L"EnemySpecialOnly",0))!=0;
  extra.enemySpecialMode=std::clamp(value(L"Display",L"EnemySpecialMode",0),0,1);
@@ -214,6 +215,7 @@ static bool saveAdditionalSettings(){
  write(L"Formation",L"Enabled",extra.formationEnabled);write(L"Formation",L"HoldKey",extra.formationHold);write(L"Formation",L"MouseButton",extra.formationMouse);
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey",L"SquareKey",L"FrameKey"};for(int n=0;n<6;++n)write(L"Formation",shapeKeys[n],extra.formationKeys[n]);
  write(L"Display",L"PassengerBubbles",extra.passengerBubbles);write(L"Display",L"DangerPassengers",extra.dangerPassengers);write(L"Display",L"PassengerOwn",extra.passengerOwn);write(L"Display",L"PassengerAlways",extra.passengerAlways);write(L"Magnetron",L"AutoDrop",extra.magnetronDrop);
+ write(L"Display",L"PassengerDangerOnly",extra.passengerDangerOnly);
  // Keep obsolete [Compute] entries unchanged; they no longer control runtime.
  write(L"Hotkeys",L"IdleAircraft",idleAircraftKey);
  for(int i=0;i<9;++i)write(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",socialKeys[i]);

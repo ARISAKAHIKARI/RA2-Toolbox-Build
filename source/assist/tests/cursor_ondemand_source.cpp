@@ -18,11 +18,19 @@
 #include "../../cursor/source/playback.h"
 #include "../../cursor/source/super_hotspot.h"
 #include "../../cursor/source/snapshot_latch.h"
+#include "../../cursor/source/recognition.h"
+#include "../../shared/source/command_cursor_hint.h"
 
 static Asset asset,displayAsset;
 static Bytes original,displaySourceColors,workOriginal,workColors,workGroups;
 static DWORD palette[256]{},displayPalette[256]{};
 static bool loaded=false,displayLoaded=false,running=false,gameResourceConfirmed=false;
+static bool usingHeldSample=false;
+static CursorDefinition commandDefs[86];
+static std::vector<CursorRange> fallbackDefs;
+static Bytes nativeDefinitions;
+static commandcursor::Mode shownCommand=commandcursor::None;
+static DWORD commandSince=0;
 static std::wstring root,gameDir,cacheKey,profilePath,profileId,workProfile,materializedProfile;
 static std::set<unsigned> allowedPairs,playbackPendingPairs;
 static std::map<unsigned,std::shared_ptr<playback::Timeline>> motionCache;
@@ -58,6 +66,10 @@ static void check(bool condition,const char* reason){++checks;if(!condition){++f
 [[noreturn]] static void fail(const char* message){throw std::runtime_error(message);}
 static bool exists(const std::wstring& name){++io.exists;return disk.count(name)!=0;}
 static Bytes file(const std::wstring& name){++io.reads;auto i=disk.find(name);if(i==disk.end())fail("fixture missing file");return i->second;}
+static Bytes read(uint32_t address,size_t size){
+ check(address==0x82d028&&size==nativeDefinitions.size(),"reads the whole definition table once");
+ return nativeDefinitions;
+}
 static void save(const std::wstring& name,const Bytes& bytes){++io.writes;disk[name]=bytes;}
 static std::wstring widen(const std::string& value){return {value.begin(),value.end()};}
 static void log(const std::wstring& value){lastLog=value;}
@@ -107,6 +119,7 @@ static void reset(){
  prepareProcess=nullptr;prepareAutomatic=previewQueued=false;playbackCancel.reset();prepareQueue.reset();allowedPairs={pairKey(0,1),pairKey(1,2)};
  resourceRetryAt=resourceTries=0;clockNow=10000;tearAtBarrier=false;wakes=barriers=stops=cancels=0;lastLog.clear();
  streamShapeGate.calls=fallbackTracker.calls=0;bridgeFrame.clear();syncDefaultDisplay();resetPrepared(false);io={};
+ usingHeldSample=false;resetCommandDefinitions();fallbackDefs.clear();nativeDefinitions.assign(std::size(commandDefs)*28,0);
 }
 static void displayMatches(const Asset& expected,const Bytes& colors){
  check(encode(displayAsset,false)==encode(expected,false),"default display adopts actual decoded source frames");
@@ -119,6 +132,21 @@ static void displayMatches(const Asset& expected,const Bytes& colors){
 }
 static bool materializeFails(){try{materializeWorkProfile();return false;}catch(const std::exception&){return true;}}
 int main(){try{
+ reset();
+ const auto setRange=[](unsigned id,unsigned first,unsigned count){w32(nativeDefinitions,id*28,first);w32(nativeDefinitions,id*28+4,count);};
+ setRange(31,491,5);setRange(33,503,4);setRange(32,420,3);setRange(35,455,3);
+ readCursorDefinitions();
+ check(commandDefinition(31).count==0&&commandDefinition(33).count==0,"450-frame cache cannot use extended image ranges yet");
+ offer(encode(artwork(517),false),colors());pollOriginalResource();
+ check(commandDefinition(31).first==491&&commandDefinition(33).first==503,"late source activates retained native sell and repair definitions");
+ check(fallbackDefs.size()==4,"late source rebuilds recognition for formerly out-of-range cursor animations");
+ const commandcursor::Hint sale{42,1,clockNow,0,commandcursor::OfflineSell,20,30};
+ const commandcursor::Hint repair{42,1,clockNow,0,commandcursor::OfflineRepair,20,30};
+ check(matchesCommandTool(sale,32,420,20,30)&&matchesCommandTool(sale,-1,421,20,30),"sale matches observed denial id or verified rendered range");
+ check(matchesCommandTool(repair,-1,456,22,28),"repair uses its own verified denial range");
+ check(!matchesCommandTool(sale,30,420,20,30)&&!matchesCommandTool(sale,-1,430,20,30)&&!matchesCommandTool(sale,32,420,23,30),"unrelated cursor and moved pointer preserve the native frame");
+ usingHeldSample=true;check(!matchesCommandTool(repair,35,455,20,30),"stale native frame cannot receive a tool preview");
+
  for(unsigned count:{450u,517u}){
   reset();const Asset captured=artwork(count);const auto bytes=encode(captured,false),pal=colors();const auto previousEpoch=motionEpoch;
   auto cancelled=std::make_shared<std::atomic<bool>>(false);playbackCancel=cancelled;prepareQueue.request(pairKey(0,1),450);

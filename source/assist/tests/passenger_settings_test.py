@@ -5,7 +5,7 @@ root=Path(__file__).resolve().parents[2]
 out=Path(sys.argv[1]);out.mkdir(parents=True,exist_ok=True)
 ui=root/'assist/source/auto_settings_ui.h';io=root/'assist/source/extra_settings_io.h'
 s=ui.read_text();body=s[s.index(' if((id==897'):s.index(' if(id==9065')]
-text=io.read_text();fields=['passengerBubbles','dangerPassengers','passengerOwn','passengerAlways']
+text=io.read_text();fields=['passengerBubbles','dangerPassengers','passengerOwn','passengerAlways','passengerDangerOnly']
 load=''.join(re.search(r'extra\.'+f+r'=value\([^;]+;',text).group() for f in fields)
 save=''.join(re.search(r'write\(L"Display",L"[^"]+",extra\.'+f+r'\);',text).group() for f in fields)
 cpp=r'''
@@ -13,7 +13,7 @@ cpp=r'''
 #include <string>
 #include <cassert>
 #include <cstdio>
-static struct{bool passengerBubbles=false,dangerPassengers=false,passengerOwn=false,passengerAlways=false,magnetronDrop=false;}extra;
+static struct{bool passengerBubbles=false,dangerPassengers=false,passengerOwn=false,passengerAlways=false,passengerDangerOnly=false,magnetronDrop=false;}extra;
 static std::map<int,int> fields;
 static std::map<std::wstring,int> profile;
 constexpr int BN_CLICKED=1,BM_GETCHECK=2,BST_CHECKED=1;
@@ -28,11 +28,11 @@ static void write(const wchar_t*,const wchar_t*k,int v){profile[k]=v;}
 cpp+='static bool edit(int id,int notification){'+body+'return false;}\n'
 cpp+='static void load(){'+load+'}\nstatic void save(){'+save+'}\n'
 cpp+=r'''
-int main(){load();assert(!extra.passengerBubbles&&!extra.dangerPassengers&&!extra.passengerOwn&&!extra.passengerAlways);
- for(auto p:{std::pair<int,bool*>{897,&extra.passengerBubbles},{898,&extra.dangerPassengers},{9533,&extra.passengerOwn},{9534,&extra.passengerAlways}}){
+int main(){load();assert(!extra.passengerBubbles&&!extra.dangerPassengers&&!extra.passengerOwn&&!extra.passengerAlways&&!extra.passengerDangerOnly);
+ for(auto p:{std::pair<int,bool*>{897,&extra.passengerBubbles},{898,&extra.dangerPassengers},{9533,&extra.passengerOwn},{9534,&extra.passengerAlways},{9772,&extra.passengerDangerOnly}}){
   for(bool on:{false,true}){int before=changes;fields[p.first]=on;assert(edit(p.first,BN_CLICKED));assert(*p.second==on&&changes==before+1&&syncs==changes);save();*p.second=!on;load();assert(*p.second==on);}
  }
- assert(profile.size()==4);std::puts("PASS passenger settings: four independent toggles, one owner notification, production INI off/on roundtrips");
+ assert(profile.size()==5);std::puts("PASS passenger settings: five saved values, one owner notification, production INI off/on roundtrips");
 }
 '''
 (out/'test.cpp').write_text(cpp)

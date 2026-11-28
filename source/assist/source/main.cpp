@@ -251,7 +251,11 @@ static long worldRevision=-1;static uint32_t plannerAck;static int submittedPlan
 static typekeys::Tap typeTap,variantTap,formationTap;
 static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
 static int registeredHotkeyMode=0;
-struct HotkeyDiagnostics {uint32_t messages=0,sampled=0,actions=0,blocked=0,fallbacks=0,queued=0,dialogHandled=0,traceDropped=0;DWORD lastError=0;};
+struct HotkeyDiagnostics {
+ uint32_t messages=0,sampled=0,actions=0,blocked=0,fallbacks=0,queued=0,dialogHandled=0,traceDropped=0;
+ DWORD lastError=0;
+ std::vector<WORD> occupied;
+};
 static HotkeyDiagnostics hotkeyDiagnostics;
 static hotkeydiagnostic::Monitor hotkeyInputMonitor;
 static uint32_t hotkeyBindingRevision=0;
@@ -821,11 +825,17 @@ static bool destructOwnerKeyConflict(WORD key);
 static void synchronizeHotkeyKeys(){uint8_t down[256]{};for(unsigned key=0;key<256;++key)down[key]=(GetAsyncKeyState(int(key))&0x8000)!=0;hotkeyRegistry.synchronize(down,registeredHotkeyMode==1?displayMatch():commandMatch(),GetTickCount());}
 static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.allHotkeys,[](int slot,WORD chord){
  if(keygesture::sampledOnly(chord))return true;
+ auto& occupied=hotkeyDiagnostics.occupied;
+ if(std::find(occupied.begin(),occupied.end(),chord)!=occupied.end())return false;
  if(!RegisterHotKey(ui,slot,modifiers(chord),LOBYTE(chord))){
-  hotkeyDiagnostics.lastError=GetLastError();++hotkeyDiagnostics.fallbacks;
+  const DWORD error=GetLastError();
+  hotkeyDiagnostics.lastError=error;
+  const bool inUse=error==ERROR_HOTKEY_ALREADY_REGISTERED;
   critical(L"hotkey-registration id="+std::to_wstring(slot)+L" key="+std::to_wstring(chord)+
-   L" route=foreground-poll Win32="+std::to_wstring(hotkeyDiagnostics.lastError));
-  return true; // Keep the binding: the foreground sampler observes its edge.
+   (inUse?L" route=occupied Win32=":L" route=foreground-poll Win32=")+std::to_wstring(error));
+  if(inUse){occupied.push_back(chord);return false;}
+  ++hotkeyDiagnostics.fallbacks;
+  return true;
  }
  registeredKeyIDs.push_back(slot);return true;});}
 // Snapshot only configured bindings, never typed text. Repeated foreground
@@ -843,10 +853,27 @@ static void requestNativePipPin(){
  if(!shared||!commandFresh(now)){notify(L"等待当前对局连接。");return;}
  shared->nativePipPinMatch=commandMatch();shared->nativePipPinTick=now;MemoryBarrier();++shared->nativePipPinRequest;wakeGame();
 }
-static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();formationTap.clear();hotkeyDiagnostics.fallbacks=0;hotkeyDiagnostics.lastError=0;registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered){logHotkeyBindings();return;}int failures=0;
+static void registerKeys(){
+ for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);
+ registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();formationTap.clear();
+ hotkeyDiagnostics.fallbacks=0;hotkeyDiagnostics.lastError=0;hotkeyDiagnostics.occupied.clear();
+ registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;
+ if(!keysRegistered){logHotkeyBindings();return;}
+ int failures=0;
+ auto finish=[&]{
+  synchronizeHotkeyKeys();logHotkeyBindings();
+  if(!hotkeyDiagnostics.occupied.empty()){
+   std::wstring keys;
+   for(WORD chord:hotkeyDiagnostics.occupied){
+    if(!keys.empty())keys+=L" / ";
+    keys+=keyText(chord);
+   }
+   notify(L"以下快捷键已被系统或其他应用占用，请更换组合。\n"+keys);
+  }else if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
+ };
  if(registeredHotkeyMode==1){
   for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
-  synchronizeHotkeyKeys();logHotkeyBindings();if(failures)notify(L"副屏跟踪快捷键注册失败，请更换组合。");return;
+  finish();return;
  }
  for(int i=0;i<12;++i)if((i!=8||extra.manualReveal)&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
@@ -870,7 +897,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
   if(destructOwnerKeyConflict(WORD(extra.destructSelectedOwnerKey))||!destructownerhost::exclusive(hotkeyRegistry,extra.destructSelectedOwnerKey)||
      !registerKey(destructownerhost::Hotkey,WORD(extra.destructSelectedOwnerKey)))++failures;
  }
- synchronizeHotkeyKeys();logHotkeyBindings();if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
+ finish();
 }
 static std::wstring serializeIDs(const std::set<std::string>& ids){
  std::wstring result;for(const auto& id:ids){if(!result.empty())result+=L",";result+=wide(id.c_str());}return result;

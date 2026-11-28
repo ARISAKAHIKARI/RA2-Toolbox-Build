@@ -41,6 +41,8 @@ int main(){
  filters.set(Need::Ore,false);assert(!decision(783,filters).enabled()&&!decision(784,filters).enabled()&&decision(spiderEditor,filters).enabled());
  filters.set(Need::LowDamage,true);assert(decision(9183,filters).enabled());
  filters.set(Need::LowDamage,false);assert(!decision(9183,filters).enabled());
+ assert(decision(9772,filters).missing==Need::PassengerBubbles);
+ filters.set(Need::PassengerBubbles,true);assert(decision(9772,filters).enabled());
  State quota;quota.set(Need::Aircraft,true);quota.set(Need::AircraftQuotas,true);
  assert(decision(714,quota).enabled()&&decision(715,quota).missing==Need::QuotaTarget);
  quota.set(Need::QuotaTarget,true);assert(decision(715,quota).enabled()&&decision(716,quota).missing==Need::QuotaOverride);

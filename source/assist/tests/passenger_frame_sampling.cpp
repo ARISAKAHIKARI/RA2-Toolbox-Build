@@ -2,6 +2,7 @@
 #define WORLD_FRAME_TEST_VISUAL_CACHE
 #include "protocol.h"
 #include "../../shared/source/world_frame_capture.h"
+#include "../../shared/source/world_frame_catalogue.h"
 #include "../../shared/source/world_frame_visual.h"
 #include <cassert>
 #include <cstdio>
@@ -22,7 +23,7 @@ static Snapshot snap{};
 static Snapshot*externalData=&snap;
 static uint32_t pid=fixture::GamePid,match=7,serial=0,optionFlags=0;
 static bool enabled=true,unitPanelEnabled=false; // follows host display-demand toggle
-static struct {bool passengerBubbles=true,dangerPassengers=false,passengerOwn=false,passengerAlways=false,enemyMarkers=false,enemySpecialOnly=false;}extra;
+static struct {bool passengerBubbles=true,dangerPassengers=false,passengerOwn=false,passengerAlways=false,passengerDangerOnly=false,enemyMarkers=false,enemySpecialOnly=false;}extra;
 static uint32_t flags(){return optionFlags;}
 namespace nativeviewhost {
 struct Transform {bool active=false;uint32_t generation=1;struct {int w=0,h=0;}logical;};
@@ -60,7 +61,11 @@ static void setup(){
 // One actual producer capture per simulated logic frame. Consumers use the
 // real shared-memory client to acquire the exact publication subsequently.
 static void publish(uint32_t omittedPage=0,bool failedPage=false){
- CHECK(!externalReader.worldFrameActive());configureDemand();externalReader.beginWorldFrame(match);externalReader.endWorldFrame();
+ CHECK(!externalReader.worldFrameActive());configureDemand();
+ // Keep the lease alive without making a fresh visual capture from the
+ // previous publication just before this test injects a missing page.
+ const auto client=worldframe::acquireClient(externalReader.pid(),externalReader.generation());
+ client->subscribe(uintptr_t(&externalReader),externalReader.worldDemand());
  fixture::currentPid=fixture::GamePid;CHECK(frameServer.wanted(fixture::HostPid,fixture::clock));
  auto key=fixture::key(++snap.frame);key.match=match;key.serial=++serial;key.tick=fixture::clock;key.demand=externalReader.worldDemand();
  // The running game advances its live frame before collecting the visual
@@ -106,7 +111,9 @@ int main(){
  b.frame=a.frame;CHECK(worldframe::coherentVisualCapture(a,b,200));
 
  std::setvbuf(stdout,nullptr,_IONBF,0);
- setup();publish();CHECK(externalReader.worldDemand()==(worldframe::Base|worldframe::Passengers|worldframe::Combat));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==(worldframe::Base|worldframe::Passengers|worldframe::Combat));
+ setup();publish();
+ CHECK(externalReader.worldDemand()==(worldframe::Base|worldframe::HostVisualBase|worldframe::HostVisualPassengers|worldframe::HostVisualCombat));
+ CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);
  auto first=passengerSample(fixture::clock,token);std::printf("first passenger paint: bubbles=%zu live_RPM=%zu\n",first.size(),fixture::rpmCalls);std::fflush(stdout);
  CHECK(first.size()==1&&first[0].id==42&&first[0].danger);zeroLiveReads();
  // A live value changes after capture. Rendering the sealed frame must retain
@@ -128,6 +135,10 @@ int main(){
  CHECK(passengerSample(2161,token,false).empty());--snap.cameraX;
  CHECK(passengerSample(2160,token).size()==1);extra.passengerAlways=true;
  CHECK(passengerSample(2161,token,false).empty());extra.passengerAlways=false;
+ CHECK(passengerSample(2160,token).size()==1);extra.passengerDangerOnly=true;
+ CHECK(passengerSample(2161,token,false).empty()); // old unfiltered bubble must not survive
+ CHECK(passengerSample(2161,token).empty()); // the existing suicide-only fixture is excluded
+ extra.passengerDangerOnly=false;
  std::puts("PASS unconfirmed world acquisition retains bubbles for 120ms without renewal; camera/options invalidate immediately");
  CHECK(passengerSample(2161,{}).empty());CHECK(passengerSample(2162,token,false).empty());zeroLiveReads();
  ++snap.frame;CHECK(passengerSample(2163,token).empty());--snap.frame;
@@ -141,8 +152,8 @@ int main(){
  fixture::clock=2200;publish();CHECK(passengerSample(2200,token).size()==1);
  memory.put(Carrier+0x431,uint8_t(0));fixture::clock=2220;publish();CHECK(passengerSample(2220,token).empty());zeroLiveReads();
  extra.passengerBubbles=false;extra.dangerPassengers=true;fixture::clock=2240;publish();auto danger=passengerSample(2240,token);CHECK(danger.size()==1&&danger[0].danger);zeroLiveReads();
- extra.dangerPassengers=false;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Base));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);CHECK(passengerSample(2241,token).empty());zeroLiveReads();
- optionFlags=Capacity;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Base|worldframe::Passengers));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==(worldframe::Base|worldframe::Passengers));optionFlags=0;
+ extra.dangerPassengers=false;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Base|worldframe::HostVisualBase));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);CHECK(passengerSample(2241,token).empty());zeroLiveReads();
+ optionFlags=Capacity;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Base|worldframe::HostVisualBase|worldframe::HostVisualPassengers));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);optionFlags=0;
  std::puts("PASS inspect disappearance/danger-only/shared demand routing: no rate reduction or alternate live scanner");
  // A paused, independently re-observed frame is still the same immutable
  // publication; this does not refresh its acquisition tick.
@@ -167,7 +178,7 @@ int main(){
   extra.passengerOwn=false;fixture::clock=8120;publish(Passenger&~4095u);CHECK(passengerSample(8120,token).empty());zeroLiveReads();
   extra.passengerOwn=true;memory.put(Carrier+0x6C,0);fixture::clock=8140;publish();CHECK(passengerSample(8140,token).empty());
   memory.put(Carrier+0x6C,100);memory.put(Carrier+0x114,0);memory.put(Carrier+0x118,0u);fixture::clock=8160;publish();CHECK(passengerSample(8160,token).empty());zeroLiveReads();
-  extra.passengerBubbles=false;extra.dangerPassengers=false;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Base));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);CHECK(passengerSample(8161,token).empty());zeroLiveReads();
+  extra.passengerBubbles=false;extra.dangerPassengers=false;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Base|worldframe::HostVisualBase));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);CHECK(passengerSample(8161,token).empty());zeroLiveReads();
   std::printf("PASS passenger modes: %zu checks; own/hover/always/danger/options/empty/dead/lease; zero live RPM\n",fixture::checks-before);
  }
  std::printf("passenger frame sampling: %zu checks passed\n",fixture::checks);
