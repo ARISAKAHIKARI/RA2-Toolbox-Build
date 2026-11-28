@@ -1,0 +1,68 @@
+name: Package 1.0.53.3 known issues 0dfab0ce
+on:
+  push:
+    branches: [build/v1.0.53.3-known-issues-0dfab0ce]
+    paths: ['.github/workflows/package-known-issues-0dfab0ce.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  update:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+      SOURCE_SHA: 0dfab0ce9abff3a5c0449b577799ae4edb6a76d5
+      UPDATE_FILENAME: RA2Toolbox-1.0.53.3-0dfab0ce-x64-Update.zip
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0dfab0ce9abff3a5c0449b577799ae4edb6a76d5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned compiler
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Build and verify exact paired outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/known-issues-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/build.log 2>&1 || { tail -120 checks/build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root known-issues-build --host-arch x64 --webview2 | tee checks/pe.log
+      - name: Assemble verified Update
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/update
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "known-issues-build/$f"
+            cp "known-issues-build/$f" dist/update/
+          done
+          if test -f known-issues-build/CONSOLE_COMPILE.json; then cp known-issues-build/CONSOLE_COMPILE.json dist/update/; fi
+          if test -d known-issues-build/licenses; then cp -a known-issues-build/licenses dist/update/; fi
+          printf '%s\n' "$SOURCE_SHA" > dist/update/BUILD_COMMIT.txt
+          python -c 'from pathlib import Path; import os, zipfile; root=Path("dist/update"); dest=Path("dist")/os.environ["UPDATE_FILENAME"]; z=zipfile.ZipFile(dest,"w",zipfile.ZIP_DEFLATED,compresslevel=9); [z.write(p,p.relative_to(root)) for p in sorted(root.rglob("*")) if p.is_file()]; z.close(); z=zipfile.ZipFile(dest); assert z.testzip() is None; z.close()'
+          (cd dist && sha256sum "$UPDATE_FILENAME" > SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.53.3-0dfab0ce-x64-Update
+          path: |
+            dist/${{ env.UPDATE_FILENAME }}
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: known-issues-build-checks
+          path: checks/
